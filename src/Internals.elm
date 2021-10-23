@@ -10,6 +10,20 @@ type State state
 
 
 
+-- NASTY TUPLE STUFF
+
+
+map2 : (a -> b -> c) -> (rest -> rest1 -> rest2) -> ( a, rest ) -> ( b, rest1 ) -> ( c, rest2 )
+map2 mapA mapB ( a, b ) ( a1, b1 ) =
+    ( mapA a a1, mapB b b1 )
+
+
+map3 : (a -> b -> c -> d) -> (rest -> rest1 -> rest2 -> rest3) -> ( a, rest ) -> ( b, rest1 ) -> ( c, rest2 ) -> ( d, rest3 )
+map3 mapA mapB ( a, b ) ( a1, b1 ) ( a2, b2 ) =
+    ( mapA a a1 a2, mapB b b1 b2 )
+
+
+
 -- NASTY MAGICAL FOLD STUFF
 
 

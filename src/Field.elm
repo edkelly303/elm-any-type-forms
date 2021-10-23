@@ -1,5 +1,8 @@
 module Field exposing (..)
 
+import Element exposing (..)
+import Element.Background as Background
+import Element.Input as Input
 import Internals exposing (..)
 
 
@@ -15,32 +18,68 @@ type Error
     | StringMustNotContain String
 
 
-type Field input output
+type Field input output msg
     = Field
         { data : input
         , touched : Bool
         , parser : input -> Result Error output
         , validators : List (output -> Maybe Error)
+        , toEl : input -> Bool -> (input -> msg) -> Result (List Error) output -> Element msg
+        , msg : input -> msg
         }
+
+
+type alias FieldState input =
+    { data : input, touched : Bool }
 
 
 
 -- CREATING FIELDS
 
 
-stringToString : String -> List (String -> Maybe Error) -> Field String String
-stringToString data validators =
-    Field { data = data, touched = False, parser = Ok, validators = validators }
+custom : { a | data : b, parser : b -> Result Error output, validators : List (output -> Maybe Error), toEl : b -> Bool -> (b -> msg) -> Result (List Error) output -> Element msg, msg : b -> msg } -> Field b output msg
+custom { data, parser, validators, toEl, msg } =
+    Field
+        { data = data
+        , touched = False
+        , parser = parser
+        , validators = validators
+        , toEl = toEl
+        , msg = msg
+        }
 
 
-stringToFloat : String -> List (Float -> Maybe Error) -> Field String Float
-stringToFloat data validators =
-    Field { data = data, touched = False, parser = String.toFloat >> Result.fromMaybe NotValidFloat, validators = validators }
+string : String -> List (String -> Maybe Error) -> (String -> msg) -> Field String String msg
+string data validators msg =
+    custom
+        { data = data
+        , parser = Ok
+        , validators = validators
+        , toEl = toEl_
+        , msg = msg
+        }
 
 
-stringToInt : String -> List (Int -> Maybe Error) -> Field String Int
-stringToInt data validators =
-    Field { data = data, touched = False, parser = String.toInt >> Result.fromMaybe NotValidInt, validators = validators }
+float : String -> List (Float -> Maybe Error) -> (String -> msg) -> Field String Float msg
+float data validators msg =
+    custom
+        { data = data
+        , parser = String.toFloat >> Result.fromMaybe NotValidFloat
+        , validators = validators
+        , toEl = toEl_
+        , msg = msg
+        }
+
+
+int : String -> List (Int -> Maybe Error) -> (String -> msg) -> Field String Int msg
+int data validators msg =
+    custom
+        { data = data
+        , parser = String.toInt >> Result.fromMaybe NotValidInt
+        , validators = validators
+        , toEl = toEl_
+        , msg = msg
+        }
 
 
 
@@ -98,4 +137,23 @@ floatMustBeLessThan tooHigh float_ =
         |> ifTrueThenJust FloatTooHigh
 
 
+toEl_ : String -> Bool -> (String -> msg) -> Result (List Error) output -> Element msg
+toEl_ input touched msg res =
+    Input.text
+        [ Background.color
+            (case ( touched, res ) of
+                ( True, Ok _ ) ->
+                    rgb255 100 255 100
 
+                ( True, Err _ ) ->
+                    rgb255 255 100 100
+
+                _ ->
+                    rgb255 255 255 255
+            )
+        ]
+        { label = Input.labelHidden "TODO"
+        , text = input
+        , placeholder = Nothing
+        , onChange = msg
+        }
