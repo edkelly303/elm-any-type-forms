@@ -9,42 +9,30 @@ import Form exposing (..)
 import Html exposing (Html)
 
 
-myForm :
-    { init : State ( FieldState String, ( FieldState String, ( FieldState String, ( FieldState String, () ) ) ) )
-    , state : State state -> state
-    , submit :
-        State ( FieldState String, ( FieldState String, ( FieldState String, ( FieldState String, () ) ) ) )
-        ->
-            Result
-                (State ( FieldState String, ( FieldState String, ( FieldState String, ( FieldState String, () ) ) ) ))
-                ( String, ( Float, ( Int, ( Int, () ) ) ) )
-    , set : ((( FieldState input, rest ) -> ( FieldState input, rest )) -> e -> f) -> input -> State e -> State f
-    , toEls : State ( FieldState String, ( FieldState String, ( FieldState String, ( FieldState String, () ) ) ) ) -> ( Element Msg, ( Element Msg, ( Element Msg, ( Element Msg, () ) ) ) )
-    }
 myForm =
     form f4
         (field
-            (string "hello"
+            (string ""
                 [ stringMustNotContain "hell"
-                , stringMustBeLongerThan 10
+                , stringMustBeLongerThan 6
                 ]
                 Set0
             )
         )
         (field
-            (float "2"
+            (float ""
                 [ floatMustBeGreaterThan 1 ]
                 Set1
             )
         )
         (field
-            (int "wow"
+            (int ""
                 [ intMustBeGreaterThan 0 ]
                 Set2
             )
         )
         (field
-            (int "gosh"
+            (int ""
                 [ intMustBeLessThan 0 ]
                 Set3
             )
