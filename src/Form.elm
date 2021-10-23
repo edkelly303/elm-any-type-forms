@@ -1,6 +1,6 @@
 module Form exposing
-    ( Error(..)
-    , State(..)
+    ( Form
+    , State
     , end
     , f1
     , f10
@@ -13,8 +13,6 @@ module Form exposing
     , f8
     , f9
     , field
-    , floatMustBeGreaterThan
-    , floatMustBeLessThan
     , form
     , i0
     , i1
@@ -27,45 +25,22 @@ module Form exposing
     , i7
     , i8
     , i9
-    , init
-    , intMustBeGreaterThan
-    , intMustBeLessThan
-    , stringMustBeLongerThan
-    , stringMustBeShorterThan
-    , stringMustNotContain
-    , stringToFloat
-    , stringToInt
-    , stringToString
-    , testForm
     )
 
-
-type Error
-    = NotValidInt
-    | NotValidFloat
-    | IntTooLow
-    | IntTooHigh
-    | FloatTooLow
-    | FloatTooHigh
-    | StringTooShort
-    | StringTooLong
-    | StringMustNotContain String
+import Field exposing (..)
+import Internals exposing (..)
 
 
-type Field input output
-    = Field
-        { data : input
-        , parser : input -> Result Error output
-        , validators : List (output -> Maybe Error)
-        }
+
+-- TYPES
 
 
-type Form form
-    = Form form
+type alias Form form =
+    Internals.Form form
 
 
-type State state
-    = State state
+type alias State state =
+    Internals.State state
 
 
 
@@ -74,17 +49,19 @@ type State state
 
 form countFields next =
     let
-        { stateSize, validateSize } =
+        { stateSize, validateSize, touchSize } =
             countFields
                 { stateSize = identity
                 , validateSize = identity
+                , touchSize = identity
                 }
     in
     foldr
         ( Form ()
         , \form_ ->
             { init = init stateSize form_
-            , submit = submit validateSize form_
+            , state = state
+            , submit = \state_ -> ( touchAll touchSize state_, validateAll validateSize form_ state_ )
             , validate = validate form_
             , get = get
             , set = set
@@ -93,162 +70,57 @@ form countFields next =
         next
 
 
-f1 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, rest ) -> ( input, rest1 ), validateSize : c -> ( Field f g, d ) -> ( f, e ) -> ( Result (List Error) g, rest2 ) }
-f1 { stateSize, validateSize } =
-    { stateSize = stateSize >> sSize1, validateSize = validateSize >> vSize1 }
+end : ( state, state -> output ) -> output
+end =
+    Internals.end
 
 
-f2 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, rest ) ) -> ( input, ( f, rest1 ) ), validateSize : c -> ( Field h i, ( Field j k, d ) ) -> ( h, ( j, e ) ) -> ( Result (List Error) i, ( Result (List Error) k, rest2 ) ) }
+f1 { stateSize, validateSize, touchSize } =
+    { stateSize = stateSize >> sSize1
+    , validateSize = validateSize >> validateSize1
+    , touchSize = touchSize >> touchSize1
+    }
+
+
 f2 =
     f1 >> f1
 
 
-f3 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, rest ) ) ) -> ( input, ( f, ( h, rest1 ) ) ), validateSize : c -> ( Field j k, ( Field l m, ( Field n o, d ) ) ) -> ( j, ( l, ( n, e ) ) ) -> ( Result (List Error) k, ( Result (List Error) m, ( Result (List Error) o, rest2 ) ) ) }
 f3 =
     f2 >> f1
 
 
-f4 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, ( Field j k, rest ) ) ) ) -> ( input, ( f, ( h, ( j, rest1 ) ) ) ), validateSize : c -> ( Field l m, ( Field n o, ( Field p q, ( Field r s, d ) ) ) ) -> ( l, ( n, ( p, ( r, e ) ) ) ) -> ( Result (List Error) m, ( Result (List Error) o, ( Result (List Error) q, ( Result (List Error) s, rest2 ) ) ) ) }
 f4 =
     f2 >> f2
 
 
-f5 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, ( Field j k, ( Field l m, rest ) ) ) ) ) -> ( input, ( f, ( h, ( j, ( l, rest1 ) ) ) ) ), validateSize : c -> ( Field n o, ( Field p q, ( Field r s, ( Field t u, ( Field v w, d ) ) ) ) ) -> ( n, ( p, ( r, ( t, ( v, e ) ) ) ) ) -> ( Result (List Error) o, ( Result (List Error) q, ( Result (List Error) s, ( Result (List Error) u, ( Result (List Error) w, rest2 ) ) ) ) ) }
 f5 =
     f3 >> f2
 
 
-f6 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, ( Field j k, ( Field l m, ( Field n o, rest ) ) ) ) ) ) -> ( input, ( f, ( h, ( j, ( l, ( n, rest1 ) ) ) ) ) ), validateSize : c -> ( Field p q, ( Field r s, ( Field t u, ( Field v w, ( Field x y, ( Field z a1, d ) ) ) ) ) ) -> ( p, ( r, ( t, ( v, ( x, ( z, e ) ) ) ) ) ) -> ( Result (List Error) q, ( Result (List Error) s, ( Result (List Error) u, ( Result (List Error) w, ( Result (List Error) y, ( Result (List Error) a1, rest2 ) ) ) ) ) ) }
 f6 =
     f3 >> f3
 
 
-f7 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, ( Field j k, ( Field l m, ( Field n o, ( Field p q, rest ) ) ) ) ) ) ) -> ( input, ( f, ( h, ( j, ( l, ( n, ( p, rest1 ) ) ) ) ) ) ), validateSize : c -> ( Field r s, ( Field t u, ( Field v w, ( Field x y, ( Field z a1, ( Field b1 c1, ( Field d1 e1, d ) ) ) ) ) ) ) -> ( r, ( t, ( v, ( x, ( z, ( b1, ( d1, e ) ) ) ) ) ) ) -> ( Result (List Error) s, ( Result (List Error) u, ( Result (List Error) w, ( Result (List Error) y, ( Result (List Error) a1, ( Result (List Error) c1, ( Result (List Error) e1, rest2 ) ) ) ) ) ) ) }
 f7 =
     f4 >> f3
 
 
-f8 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, ( Field j k, ( Field l m, ( Field n o, ( Field p q, ( Field r s, rest ) ) ) ) ) ) ) ) -> ( input, ( f, ( h, ( j, ( l, ( n, ( p, ( r, rest1 ) ) ) ) ) ) ) ), validateSize : c -> ( Field t u, ( Field v w, ( Field x y, ( Field z a1, ( Field b1 c1, ( Field d1 e1, ( Field f1 g1, ( Field h1 i1, d ) ) ) ) ) ) ) ) -> ( t, ( v, ( x, ( z, ( b1, ( d1, ( f1, ( h1, e ) ) ) ) ) ) ) ) -> ( Result (List Error) u, ( Result (List Error) w, ( Result (List Error) y, ( Result (List Error) a1, ( Result (List Error) c1, ( Result (List Error) e1, ( Result (List Error) g1, ( Result (List Error) i1, rest2 ) ) ) ) ) ) ) ) }
 f8 =
     f4 >> f4
 
 
-f9 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, ( Field j k, ( Field l m, ( Field n o, ( Field p q, ( Field r s, ( Field t u, rest ) ) ) ) ) ) ) ) ) -> ( input, ( f, ( h, ( j, ( l, ( n, ( p, ( r, ( t, rest1 ) ) ) ) ) ) ) ) ), validateSize : c -> ( Field v w, ( Field x y, ( Field z a1, ( Field b1 c1, ( Field d1 e1, ( Field f1 g1, ( Field h1 i1, ( Field j1 k1, ( Field l1 m1, d ) ) ) ) ) ) ) ) ) -> ( v, ( x, ( z, ( b1, ( d1, ( f1, ( h1, ( j1, ( l1, e ) ) ) ) ) ) ) ) ) -> ( Result (List Error) w, ( Result (List Error) y, ( Result (List Error) a1, ( Result (List Error) c1, ( Result (List Error) e1, ( Result (List Error) g1, ( Result (List Error) i1, ( Result (List Error) k1, ( Result (List Error) m1, rest2 ) ) ) ) ) ) ) ) ) }
 f9 =
     f5 >> f4
 
 
-f10 : { a | stateSize : b -> rest -> rest1, validateSize : c -> d -> e -> rest2 } -> { stateSize : b -> ( Field input output, ( Field f g, ( Field h i, ( Field j k, ( Field l m, ( Field n o, ( Field p q, ( Field r s, ( Field t u, ( Field v w, rest ) ) ) ) ) ) ) ) ) ) -> ( input, ( f, ( h, ( j, ( l, ( n, ( p, ( r, ( t, ( v, rest1 ) ) ) ) ) ) ) ) ) ), validateSize : c -> ( Field x y, ( Field z a1, ( Field b1 c1, ( Field d1 e1, ( Field f1 g1, ( Field h1 i1, ( Field j1 k1, ( Field l1 m1, ( Field n1 o1, ( Field p1 q1, d ) ) ) ) ) ) ) ) ) ) -> ( x, ( z, ( b1, ( d1, ( f1, ( h1, ( j1, ( l1, ( n1, ( p1, e ) ) ) ) ) ) ) ) ) ) -> ( Result (List Error) y, ( Result (List Error) a1, ( Result (List Error) c1, ( Result (List Error) e1, ( Result (List Error) g1, ( Result (List Error) i1, ( Result (List Error) k1, ( Result (List Error) m1, ( Result (List Error) o1, ( Result (List Error) q1, rest2 ) ) ) ) ) ) ) ) ) ) }
 f10 =
     f5 >> f5
 
 
-
--- CREATING FIELDS
-
-
-field : i -> (i -> Result Error o) -> List (o -> Maybe Error) -> ( Form ( Field i o, form ) -> c, finish ) -> (( Form form -> c, finish ) -> output) -> output
-field data parser validators next =
-    step0r (\(Form f) -> Form ( Field { data = data, parser = parser, validators = validators }, f )) next
-
-
-stringToString : String -> List (String -> Maybe Error) -> ( Form ( Field String String, form ) -> c, finish ) -> (( Form form -> c, finish ) -> output) -> output
-stringToString data validators =
-    field data Ok validators
-
-
-stringToFloat : String -> List (Float -> Maybe Error) -> ( Form ( Field String Float, form ) -> c, finish ) -> (( Form form -> c, finish ) -> output) -> output
-stringToFloat data validators =
-    field data (String.toFloat >> Result.fromMaybe NotValidFloat) validators
-
-
-stringToInt : String -> List (Int -> Maybe Error) -> ( Form ( Field String Int, form ) -> c, finish ) -> (( Form form -> c, finish ) -> output) -> output
-stringToInt data validators =
-    field data (String.toInt >> Result.fromMaybe NotValidInt) validators
-
-
-
--- NASTY MAGICAL FOLD STUFF
-
-
-fold : ( state, finish ) -> (( state, finish ) -> output) -> output
-fold ( base, finish ) next =
-    next ( base, finish )
-
-
-foldr : ( a, b ) -> (( b, (a -> c) -> c ) -> output) -> output
-foldr ( base, finish ) next =
-    fold ( finish, \g -> g base ) next
-
-
-step0r : (a -> b) -> ( b -> c, finish ) -> (( a -> c, finish ) -> output) -> output
-step0r h =
-    step0 (\g -> g << h)
-
-
-step0 : (state -> state2) -> ( state, finish ) -> (( state2, finish ) -> output) -> output
-step0 next ( state, finish ) =
-    fold ( next state, finish )
-
-
-end : ( state, state -> output ) -> output
-end ( state, finish ) =
-    finish state
-
-
-
--- CREATING VALIDATORS
-
-
-ifTrueThenJust : a -> Bool -> Maybe a
-ifTrueThenJust a bool =
-    if bool then
-        Just a
-
-    else
-        Nothing
-
-
-stringMustBeLongerThan : Int -> String -> Maybe Error
-stringMustBeLongerThan numberOfChars str =
-    (String.length str <= numberOfChars)
-        |> ifTrueThenJust StringTooShort
-
-
-stringMustBeShorterThan : Int -> String -> Maybe Error
-stringMustBeShorterThan numberOfChars str =
-    (String.length str >= numberOfChars)
-        |> ifTrueThenJust StringTooLong
-
-
-stringMustNotContain : String -> String -> Maybe Error
-stringMustNotContain content str =
-    String.contains content str
-        |> ifTrueThenJust (StringMustNotContain content)
-
-
-intMustBeGreaterThan : Int -> Int -> Maybe Error
-intMustBeGreaterThan tooLow int_ =
-    (int_ <= tooLow)
-        |> ifTrueThenJust IntTooLow
-
-
-intMustBeLessThan : Int -> Int -> Maybe Error
-intMustBeLessThan tooHigh int_ =
-    (int_ >= tooHigh)
-        |> ifTrueThenJust IntTooHigh
-
-
-floatMustBeGreaterThan : Float -> Float -> Maybe Error
-floatMustBeGreaterThan tooLow float_ =
-    (float_ <= tooLow)
-        |> ifTrueThenJust FloatTooLow
-
-
-floatMustBeLessThan : Float -> Float -> Maybe Error
-floatMustBeLessThan tooHigh float_ =
-    (float_ >= tooHigh)
-        |> ifTrueThenJust FloatTooHigh
+field : Field i o -> ( Form ( Field i o, form ) -> c, finish ) -> (( Form form -> c, finish ) -> output) -> output
+field field_ next =
+    step0r (\(Form fields) -> Form ( field_, fields )) next
 
 
 
@@ -347,7 +219,7 @@ setIndex1 mapRest ( val, rest ) =
 
 
 
--- SETTING FIELDS
+-- SETTING SINGLE FIELDS
 
 
 set toIndex newVal (State state_) =
@@ -355,11 +227,11 @@ set toIndex newVal (State state_) =
         index =
             toIndex { setIdx = setIndex0, getIdx = getIndex0 }
     in
-    State (index.setIdx (Tuple.mapBoth (always newVal) identity) state_)
+    State (index.setIdx (Tuple.mapBoth (\d -> { d | data = newVal, touched = True }) identity) state_)
 
 
 
--- GETTING AND VALIDATING SINGLE FIELDS
+-- GETTING SINGLE FIELDS
 
 
 get toIndex (State state_) =
@@ -370,6 +242,11 @@ get toIndex (State state_) =
     index.getIdx ( state_, state_ )
         |> Tuple.first
         |> Tuple.first
+        |> .data
+
+
+
+-- VALIDATING SINGLE FIELDS
 
 
 validate (Form form_) toIndex (State state_) =
@@ -379,12 +256,12 @@ validate (Form form_) toIndex (State state_) =
     in
     index.getIdx ( form_, state_ )
         |> Tuple.mapBoth Tuple.first Tuple.first
-        |> (\( field_, data ) -> parseAndValidate field_ data)
+        |> (\( field_, s_ ) -> parseAndValidate field_ s_)
 
 
-parseAndValidate : Field input output -> input -> Result (List Error) output
+parseAndValidate : Field input output -> { data : input, touched : Bool } -> Result (List Error) output
 parseAndValidate (Field { parser, validators }) data =
-    data
+    data.data
         |> parser
         |> Result.mapError List.singleton
         |> Result.andThen
@@ -409,9 +286,9 @@ accumulateErrors a list =
 -- EXTRACTING STATE
 
 
-sSize1 : (rest -> rest1) -> ( Field input output, rest ) -> ( input, rest1 )
+sSize1 : (b -> y) -> ( Field input output, b ) -> ( { data : input, touched : Bool }, y )
 sSize1 next form_ =
-    Tuple.mapBoth (\(Field { data }) -> data) next form_
+    Tuple.mapBoth (\(Field { data, touched }) -> { data = data, touched = touched }) next form_
 
 
 init : ((() -> ()) -> form -> state) -> Form form -> State state
@@ -419,82 +296,39 @@ init size (Form form_) =
     State (size (\() -> ()) form_)
 
 
+state : State state -> state
+state (State state_) =
+    state_
+
+
 
 -- VALIDATING ALL FIELDS
 
 
-vSize1 : (rest -> rest1 -> rest2) -> ( Field input output, rest ) -> ( input, rest1 ) -> ( Result (List Error) output, rest2 )
-vSize1 next form_ state_ =
+validateSize1 : (rest -> rest1 -> rest2) -> ( Field input output, rest ) -> ( { data : input, touched : Bool }, rest1 ) -> ( Result (List Error) output, rest2 )
+validateSize1 next form_ state_ =
     map2 parseAndValidate next form_ state_
 
 
-submit : ((() -> () -> ()) -> form -> state -> results) -> Form form -> State state -> results
-submit size (Form form_) (State state_) =
+validateAll : ((() -> () -> ()) -> form -> state -> results) -> Form form -> State state -> results
+validateAll size (Form form_) (State state_) =
     size (\() () -> ()) form_ state_
 
 
 
--- TESTS
+-- TOUCHING ALL FIELDS
 
 
-testForm :
-    { get :
-        ({ getIdx : e -> e, setIdx : d -> d }
-         -> { c | getIdx : ( state3, state3 ) -> ( ( b3, b5 ), b4 ) }
-        )
-        -> State state3
-        -> b3
-    , init : State ( String, ( String, ( String, ( String, () ) ) ) )
-    , set :
-        ({ getIdx : j -> j, setIdx : i -> i }
-         -> { f | setIdx : (( a1, y1 ) -> ( x, y1 )) -> state2 -> state1 }
-        )
-        -> x
-        -> State state2
-        -> State state1
-    , submit :
-        State ( String, ( String, ( String, ( String, () ) ) ) )
-        ->
-            ( Result (List Error) String
-            , ( Result (List Error) Float
-              , ( Result (List Error) Int, ( Result (List Error) Int, () ) )
-              )
-            )
-    , validate :
-        ({ getIdx : b2 -> b2, setIdx : a -> a }
-         ->
-            { g
-                | getIdx :
-                    ( ( Field String String
-                      , ( Field String Float
-                        , ( Field String Int, ( Field String Int, () ) )
-                        )
-                      )
-                    , state
-                    )
-                    -> ( ( Field y output, b1 ), ( y, b ) )
-            }
-        )
-        -> State state
-        -> Result (List Error) output
-    }
-testForm =
-    form f4
-        (stringToString "hello"
-            [ stringMustNotContain "hell"
-            , stringMustBeLongerThan 10
-            ]
-        )
-        (stringToFloat "2"
-            [ floatMustBeGreaterThan 1
-            ]
-        )
-        (stringToInt "wow"
-            [ intMustBeGreaterThan 0
-            ]
-        )
-        (stringToInt "wow"
-            [ intMustBeGreaterThan 0
-            ]
-        )
-        end
+touch : { a | touched : Bool } -> { a | touched : Bool }
+touch f =
+    { f | touched = True }
+
+
+touchSize1 : (rest -> rest1) -> ( { a | touched : Bool }, rest ) -> ( { a | touched : Bool }, rest1 )
+touchSize1 next state_ =
+    Tuple.mapBoth touch next state_
+
+
+touchAll : ((() -> ()) -> state -> state1) -> State state -> State state1
+touchAll size (State state_) =
+    State (size (\() -> ()) state_)
