@@ -58,20 +58,20 @@ form :
      ->
         { g
             | stateSize : (() -> ()) -> form -> state
-            , validateSize : (() -> () -> ()) -> form -> h -> i
-            , touchSize : (() -> ()) -> h -> state1
-            , collectSize : (j -> j) -> ( Result error (), i ) -> ( Result k l, m )
+            , validateSize : (() -> () -> ()) -> form -> state -> i
+            , touchSize : (() -> ()) -> state -> state
+            , collectSize : (j -> j) -> ( Result (List Field.Error) (), i ) -> ( Result (List Field.Error) l, m )
             , reverseSize : (n -> n) -> ( (), l ) -> ( o, p )
-            , renderSize : (() -> () -> () -> ()) -> form -> h -> i -> elements
+            , renderSize : (() -> () -> () -> ()) -> form -> state -> i -> elements
         }
     )
     ->
         (( Form form
            ->
             { init : State state
-            , submit : State h -> Result (State state1) o
-            , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> q -> state2) -> input -> State q -> State state2
-            , toEls : State h -> elements
+            , submit : State state -> Result (State state) o
+            , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state) -> input -> State state -> State state
+            , toEls : State state -> elements
             }
          , (Form () -> r) -> r
          )
@@ -196,14 +196,14 @@ i5 =
 -- SETTING FIELDS
 
 
-set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state2) -> input -> State state -> State state2
+set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state) -> input -> State state -> State state
 set index newVal (State state_) =
-    State (index (Tuple.mapBoth (\d -> { d | data = newVal, touched = True }) identity) state_)
+    State (index (Tuple.mapBoth (\d -> { d | input = newVal, touched = True }) identity) state_)
 
 
 parseAndValidate : Field input output msg -> Field.State input -> Result (List Field.Error) output
 parseAndValidate (Field { parser, validators }) data =
-    data.data
+    data.input
         |> parser
         |> Result.mapError List.singleton
         |> Result.andThen
@@ -230,7 +230,7 @@ accumulateErrors a list =
 
 sSize1 : (b -> y) -> ( Field input output msg, b ) -> ( Field.State input, y )
 sSize1 next form_ =
-    Tuple.mapBoth (\(Field { data, touched }) -> { data = data, touched = touched }) next form_
+    Tuple.mapBoth Field.initialize next form_
 
 
 init : ((() -> ()) -> form -> state) -> Form form -> State state
@@ -256,13 +256,13 @@ validateSize1 next form_ state_ =
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
 
 
-collectResults : ((a -> a) -> ( Result error (), b ) -> ( c, d )) -> b -> c
+collectResults : ((a -> a) -> ( Result (List Field.Error) (), b ) -> ( c, d )) -> b -> c
 collectResults size results =
     size identity ( Ok (), results )
         |> Tuple.first
 
 
-collectSize1 : (( Result (List a) ( value, b ), c ) -> d) -> ( Result (List a) b, ( Result (List a) value, c ) ) -> d
+collectSize1 : (( Result (List Field.Error) ( value, b ), c ) -> d) -> ( Result (List Field.Error) b, ( Result (List Field.Error) value, c ) ) -> d
 collectSize1 next ( s, ( fst, rst ) ) =
     case s of
         Ok tuple ->
@@ -301,17 +301,17 @@ reverseSize1 next ( s, ( fst, rest ) ) =
 -- TOUCHING ALL FIELDS
 
 
-touch : { a | touched : Bool } -> { a | touched : Bool }
+touch : Field.State input -> Field.State input
 touch f =
     { f | touched = True }
 
 
-touchSize1 : (rest -> rest1) -> ( { a | touched : Bool }, rest ) -> ( { a | touched : Bool }, rest1 )
+touchSize1 : (b -> y) -> ( Field.State input, b ) -> ( Field.State input, y )
 touchSize1 next state_ =
     Tuple.mapBoth touch next state_
 
 
-touchAll : ((() -> ()) -> state -> state1) -> State state -> State state1
+touchAll : ((() -> ()) -> state -> state) -> State state -> State state
 touchAll size (State state_) =
     State (size (\() -> ()) state_)
 
@@ -322,12 +322,12 @@ touchAll size (State state_) =
 
 submit :
     ((() -> () -> ()) -> form -> state -> b)
-    -> ((a -> a) -> ( Result error (), b ) -> ( Result c d, e ))
+    -> ((a -> a) -> ( Result (List Field.Error) (), b ) -> ( Result (List Field.Error) d, e ))
     -> ((f -> f) -> ( (), d ) -> ( g, h ))
-    -> ((() -> ()) -> state -> state1)
+    -> ((() -> ()) -> state -> state)
     -> Form form
     -> State state
-    -> Result (State state1) g
+    -> Result (State state) g
 submit validateSize collectSize reverseSize touchSize form_ state_ =
     validateAll validateSize form_ state_
         |> collectResults collectSize
@@ -351,12 +351,26 @@ renderAll size (Form form_) (State state_) results =
 
 renderSize1 :
     (rest -> rest1 -> rest2 -> rest3)
-    -> ( Field a output msg, rest )
-    -> ( { b | data : a, touched : Bool }, rest1 )
+    -> ( Field input output msg, rest )
+    -> ( Field.State input, rest1 )
     -> ( Result (List Field.Error) output, rest2 )
     -> ( Element msg, rest3 )
 renderSize1 next form_ state_ results =
-    map3 (\(Field { toEl, msg }) { data, touched } res -> toEl data touched msg res) next form_ state_ results
+    map3
+        (\(Field { renderer, msg, id, label }) { input, touched } parsed ->
+            renderer
+                { input = input
+                , touched = touched
+                , msg = msg
+                , parsed = parsed
+                , id = id
+                , label = label
+                }
+        )
+        next
+        form_
+        state_
+        results
 
 
 toEls :

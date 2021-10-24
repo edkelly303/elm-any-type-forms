@@ -4,43 +4,48 @@ import Browser
 import Element exposing (..)
 import Element.Border as Border
 import Element.Input as Input
-import Field exposing (..)
-import Form exposing (..)
+import Field
+import Form
 import Html exposing (Html)
 
 
+myForm :
+    { init : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
+    , submit : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> Result (Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )) ( String, ( Float, ( Int, ( Int, () ) ) ) )
+    , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )) -> input -> Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
+    , toEls : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> ( Element Msg, ( Element Msg, ( Element Msg, ( Element Msg, () ) ) ) )
+    }
 myForm =
-    form f4
-        (field
-            (string ""
-                [ stringMustNotContain "hell"
-                , stringMustBeLongerThan 6
-                ]
-                Set0
+    Form.form Form.f4
+        (Form.field
+            (Field.string "name" Set0
+                |> Field.withLabel "What is your name? (No blasphemies, now!)"
+                |> Field.withValidator (Field.stringMustNotContain "hell")
+                |> Field.withValidator (Field.stringMustBeLongerThan 6)
             )
         )
-        (field
-            (float ""
-                [ floatMustBeGreaterThan 1 ]
-                Set1
+        (Form.field
+            (Field.float "age" Set1
+                |> Field.withLabel "How old are you?"
+                |> Field.withValidator (Field.floatMustBeGreaterThan 1)
             )
         )
-        (field
-            (int ""
-                [ intMustBeGreaterThan 0 ]
-                Set2
+        (Form.field
+            (Field.int "shoe-size" Set2
+                |> Field.withLabel "What is your shoe size?"
+                |> Field.withValidator (Field.intMustBeGreaterThan 0)
             )
         )
-        (field
-            (int ""
-                [ intMustBeLessThan 0 ]
-                Set3
+        (Form.field
+            (Field.int "neg-number" Set3
+                |> Field.withLabel "What is your favourite negative number?"
+                |> Field.withValidator (Field.intMustBeLessThan 0)
             )
         )
-        end
+        Form.end
 
 
-type alias Model =
+type alias FormState =
     Form.State
         ( Field.State String
         , ( Field.State String
@@ -51,6 +56,10 @@ type alias Model =
             )
           )
         )
+
+
+type alias Model =
+    FormState
 
 
 initialModel : Model
@@ -70,16 +79,16 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         Set0 s ->
-            myForm.set i0 s model
+            myForm.set Form.i0 s model
 
         Set1 s ->
-            myForm.set i1 s model
+            myForm.set Form.i1 s model
 
         Set2 s ->
-            myForm.set i2 s model
+            myForm.set Form.i2 s model
 
         Set3 s ->
-            myForm.set i3 s model
+            myForm.set Form.i3 s model
 
         SubmitClicked ->
             case myForm.submit model of
