@@ -1,15 +1,5 @@
 module Internals exposing (..)
 
-
-type Form form
-    = Form form
-
-
-type State state
-    = State state
-
-
-
 -- NASTY TUPLE STUFF
 
 

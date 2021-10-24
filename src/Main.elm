@@ -41,11 +41,11 @@ myForm =
 
 
 type alias Model =
-    State
-        ( FieldState String
-        , ( FieldState String
-          , ( FieldState String
-            , ( FieldState String
+    Form.State
+        ( Field.State String
+        , ( Field.State String
+          , ( Field.State String
+            , ( Field.State String
               , ()
               )
             )

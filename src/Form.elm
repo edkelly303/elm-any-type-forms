@@ -21,6 +21,7 @@ module Form exposing
     , i2
     , i3
     , i4
+    , i5
     , reverseSize1
     , reverseTuple
     )
@@ -34,12 +35,12 @@ import Internals exposing (..)
 -- TYPES
 
 
-type alias Form form =
-    Internals.Form form
+type Form form
+    = Form form
 
 
-type alias State state =
-    Internals.State state
+type State state
+    = State state
 
 
 
@@ -130,41 +131,50 @@ field field_ next =
     step0r (\(Form fields) -> Form ( field_, fields )) next
 
 
+
+-- INDEXES FOR SETTING FIELDS
+
+
 i0 : a -> a
 i0 =
     identity
 
 
-i1 : (rest -> rest) -> ( val, rest ) -> ( val, rest )
+i1 : (rest -> rest) -> ( zero, rest ) -> ( zero, rest )
 i1 mapRest ( val, rest ) =
     Tuple.mapBoth identity mapRest ( val, rest )
 
 
-i2 : (rest -> rest) -> ( val, ( a, rest ) ) -> ( val, ( a, rest ) )
+i2 : (rest -> rest) -> ( zero, ( one, rest ) ) -> ( zero, ( one, rest ) )
 i2 =
     i1 >> i1
 
 
-i3 : (rest -> rest) -> ( val, ( a, ( b, rest ) ) ) -> ( val, ( a, ( b, rest ) ) )
+i3 : (rest -> rest) -> ( zero, ( one, ( two, rest ) ) ) -> ( zero, ( one, ( two, rest ) ) )
 i3 =
     i2 >> i1
 
 
-i4 : (rest -> rest) -> ( val, ( a, ( b, ( c, ( d, rest ) ) ) ) ) -> ( val, ( a, ( b, ( c, ( d, rest ) ) ) ) )
+i4 : (rest -> rest) -> ( zero, ( one, ( two, ( three, rest ) ) ) ) -> ( zero, ( one, ( two, ( three, rest ) ) ) )
 i4 =
-    i3 >> i2
+    i3 >> i1
+
+
+i5 : (rest -> rest) -> ( zero, ( one, ( two, ( three, ( four, rest ) ) ) ) ) -> ( zero, ( one, ( two, ( three, ( four, rest ) ) ) ) )
+i5 =
+    i4 >> i1
 
 
 
--- SETTING SINGLE FIELDS
+-- SETTING FIELDS
 
 
-set : ((( FieldState input, rest ) -> ( FieldState input, rest )) -> state -> d) -> input -> State state -> State d
+set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state2) -> input -> State state -> State state2
 set index newVal (State state_) =
     State (index (Tuple.mapBoth (\d -> { d | data = newVal, touched = True }) identity) state_)
 
 
-parseAndValidate : Field input output msg -> FieldState input -> Result (List Error) output
+parseAndValidate : Field input output msg -> Field.State input -> Result (List Error) output
 parseAndValidate (Field { parser, validators }) data =
     data.data
         |> parser
@@ -191,7 +201,7 @@ accumulateErrors a list =
 -- EXTRACTING STATE
 
 
-sSize1 : (b -> y) -> ( Field input output msg, b ) -> ( FieldState input, y )
+sSize1 : (b -> y) -> ( Field input output msg, b ) -> ( Field.State input, y )
 sSize1 next form_ =
     Tuple.mapBoth (\(Field { data, touched }) -> { data = data, touched = touched }) next form_
 
@@ -215,7 +225,7 @@ validateAll size (Form form_) (State state_) =
     size (\() () -> ()) form_ state_
 
 
-validateSize1 : (rest -> rest1 -> rest2) -> ( Field input output msg, rest ) -> ( FieldState input, rest1 ) -> ( Result (List Error) output, rest2 )
+validateSize1 : (rest -> rest1 -> rest2) -> ( Field input output msg, rest ) -> ( Field.State input, rest1 ) -> ( Result (List Error) output, rest2 )
 validateSize1 next form_ state_ =
     map2 parseAndValidate next form_ state_
 

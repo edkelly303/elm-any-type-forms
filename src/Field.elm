@@ -7,6 +7,21 @@ import Element.Input as Input
 import Internals exposing (..)
 
 
+type Field input output msg
+    = Field
+        { data : input
+        , touched : Bool
+        , parser : input -> Result Error output
+        , validators : List (output -> Maybe Error)
+        , toEl : input -> Bool -> (input -> msg) -> Result (List Error) output -> Element msg
+        , msg : input -> msg
+        }
+
+
+type alias State input =
+    { data : input, touched : Bool }
+
+
 type Error
     = NotValidInt
     | NotValidFloat
@@ -48,21 +63,6 @@ errorToString e =
 
         StringMustNotContain str ->
             "Must not contain '" ++ str ++ "'"
-
-
-type Field input output msg
-    = Field
-        { data : input
-        , touched : Bool
-        , parser : input -> Result Error output
-        , validators : List (output -> Maybe Error)
-        , toEl : input -> Bool -> (input -> msg) -> Result (List Error) output -> Element msg
-        , msg : input -> msg
-        }
-
-
-type alias FieldState input =
-    { data : input, touched : Bool }
 
 
 
