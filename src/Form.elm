@@ -27,7 +27,7 @@ module Form exposing
     )
 
 import Element exposing (Element)
-import Field exposing (..)
+import Field exposing (Field(..))
 import Internals exposing (..)
 
 
@@ -47,6 +47,37 @@ type State state
 -- CREATING FORMS
 
 
+form :
+    ({ stateSize : a -> a
+     , validateSize : b -> b
+     , touchSize : c -> c
+     , collectSize : d -> d
+     , reverseSize : e -> e
+     , renderSize : f -> f
+     }
+     ->
+        { g
+            | stateSize : (() -> ()) -> form -> state
+            , validateSize : (() -> () -> ()) -> form -> h -> i
+            , touchSize : (() -> ()) -> h -> state1
+            , collectSize : (j -> j) -> ( Result error (), i ) -> ( Result k l, m )
+            , reverseSize : (n -> n) -> ( (), l ) -> ( o, p )
+            , renderSize : (() -> () -> () -> ()) -> form -> h -> i -> elements
+        }
+    )
+    ->
+        (( Form form
+           ->
+            { init : State state
+            , submit : State h -> Result (State state1) o
+            , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> q -> state2) -> input -> State q -> State state2
+            , toEls : State h -> elements
+            }
+         , (Form () -> r) -> r
+         )
+         -> output
+        )
+    -> output
 form countFields next =
     let
         { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize } =
@@ -63,13 +94,9 @@ form countFields next =
         ( Form ()
         , \form_ ->
             { init = init stateSize form_
-            , state = state
             , submit = submit validateSize collectSize reverseSize touchSize form_
             , set = set
             , toEls = toEls validateSize renderSize form_
-
-            -- , validate = validate form_
-            -- , get = get
             }
         )
         next
@@ -174,7 +201,7 @@ set index newVal (State state_) =
     State (index (Tuple.mapBoth (\d -> { d | data = newVal, touched = True }) identity) state_)
 
 
-parseAndValidate : Field input output msg -> Field.State input -> Result (List Error) output
+parseAndValidate : Field input output msg -> Field.State input -> Result (List Field.Error) output
 parseAndValidate (Field { parser, validators }) data =
     data.data
         |> parser
@@ -187,7 +214,7 @@ parseAndValidate (Field { parser, validators }) data =
             )
 
 
-accumulateErrors : a -> List (Maybe Error) -> Result (List Error) a
+accumulateErrors : a -> List (Maybe Field.Error) -> Result (List Field.Error) a
 accumulateErrors a list =
     case List.filterMap identity list of
         [] ->
@@ -211,11 +238,6 @@ init size (Form form_) =
     State (size (\() -> ()) form_)
 
 
-state : State state -> state
-state (State state_) =
-    state_
-
-
 
 -- VALIDATING ALL FIELDS
 
@@ -225,7 +247,7 @@ validateAll size (Form form_) (State state_) =
     size (\() () -> ()) form_ state_
 
 
-validateSize1 : (rest -> rest1 -> rest2) -> ( Field input output msg, rest ) -> ( Field.State input, rest1 ) -> ( Result (List Error) output, rest2 )
+validateSize1 : (rest -> rest1 -> rest2) -> ( Field input output msg, rest ) -> ( Field.State input, rest1 ) -> ( Result (List Field.Error) output, rest2 )
 validateSize1 next form_ state_ =
     map2 parseAndValidate next form_ state_
 
@@ -331,7 +353,7 @@ renderSize1 :
     (rest -> rest1 -> rest2 -> rest3)
     -> ( Field a output msg, rest )
     -> ( { b | data : a, touched : Bool }, rest1 )
-    -> ( Result (List Error) output, rest2 )
+    -> ( Result (List Field.Error) output, rest2 )
     -> ( Element msg, rest3 )
 renderSize1 next form_ state_ results =
     map3 (\(Field { toEl, msg }) { data, touched } res -> toEl data touched msg res) next form_ state_ results
