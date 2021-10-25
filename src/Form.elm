@@ -43,38 +43,6 @@ type State state
 -- CREATING FORMS
 
 
-form :
-    ({ stateSize : a -> a
-     , validateSize : b -> b
-     , touchSize : c -> c
-     , collectSize : d -> d
-     , reverseSize : e -> e
-     , renderSize : f -> f
-     }
-     ->
-        { g
-            | stateSize : (() -> ()) -> form -> state
-            , validateSize : (() -> () -> ()) -> form -> h -> i
-            , touchSize : (() -> ()) -> h -> h
-            , collectSize : (j -> j) -> ( Result (List Field.Error) (), i ) -> ( Result (List Field.Error) k, l )
-            , reverseSize : (m -> m) -> ( (), k ) -> ( n, o )
-            , renderSize : (() -> () -> () -> ()) -> form -> h -> i -> elements
-        }
-    )
-    ->
-        (( Form form
-           ->
-            { init : State state
-            , submit : State h -> Result (State h) n
-            , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> p -> p) -> input -> State p -> State p
-            , update : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> s -> s) -> (input -> input) -> State s -> State s
-            , toEls : State h -> elements
-            }
-         , (Form () -> t) -> t
-         )
-         -> output
-        )
-    -> output
 form countFields next =
     let
         { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize } =
@@ -92,8 +60,7 @@ form countFields next =
         , \form_ ->
             { init = init stateSize form_
             , submit = submit validateSize collectSize reverseSize touchSize form_
-            , set = set
-            , update = update
+            , update = update form_
             , toEls = toEls validateSize renderSize form_
             }
         )
@@ -151,7 +118,7 @@ f10 =
     f5 >> f5
 
 
-field : Field input output msg -> ( Form ( Field input output msg, form ) -> c, finish ) -> (( Form form -> c, finish ) -> fields) -> fields
+field : Field input delta output msg -> ( Form ( Field input delta output msg, form ) -> c, finish ) -> (( Form form -> c, finish ) -> fields) -> fields
 field field_ next =
     step0r (\(Form fields) -> Form ( field_, fields )) next
 
@@ -165,27 +132,23 @@ i0 =
     identity
 
 
-i1 : (rest -> rest) -> ( zero, rest ) -> ( zero, rest )
-i1 mapRest ( val, rest ) =
-    Tuple.mapBoth identity mapRest ( val, rest )
+i1 : (b -> a -> rest2) -> ( c, b ) -> ( d, a ) -> ( d, rest2 )
+i1 mapRest ( this0, rest0 ) ( this1, rest1 ) =
+    Internals.map2 (\_ s -> identity s) mapRest ( this0, rest0 ) ( this1, rest1 )
 
 
-i2 : (rest -> rest) -> ( zero, ( one, rest ) ) -> ( zero, ( one, rest ) )
 i2 =
     i1 >> i1
 
 
-i3 : (rest -> rest) -> ( zero, ( one, ( two, rest ) ) ) -> ( zero, ( one, ( two, rest ) ) )
 i3 =
     i2 >> i1
 
 
-i4 : (rest -> rest) -> ( zero, ( one, ( two, ( three, rest ) ) ) ) -> ( zero, ( one, ( two, ( three, rest ) ) ) )
 i4 =
     i3 >> i1
 
 
-i5 : (rest -> rest) -> ( zero, ( one, ( two, ( three, ( four, rest ) ) ) ) ) -> ( zero, ( one, ( two, ( three, ( four, rest ) ) ) ) )
 i5 =
     i4 >> i1
 
@@ -194,17 +157,33 @@ i5 =
 -- SETTING FIELDS
 
 
-set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state) -> input -> State state -> State state
-set index newVal state_ =
-    update index (always newVal) state_
+update :
+    Form form
+    ->
+        ((( Field input delta output msg, restOfForm )
+          -> ( Field.State input, restOfState )
+          -> ( Field.State input, restOfState )
+         )
+         -> form
+         -> state
+         -> state
+        )
+    -> delta
+    -> State state
+    -> State state
+update (Form form_) index delta (State state_) =
+    State
+        (index
+            (Internals.map2
+                (\(Field f) s -> { s | input = f.updater delta s.input, touched = True })
+                (\_ s -> s)
+            )
+            form_
+            state_
+        )
 
 
-update : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state) -> (input -> input) -> State state -> State state
-update index updater (State state_) =
-    State (index (Tuple.mapBoth (\d -> { d | input = updater d.input, touched = True }) identity) state_)
-
-
-parseAndValidate : Field input output msg -> Field.State input -> Result (List Field.Error) output
+parseAndValidate : Field input delta output msg -> Field.State input -> Result (List Field.Error) output
 parseAndValidate (Field { parser, validators }) data =
     data.input
         |> parser
@@ -231,7 +210,7 @@ accumulateErrors a list =
 -- EXTRACTING STATE
 
 
-sSize1 : (b -> y) -> ( Field input output msg, b ) -> ( Field.State input, y )
+sSize1 : (b -> y) -> ( Field input delta output msg, b ) -> ( Field.State input, y )
 sSize1 next form_ =
     Tuple.mapBoth Field.initialize next form_
 
@@ -250,7 +229,7 @@ validateAll size (Form form_) (State state_) =
     size (\() () -> ()) form_ state_
 
 
-validateSize1 : (rest -> rest1 -> rest2) -> ( Field input output msg, rest ) -> ( Field.State input, rest1 ) -> ( Result (List Field.Error) output, rest2 )
+validateSize1 : (rest -> rest1 -> rest2) -> ( Field input delta output msg, rest ) -> ( Field.State input, rest1 ) -> ( Result (List Field.Error) output, rest2 )
 validateSize1 next form_ state_ =
     map2 parseAndValidate next form_ state_
 
@@ -354,7 +333,7 @@ renderAll size (Form form_) (State state_) results =
 
 renderSize1 :
     (rest -> rest1 -> rest2 -> rest3)
-    -> ( Field input output msg, rest )
+    -> ( Field input delta output msg, rest )
     -> ( Field.State input, rest1 )
     -> ( Result (List Field.Error) output, rest2 )
     -> ( Element msg, rest3 )

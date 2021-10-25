@@ -23,25 +23,27 @@ import Element exposing (..)
 import Element.Background as Background
 import Element.Font as Font
 import Element.Input as Input
+import Html exposing (input)
 import Html.Attributes
 import Internals exposing (..)
 
 
-type Field input output msg
+type Field input delta output msg
     = Field
         { init : input
+        , msg : delta -> msg
+        , updater : delta -> input -> input
         , parser : input -> Result Error output
         , validators : List (output -> Maybe Error)
         , renderer :
             { input : input
             , touched : Bool
-            , msg : input -> msg
+            , msg : delta -> msg
             , parsed : Result (List Error) output
             , label : Maybe String
             , id : String
             }
             -> Element msg
-        , msg : input -> msg
         , id : String
         , label : Maybe String
         }
@@ -100,48 +102,69 @@ errorToString e =
 -- CREATING FIELDS
 
 
-custom : { a | init : b, parser : b -> Result Error output, renderer : { input : b, touched : Bool, msg : b -> msg, parsed : Result (List Error) output, label : Maybe String, id : String } -> Element msg, msg : b -> msg, id : String } -> Field b output msg
-custom { init, parser, renderer, msg, id } =
+custom :
+    { a
+        | init : input
+        , msg : delta -> msg
+        , updater : delta -> input -> input
+        , parser : input -> Result Error output
+        , renderer :
+            { input : input
+            , touched : Bool
+            , msg : delta -> msg
+            , parsed : Result (List Error) output
+            , label : Maybe String
+            , id : String
+            }
+            -> Element msg
+        , id : String
+    }
+    -> Field input delta output msg
+custom { init, msg, updater, parser, renderer, id } =
     Field
-        { id = id
+        { init = init
         , msg = msg
+        , updater = updater
         , parser = parser
         , validators = []
         , renderer = renderer
-        , init = init
+        , id = id
         , label = Nothing
         }
 
 
-string : String -> (String -> msg) -> Field String String msg
+string : String -> (String -> msg) -> Field String String String msg
 string id msg =
     custom
         { init = ""
+        , msg = msg
+        , updater = \delta _ -> delta
         , parser = Ok
         , renderer = toElement
-        , msg = msg
         , id = id
         }
 
 
-float : String -> (String -> msg) -> Field String Float msg
+float : String -> (String -> msg) -> Field String String Float msg
 float id msg =
     custom
         { init = ""
+        , msg = msg
+        , updater = \delta _ -> delta
         , parser = String.toFloat >> Result.fromMaybe NotValidFloat
         , renderer = toElement
-        , msg = msg
         , id = id
         }
 
 
-int : String -> (String -> msg) -> Field String Int msg
+int : String -> (String -> msg) -> Field String String Int msg
 int id msg =
     custom
         { init = ""
+        , msg = msg
+        , updater = \delta _ -> delta
         , parser = String.toInt >> Result.fromMaybe NotValidInt
         , renderer = toElement
-        , msg = msg
         , id = id
         }
 
@@ -150,22 +173,22 @@ int id msg =
 -- WORKING WITH FIELDS
 
 
-initialize : Field input output msg -> State input
+initialize : Field input delta output msg -> State input
 initialize (Field { init }) =
     { input = init, touched = False }
 
 
-withLabel : String -> Field input output msg -> Field input output msg
+withLabel : String -> Field input delta output msg -> Field input delta output msg
 withLabel l (Field f) =
     Field { f | label = Just l }
 
 
-withValidator : (output -> Maybe Error) -> Field input output msg -> Field input output msg
+withValidator : (output -> Maybe Error) -> Field input delta output msg -> Field input delta output msg
 withValidator v (Field f) =
     Field { f | validators = v :: f.validators }
 
 
-withInitialState : input -> Field input output msg -> Field input output msg
+withInitialState : input -> Field input delta output msg -> Field input delta output msg
 withInitialState input (Field f) =
     Field { f | init = input }
 

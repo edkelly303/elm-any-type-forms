@@ -12,8 +12,18 @@ import Html exposing (Html)
 myForm :
     { init : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
     , submit : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> Result (Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )) ( Int, ( Float, ( Int, ( Int, () ) ) ) )
-    , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> p -> p) -> input -> Form.State p -> Form.State p
-    , update : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> s -> s) -> (input -> input) -> Form.State s -> Form.State s
+    , update :
+        ((( Field.Field input delta output msg, restOfForm )
+          -> ( Field.State input, restOfState )
+          -> ( Field.State input, restOfState )
+         )
+         -> ( Field.Field Int Int Int Msg, ( Field.Field String String Float Msg, ( Field.Field String String Int Msg, ( Field.Field String String Int Msg, () ) ) ) )
+         -> ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
+         -> ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
+        )
+        -> delta
+        -> Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
+        -> Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
     , toEls : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> ( Element Msg, ( Element Msg, ( Element Msg, ( Element Msg, () ) ) ) )
     }
 myForm =
@@ -23,6 +33,7 @@ myForm =
                 { id = "1"
                 , init = 1
                 , msg = Set0
+                , updater = \delta input -> delta + input
                 , parser = Ok
                 , renderer = intInput
                 }
@@ -83,16 +94,16 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         Set0 s ->
-            myForm.update Form.i0 (\int -> s + int) model
+            myForm.update Form.i0 s model
 
         Set1 s ->
-            myForm.set Form.i1 s model
+            myForm.update Form.i1 s model
 
         Set2 s ->
-            myForm.set Form.i2 s model
+            myForm.update Form.i2 s model
 
         Set3 s ->
-            myForm.set Form.i3 s model
+            myForm.update Form.i3 s model
 
         SubmitClicked ->
             case myForm.submit model of
