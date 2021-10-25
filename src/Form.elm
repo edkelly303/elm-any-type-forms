@@ -134,21 +134,25 @@ i0 =
 
 i1 : (b -> a -> rest2) -> ( c, b ) -> ( d, a ) -> ( d, rest2 )
 i1 mapRest ( this0, rest0 ) ( this1, rest1 ) =
-    Internals.map2 (\_ s -> identity s) mapRest ( this0, rest0 ) ( this1, rest1 )
+    Internals.map2 (\field_ fieldState -> identity fieldState) mapRest ( this0, rest0 ) ( this1, rest1 )
 
 
+i2 : (b -> a -> rest2) -> (c, (d, b)) -> (e, (f, a)) -> (e, (f, rest2))
 i2 =
     i1 >> i1
 
 
+i3 : (b -> a -> rest2) -> (c, (d, (e, b))) -> (f, (g, (h, a))) -> (f, (g, (h, rest2)))
 i3 =
     i2 >> i1
 
 
+i4 : (b -> a -> rest2) -> (c, (d, (e, (f, b)))) -> (g, (h, (i, (j, a)))) -> (g, (h, (i, (j, rest2))))
 i4 =
     i3 >> i1
 
 
+i5 : (b -> a -> rest2) -> (c, (d, (e, (f, (g, b))))) -> (h, (i, (j, (k, (l, a))))) -> (h, (i, (j, (k, (l, rest2)))))
 i5 =
     i4 >> i1
 
@@ -175,8 +179,8 @@ update (Form form_) index delta (State state_) =
     State
         (index
             (Internals.map2
-                (\(Field f) s -> { s | input = f.updater delta s.input, touched = True })
-                (\_ s -> s)
+                (\(Field f) fieldState -> { fieldState | input = f.updater delta fieldState.input, touched = True })
+                (\_ fieldState -> fieldState)
             )
             form_
             state_
