@@ -43,6 +43,48 @@ type State state
 -- CREATING FORMS
 
 
+form :
+    ({ stateSize : a -> a
+     , validateSize : b -> b
+     , touchSize : c -> c
+     , collectSize : d -> d
+     , reverseSize : e -> e
+     , renderSize : f -> f
+     }
+     ->
+        { g
+            | stateSize : (() -> ()) -> form -> state
+            , validateSize : (() -> () -> ()) -> form -> state -> results
+            , touchSize : (() -> ()) -> state -> state
+            , collectSize : (j -> j) -> ( Result (List Field.Error) (), results ) -> ( Result (List Field.Error) validatedOutput, () )
+            , reverseSize : (m -> m) -> ( (), validatedOutput ) -> ( validatedOutputs, () )
+            , renderSize : (() -> () -> () -> ()) -> form -> state -> results -> elements
+        }
+    )
+    ->
+        (( Form form
+           ->
+            { init : State state
+            , submit : State state -> Result (State state) validatedOutputs
+            , update :
+                ((( Field input delta output msg, restFields )
+                  -> ( Field.State input, restFieldStates )
+                  -> ( Field.State input, restFieldStates )
+                 )
+                 -> form
+                 -> state
+                 -> state
+                )
+                -> delta
+                -> State state
+                -> State state
+            , renderElements : State state -> elements
+            }
+         , (Form () -> q) -> q
+         )
+         -> formFunctions
+        )
+    -> formFunctions
 form countFields next =
     let
         { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize } =
@@ -61,7 +103,7 @@ form countFields next =
             { init = init stateSize form_
             , submit = submit validateSize collectSize reverseSize touchSize form_
             , update = update form_
-            , toEls = toEls validateSize renderSize form_
+            , renderElements = viewElements validateSize renderSize form_
             }
         )
         next
@@ -72,6 +114,26 @@ end =
     Internals.end
 
 
+f1 :
+    { a
+        | stateSize : b -> restFields -> restFieldStates
+        , validateSize : c -> d -> e -> restResults
+        , touchSize : f -> g -> y
+        , collectSize : h -> ( Result (List Field.Error) ( value, i ), j ) -> k
+        , reverseSize : l -> ( ( m, n ), o ) -> p
+        , renderSize : q -> rest -> rest1 -> rest2 -> rest3
+    }
+    ->
+        { stateSize :
+            b
+            -> ( Field input delta output msg, restFields )
+            -> ( Field.State input, restFieldStates )
+        , validateSize : c -> ( Field r s t u, d ) -> ( Field.State r, e ) -> ( Result (List Field.Error) t, restResults )
+        , touchSize : f -> ( Field.State v, g ) -> ( Field.State v, y )
+        , collectSize : h -> ( Result (List Field.Error) i, ( Result (List Field.Error) value, j ) ) -> k
+        , reverseSize : l -> ( n, ( m, o ) ) -> p
+        , renderSize : q -> ( Field w x z a1, rest ) -> ( Field.State w, rest1 ) -> ( Result (List Field.Error) z, rest2 ) -> ( Element a1, rest3 )
+        }
 f1 { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize } =
     { stateSize = stateSize >> sSize1
     , validateSize = validateSize >> validateSize1
@@ -132,27 +194,47 @@ i0 =
     identity
 
 
-i1 : (b -> a -> rest2) -> ( c, b ) -> ( d, a ) -> ( d, rest2 )
+i1 :
+    (restFields -> restFieldStates -> restFieldStates)
+    -> ( Field i0 d o m, restFields )
+    -> ( Field.State i0, restFieldStates )
+    -> ( Field.State i0, restFieldStates )
 i1 mapRest ( this0, rest0 ) ( this1, rest1 ) =
-    Internals.map2 (\field_ fieldState -> identity fieldState) mapRest ( this0, rest0 ) ( this1, rest1 )
+    Internals.map2 (\_ fieldState -> identity fieldState) mapRest ( this0, rest0 ) ( this1, rest1 )
 
 
-i2 : (b -> a -> rest2) -> (c, (d, b)) -> (e, (f, a)) -> (e, (f, rest2))
+i2 :
+    (restFields -> restFieldStates -> restFieldStates)
+    -> ( Field i0 d o m, ( Field i1 b c e, restFields ) )
+    -> ( Field.State i0, ( Field.State i1, restFieldStates ) )
+    -> ( Field.State i0, ( Field.State i1, restFieldStates ) )
 i2 =
     i1 >> i1
 
 
-i3 : (b -> a -> rest2) -> (c, (d, (e, b))) -> (f, (g, (h, a))) -> (f, (g, (h, rest2)))
+i3 :
+    (restFields -> restFieldStates -> restFieldStates)
+    -> ( Field i0 d o m, ( Field i1 b c e, ( Field i2 g h j, restFields ) ) )
+    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, restFieldStates ) ) )
+    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, restFieldStates ) ) )
 i3 =
     i2 >> i1
 
 
-i4 : (b -> a -> rest2) -> (c, (d, (e, (f, b)))) -> (g, (h, (i, (j, a)))) -> (g, (h, (i, (j, rest2))))
+i4 :
+    (restFields -> restFieldStates -> restFieldStates)
+    -> ( Field i0 d o m, ( Field i1 b c e, ( Field i2 f g h, ( Field i3 i j k, restFields ) ) ) )
+    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, restFieldStates ) ) ) )
+    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, restFieldStates ) ) ) )
 i4 =
     i3 >> i1
 
 
-i5 : (b -> a -> rest2) -> (c, (d, (e, (f, (g, b))))) -> (h, (i, (j, (k, (l, a))))) -> (h, (i, (j, (k, (l, rest2)))))
+i5 :
+    (restFields -> restFieldStates -> restFieldStates)
+    -> ( Field i0 d o m, ( Field i1 b c e, ( Field i2 g h j, ( Field i3 l n p, ( Field i4 r s t, restFields ) ) ) ) )
+    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, ( Field.State i4, restFieldStates ) ) ) ) )
+    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, ( Field.State i4, restFieldStates ) ) ) ) )
 i5 =
     i4 >> i1
 
@@ -164,9 +246,9 @@ i5 =
 update :
     Form form
     ->
-        ((( Field input delta output msg, restOfForm )
-          -> ( Field.State input, restOfState )
-          -> ( Field.State input, restOfState )
+        ((( Field input delta output msg, restFields )
+          -> ( Field.State input, restFieldStates )
+          -> ( Field.State input, restFieldStates )
          )
          -> form
          -> state
@@ -214,7 +296,7 @@ accumulateErrors a list =
 -- EXTRACTING STATE
 
 
-sSize1 : (b -> y) -> ( Field input delta output msg, b ) -> ( Field.State input, y )
+sSize1 : (restFields -> restFieldStates) -> ( Field input delta output msg, restFields ) -> ( Field.State input, restFieldStates )
 sSize1 next form_ =
     Tuple.mapBoth Field.initialize next form_
 
@@ -233,7 +315,11 @@ validateAll size (Form form_) (State state_) =
     size (\() () -> ()) form_ state_
 
 
-validateSize1 : (rest -> rest1 -> rest2) -> ( Field input delta output msg, rest ) -> ( Field.State input, rest1 ) -> ( Result (List Field.Error) output, rest2 )
+validateSize1 :
+    (restFields -> restFieldStates -> restResults)
+    -> ( Field input delta output msg, restFields )
+    -> ( Field.State input, restFieldStates )
+    -> ( Result (List Field.Error) output, restResults )
 validateSize1 next form_ state_ =
     map2 parseAndValidate next form_ state_
 
@@ -242,13 +328,19 @@ validateSize1 next form_ state_ =
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
 
 
-collectResults : ((a -> a) -> ( Result (List Field.Error) (), b ) -> ( c, d )) -> b -> c
+collectResults :
+    ((a -> a) -> ( Result (List Field.Error) (), restResults ) -> ( c, d ))
+    -> restResults
+    -> c
 collectResults size results =
     size identity ( Ok (), results )
         |> Tuple.first
 
 
-collectSize1 : (( Result (List Field.Error) ( value, b ), c ) -> d) -> ( Result (List Field.Error) b, ( Result (List Field.Error) value, c ) ) -> d
+collectSize1 :
+    (( Result (List Field.Error) ( value, b ), restResults ) -> d)
+    -> ( Result (List Field.Error) b, ( Result (List Field.Error) value, restResults ) )
+    -> d
 collectSize1 next ( s, ( fst, rst ) ) =
     case s of
         Ok tuple ->
@@ -359,13 +451,13 @@ renderSize1 next form_ state_ results =
         results
 
 
-toEls :
+viewElements :
     ((() -> () -> ()) -> form -> state -> results)
     -> ((() -> () -> () -> ()) -> form -> state -> results -> elements)
     -> Form form
     -> State state
     -> elements
-toEls validateSize renderSize form_ state_ =
+viewElements validateSize renderSize form_ state_ =
     state_
         |> validateAll validateSize form_
         |> renderAll renderSize form_ state_
