@@ -1,5 +1,5 @@
 module Field exposing
-    ( Error
+    ( Error(..)
     , Field(..)
     , State
     , custom
