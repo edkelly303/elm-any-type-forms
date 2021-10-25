@@ -1,8 +1,6 @@
 module Form exposing
     ( Form
     , State
-    , collectResults
-    , collectSize1
     , end
     , f1
     , f10
@@ -22,8 +20,6 @@ module Form exposing
     , i3
     , i4
     , i5
-    , reverseSize1
-    , reverseTuple
     )
 
 import Element exposing (Element)
@@ -58,22 +54,23 @@ form :
      ->
         { g
             | stateSize : (() -> ()) -> form -> state
-            , validateSize : (() -> () -> ()) -> form -> state -> i
-            , touchSize : (() -> ()) -> state -> state
-            , collectSize : (j -> j) -> ( Result (List Field.Error) (), i ) -> ( Result (List Field.Error) l, m )
-            , reverseSize : (n -> n) -> ( (), l ) -> ( o, p )
-            , renderSize : (() -> () -> () -> ()) -> form -> state -> i -> elements
+            , validateSize : (() -> () -> ()) -> form -> h -> i
+            , touchSize : (() -> ()) -> h -> h
+            , collectSize : (j -> j) -> ( Result (List Field.Error) (), i ) -> ( Result (List Field.Error) k, l )
+            , reverseSize : (m -> m) -> ( (), k ) -> ( n, o )
+            , renderSize : (() -> () -> () -> ()) -> form -> h -> i -> elements
         }
     )
     ->
         (( Form form
            ->
             { init : State state
-            , submit : State state -> Result (State state) o
-            , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state) -> input -> State state -> State state
-            , toEls : State state -> elements
+            , submit : State h -> Result (State h) n
+            , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> p -> p) -> input -> State p -> State p
+            , update : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> s -> s) -> (input -> input) -> State s -> State s
+            , toEls : State h -> elements
             }
-         , (Form () -> r) -> r
+         , (Form () -> t) -> t
          )
          -> output
         )
@@ -96,6 +93,7 @@ form countFields next =
             { init = init stateSize form_
             , submit = submit validateSize collectSize reverseSize touchSize form_
             , set = set
+            , update = update
             , toEls = toEls validateSize renderSize form_
             }
         )
@@ -197,8 +195,13 @@ i5 =
 
 
 set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state) -> input -> State state -> State state
-set index newVal (State state_) =
-    State (index (Tuple.mapBoth (\d -> { d | input = newVal, touched = True }) identity) state_)
+set index newVal state_ =
+    update index (always newVal) state_
+
+
+update : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> state -> state) -> (input -> input) -> State state -> State state
+update index updater (State state_) =
+    State (index (Tuple.mapBoth (\d -> { d | input = updater d.input, touched = True }) identity) state_)
 
 
 parseAndValidate : Field input output msg -> Field.State input -> Result (List Field.Error) output

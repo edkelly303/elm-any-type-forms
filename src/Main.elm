@@ -10,18 +10,22 @@ import Html exposing (Html)
 
 
 myForm :
-    { init : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
-    , submit : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> Result (Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )) ( String, ( Float, ( Int, ( Int, () ) ) ) )
-    , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )) -> input -> Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
-    , toEls : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> ( Element Msg, ( Element Msg, ( Element Msg, ( Element Msg, () ) ) ) )
+    { init : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
+    , submit : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> Result (Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )) ( Int, ( Float, ( Int, ( Int, () ) ) ) )
+    , set : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> p -> p) -> input -> Form.State p -> Form.State p
+    , update : ((( Field.State input, rest ) -> ( Field.State input, rest )) -> s -> s) -> (input -> input) -> Form.State s -> Form.State s
+    , toEls : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> ( Element Msg, ( Element Msg, ( Element Msg, ( Element Msg, () ) ) ) )
     }
 myForm =
     Form.form Form.f4
         (Form.field
-            (Field.string "name" Set0
-                |> Field.withLabel "What is your name? (No blasphemies, now!)"
-                |> Field.withValidator (Field.stringMustNotContain "hell")
-                |> Field.withValidator (Field.stringMustBeLongerThan 6)
+            (Field.custom
+                { id = "1"
+                , init = 1
+                , msg = Set0
+                , parser = Ok
+                , renderer = intInput
+                }
             )
         )
         (Form.field
@@ -47,7 +51,7 @@ myForm =
 
 type alias FormState =
     Form.State
-        ( Field.State String
+        ( Field.State Int
         , ( Field.State String
           , ( Field.State String
             , ( Field.State String
@@ -68,7 +72,7 @@ initialModel =
 
 
 type Msg
-    = Set0 String
+    = Set0 Int
     | Set1 String
     | Set2 String
     | Set3 String
@@ -79,7 +83,7 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         Set0 s ->
-            myForm.set Form.i0 s model
+            myForm.update Form.i0 (\int -> s + int) model
 
         Set1 s ->
             myForm.set Form.i1 s model
@@ -116,6 +120,22 @@ view model =
                 , label = text "Submit"
                 }
             ]
+
+
+intInput : { a | input : Int, msg : number -> msg } -> Element msg
+intInput { input, msg } =
+    row
+        [ spacing 10 ]
+        [ Input.button [ Border.width 1, padding 10 ]
+            { label = text "-"
+            , onPress = Just (msg -1)
+            }
+        , text <| String.fromInt input
+        , Input.button [ Border.width 1, padding 10 ]
+            { label = text "+"
+            , onPress = Just (msg 1)
+            }
+        ]
 
 
 main : Program () Model Msg
