@@ -1,4 +1,23 @@
-module Field exposing (..)
+module Field exposing
+    ( Error
+    , Field(..)
+    , State
+    , custom
+    , float
+    , floatMustBeGreaterThan
+    , floatMustBeLessThan
+    , initialize
+    , int
+    , intMustBeGreaterThan
+    , intMustBeLessThan
+    , string
+    , stringMustBeLongerThan
+    , stringMustBeShorterThan
+    , stringMustNotContain
+    , withInitialState
+    , withLabel
+    , withValidator
+    )
 
 import Element exposing (..)
 import Element.Background as Background
@@ -223,7 +242,7 @@ toElement { input, touched, msg, parsed, id, label } =
                 )
             , htmlAttribute (Html.Attributes.id id)
             ]
-            { label = Input.labelAbove [Font.size 18] (text (label |> Maybe.withDefault id))
+            { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
             , placeholder = Nothing
             , onChange = msg
