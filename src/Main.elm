@@ -156,8 +156,7 @@ q label opts msg =
         |> Form.field
 
 
-questionInput : List Answer -> { a | parsed : Result error (Maybe Answer), msg : Answer -> b, label : Maybe String } -> Element b
-questionInput opts { parsed, msg, label } =
+questionInput opts { input, parsed, msg, label } =
     column
         [ spacing 10
         , width fill
@@ -192,8 +191,8 @@ questionInput opts { parsed, msg, label } =
                         , padding 10
                         , width fill
                         , Background.color
-                            (if parsed == Ok (Just opt) then
-                                rgb255 220 200 220
+                            (if input == Just opt || input == Nothing then
+                                rgb255 220 220 220
 
                              else
                                 rgb255 255 255 255
