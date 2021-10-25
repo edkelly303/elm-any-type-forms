@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser
 import Element exposing (..)
+import Element.Background as Background
 import Element.Border as Border
 import Element.Input as Input
 import Field
@@ -9,88 +10,60 @@ import Form
 import Html exposing (Html)
 
 
-myForm :
-    { init : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
-    , submit : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> Result (Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )) ( Int, ( Float, ( Int, ( Int, () ) ) ) )
-    , update :
-        ((( Field.Field input delta output msg, restOfForm )
-          -> ( Field.State input, restOfState )
-          -> ( Field.State input, restOfState )
-         )
-         -> ( Field.Field Int Int Int Msg, ( Field.Field String String Float Msg, ( Field.Field String String Int Msg, ( Field.Field String String Int Msg, () ) ) ) )
-         -> ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
-         -> ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
-        )
-        -> delta
-        -> Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
-        -> Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) )
-    , toEls : Form.State ( Field.State Int, ( Field.State String, ( Field.State String, ( Field.State String, () ) ) ) ) -> ( Element Msg, ( Element Msg, ( Element Msg, ( Element Msg, () ) ) ) )
-    }
+type Answer
+    = X String
+    | O String
+
+
 myForm =
     Form.form Form.f4
-        (Form.field
-            (Field.custom
-                { id = "1"
-                , init = 1
-                , msg = Set0
-                , updater = \delta input -> delta + input
-                , parser = Ok
-                , renderer = intInput
-                }
-            )
+        (q "how can you avoid wheelspin when driving on an icy road?"
+            [ O "drive slow in the highest gear possible"
+            , X "use the parking brake if the wheels start slipping"
+            , X "brake gently and repeatedly"
+            , X "drive in a low gear at all times"
+            ]
+            Set0
         )
-        (Form.field
-            (Field.float "age" Set1
-                |> Field.withLabel "How old are you?"
-                |> Field.withValidator (Field.floatMustBeGreaterThan 1)
-            )
+        (q "what will help you to move off on a snowy surface?"
+            [ X "using the lowest gear"
+            , O "using a higher gear than usual"
+            , X "using a high engine speed"
+            , X "using the brakes"
+            ]
+            Set1
         )
-        (Form.field
-            (Field.int "shoe-size" Set2
-                |> Field.withLabel "What is your shoe size?"
-                |> Field.withValidator (Field.intMustBeGreaterThan 0)
-            )
+        (q "?"
+            [ O ""
+            , X ""
+            , X ""
+            , X ""
+            ]
+            Set2
         )
-        (Form.field
-            (Field.int "neg-number" Set3
-                |> Field.withLabel "What is your favourite negative number?"
-                |> Field.withValidator (Field.intMustBeLessThan 0)
-            )
+        (q "?"
+            [ O ""
+            , X ""
+            , X ""
+            , X ""
+            ]
+            Set3
         )
         Form.end
 
 
-type alias FormState =
-    Form.State
-        ( Field.State Int
-        , ( Field.State String
-          , ( Field.State String
-            , ( Field.State String
-              , ()
-              )
-            )
-          )
-        )
-
-
-type alias Model =
-    FormState
-
-
-initialModel : Model
 initialModel =
     myForm.init
 
 
 type Msg
-    = Set0 Int
-    | Set1 String
-    | Set2 String
-    | Set3 String
+    = Set0 Answer
+    | Set1 Answer
+    | Set2 Answer
+    | Set3 Answer
     | SubmitClicked
 
 
-update : Msg -> Model -> Model
 update msg model =
     case msg of
         Set0 s ->
@@ -114,11 +87,10 @@ update msg model =
                     newModel
 
 
-view : Model -> Html Msg
 view model =
     let
         ( s0, ( s1, ( s2, ( s3, () ) ) ) ) =
-            myForm.toEls model
+            myForm.renderElements model
     in
     layout [] <|
         column [ padding 30, spacing 10 ]
@@ -149,7 +121,91 @@ intInput { input, msg } =
         ]
 
 
-main : Program () Model Msg
+q label opts msg =
+    Field.custom
+        { id = ""
+        , init = Nothing
+        , msg = msg
+        , parser =
+            \opt ->
+                case opt of
+                    Just o ->
+                        if List.member o opts then
+                            Ok opt
+
+                        else
+                            Err (Field.IntTooLow 1)
+
+                    Nothing ->
+                        Ok opt
+        , renderer = questionInput opts
+        , updater = \new _ -> Just new
+        }
+        |> Field.withLabel label
+        |> Field.withValidator
+            (Maybe.andThen
+                (\opt ->
+                    case opt of
+                        O _ ->
+                            Nothing
+
+                        X _ ->
+                            Just (Field.IntTooLow 1)
+                )
+            )
+        |> Form.field
+
+
+questionInput : List Answer -> { a | parsed : Result error (Maybe Answer), msg : Answer -> b, label : Maybe String } -> Element b
+questionInput opts { parsed, msg, label } =
+    column
+        [ spacing 10
+        , width fill
+        , padding 20
+        , Background.color
+            (case parsed of
+                Err _ ->
+                    rgb255 255 200 200
+
+                Ok (Just (O _)) ->
+                    rgb255 200 255 200
+
+                Ok _ ->
+                    rgb255 255 255 255
+            )
+        ]
+        [ text (label |> Maybe.withDefault "no label!")
+        , column [ spacing 5, width fill ]
+            (List.map
+                (\opt ->
+                    let
+                        optString =
+                            case opt of
+                                X x ->
+                                    x
+
+                                O o ->
+                                    o
+                    in
+                    Input.button
+                        [ Border.width 1
+                        , padding 10
+                        , width fill
+                        , Background.color
+                            (if parsed == Ok (Just opt) then
+                                rgb255 220 200 220
+
+                             else
+                                rgb255 255 255 255
+                            )
+                        ]
+                        { label = text optString, onPress = Just (msg opt) }
+                )
+                opts
+            )
+        ]
+
+
 main =
     Browser.sandbox
         { init = initialModel
