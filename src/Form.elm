@@ -1,5 +1,6 @@
 module Form exposing
     ( Form
+    , Index
     , State
     , end
     , f1
@@ -39,6 +40,16 @@ type State state
     = State state
 
 
+type alias Index input delta output msg restFields restFieldStates form state =
+    (( Field input delta output msg, restFields )
+     -> ( Field.State input, restFieldStates )
+     -> ( Field.State input, restFieldStates )
+    )
+    -> form
+    -> state
+    -> state
+
+
 
 -- CREATING FORMS
 
@@ -67,14 +78,7 @@ form :
             { init : State state
             , submit : State state -> Result (State state) validatedOutputs
             , update :
-                ((( Field input delta output msg, restFields )
-                  -> ( Field.State input, restFieldStates )
-                  -> ( Field.State input, restFieldStates )
-                 )
-                 -> form
-                 -> state
-                 -> state
-                )
+                Index input delta output msg restFields restFieldStates form state
                 -> delta
                 -> State state
                 -> State state
@@ -245,15 +249,7 @@ i5 =
 
 update :
     Form form
-    ->
-        ((( Field input delta output msg, restFields )
-          -> ( Field.State input, restFieldStates )
-          -> ( Field.State input, restFieldStates )
-         )
-         -> form
-         -> state
-         -> state
-        )
+    -> Index input delta output msg restFields restFieldStates form state
     -> delta
     -> State state
     -> State state
