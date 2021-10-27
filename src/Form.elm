@@ -25,7 +25,7 @@ module Form exposing
 
 import Element exposing (Element)
 import Field exposing (Field(..))
-import Internals exposing (..)
+import Internals
 
 
 
@@ -67,7 +67,7 @@ form countFields next =
                 , collectElementsSize = identity
                 }
     in
-    foldr
+    Internals.foldr
         ( Form ()
         , \form_ ->
             { init = init stateSize form_
@@ -134,7 +134,7 @@ f10 =
 
 field : Field input delta output msg -> ( Form ( Field input delta output msg, form ) -> c, finish ) -> (( Form form -> c, finish ) -> fields) -> fields
 field field_ next =
-    step0r (\(Form fields) -> Form ( field_, fields )) next
+    Internals.step0r (\(Form fields) -> Form ( field_, fields )) next
 
 
 
@@ -152,7 +152,7 @@ i1 :
     -> ( Field.State i0, restFieldStates )
     -> ( Field.State i0, restFieldStates )
 i1 mapRest ( this0, rest0 ) ( this1, rest1 ) =
-    Internals.map2 (\_ fieldState -> identity fieldState) mapRest ( this0, rest0 ) ( this1, rest1 )
+    Internals.mapBoth2 (\_ fieldState -> identity fieldState) mapRest ( this0, rest0 ) ( this1, rest1 )
 
 
 i2 :
@@ -204,7 +204,7 @@ update :
 update (Form form_) index delta (State state_) =
     State
         (index
-            (Internals.map2
+            (Internals.mapBoth2
                 (\(Field f) fieldState -> { fieldState | input = f.updater delta fieldState.input, touched = True })
                 (\_ fieldState -> fieldState)
             )
@@ -265,7 +265,7 @@ validateSize1 :
     -> ( Field.State input, restFieldStates )
     -> ( Result (List Field.Error) output, restResults )
 validateSize1 next form_ state_ =
-    map2 parseAndValidate next form_ state_
+    Internals.mapBoth2 parseAndValidate next form_ state_
 
 
 
@@ -378,7 +378,7 @@ renderSize1 :
     -> ( Result (List Field.Error) output, rest2 )
     -> ( Element msg, rest3 )
 renderSize1 next form_ state_ results =
-    map3
+    Internals.mapBoth3
         (\(Field { renderer, msg, id, label }) { input, touched } parsed ->
             renderer
                 { input = input
