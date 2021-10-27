@@ -88,16 +88,9 @@ update msg model =
 
 
 view model =
-    let
-        ( s0, ( s1, ( s2, ( s3, () ) ) ) ) =
-            myForm.renderElements model
-    in
     layout [] <|
         column [ padding 30, spacing 10 ]
-            [ s0
-            , s1
-            , s2
-            , s3
+            [ myForm.view model
             , Input.button [ padding 10, Border.width 1 ]
                 { onPress = Just SubmitClicked
                 , label = text "Submit"

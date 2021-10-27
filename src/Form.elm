@@ -54,44 +54,9 @@ type alias Index input delta output msg restFields restFieldStates form state =
 -- CREATING FORMS
 
 
-form :
-    ({ stateSize : a -> a
-     , validateSize : b -> b
-     , touchSize : c -> c
-     , collectSize : d -> d
-     , reverseSize : e -> e
-     , renderSize : f -> f
-     }
-     ->
-        { g
-            | stateSize : (() -> ()) -> form -> state
-            , validateSize : (() -> () -> ()) -> form -> state -> results
-            , touchSize : (() -> ()) -> state -> state
-            , collectSize : (j -> j) -> ( Result (List Field.Error) (), results ) -> ( Result (List Field.Error) validatedOutput, () )
-            , reverseSize : (m -> m) -> ( (), validatedOutput ) -> ( validatedOutputs, () )
-            , renderSize : (() -> () -> () -> ()) -> form -> state -> results -> elements
-        }
-    )
-    ->
-        (( Form form
-           ->
-            { init : State state
-            , submit : State state -> Result (State state) validatedOutputs
-            , update :
-                Index input delta output msg restFields restFieldStates form state
-                -> delta
-                -> State state
-                -> State state
-            , renderElements : State state -> elements
-            }
-         , (Form () -> q) -> q
-         )
-         -> formFunctions
-        )
-    -> formFunctions
 form countFields next =
     let
-        { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize } =
+        { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize, collectElementsSize } =
             countFields
                 { stateSize = identity
                 , validateSize = identity
@@ -99,6 +64,7 @@ form countFields next =
                 , collectSize = identity
                 , reverseSize = identity
                 , renderSize = identity
+                , collectElementsSize = identity
                 }
     in
     foldr
@@ -107,7 +73,8 @@ form countFields next =
             { init = init stateSize form_
             , submit = submit validateSize collectSize reverseSize touchSize form_
             , update = update form_
-            , renderElements = viewElements validateSize renderSize form_
+            , viewElements = viewElements validateSize renderSize form_
+            , view = view validateSize renderSize collectElementsSize form_
             }
         )
         next
@@ -118,33 +85,14 @@ end =
     Internals.end
 
 
-f1 :
-    { a
-        | stateSize : b -> restFields -> restFieldStates
-        , validateSize : c -> d -> e -> restResults
-        , touchSize : f -> g -> y
-        , collectSize : h -> ( Result (List Field.Error) ( value, i ), j ) -> k
-        , reverseSize : l -> ( ( m, n ), o ) -> p
-        , renderSize : q -> rest -> rest1 -> rest2 -> rest3
-    }
-    ->
-        { stateSize :
-            b
-            -> ( Field input delta output msg, restFields )
-            -> ( Field.State input, restFieldStates )
-        , validateSize : c -> ( Field r s t u, d ) -> ( Field.State r, e ) -> ( Result (List Field.Error) t, restResults )
-        , touchSize : f -> ( Field.State v, g ) -> ( Field.State v, y )
-        , collectSize : h -> ( Result (List Field.Error) i, ( Result (List Field.Error) value, j ) ) -> k
-        , reverseSize : l -> ( n, ( m, o ) ) -> p
-        , renderSize : q -> ( Field w x z a1, rest ) -> ( Field.State w, rest1 ) -> ( Result (List Field.Error) z, rest2 ) -> ( Element a1, rest3 )
-        }
-f1 { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize } =
+f1 { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize, collectElementsSize } =
     { stateSize = stateSize >> sSize1
     , validateSize = validateSize >> validateSize1
     , touchSize = touchSize >> touchSize1
     , collectSize = collectSize >> collectSize1
     , reverseSize = reverseSize >> reverseSize1
     , renderSize = renderSize >> renderSize1
+    , collectElementsSize = collectElementsSize >> collectElementsSize1
     }
 
 
@@ -457,3 +405,32 @@ viewElements validateSize renderSize form_ state_ =
     state_
         |> validateAll validateSize form_
         |> renderAll renderSize form_ state_
+
+
+collectElements : ((a -> a) -> ( List (Element msg), restElements ) -> ( d, e )) -> restElements -> d
+collectElements size elements =
+    size identity ( [], elements )
+        |> Tuple.first
+
+
+collectElementsSize1 : (( List (Element msg), restElements ) -> next) -> ( List (Element msg), ( Element msg, restElements ) ) -> next
+collectElementsSize1 next ( s, ( fst, rst ) ) =
+    next ( fst :: s, rst )
+
+
+view :
+    ((() -> () -> ()) -> form -> state -> results)
+    -> ((() -> () -> () -> ()) -> form -> state -> results -> c)
+    ->
+        ((a -> a)
+         -> ( List (Element msg), c )
+         -> ( List (Element msg), e )
+        )
+    -> Form form
+    -> State state
+    -> Element msg
+view validateSize renderSize collectElementsSize form_ state =
+    viewElements validateSize renderSize form_ state
+        |> collectElements collectElementsSize
+        |> List.reverse
+        |> Element.column [ Element.spacing 10 ]
