@@ -16,6 +16,7 @@ module Field exposing
     , stringMustNotContain
     , withInitialState
     , withLabel
+    , withRenderer
     , withValidator
     )
 
@@ -28,7 +29,7 @@ import Html.Attributes
 import Internals exposing (..)
 
 
-type Field input delta output msg
+type Field input delta output element msg
     = Field
         { init : input
         , msg : delta -> msg
@@ -43,7 +44,7 @@ type Field input delta output msg
             , label : Maybe String
             , id : String
             }
-            -> Element msg
+            -> element
         , id : String
         , label : Maybe String
         }
@@ -116,10 +117,10 @@ custom :
             , label : Maybe String
             , id : String
             }
-            -> Element msg
+            -> element
         , id : String
     }
-    -> Field input delta output msg
+    -> Field input delta output element msg
 custom { init, msg, updater, parser, renderer, id } =
     Field
         { init = init
@@ -133,7 +134,7 @@ custom { init, msg, updater, parser, renderer, id } =
         }
 
 
-string : String -> (String -> msg) -> Field String String String msg
+string : String -> (String -> msg) -> Field String String String (Element msg) msg
 string id msg =
     custom
         { init = ""
@@ -145,7 +146,7 @@ string id msg =
         }
 
 
-float : String -> (String -> msg) -> Field String String Float msg
+float : String -> (String -> msg) -> Field String String Float (Element msg) msg
 float id msg =
     custom
         { init = ""
@@ -157,7 +158,7 @@ float id msg =
         }
 
 
-int : String -> (String -> msg) -> Field String String Int msg
+int : String -> (String -> msg) -> Field String String Int (Element msg) msg
 int id msg =
     custom
         { init = ""
@@ -173,24 +174,49 @@ int id msg =
 -- WORKING WITH FIELDS
 
 
-initialize : Field input delta output msg -> State input
+initialize : Field input delta output element msg -> State input
 initialize (Field { init }) =
     { input = init, touched = False }
 
 
-withLabel : String -> Field input delta output msg -> Field input delta output msg
+withLabel : String -> Field input delta output element msg -> Field input delta output element msg
 withLabel l (Field f) =
     Field { f | label = Just l }
 
 
-withValidator : (output -> Maybe Error) -> Field input delta output msg -> Field input delta output msg
+withValidator : (output -> Maybe Error) -> Field input delta output element msg -> Field input delta output element msg
 withValidator v (Field f) =
     Field { f | validators = v :: f.validators }
 
 
-withInitialState : input -> Field input delta output msg -> Field input delta output msg
+withInitialState : input -> Field input delta output element msg -> Field input delta output element msg
 withInitialState input (Field f) =
     Field { f | init = input }
+
+
+withRenderer :
+    ({ input : input
+     , touched : Bool
+     , msg : delta -> msg
+     , parsed : Result (List Error) output
+     , label : Maybe String
+     , id : String
+     }
+     -> element2
+    )
+    -> Field input delta output element msg
+    -> Field input delta output element2 msg
+withRenderer r (Field f) =
+    Field
+        { init = f.init
+        , msg = f.msg
+        , updater = f.updater
+        , parser = f.parser
+        , validators = f.validators
+        , renderer = r
+        , id = f.id
+        , label = f.label
+        }
 
 
 

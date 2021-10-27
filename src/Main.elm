@@ -7,7 +7,7 @@ import Element.Border as Border
 import Element.Input as Input
 import Field
 import Form
-import Html exposing (Html)
+import Html
 
 
 type Answer
@@ -16,38 +16,31 @@ type Answer
 
 
 myForm =
-    Form.form Form.f4
-        (q "how can you avoid wheelspin when driving on an icy road?"
-            [ O "drive slow in the highest gear possible"
-            , X "use the parking brake if the wheels start slipping"
-            , X "brake gently and repeatedly"
-            , X "drive in a low gear at all times"
-            ]
-            Set0
+    Form.form
+        (Form.defaultConfig
+            |> Form.withRenderer (Html.div [])
         )
-        (q "what will help you to move off on a snowy surface?"
-            [ X "using the lowest gear"
-            , O "using a higher gear than usual"
-            , X "using a high engine speed"
-            , X "using the brakes"
-            ]
-            Set1
-        )
-        (q "?"
-            [ O ""
-            , X ""
-            , X ""
-            , X ""
-            ]
-            Set2
-        )
-        (q "?"
-            [ O ""
-            , X ""
-            , X ""
-            , X ""
-            ]
-            Set3
+        Form.f1
+        -- (q "how can you avoid wheelspin when driving on an icy road?"
+        --     [ O "drive slow in the highest gear possible"
+        --     , X "use the parking brake if the wheels start slipping"
+        --     , X "brake gently and repeatedly"
+        --     , X "drive in a low gear at all times"
+        --     ]
+        --     Set0
+        -- )
+        -- (q "what will help you to move off on a snowy surface?"
+        --     [ X "using the lowest gear"
+        --     , O "using a higher gear than usual"
+        --     , X "using a high engine speed"
+        --     , X "using the brakes"
+        --     ]
+        --     Set1
+        -- )
+        (Form.field
+            (Field.int "How many smarties can you eat?" Set2
+                |> Field.withRenderer (\{ label } -> Html.div [] [ Html.text (Maybe.withDefault "hello" label) ])
+            )
         )
         Form.end
 
@@ -59,24 +52,22 @@ initialModel =
 type Msg
     = Set0 Answer
     | Set1 Answer
-    | Set2 Answer
-    | Set3 Answer
+    | Set2 String
     | SubmitClicked
 
 
 update msg model =
     case msg of
         Set0 s ->
-            myForm.update Form.i0 s model
+            model
 
+        -- myForm.update Form.i0 s model
         Set1 s ->
-            myForm.update Form.i1 s model
+            model
 
+        -- myForm.update Form.i1 s model
         Set2 s ->
-            myForm.update Form.i2 s model
-
-        Set3 s ->
-            myForm.update Form.i3 s model
+            myForm.update Form.i0 s model
 
         SubmitClicked ->
             case myForm.submit model of
@@ -90,7 +81,7 @@ update msg model =
 view model =
     layout [] <|
         column [ padding 30, spacing 10 ]
-            [ myForm.view model
+            [ html (myForm.view model)
             , Input.button [ padding 10, Border.width 1 ]
                 { onPress = Just SubmitClicked
                 , label = text "Submit"
@@ -153,7 +144,6 @@ questionInput opts { input, parsed, msg, label } =
     column
         [ spacing 10
         , width fill
-        , padding 20
         , Background.color
             (case parsed of
                 Err _ ->

@@ -2,6 +2,7 @@ module Form exposing
     ( Form
     , Index
     , State
+    , defaultConfig
     , end
     , f1
     , f10
@@ -21,6 +22,7 @@ module Form exposing
     , i3
     , i4
     , i5
+    , withRenderer
     )
 
 import Element exposing (Element)
@@ -40,8 +42,8 @@ type State state
     = State state
 
 
-type alias Index input delta output msg restFields restFieldStates form state =
-    (( Field input delta output msg, restFields )
+type alias Index input delta output element msg restFields restFieldStates form state =
+    (( Field input delta output element msg, restFields )
      -> ( Field.State input, restFieldStates )
      -> ( Field.State input, restFieldStates )
     )
@@ -50,11 +52,29 @@ type alias Index input delta output msg restFields restFieldStates form state =
     -> state
 
 
+type alias Config element =
+    { layout : List element -> element }
+
+
+
+-- FORM CONFIG
+
+
+defaultConfig : Config (Element msg)
+defaultConfig =
+    { layout = Element.column [ Element.spacing 10 ] }
+
+
+withRenderer : (List element2 -> element2) -> Config element -> Config element2
+withRenderer l config =
+    { layout = l }
+
+
 
 -- CREATING FORMS
 
 
-form countFields next =
+form config countFields next =
     let
         { stateSize, validateSize, touchSize, collectSize, reverseSize, renderSize, collectElementsSize } =
             countFields
@@ -73,8 +93,8 @@ form countFields next =
             { init = init stateSize form_
             , submit = submit validateSize collectSize reverseSize touchSize form_
             , update = update form_
-            , viewElements = viewElements validateSize renderSize form_
-            , view = view validateSize renderSize collectElementsSize form_
+            , viewFields = viewElements validateSize renderSize form_
+            , view = view config validateSize renderSize collectElementsSize form_
             }
         )
         next
@@ -132,7 +152,7 @@ f10 =
     f5 >> f5
 
 
-field : Field input delta output msg -> ( Form ( Field input delta output msg, form ) -> c, finish ) -> (( Form form -> c, finish ) -> fields) -> fields
+field : Field input delta output element msg -> ( Form ( Field input delta output element msg, form ) -> c, finish ) -> (( Form form -> c, finish ) -> fields) -> fields
 field field_ next =
     Internals.step0r (\(Form fields) -> Form ( field_, fields )) next
 
@@ -146,47 +166,22 @@ i0 =
     identity
 
 
-i1 :
-    (restFields -> restFieldStates -> restFieldStates)
-    -> ( Field i0 d o m, restFields )
-    -> ( Field.State i0, restFieldStates )
-    -> ( Field.State i0, restFieldStates )
 i1 mapRest ( this0, rest0 ) ( this1, rest1 ) =
     Internals.mapBoth2 (\_ fieldState -> identity fieldState) mapRest ( this0, rest0 ) ( this1, rest1 )
 
 
-i2 :
-    (restFields -> restFieldStates -> restFieldStates)
-    -> ( Field i0 d o m, ( Field i1 b c e, restFields ) )
-    -> ( Field.State i0, ( Field.State i1, restFieldStates ) )
-    -> ( Field.State i0, ( Field.State i1, restFieldStates ) )
 i2 =
     i1 >> i1
 
 
-i3 :
-    (restFields -> restFieldStates -> restFieldStates)
-    -> ( Field i0 d o m, ( Field i1 b c e, ( Field i2 g h j, restFields ) ) )
-    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, restFieldStates ) ) )
-    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, restFieldStates ) ) )
 i3 =
     i2 >> i1
 
 
-i4 :
-    (restFields -> restFieldStates -> restFieldStates)
-    -> ( Field i0 d o m, ( Field i1 b c e, ( Field i2 f g h, ( Field i3 i j k, restFields ) ) ) )
-    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, restFieldStates ) ) ) )
-    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, restFieldStates ) ) ) )
 i4 =
     i3 >> i1
 
 
-i5 :
-    (restFields -> restFieldStates -> restFieldStates)
-    -> ( Field i0 d o m, ( Field i1 b c e, ( Field i2 g h j, ( Field i3 l n p, ( Field i4 r s t, restFields ) ) ) ) )
-    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, ( Field.State i4, restFieldStates ) ) ) ) )
-    -> ( Field.State i0, ( Field.State i1, ( Field.State i2, ( Field.State i3, ( Field.State i4, restFieldStates ) ) ) ) )
 i5 =
     i4 >> i1
 
@@ -197,7 +192,7 @@ i5 =
 
 update :
     Form form
-    -> Index input delta output msg restFields restFieldStates form state
+    -> Index input delta output element msg restFields restFieldStates form state
     -> delta
     -> State state
     -> State state
@@ -213,7 +208,7 @@ update (Form form_) index delta (State state_) =
         )
 
 
-parseAndValidate : Field input delta output msg -> Field.State input -> Result (List Field.Error) output
+parseAndValidate : Field input delta output element msg -> Field.State input -> Result (List Field.Error) output
 parseAndValidate (Field { parser, validators }) data =
     data.input
         |> parser
@@ -240,7 +235,7 @@ accumulateErrors a list =
 -- EXTRACTING STATE
 
 
-sSize1 : (restFields -> restFieldStates) -> ( Field input delta output msg, restFields ) -> ( Field.State input, restFieldStates )
+sSize1 : (restFields -> restFieldStates) -> ( Field input delta output element msg, restFields ) -> ( Field.State input, restFieldStates )
 sSize1 next form_ =
     Tuple.mapBoth Field.initialize next form_
 
@@ -261,7 +256,7 @@ validateAll size (Form form_) (State state_) =
 
 validateSize1 :
     (restFields -> restFieldStates -> restResults)
-    -> ( Field input delta output msg, restFields )
+    -> ( Field input delta output element msg, restFields )
     -> ( Field.State input, restFieldStates )
     -> ( Result (List Field.Error) output, restResults )
 validateSize1 next form_ state_ =
@@ -373,10 +368,10 @@ renderAll size (Form form_) (State state_) results =
 
 renderSize1 :
     (rest -> rest1 -> rest2 -> rest3)
-    -> ( Field input delta output msg, rest )
+    -> ( Field input delta output element msg, rest )
     -> ( Field.State input, rest1 )
     -> ( Result (List Field.Error) output, rest2 )
-    -> ( Element msg, rest3 )
+    -> ( element, rest3 )
 renderSize1 next form_ state_ results =
     Internals.mapBoth3
         (\(Field { renderer, msg, id, label }) { input, touched } parsed ->
@@ -407,30 +402,31 @@ viewElements validateSize renderSize form_ state_ =
         |> renderAll renderSize form_ state_
 
 
-collectElements : ((a -> a) -> ( List (Element msg), restElements ) -> ( d, e )) -> restElements -> d
+collectElements : ((a -> a) -> ( List element, restElements ) -> ( d, e )) -> restElements -> d
 collectElements size elements =
     size identity ( [], elements )
         |> Tuple.first
 
 
-collectElementsSize1 : (( List (Element msg), restElements ) -> next) -> ( List (Element msg), ( Element msg, restElements ) ) -> next
+collectElementsSize1 : (( List element, restElements ) -> next) -> ( List element, ( element, restElements ) ) -> next
 collectElementsSize1 next ( s, ( fst, rst ) ) =
     next ( fst :: s, rst )
 
 
 view :
-    ((() -> () -> ()) -> form -> state -> results)
+    Config element
+    -> ((() -> () -> ()) -> form -> state -> results)
     -> ((() -> () -> () -> ()) -> form -> state -> results -> c)
     ->
         ((a -> a)
-         -> ( List (Element msg), c )
-         -> ( List (Element msg), e )
+         -> ( List element, c )
+         -> ( List element, e )
         )
     -> Form form
     -> State state
-    -> Element msg
-view validateSize renderSize collectElementsSize form_ state =
+    -> element
+view config validateSize renderSize collectElementsSize form_ state =
     viewElements validateSize renderSize form_ state
         |> collectElements collectElementsSize
         |> List.reverse
-        |> Element.column [ Element.spacing 10 ]
+        |> config.layout
