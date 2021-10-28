@@ -23,9 +23,12 @@ module Form exposing
     , i4
     , i5
     , withRenderer
+    , withSubmit
     )
 
 import Element exposing (Element)
+import Element.Border
+import Element.Input
 import Field exposing (Field(..))
 import Internals
 
@@ -52,22 +55,40 @@ type alias Index input delta output element msg restFields restFieldStates form 
     -> state
 
 
-type alias Config element =
-    { layout : List element -> element }
-
-
 
 -- FORM CONFIG
 
 
-defaultConfig : Config (Element msg)
+type alias Config element msg =
+    { layout : List element -> element
+    , submitMsg : Maybe msg
+    , submitRenderer : msg -> element
+    }
+
+
+defaultConfig : Config (Element msg) msg
 defaultConfig =
-    { layout = Element.column [ Element.spacing 10 ] }
+    { layout = Element.column [ Element.spacing 10, Element.padding 10 ]
+    , submitMsg = Nothing
+    , submitRenderer =
+        \msg ->
+            Element.Input.button
+                [ Element.padding 10
+                , Element.Border.width 1
+                , Element.Border.rounded 5
+                ]
+                { label = Element.text "Submit", onPress = Just msg }
+    }
 
 
-withRenderer : (List element2 -> element2) -> Config element -> Config element2
-withRenderer l config =
-    { layout = l }
+withRenderer : { layout : List element2 -> element2, submit : msg -> element2 } -> Config element msg -> Config element2 msg
+withRenderer args config =
+    { layout = args.layout, submitRenderer = args.submit, submitMsg = config.submitMsg }
+
+
+withSubmit : msg -> Config element msg -> Config element msg
+withSubmit msg config =
+    { config | submitMsg = Just msg }
 
 
 
@@ -414,7 +435,7 @@ collectElementsSize1 next ( s, ( fst, rst ) ) =
 
 
 view :
-    Config element
+    Config element msg
     -> ((() -> () -> ()) -> form -> state -> results)
     -> ((() -> () -> () -> ()) -> form -> state -> results -> c)
     ->
@@ -428,5 +449,13 @@ view :
 view config validateSize renderSize collectElementsSize form_ state =
     viewElements validateSize renderSize form_ state
         |> collectElements collectElementsSize
+        |> (\list ->
+                case config.submitMsg of
+                    Just msg ->
+                        config.submitRenderer msg :: list
+
+                    Nothing ->
+                        list
+           )
         |> List.reverse
         |> config.layout

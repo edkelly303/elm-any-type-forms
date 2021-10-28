@@ -18,7 +18,7 @@ type Answer
 myForm =
     Form.form
         (Form.defaultConfig
-            |> Form.withRenderer (Html.div [])
+            |> Form.withSubmit SubmitClicked
         )
         Form.f1
         -- (q "how can you avoid wheelspin when driving on an icy road?"
@@ -38,9 +38,7 @@ myForm =
         --     Set1
         -- )
         (Form.field
-            (Field.int "How many smarties can you eat?" Set2
-                |> Field.withRenderer (\{ label } -> Html.div [] [ Html.text (Maybe.withDefault "hello" label) ])
-            )
+            (Field.int "How many smarties can you eat?" Set2)
         )
         Form.end
 
@@ -80,13 +78,7 @@ update msg model =
 
 view model =
     layout [] <|
-        column [ padding 30, spacing 10 ]
-            [ html (myForm.view model)
-            , Input.button [ padding 10, Border.width 1 ]
-                { onPress = Just SubmitClicked
-                , label = text "Submit"
-                }
-            ]
+        myForm.view model
 
 
 intInput : { a | input : Int, msg : number -> msg } -> Element msg
