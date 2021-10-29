@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Main exposing (main, myForm)
 
 import Browser
 import Element exposing (..)
@@ -20,23 +20,23 @@ myForm =
         (Form.defaultConfig
             |> Form.withSubmit SubmitClicked
         )
-        Form.f1
-        -- (q "how can you avoid wheelspin when driving on an icy road?"
-        --     [ O "drive slow in the highest gear possible"
-        --     , X "use the parking brake if the wheels start slipping"
-        --     , X "brake gently and repeatedly"
-        --     , X "drive in a low gear at all times"
-        --     ]
-        --     Set0
-        -- )
-        -- (q "what will help you to move off on a snowy surface?"
-        --     [ X "using the lowest gear"
-        --     , O "using a higher gear than usual"
-        --     , X "using a high engine speed"
-        --     , X "using the brakes"
-        --     ]
-        --     Set1
-        -- )
+        Form.f3
+        (q "how can you avoid wheelspin when driving on an icy road?"
+            [ O "drive slow in the highest gear possible"
+            , X "use the parking brake if the wheels start slipping"
+            , X "brake gently and repeatedly"
+            , X "drive in a low gear at all times"
+            ]
+            Set0
+        )
+        (q "what will help you to move off on a snowy surface?"
+            [ X "using the lowest gear"
+            , O "using a higher gear than usual"
+            , X "using a high engine speed"
+            , X "using the brakes"
+            ]
+            Set1
+        )
         (Form.field
             (Field.int "How many smarties can you eat?" Set2)
         )
@@ -57,15 +57,13 @@ type Msg
 update msg model =
     case msg of
         Set0 s ->
-            model
+            myForm.update Form.idx0 s model
 
-        -- myForm.update Form.i0 s model
         Set1 s ->
-            model
+            myForm.update Form.idx1 s model
 
-        -- myForm.update Form.i1 s model
         Set2 s ->
-            myForm.update Form.i0 s model
+            myForm.update (Form.idx1 >> Form.idx1) s model
 
         SubmitClicked ->
             case myForm.submit model of

@@ -31,7 +31,8 @@ import Internals exposing (..)
 
 type Field input delta output element msg
     = Field
-        { init : input
+        { index : Int
+        , init : input
         , msg : delta -> msg
         , updater : delta -> input -> input
         , parser : input -> Result Error output
@@ -51,9 +52,7 @@ type Field input delta output element msg
 
 
 type alias State input =
-    { input : input
-    , touched : Bool
-    }
+    { input : input }
 
 
 type Error
@@ -123,7 +122,8 @@ custom :
     -> Field input delta output element msg
 custom { init, msg, updater, parser, renderer, id } =
     Field
-        { init = init
+        { index = 0
+        , init = init
         , msg = msg
         , updater = updater
         , parser = parser
@@ -176,7 +176,7 @@ int id msg =
 
 initialize : Field input delta output element msg -> State input
 initialize (Field { init }) =
-    { input = init, touched = False }
+    { input = init }
 
 
 withLabel : String -> Field input delta output element msg -> Field input delta output element msg
@@ -208,7 +208,8 @@ withRenderer :
     -> Field input delta output element2 msg
 withRenderer r (Field f) =
     Field
-        { init = f.init
+        { index = f.index
+        , init = f.init
         , msg = f.msg
         , updater = f.updater
         , parser = f.parser
