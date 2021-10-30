@@ -22,6 +22,8 @@ module Field exposing
 
 import Element exposing (..)
 import Element.Background as Background
+import Element.Border as Border
+import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Html exposing (input)
@@ -40,6 +42,9 @@ type Field input delta output element msg
         , renderer :
             { input : input
             , touched : Bool
+            , focused : Bool
+            , onBlurMsg : msg
+            , onFocusMsg : msg
             , msg : delta -> msg
             , parsed : Result (List Error) output
             , label : Maybe String
@@ -111,6 +116,9 @@ custom :
         , renderer :
             { input : input
             , touched : Bool
+            , focused : Bool
+            , onBlurMsg : msg
+            , onFocusMsg : msg
             , msg : delta -> msg
             , parsed : Result (List Error) output
             , label : Maybe String
@@ -197,6 +205,9 @@ withInitialState input (Field f) =
 withRenderer :
     ({ input : input
      , touched : Bool
+     , focused : Bool
+     , onBlurMsg : msg
+     , onFocusMsg : msg
      , msg : delta -> msg
      , parsed : Result (List Error) output
      , label : Maybe String
@@ -275,9 +286,32 @@ floatMustBeLessThan tooHigh float_ =
         |> ifTrueThenJust (FloatTooHigh tooHigh)
 
 
-toElement : { input : String, touched : Bool, msg : String -> msg, parsed : Result (List Error) output, id : String, label : Maybe String } -> Element msg
-toElement { input, touched, msg, parsed, id, label } =
-    column [ spacing 5 ]
+toElement :
+    { onFocusMsg : msg
+    , onBlurMsg : msg
+    , input : String
+    , touched : Bool
+    , focused : Bool
+    , msg : String -> msg
+    , parsed : Result (List Error) output
+    , id : String
+    , label : Maybe String
+    }
+    -> Element msg
+toElement { input, touched, onFocusMsg, onBlurMsg, focused, msg, parsed, id, label } =
+    column
+        [ spacing 10
+        , padding 20
+        , width fill
+        , Background.color
+            (if focused then
+                rgb255 220 255 220
+
+             else
+                rgb255 255 255 255
+            )
+        , Border.rounded 5
+        ]
         [ Input.text
             [ Background.color
                 (case ( touched, parsed ) of
@@ -291,6 +325,8 @@ toElement { input, touched, msg, parsed, id, label } =
                         rgb255 255 255 255
                 )
             , htmlAttribute (Html.Attributes.id id)
+            , Events.onFocus onFocusMsg
+            , Events.onLoseFocus onBlurMsg
             ]
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input

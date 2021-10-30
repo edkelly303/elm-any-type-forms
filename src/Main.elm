@@ -17,29 +17,13 @@ type Answer
 
 myForm =
     Form.form
-        (Form.defaultConfig
+        (Form.defaultConfig FormMsg
             |> Form.withSubmit SubmitClicked
         )
         Form.f3
-        (q "how can you avoid wheelspin when driving on an icy road?"
-            [ O "drive slow in the highest gear possible"
-            , X "use the parking brake if the wheels start slipping"
-            , X "brake gently and repeatedly"
-            , X "drive in a low gear at all times"
-            ]
-            Set0
-        )
-        (q "what will help you to move off on a snowy surface?"
-            [ X "using the lowest gear"
-            , O "using a higher gear than usual"
-            , X "using a high engine speed"
-            , X "using the brakes"
-            ]
-            Set1
-        )
-        (Form.field
-            (Field.int "How many smarties can you eat?" Set2)
-        )
+        (Form.field (Field.string "What is your name?" Set0))
+        (Form.field (Field.float "What is your favourite non-whole number?" Set1))
+        (Form.field (Field.int "How many smarties can you eat?" Set2))
         Form.end
 
 
@@ -48,10 +32,11 @@ initialModel =
 
 
 type Msg
-    = Set0 Answer
-    | Set1 Answer
+    = Set0 String
+    | Set1 String
     | Set2 String
     | SubmitClicked
+    | FormMsg Form.InternalMsg
 
 
 update msg model =
@@ -73,9 +58,12 @@ update msg model =
                 Err newModel ->
                     newModel
 
+        FormMsg formMsg ->
+            myForm.internalUpdate formMsg model
+
 
 view model =
-    layout [] <|
+    layout [padding 20] <|
         myForm.view model
 
 
