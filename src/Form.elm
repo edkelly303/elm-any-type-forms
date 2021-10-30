@@ -96,7 +96,8 @@ defaultConfig toMsg =
     , submitRenderer =
         \msg ->
             Element.Input.button
-                [ Element.padding 10
+                [ Element.centerX
+                , Element.padding 10
                 , Element.Border.width 1
                 , Element.Border.rounded 5
                 ]
@@ -123,6 +124,39 @@ withSubmit msg config =
 -- CREATING FORMS
 
 
+form :
+    { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d }
+    -> ({ stateSize : e -> e, validateSize : f -> f, collectSize : g -> g, reverseSize : h -> h, renderSize : i -> i, collectElementsSize : j -> j, countSize : k -> k } -> { l | stateSize : (() -> ()) -> form -> m, validateSize : (() -> () -> ()) -> form -> state -> restResults, collectSize : (n -> n) -> ( Result (List Field.Error) (), restResults ) -> ( Result o p, q ), reverseSize : (r -> r) -> ( (), p ) -> ( s, t ), renderSize : (u -> v -> () -> () -> () -> ()) -> { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d } -> InternalState -> form -> state -> restResults -> w, collectElementsSize : (x -> x) -> ( List element, w ) -> ( List c, y ), countSize : (z -> z) -> ( Int, form ) -> ( Int, a1 ) })
+    ->
+        (( ( Form form, Int )
+           ->
+            { init : State m
+            , submit : State state -> Result (State state) s
+            , updateField :
+                (( b1 -> b1, Int -> Int )
+                 ->
+                    ( (( Field c1 d1 output e1 msg, f1 )
+                       -> ( { g1 | input : c1 }, h1 )
+                       -> ( { g1 | input : c1 }, h1 )
+                      )
+                      -> form
+                      -> j1
+                      -> k1
+                    , Int -> Int
+                    )
+                )
+                -> d1
+                -> State j1
+                -> State k1
+            , update : InternalMsg -> State l1 -> State l1
+            , viewFields : State state -> w
+            , view : State state -> d
+            }
+         , (( Form (), Int ) -> m1) -> m1
+         )
+         -> n1
+        )
+    -> n1
 form config numberOfFields next =
     let
         { stateSize, validateSize, collectSize, reverseSize, renderSize, collectElementsSize, countSize } =
@@ -141,8 +175,8 @@ form config numberOfFields next =
         , \( form_, count ) ->
             { init = init countSize stateSize form_
             , submit = submit validateSize collectSize reverseSize form_
-            , update = update count form_
-            , internalUpdate = internalUpdate
+            , updateField = update count form_
+            , update = internalUpdate
             , viewFields = viewElements config validateSize renderSize form_
             , view = view config validateSize renderSize collectElementsSize form_
             }
