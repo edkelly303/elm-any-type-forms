@@ -4,6 +4,7 @@ module Form exposing
     , InternalMsg
     , State
     , defaultConfig
+    , done
     , end
     , f1
     , f10
@@ -17,6 +18,7 @@ module Form exposing
     , f9
     , field
     , form
+    , form2
     , i0
     , i1
     , i2
@@ -25,6 +27,7 @@ module Form exposing
     , i5
     , idx0
     , idx1
+    , withField
     , withRenderer
     , withSubmit
     )
@@ -124,39 +127,54 @@ withSubmit msg config =
 -- CREATING FORMS
 
 
-form :
-    { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d }
-    -> ({ stateSize : e -> e, validateSize : f -> f, collectSize : g -> g, reverseSize : h -> h, renderSize : i -> i, collectElementsSize : j -> j, countSize : k -> k } -> { l | stateSize : (() -> ()) -> form -> m, validateSize : (() -> () -> ()) -> form -> state -> restResults, collectSize : (n -> n) -> ( Result (List Field.Error) (), restResults ) -> ( Result o p, q ), reverseSize : (r -> r) -> ( (), p ) -> ( s, t ), renderSize : (u -> v -> () -> () -> () -> ()) -> { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d } -> InternalState -> form -> state -> restResults -> w, collectElementsSize : (x -> x) -> ( List element, w ) -> ( List c, y ), countSize : (z -> z) -> ( Int, form ) -> ( Int, a1 ) })
-    ->
-        (( ( Form form, Int )
-           ->
-            { init : State m
-            , submit : State state -> Result (State state) s
-            , updateField :
-                (( b1 -> b1, Int -> Int )
-                 ->
-                    ( (( Field c1 d1 output e1 msg, f1 )
-                       -> ( { g1 | input : c1 }, h1 )
-                       -> ( { g1 | input : c1 }, h1 )
-                      )
-                      -> form
-                      -> j1
-                      -> k1
-                    , Int -> Int
-                    )
-                )
-                -> d1
-                -> State j1
-                -> State k1
-            , update : InternalMsg -> State l1 -> State l1
-            , viewFields : State state -> w
-            , view : State state -> d
-            }
-         , (( Form (), Int ) -> m1) -> m1
-         )
-         -> n1
-        )
-    -> n1
+form2 formMsg =
+    { reverseSize = identity
+    , stateSize = identity
+    , validateSize = identity
+    , collectSize = identity
+    , renderSize = identity
+    , collectElementsSize = identity
+    , fieldCount = 0
+    , formState = Dict.empty
+    , fields = ()
+    , config = defaultConfig formMsg
+    }
+
+
+withField (Field fld) frm =
+    { reverseSize = frm.reverseSize >> reverseSize1
+    , stateSize = frm.stateSize >> stateSize1
+    , validateSize = frm.validateSize >> validateSize1
+    , collectSize = frm.collectSize >> collectSize1
+    , renderSize = frm.renderSize >> renderSize1
+    , collectElementsSize = frm.collectElementsSize >> collectElementsSize1
+    , fieldCount = frm.fieldCount + 1
+    , formState = Dict.insert frm.fieldCount { touched = False, focused = False } frm.formState
+    , fields = ( Field { fld | index = frm.fieldCount }, frm.fields )
+    , config = frm.config
+    }
+
+
+done { config, formState, fields, fieldCount, reverseSize, stateSize, validateSize, collectSize, renderSize, collectElementsSize } =
+    let
+        reversedFields =
+            reverseTuple reverseSize fields
+
+        form_ =
+            Form reversedFields
+
+        fieldsState =
+            stateSize (\() -> ()) reversedFields
+    in
+    { init = State formState fieldsState
+    -- , submit = submit validateSize collectSize reverseSize form_
+    , updateField = update fieldCount form_
+    , update = internalUpdate
+    , viewFields = viewElements config validateSize renderSize form_
+    , view = view config validateSize renderSize collectElementsSize form_
+    }
+
+
 form config numberOfFields next =
     let
         { stateSize, validateSize, collectSize, reverseSize, renderSize, collectElementsSize, countSize } =
@@ -405,16 +423,10 @@ countSize1 next ( s, ( fst, rst ) ) =
 -- VALIDATING ALL FIELDS
 
 
-validateAll : ((() -> () -> ()) -> form -> state -> results) -> Form form -> State state -> results
 validateAll size (Form form_) (State _ state_) =
     size (\() () -> ()) form_ state_
 
 
-validateSize1 :
-    (restFields -> restFieldStates -> restResults)
-    -> ( Field input delta output element msg, restFields )
-    -> ( Field.State input, restFieldStates )
-    -> ( Result (List Field.Error) output, restResults )
 validateSize1 next form_ state_ =
     Internals.mapBoth2 parseAndValidate next form_ state_
 
@@ -423,10 +435,6 @@ validateSize1 next form_ state_ =
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
 
 
-collectResults :
-    ((a -> a) -> ( Result (List Field.Error) (), restResults ) -> ( c, d ))
-    -> restResults
-    -> c
 collectResults size results =
     size identity ( Ok (), results )
         |> Tuple.first
@@ -483,13 +491,6 @@ touchAll (State dict state_) =
 -- SUBMITTING A FORM
 
 
-submit :
-    ((() -> () -> ()) -> form -> state -> restResults)
-    -> ((a -> a) -> ( Result (List Field.Error) (), restResults ) -> ( Result b c, d ))
-    -> ((e -> e) -> ( (), c ) -> ( f, g ))
-    -> Form form
-    -> State state
-    -> Result (State state) f
 submit validateSize collectSize reverseSize form_ state_ =
     validateAll validateSize form_ state_
         |> collectResults collectSize

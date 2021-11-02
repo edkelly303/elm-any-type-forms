@@ -1,14 +1,23 @@
-module Main exposing (main, myForm)
+module Main exposing (main)
 
 import Browser
 import Element exposing (..)
 import Field
 import Form
+import Html
 
 
 type Page
     = Form
     | Submitted { name : String, number : Float, smarties : Int }
+
+
+myForm2 =
+    Form.form2 FormMsg
+        |> Form.withField (Field.string "What is your name?" Set0)
+        |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
+        |> Form.withField (Field.int "How many smarties can you eat?" Set2)
+        |> Form.done
 
 
 myForm =
@@ -17,11 +26,7 @@ myForm =
             |> Form.withSubmit SubmitClicked
         )
         Form.f3
-        (Form.field
-            (Field.string "What is your name?" Set0
-                |> Field.withValidator (Field.stringMustBeLongerThan 0)
-            )
-        )
+        (Form.field (Field.string "What is your name?" Set0))
         (Form.field (Field.float "What is your favourite non-whole number?" Set1))
         (Form.field (Field.int "How many smarties can you eat?" Set2))
         Form.end
@@ -36,7 +41,7 @@ type alias Model =
 initialModel : Model
 initialModel =
     { page = Form
-    , form = myForm.init
+    , form = myForm2.init
     }
 
 
@@ -52,13 +57,13 @@ update : Msg -> Model -> Model
 update msg model =
     case msg of
         Set0 s ->
-            { model | form = myForm.updateField Form.idx0 s model.form }
+            { model | form = myForm2.updateField Form.idx0 s model.form }
 
         Set1 s ->
-            { model | form = myForm.updateField Form.idx1 s model.form }
+            { model | form = myForm2.updateField Form.idx1 s model.form }
 
         Set2 s ->
-            { model | form = myForm.updateField (Form.idx1 >> Form.idx1) s model.form }
+            { model | form = myForm2.updateField (Form.idx1 >> Form.idx1) s model.form }
 
         SubmitClicked ->
             case myForm.submit model.form of
@@ -69,7 +74,7 @@ update msg model =
                     { model | form = newForm }
 
         FormMsg formMsg ->
-            { model | form = myForm.update formMsg model.form }
+            { model | form = myForm2.update formMsg model.form }
 
 
 view model =
