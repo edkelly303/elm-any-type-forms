@@ -3,28 +3,8 @@ module Form exposing
     , Index
     , InternalMsg
     , State
-    , defaultConfig
     , done
-    , end
-    , f1
-    , f10
-    , f2
-    , f3
-    , f4
-    , f5
-    , f6
-    , f7
-    , f8
-    , f9
-    , field
     , form
-    , form2
-    , i0
-    , i1
-    , i2
-    , i3
-    , i4
-    , i5
     , idx0
     , idx1
     , withField
@@ -76,187 +56,184 @@ type InternalMsg
 -- FORM CONFIG
 
 
-type alias Config element msg =
-    { layout : List element -> element
-    , submitMsg : Maybe msg
-    , submitRenderer : msg -> element
-    , formMsg : InternalMsg -> msg
-    }
-
-
-defaultConfig : (InternalMsg -> msg) -> Config (Element msg) msg
-defaultConfig toMsg =
-    { layout =
-        Element.column
-            [ Element.spacing 10
-            , Element.padding 10
-            , Element.centerX
-            , Element.Border.width 1
-            , Element.Border.color (Element.rgb255 200 200 200)
-            , Element.Border.rounded 5
-            ]
-    , submitMsg = Nothing
-    , submitRenderer =
-        \msg ->
-            Element.Input.button
-                [ Element.centerX
-                , Element.padding 10
-                , Element.Border.width 1
-                , Element.Border.rounded 5
-                ]
-                { label = Element.text "Submit", onPress = Just msg }
-    , formMsg = toMsg
-    }
-
-
-withRenderer : { layout : List element2 -> element2, submit : msg -> element2 } -> Config element msg -> Config element2 msg
-withRenderer args config =
-    { layout = args.layout
-    , submitRenderer = args.submit
-    , submitMsg = config.submitMsg
-    , formMsg = config.formMsg
-    }
-
-
-withSubmit : msg -> Config element msg -> Config element msg
-withSubmit msg config =
-    { config | submitMsg = Just msg }
+type Builder a b c d e f g fields element msg
+    = Builder
+        { reverseSize : a
+        , reverseSize2 : b
+        , stateSize : c
+        , validateSize : d
+        , collectSize : e
+        , renderSize : f
+        , collectElementsSize : g
+        , fieldCount : Int
+        , formState : InternalState
+        , fields : fields
+        , layout : List element -> element
+        , submitMsg : Maybe msg
+        , submitRenderer : msg -> element
+        , formMsg : InternalMsg -> msg
+        }
 
 
 
 -- CREATING FORMS
 
 
-form2 formMsg =
-    { reverseSize = identity
-    , stateSize = identity
-    , validateSize = identity
-    , collectSize = identity
-    , renderSize = identity
-    , collectElementsSize = identity
-    , fieldCount = 0
-    , formState = Dict.empty
-    , fields = ()
-    , config = defaultConfig formMsg
-    }
+form : (InternalMsg -> msg) -> Builder (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> h) () (Element msg) msg
+form formMsg =
+    Builder
+        { reverseSize = identity
+        , reverseSize2 = identity
+        , stateSize = identity
+        , validateSize = identity
+        , collectSize = identity
+        , renderSize = identity
+        , collectElementsSize = identity
+        , fieldCount = 0
+        , formState = Dict.empty
+        , fields = ()
+        , layout =
+            Element.column
+                [ Element.spacing 10
+                , Element.padding 10
+                , Element.centerX
+                , Element.Border.width 1
+                , Element.Border.color (Element.rgb255 200 200 200)
+                , Element.Border.rounded 5
+                ]
+        , submitMsg = Nothing
+        , submitRenderer =
+            \msg ->
+                Element.Input.button
+                    [ Element.centerX
+                    , Element.padding 10
+                    , Element.Border.width 1
+                    , Element.Border.rounded 5
+                    ]
+                    { label = Element.text "Submit", onPress = Just msg }
+        , formMsg = formMsg
+        }
 
 
-withField (Field fld) frm =
-    { reverseSize = frm.reverseSize >> reverseSize1
-    , stateSize = frm.stateSize >> stateSize1
-    , validateSize = frm.validateSize >> validateSize1
-    , collectSize = frm.collectSize >> collectSize1
-    , renderSize = frm.renderSize >> renderSize1
-    , collectElementsSize = frm.collectElementsSize >> collectElementsSize1
-    , fieldCount = frm.fieldCount + 1
-    , formState = Dict.insert frm.fieldCount { touched = False, focused = False } frm.formState
-    , fields = ( Field { fld | index = frm.fieldCount }, frm.fields )
-    , config = frm.config
-    }
+withField (Field fld) (Builder frm) =
+    Builder
+        { reverseSize = frm.reverseSize >> reverseSize1
+        , reverseSize2 = frm.reverseSize2 >> reverseSize1a
+        , stateSize = frm.stateSize >> stateSize1
+        , validateSize = frm.validateSize >> validateSize1
+        , collectSize = frm.collectSize >> collectSize1
+        , renderSize = frm.renderSize >> renderSize1
+        , collectElementsSize = frm.collectElementsSize >> collectElementsSize1
+        , fieldCount = frm.fieldCount + 1
+        , formState = Dict.insert frm.fieldCount { touched = False, focused = False } frm.formState
+        , fields = ( Field { fld | index = frm.fieldCount }, frm.fields )
+        , layout = frm.layout
+        , submitMsg = frm.submitMsg
+        , submitRenderer = frm.submitRenderer
+        , formMsg = frm.formMsg
+        }
 
 
-done { config, formState, fields, fieldCount, reverseSize, stateSize, validateSize, collectSize, renderSize, collectElementsSize } =
+withRenderer :
+    { layout : List element2 -> element2, submit : msg -> element2 }
+    -> Builder b c d e f g h fields element msg
+    -> Builder b c d e f g h fields element2 msg
+withRenderer args (Builder frm) =
+    Builder
+        { reverseSize = frm.reverseSize
+        , reverseSize2 = frm.reverseSize2
+        , stateSize = frm.stateSize
+        , validateSize = frm.validateSize
+        , collectSize = frm.collectSize
+        , renderSize = frm.renderSize
+        , collectElementsSize = frm.collectElementsSize
+        , fieldCount = frm.fieldCount
+        , formState = frm.formState
+        , fields = frm.fields
+        , layout = args.layout
+        , submitRenderer = args.submit
+        , submitMsg = frm.submitMsg
+        , formMsg = frm.formMsg
+        }
+
+
+withSubmit : msg -> Builder b c d e f g h fields element msg -> Builder b c d e f g h fields element msg
+withSubmit msg (Builder frm) =
+    Builder { frm | submitMsg = Just msg }
+
+
+done :
+    Builder
+        ((a -> a) -> ( (), fields ) -> ( form, d ))
+        ((b -> b) -> ( (), e ) -> ( f, g ))
+        ((() -> ()) -> form -> state)
+        ((() -> () -> ()) -> form -> state -> k)
+        ((l -> l) -> ( Result error (), k ) -> ( Result m e, n ))
+        ((o -> p -> () -> () -> () -> ())
+         ->
+            { layout : List element -> element
+            , submitRenderer : msg -> element
+            , formMsg : InternalMsg -> msg
+            , submitMsg : Maybe msg
+            }
+         -> InternalState
+         -> form
+         -> state
+         -> k
+         -> q
+        )
+        ((r -> r) -> ( List s, q ) -> ( List element, t ))
+        fields
+        element
+        msg
+    ->
+        { init : State state
+        , submit : State state -> Result (State state) f
+        , updateField :
+            (( x -> x, Int -> Int )
+             ->
+                ( (( Field input delta output element msg, c1 )
+                   -> ( { d1 | input : input }, e1 )
+                   -> ( { d1 | input : input }, e1 )
+                  )
+                  -> form
+                  -> state
+                  -> state
+                , Int -> Int
+                )
+            )
+            -> delta
+            -> State state
+            -> State state
+        , update : InternalMsg -> State state -> State state
+        , viewFields : State state -> q
+        , view : State state -> element
+        }
+done (Builder frm) =
     let
+        config =
+            { layout = frm.layout
+            , submitRenderer = frm.submitRenderer
+            , formMsg = frm.formMsg
+            , submitMsg = frm.submitMsg
+            }
+
         reversedFields =
-            reverseTuple reverseSize fields
+            reverseTuple frm.reverseSize frm.fields
 
         form_ =
             Form reversedFields
 
         fieldsState =
-            stateSize (\() -> ()) reversedFields
+            frm.stateSize (\() -> ()) reversedFields
     in
-    { init = State formState fieldsState
-    -- , submit = submit validateSize collectSize reverseSize form_
-    , updateField = update fieldCount form_
+    { init = State frm.formState fieldsState
+    , submit = submit frm.validateSize frm.collectSize frm.reverseSize2 form_
+    , updateField = update form_
     , update = internalUpdate
-    , viewFields = viewElements config validateSize renderSize form_
-    , view = view config validateSize renderSize collectElementsSize form_
+    , viewFields = viewElements config frm.validateSize frm.renderSize form_
+    , view = view config frm.validateSize frm.renderSize frm.collectElementsSize form_
     }
-
-
-form config numberOfFields next =
-    let
-        { stateSize, validateSize, collectSize, reverseSize, renderSize, collectElementsSize, countSize } =
-            numberOfFields
-                { stateSize = identity
-                , validateSize = identity
-                , collectSize = identity
-                , reverseSize = identity
-                , renderSize = identity
-                , collectElementsSize = identity
-                , countSize = identity
-                }
-    in
-    Internals.foldr
-        ( ( Form (), 0 )
-        , \( form_, count ) ->
-            { init = init countSize stateSize form_
-            , submit = submit validateSize collectSize reverseSize form_
-            , updateField = update count form_
-            , update = internalUpdate
-            , viewFields = viewElements config validateSize renderSize form_
-            , view = view config validateSize renderSize collectElementsSize form_
-            }
-        )
-        next
-
-
-end : ( state, state -> output ) -> output
-end =
-    Internals.end
-
-
-f1 { stateSize, validateSize, collectSize, reverseSize, renderSize, collectElementsSize, countSize } =
-    { stateSize = stateSize >> stateSize1
-    , validateSize = validateSize >> validateSize1
-    , collectSize = collectSize >> collectSize1
-    , reverseSize = reverseSize >> reverseSize1
-    , renderSize = renderSize >> renderSize1
-    , collectElementsSize = collectElementsSize >> collectElementsSize1
-    , countSize = countSize >> countSize1
-    }
-
-
-f2 =
-    f1 >> f1
-
-
-f3 =
-    f2 >> f1
-
-
-f4 =
-    f3 >> f1
-
-
-f5 =
-    f4 >> f1
-
-
-f6 =
-    f5 >> f1
-
-
-f7 =
-    f6 >> f1
-
-
-f8 =
-    f7 >> f1
-
-
-f9 =
-    f8 >> f1
-
-
-f10 =
-    f9 >> f1
-
-
-field : Field input delta output element msg -> ( ( Form ( Field input delta output element msg, form ), Int ) -> c, finish ) -> (( ( Form form, Int ) -> c, finish ) -> a) -> a
-field (Field field_) next =
-    Internals.step0r (\( Form fields, fieldNumber ) -> ( Form ( Field { field_ | index = fieldNumber }, fields ), fieldNumber + 1 )) next
 
 
 
@@ -271,26 +248,6 @@ i0 =
 i1 : (b -> a -> rest2) -> ( c, b ) -> ( d, a ) -> ( d, rest2 )
 i1 mapRest ( this0, rest0 ) ( this1, rest1 ) =
     Internals.mapBoth2 (\_ fieldState -> identity fieldState) mapRest ( this0, rest0 ) ( this1, rest1 )
-
-
-i2 : (b -> a -> rest2) -> ( c, ( d, b ) ) -> ( e, ( f, a ) ) -> ( e, ( f, rest2 ) )
-i2 =
-    i1 >> i1
-
-
-i3 : (b -> a -> rest2) -> ( c, ( d, ( e, b ) ) ) -> ( f, ( g, ( h, a ) ) ) -> ( f, ( g, ( h, rest2 ) ) )
-i3 =
-    i2 >> i1
-
-
-i4 : (b -> a -> rest2) -> ( c, ( d, ( e, ( f, b ) ) ) ) -> ( g, ( h, ( i, ( j, a ) ) ) ) -> ( g, ( h, ( i, ( j, rest2 ) ) ) )
-i4 =
-    i3 >> i1
-
-
-i5 : (b -> a -> rest2) -> ( c, ( d, ( e, ( f, ( g, b ) ) ) ) ) -> ( h, ( i, ( j, ( k, ( l, a ) ) ) ) ) -> ( h, ( i, ( j, ( k, ( l, rest2 ) ) ) ) )
-i5 =
-    i4 >> i1
 
 
 c0 : Int -> Int
@@ -338,16 +295,31 @@ internalUpdate msg (State internalState state) =
         state
 
 
-update totalNumberOfFields (Form form_) index delta (State dict state_) =
+update :
+    Form form
+    ->
+        (( a -> a, Int -> Int )
+         ->
+            ( (( Field input delta output element msg, d )
+               -> ( { e | input : input }, f )
+               -> ( { e | input : input }, f )
+              )
+              -> form
+              -> state
+              -> state
+            , Int -> Int
+            )
+        )
+    -> delta
+    -> State state
+    -> State state
+update (Form form_) index delta (State dict state_) =
     let
         ( i, c ) =
             index ( i0, c0 )
 
-        highestFieldIndex =
-            totalNumberOfFields - 1
-
         indexOfUpdatedField =
-            highestFieldIndex - c 0
+            c 0
     in
     State
         (Dict.update indexOfUpdatedField (Maybe.map (\internalState -> { internalState | touched = True })) dict)
@@ -391,32 +363,6 @@ accumulateErrors a list =
 stateSize1 : (restFields -> restFieldStates) -> ( Field input delta output element msg, restFields ) -> ( Field.State input, restFieldStates )
 stateSize1 next form_ =
     Tuple.mapBoth Field.initialize next form_
-
-
-init : ((a -> a) -> ( Int, form ) -> ( Int, d )) -> ((() -> ()) -> form -> b) -> Form form -> State b
-init countSize stateSize (Form form_) =
-    let
-        numberOfFields =
-            countFields countSize form_
-
-        range =
-            List.range 0 (numberOfFields - 1)
-
-        dict =
-            List.foldl (\i d -> Dict.insert i { touched = False, focused = False } d) Dict.empty range
-    in
-    State dict (stateSize (\() -> ()) form_)
-
-
-countFields : ((a -> a) -> ( Int, b ) -> ( c, d )) -> b -> c
-countFields size fields =
-    size identity ( 0, fields )
-        |> Tuple.first
-
-
-countSize1 : (( Int, b ) -> a) -> ( Int, ( c, b ) ) -> a
-countSize1 next ( s, ( fst, rst ) ) =
-    next ( s + 1, rst )
 
 
 
@@ -475,6 +421,11 @@ reverseTuple size results =
 
 reverseSize1 : (( ( a, b ), c ) -> d) -> ( b, ( a, c ) ) -> d
 reverseSize1 next ( s, ( fst, rest ) ) =
+    next ( ( fst, s ), rest )
+
+
+reverseSize1a : (( ( a, b ), c ) -> d) -> ( b, ( a, c ) ) -> d
+reverseSize1a next ( s, ( fst, rest ) ) =
     next ( ( fst, s ), rest )
 
 

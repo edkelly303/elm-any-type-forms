@@ -4,6 +4,7 @@ import Browser
 import Element exposing (..)
 import Field
 import Form
+import Html
 
 
 type Page
@@ -12,32 +13,23 @@ type Page
 
 
 myForm2 =
-    Form.form2 FormMsg
-        |> Form.withField (Field.string "What is your name?" Set0)
-        |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
-        |> Form.withField (Field.int "How many smarties can you eat?" Set2)
+    Form.form FormMsg
+        |> Form.withField (Field.string "What is your name?" Set0 |> Field.withRenderer (\_ -> Html.text "hello2"))
+        |> Form.withSubmit SubmitClicked
+        |> Form.withRenderer { layout = Html.div [], submit = \_ -> Html.text "hello" }
+        -- |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
+        -- |> Form.withField (Field.int "How many smarties can you eat?" Set2)
         |> Form.done
 
 
-myForm =
-    Form.form
-        (Form.defaultConfig FormMsg
-            |> Form.withSubmit SubmitClicked
-        )
-        Form.f3
-        (Form.field (Field.string "What is your name?" Set0))
-        (Form.field (Field.float "What is your favourite non-whole number?" Set1))
-        (Form.field (Field.int "How many smarties can you eat?" Set2))
-        Form.end
+
+-- type alias Model =
+--     { page : Page
+--     , form : Form.State ( Field.State String, ( Field.State String, ( Field.State String, () ) ) )
+--     }
+-- initialModel : Model
 
 
-type alias Model =
-    { page : Page
-    , form : Form.State ( Field.State String, ( Field.State String, ( Field.State String, () ) ) )
-    }
-
-
-initialModel : Model
 initialModel =
     { page = Form
     , form = myForm2.init
@@ -52,35 +44,37 @@ type Msg
     | FormMsg Form.InternalMsg
 
 
-update : Msg -> Model -> Model
+
+-- update : Msg -> Model -> Model
+
+
 update msg model =
-    case msg of
-        Set0 s ->
-            { model | form = myForm2.updateField Form.idx0 s model.form }
+    model
 
-        Set1 s ->
-            { model | form = myForm2.updateField Form.idx1 s model.form }
 
-        Set2 s ->
-            { model | form = myForm2.updateField (Form.idx1 >> Form.idx1) s model.form }
 
-        SubmitClicked ->
-            case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, () ) ) ) ->
-                    { model | page = Submitted { name = str, number = flt, smarties = int } }
-
-                Err newForm ->
-                    { model | form = newForm }
-
-        FormMsg formMsg ->
-            { model | form = myForm2.update formMsg model.form }
+-- case msg of
+--     Set0 s ->
+--         { model | form = myForm2.updateField Form.idx0 s model.form }
+--     Set1 s ->
+--         { model | form = myForm2.updateField Form.idx1 s model.form }
+--     Set2 s ->
+--         { model | form = myForm2.updateField (Form.idx1 >> Form.idx1) s model.form }
+--     SubmitClicked ->
+--         case myForm2.submit model.form of
+--             Ok ( str, ( flt, ( int, () ) ) ) ->
+--                 { model | page = Submitted { name = str, number = flt, smarties = int } }
+--             Err newForm ->
+--                 { model | form = newForm }
+--     FormMsg formMsg ->
+--         { model | form = myForm2.update formMsg model.form }
 
 
 view model =
     layout [ padding 20 ] <|
         case model.page of
             Form ->
-                myForm.view model.form
+                html (myForm2.view model.form)
 
             Submitted { name, number, smarties } ->
                 column []
