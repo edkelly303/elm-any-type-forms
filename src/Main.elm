@@ -14,22 +14,20 @@ type Page
 
 myForm2 =
     Form.form FormMsg
-        |> Form.withField (Field.string "What is your name?" Set0 |> Field.withRenderer (\_ -> Html.text "hello2"))
+        |> Form.withField (Field.string "What is your name?" Set0)
+        |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
+        |> Form.withField (Field.int "How many smarties can you eat?" Set2)
         |> Form.withSubmit SubmitClicked
-        |> Form.withRenderer { layout = Html.div [], submit = \_ -> Html.text "hello" }
-        -- |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
-        -- |> Form.withField (Field.int "How many smarties can you eat?" Set2)
         |> Form.done
 
 
-
--- type alias Model =
---     { page : Page
---     , form : Form.State ( Field.State String, ( Field.State String, ( Field.State String, () ) ) )
---     }
--- initialModel : Model
+type alias Model =
+    { page : Page
+    , form : Form.State ( Field.State String, ( Field.State String, ( Field.State String, () ) ) )
+    }
 
 
+initialModel : Model
 initialModel =
     { page = Form
     , form = myForm2.init
@@ -44,37 +42,35 @@ type Msg
     | FormMsg Form.InternalMsg
 
 
-
--- update : Msg -> Model -> Model
-
-
+update : Msg -> Model -> Model
 update msg model =
-    model
+    case msg of
+        Set0 s ->
+            { model | form = myForm2.updateField Form.i0 s model.form }
 
+        Set1 s ->
+            { model | form = myForm2.updateField Form.i1 s model.form }
 
+        Set2 s ->
+            { model | form = myForm2.updateField (Form.i1 >> Form.i1) s model.form }
 
--- case msg of
---     Set0 s ->
---         { model | form = myForm2.updateField Form.idx0 s model.form }
---     Set1 s ->
---         { model | form = myForm2.updateField Form.idx1 s model.form }
---     Set2 s ->
---         { model | form = myForm2.updateField (Form.idx1 >> Form.idx1) s model.form }
---     SubmitClicked ->
---         case myForm2.submit model.form of
---             Ok ( str, ( flt, ( int, () ) ) ) ->
---                 { model | page = Submitted { name = str, number = flt, smarties = int } }
---             Err newForm ->
---                 { model | form = newForm }
---     FormMsg formMsg ->
---         { model | form = myForm2.update formMsg model.form }
+        SubmitClicked ->
+            case myForm2.submit model.form of
+                Ok ( str, ( flt, ( int, () ) ) ) ->
+                    { model | page = Submitted { name = str, number = flt, smarties = int } }
+
+                Err newForm ->
+                    { model | form = newForm }
+
+        FormMsg formMsg ->
+            { model | form = myForm2.update formMsg model.form }
 
 
 view model =
     layout [ padding 20 ] <|
         case model.page of
             Form ->
-                html (myForm2.view model.form)
+                myForm2.view model.form
 
             Submitted { name, number, smarties } ->
                 column []
