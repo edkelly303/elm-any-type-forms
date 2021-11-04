@@ -18,6 +18,9 @@ import Element.Border
 import Element.Input
 import Field exposing (Field(..))
 import Internals
+import Process
+import Task
+import Time
 
 
 
@@ -33,7 +36,7 @@ type State state
 
 
 type alias InternalState =
-    Dict.Dict Int { touched : Bool, focused : Bool }
+    Dict.Dict Int { touched : Bool, focused : Bool, lastTouched : Maybe Time.Posix }
 
 
 type alias Index input delta output element msg restFields restFieldStates form state =
@@ -49,7 +52,8 @@ type alias Index input delta output element msg restFields restFieldStates form 
 type InternalMsg
     = Focused Int
     | Blurred Int
-    | Noop
+    | TypingDetected Int Time.Posix
+    | TypingTimedOut Int Time.Posix
 
 
 
@@ -127,7 +131,7 @@ withField :
              -> ( Result (List Field.Error) ( value, n ), restResults )
              -> o
             )
-            (p -> { q | formMsg : InternalMsg -> r } -> Dict.Dict Int { focused : Bool, touched : Bool } -> rest -> t -> u -> rest3)
+            (p -> { q | formMsg : InternalMsg -> msg } -> InternalState -> rest -> t -> u -> rest3)
             (v -> ( List w, restElements ) -> next)
             fields
             x
@@ -140,10 +144,10 @@ withField :
             (l -> ( Field e1 f1 g1 h1 i1, rest0 ) -> ( Field.State e1, rest1 ) -> ( Result (List Field.Error) g1, rest2 ))
             (m -> ( Result (List Field.Error) n, ( Result (List Field.Error) value, restResults ) ) -> o)
             (p
-             -> { q | formMsg : InternalMsg -> r }
-             -> Dict.Dict Int { focused : Bool, touched : Bool }
-             -> ( Field l1 m1 n1 o1 r, rest )
-             -> ( { p1 | input : l1 }, t )
+             -> { q | formMsg : InternalMsg -> msg }
+             -> InternalState
+             -> ( Field l1 m1 n1 o1 msg, rest )
+             -> ( Field.State l1, t )
              -> ( Result (List Field.Error) n1, u )
              -> ( o1, rest3 )
             )
@@ -164,7 +168,13 @@ withField (Field fld) (Builder bdr) =
         , renderSize = bdr.renderSize >> renderSize1
         , collectElementsSize = bdr.collectElementsSize >> collectElementsSize1
         , fieldCount = bdr.fieldCount + 1
-        , formState = Dict.insert bdr.fieldCount { touched = False, focused = False } bdr.formState
+        , formState =
+            Dict.insert bdr.fieldCount
+                { touched = False
+                , focused = False
+                , lastTouched = Nothing
+                }
+                bdr.formState
         , fields = ( Field { fld | index = bdr.fieldCount }, bdr.fields )
         , layout = bdr.layout
         , submitMsg = bdr.submitMsg
@@ -232,8 +242,8 @@ done :
             (( x -> x, Int -> Int )
              ->
                 ( (( Field input delta output element msg, c1 )
-                   -> ( { d1 | input : input }, e1 )
-                   -> ( { d1 | input : input }, e1 )
+                   -> ( Field.State input, e1 )
+                   -> ( Field.State input, e1 )
                   )
                   -> form
                   -> state
@@ -243,8 +253,8 @@ done :
             )
             -> delta
             -> State state
-            -> State state
-        , update : InternalMsg -> State state -> State state
+            -> ( State state, Cmd msg )
+        , update : InternalMsg -> State state -> ( State state, Cmd msg )
         , viewFields : State state -> q
         , view : State state -> element
         }
@@ -268,8 +278,8 @@ done (Builder bdr) =
     in
     { init = State bdr.formState fieldsState
     , submit = submit bdr.validateSize bdr.collectSize bdr.anotherReverseSize form_
-    , updateField = update form_
-    , update = internalUpdate
+    , updateField = update bdr.formMsg form_
+    , update = internalUpdate bdr.formMsg
     , viewFields = viewElements config bdr.validateSize bdr.renderSize form_
     , view = view config bdr.validateSize bdr.renderSize bdr.collectElementsSize form_
     }
@@ -318,30 +328,48 @@ compose ( a, b ) ( a1, b1 ) =
 -- SETTING FIELDS
 
 
-internalUpdate : InternalMsg -> State state -> State state
-internalUpdate msg (State internalState state) =
-    State
-        (case msg of
-            Focused f ->
-                Dict.update f (Maybe.map (\s -> { s | focused = True })) internalState
+internalUpdate : (InternalMsg -> msg) -> InternalMsg -> State state -> ( State state, Cmd msg )
+internalUpdate formMsg msg (State internalState state) =
+    let
+        ( internalState2, cmd ) =
+            case msg of
+                Focused f ->
+                    ( Dict.update f (Maybe.map (\s -> { s | focused = True })) internalState, Cmd.none )
 
-            Blurred f ->
-                Dict.update f (Maybe.map (\s -> { s | focused = False })) internalState
+                Blurred f ->
+                    ( Dict.update f (Maybe.map (\s -> { s | focused = False })) internalState, Cmd.none )
 
-            Noop ->
-                internalState
-        )
-        state
+                TypingDetected f time ->
+                    ( Dict.update f (Maybe.map (\s -> { s | lastTouched = Just time })) internalState
+                    , Task.perform (\() -> formMsg <| TypingTimedOut f time) (Process.sleep 500)
+                    )
+
+                TypingTimedOut f time ->
+                    Dict.get f internalState
+                        |> Maybe.map
+                            (\s ->
+                                if s.lastTouched == Just time then
+                                    ( Dict.insert f { s | lastTouched = Nothing } internalState
+                                    , Cmd.none
+                                    )
+
+                                else
+                                    ( internalState, Cmd.none )
+                            )
+                        |> Maybe.withDefault ( internalState, Cmd.none )
+    in
+    ( State internalState2 state, cmd )
 
 
 update :
-    Form form
+    (InternalMsg -> msg)
+    -> Form form
     ->
         (( a -> a, Int -> Int )
          ->
-            ( (( Field input delta output element msg, d )
-               -> ( { e | input : input }, f )
-               -> ( { e | input : input }, f )
+            ( (( Field input delta output element msg, restFields )
+               -> ( Field.State input, restStates )
+               -> ( Field.State input, restStates )
               )
               -> form
               -> state
@@ -351,8 +379,8 @@ update :
         )
     -> delta
     -> State state
-    -> State state
-update (Form form_) index delta (State dict state_) =
+    -> ( State state, Cmd msg )
+update formMsg (Form form_) index delta (State dict state_) =
     let
         ( selectField, countField ) =
             index ( selectField0, countField0 )
@@ -360,8 +388,8 @@ update (Form form_) index delta (State dict state_) =
         indexOfUpdatedField =
             countField 0
     in
-    State
-        (Dict.update indexOfUpdatedField (Maybe.map (\internalState -> { internalState | touched = True })) dict)
+    ( State
+        (Dict.update indexOfUpdatedField (Maybe.map (\s -> { s | touched = True })) dict)
         (selectField
             (Internals.mapBoth2
                 (\(Field f) fieldState -> { fieldState | input = f.updater delta fieldState.input })
@@ -370,6 +398,8 @@ update (Form form_) index delta (State dict state_) =
             form_
             state_
         )
+    , Task.perform (formMsg << TypingDetected indexOfUpdatedField) Time.now
+    )
 
 
 parseAndValidate : Field input delta output element msg -> Field.State input -> Result (List Field.Error) output
@@ -531,6 +561,10 @@ renderSize1 next config internalState form_ state_ results =
                 , focused =
                     Dict.get index internalState
                         |> Maybe.map .focused
+                        |> Maybe.withDefault False
+                , typing =
+                    Dict.get index internalState
+                        |> Maybe.map (\{ lastTouched } -> lastTouched /= Nothing)
                         |> Maybe.withDefault False
                 , onBlurMsg = config.formMsg (Blurred index)
                 , onFocusMsg = config.formMsg (Focused index)

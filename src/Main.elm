@@ -4,7 +4,6 @@ import Browser
 import Element exposing (..)
 import Field
 import Form
-import Html
 
 
 type Page
@@ -42,28 +41,44 @@ type Msg
     | FormMsg Form.InternalMsg
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Set0 s ->
-            { model | form = myForm2.updateField Form.i0 s model.form }
+            let
+                ( form, cmd ) =
+                    myForm2.updateField Form.i0 s model.form
+            in
+            ( { model | form = form }, cmd )
 
         Set1 s ->
-            { model | form = myForm2.updateField Form.i1 s model.form }
+            let
+                ( form, cmd ) =
+                    myForm2.updateField Form.i1 s model.form
+            in
+            ( { model | form = form }, cmd )
 
         Set2 s ->
-            { model | form = myForm2.updateField (Form.i1 >> Form.i1) s model.form }
+            let
+                ( form, cmd ) =
+                    myForm2.updateField (Form.i1 >> Form.i1) s model.form
+            in
+            ( { model | form = form }, cmd )
 
         SubmitClicked ->
             case myForm2.submit model.form of
                 Ok ( str, ( flt, ( int, () ) ) ) ->
-                    { model | page = Submitted { name = str, number = flt, smarties = int } }
+                    ( { model | page = Submitted { name = str, number = flt, smarties = int } }, Cmd.none )
 
                 Err newForm ->
-                    { model | form = newForm }
+                    ( { model | form = newForm }, Cmd.none )
 
         FormMsg formMsg ->
-            { model | form = myForm2.update formMsg model.form }
+            let
+                ( form, cmd ) =
+                    myForm2.update formMsg model.form
+            in
+            ( { model | form = form }, cmd )
 
 
 view model =
@@ -85,9 +100,11 @@ view model =
                     ]
 
 
+main : Program () Model Msg
 main =
-    Browser.sandbox
-        { init = initialModel
+    Browser.element
+        { init = always ( initialModel, Cmd.none )
         , view = view
         , update = update
+        , subscriptions = always Sub.none
         }

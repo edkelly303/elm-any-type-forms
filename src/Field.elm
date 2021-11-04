@@ -42,6 +42,7 @@ type Field input delta output element msg
             { input : input
             , touched : Bool
             , focused : Bool
+            , typing : Bool
             , onBlurMsg : msg
             , onFocusMsg : msg
             , msg : delta -> msg
@@ -116,6 +117,7 @@ custom :
             { input : input
             , touched : Bool
             , focused : Bool
+            , typing : Bool
             , onBlurMsg : msg
             , onFocusMsg : msg
             , msg : delta -> msg
@@ -205,6 +207,7 @@ withRenderer :
     ({ input : input
      , touched : Bool
      , focused : Bool
+     , typing : Bool
      , onBlurMsg : msg
      , onFocusMsg : msg
      , msg : delta -> msg
@@ -291,13 +294,14 @@ toElement :
     , input : String
     , touched : Bool
     , focused : Bool
+    , typing : Bool
     , msg : String -> msg
     , parsed : Result (List Error) output
     , id : String
     , label : Maybe String
     }
     -> Element msg
-toElement { input, touched, onFocusMsg, onBlurMsg, focused, msg, parsed, id, label } =
+toElement { input, touched, typing, onFocusMsg, onBlurMsg, focused, msg, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -313,11 +317,11 @@ toElement { input, touched, onFocusMsg, onBlurMsg, focused, msg, parsed, id, lab
         ]
         [ Input.text
             [ Background.color
-                (case ( touched, parsed ) of
-                    ( True, Ok _ ) ->
+                (case ( touched, parsed, typing ) of
+                    ( True, Ok _, False ) ->
                         rgb255 100 255 100
 
-                    ( True, Err _ ) ->
+                    ( True, Err _, False ) ->
                         rgb255 255 100 100
 
                     _ ->
@@ -332,8 +336,13 @@ toElement { input, touched, onFocusMsg, onBlurMsg, focused, msg, parsed, id, lab
             , placeholder = Nothing
             , onChange = msg
             }
-        , case ( touched, parsed ) of
-            ( True, Err errs ) ->
+        , if typing then
+            text "..."
+
+          else
+            none
+        , case ( touched, parsed, typing ) of
+            ( True, Err errs, False ) ->
                 column [ Font.size 12, spacing 5 ] (List.map (errorToString >> text) errs)
 
             _ ->
