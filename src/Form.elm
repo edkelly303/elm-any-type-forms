@@ -402,29 +402,6 @@ update formMsg (Form form_) index delta (State dict state_) =
     )
 
 
-parseAndValidate : Field input delta output element msg -> Field.State input -> Result (List Field.Error) output
-parseAndValidate (Field { parser, validators }) data =
-    data.input
-        |> parser
-        |> Result.mapError List.singleton
-        |> Result.andThen
-            (\parsed ->
-                validators
-                    |> List.map (\v -> v parsed)
-                    |> accumulateErrors parsed
-            )
-
-
-accumulateErrors : a -> List (Maybe Field.Error) -> Result (List Field.Error) a
-accumulateErrors a list =
-    case List.filterMap identity list of
-        [] ->
-            Ok a
-
-        errors ->
-            Err errors
-
-
 
 -- EXTRACTING STATE
 
@@ -450,6 +427,29 @@ validateSize1 :
     -> ( Result (List Field.Error) output, rest2 )
 validateSize1 next form_ state_ =
     Internals.mapBoth2 parseAndValidate next form_ state_
+
+
+parseAndValidate : Field input delta output element msg -> Field.State input -> Result (List Field.Error) output
+parseAndValidate (Field { parser, validators }) data =
+    data.input
+        |> parser
+        |> Result.mapError List.singleton
+        |> Result.andThen
+            (\parsed ->
+                validators
+                    |> List.map (\v -> v parsed)
+                    |> accumulateErrors parsed
+            )
+
+
+accumulateErrors : a -> List (Maybe Field.Error) -> Result (List Field.Error) a
+accumulateErrors a list =
+    case List.filterMap identity list of
+        [] ->
+            Ok a
+
+        errors ->
+            Err errors
 
 
 
