@@ -11,7 +11,7 @@ type Page
     | Submitted { name : String, number : Float, smarties : Int }
 
 
-myForm2 =
+myForm =
     Form.form FormMsg
         |> Form.withField (Field.string "What is your name?" Set0)
         |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
@@ -29,7 +29,7 @@ type alias Model =
 initialModel : Model
 initialModel =
     { page = Form
-    , form = myForm2.init
+    , form = myForm.init
     }
 
 
@@ -44,48 +44,36 @@ type Msg
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        FormMsg formMsg ->
+            myForm.update formMsg model.form
+                |> Tuple.mapFirst (\form -> { model | form = form })
+
         Set0 s ->
-            let
-                ( form, cmd ) =
-                    myForm2.updateField Form.i0 s model.form
-            in
-            ( { model | form = form }, cmd )
+            myForm.updateField Form.i0 s model.form
+                |> Tuple.mapFirst (\form -> { model | form = form })
 
         Set1 s ->
-            let
-                ( form, cmd ) =
-                    myForm2.updateField Form.i1 s model.form
-            in
-            ( { model | form = form }, cmd )
+            myForm.updateField Form.i1 s model.form
+                |> Tuple.mapFirst (\form -> { model | form = form })
 
         Set2 s ->
-            let
-                ( form, cmd ) =
-                    myForm2.updateField (Form.i1 >> Form.i1) s model.form
-            in
-            ( { model | form = form }, cmd )
+            myForm.updateField (Form.i1 >> Form.i1) s model.form
+                |> Tuple.mapFirst (\form -> { model | form = form })
 
         SubmitClicked ->
-            case myForm2.submit model.form of
+            case myForm.submit model.form of
                 Ok ( str, ( flt, ( int, () ) ) ) ->
                     ( { model | page = Submitted { name = str, number = flt, smarties = int } }, Cmd.none )
 
                 Err newForm ->
                     ( { model | form = newForm }, Cmd.none )
 
-        FormMsg formMsg ->
-            let
-                ( form, cmd ) =
-                    myForm2.update formMsg model.form
-            in
-            ( { model | form = form }, cmd )
-
 
 view model =
     layout [ padding 20 ] <|
         case model.page of
             Form ->
-                myForm2.view model.form
+                myForm.view model.form
 
             Submitted { name, number, smarties } ->
                 column []
