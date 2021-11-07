@@ -1,8 +1,10 @@
 module Field exposing
-    ( Error(..)
+    ( DateDelta
+    , Error(..)
     , Field(..)
     , State
     , custom
+    , date
     , float
     , floatMustBeGreaterThan
     , floatMustBeLessThan
@@ -20,6 +22,7 @@ module Field exposing
     , withValidator
     )
 
+import Date
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
@@ -28,6 +31,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Html.Attributes
 import Internals exposing (..)
+import Time
 
 
 type Field input delta output element msg
@@ -70,6 +74,7 @@ type Error
     | StringTooShort Int
     | StringTooLong Int
     | StringMustNotContain String
+    | NoDateSelected
 
 
 errorToString : Error -> String
@@ -101,6 +106,9 @@ errorToString e =
 
         StringMustNotContain str ->
             "Must not contain '" ++ str ++ "'"
+
+        NoDateSelected ->
+            "No date selected"
 
 
 
@@ -150,7 +158,7 @@ string id msg =
         , msg = msg
         , updater = \delta _ -> delta
         , parser = Ok
-        , renderer = toElement
+        , renderer = renderTextField
         , id = id
         }
 
@@ -162,7 +170,7 @@ float id msg =
         , msg = msg
         , updater = \delta _ -> delta
         , parser = String.toFloat >> Result.fromMaybe NotValidFloat
-        , renderer = toElement
+        , renderer = renderTextField
         , id = id
         }
 
@@ -174,7 +182,42 @@ int id msg =
         , msg = msg
         , updater = \delta _ -> delta
         , parser = String.toInt >> Result.fromMaybe NotValidInt
-        , renderer = toElement
+        , renderer = renderTextField
+        , id = id
+        }
+
+
+type DateDelta
+    = PageChanged Date.Unit Int
+    | DateSelected Date.Date
+
+
+date id msg =
+    custom
+        { init = { page = Date.fromCalendarDate 2020 Time.Feb 1, selected = Nothing }
+        , msg = msg
+        , updater =
+            \delta state ->
+                case delta of
+                    PageChanged interval amount ->
+                        { state | page = Date.add interval amount state.page }
+
+                    DateSelected d ->
+                        { state
+                            | selected =
+                                case state.selected of
+                                    Nothing ->
+                                        Just d
+
+                                    Just s ->
+                                        if s == d then
+                                            Nothing
+
+                                        else
+                                            Just d
+                        }
+        , parser = \state -> Result.fromMaybe NoDateSelected state.selected
+        , renderer = renderDatePicker
         , id = id
         }
 
@@ -288,7 +331,11 @@ floatMustBeLessThan tooHigh float_ =
         |> ifTrueThenJust (FloatTooHigh tooHigh)
 
 
-toElement :
+
+-- RENDERERS
+
+
+renderTextField :
     { onFocusMsg : msg
     , onBlurMsg : msg
     , input : String
@@ -301,7 +348,7 @@ toElement :
     , label : Maybe String
     }
     -> Element msg
-toElement { input, touched, typing, onFocusMsg, onBlurMsg, focused, msg, parsed, id, label } =
+renderTextField { input, touched, typing, onFocusMsg, onBlurMsg, focused, msg, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -348,3 +395,167 @@ toElement { input, touched, typing, onFocusMsg, onBlurMsg, focused, msg, parsed,
             _ ->
                 none
         ]
+
+
+type CalendarBlock
+    = Blank
+    | Day Date.Date
+
+
+renderDatePicker :
+    { onFocusMsg : msg
+    , onBlurMsg : msg
+    , input : { page : Date.Date, selected : Maybe Date.Date }
+    , touched : Bool
+    , focused : Bool
+    , typing : Bool
+    , msg : DateDelta -> msg
+    , parsed : Result (List Error) output
+    , id : String
+    , label : Maybe String
+    }
+    -> Element msg
+renderDatePicker { input, msg } =
+    let
+        firstDayOfNextMonth =
+            Date.add Date.Months 1 firstDayOfMonth
+
+        firstDayOfMonth =
+            Date.floor Date.Month input.page
+
+        days =
+            Date.range Date.Day 1 firstDayOfMonth firstDayOfNextMonth
+
+        daysOffsetAtStart =
+            List.head days
+                |> Maybe.map Date.weekdayNumber
+                |> Maybe.withDefault 0
+
+        blanksAtStart =
+            List.repeat (daysOffsetAtStart - 1) Blank
+
+        daysOffsetAtEnd =
+            List.reverse days
+                |> List.head
+                |> Maybe.map Date.weekdayNumber
+                |> Maybe.withDefault 0
+
+        blanksAtEnd =
+            List.repeat (7 - daysOffsetAtEnd) Blank
+
+        blocks =
+            blanksAtStart ++ List.map Day days ++ blanksAtEnd
+
+        weeks =
+            List.foldl
+                (\b ( idx, out ) ->
+                    ( idx + 1
+                    , case out of
+                        [] ->
+                            [ [ b ] ]
+
+                        fst :: rest ->
+                            if modBy 7 idx == 0 then
+                                [ b ] :: out
+
+                            else
+                                (b :: fst) :: rest
+                    )
+                )
+                ( 0, [] )
+                blocks
+                |> Tuple.second
+                |> List.map List.reverse
+                |> List.reverse
+    in
+    column [ width fill, spacing 10 ]
+        [ row [ spaceEvenly, width <| maximum maxCalendarWidth <| fill, centerX ]
+            [ Input.button [ width <| maximum maxButtonSize <| fill ] { label = box paleGrey (text "<"), onPress = Just (msg (PageChanged Date.Months -1)) }
+            , text (Date.format "MMM yyyy" input.page)
+            , Input.button [ width <| maximum maxButtonSize <| fill ] { label = box paleGrey (text ">"), onPress = Just (msg (PageChanged Date.Months 1)) }
+            ]
+        , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
+        , column [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ]
+            (List.map
+                (\w ->
+                    row [ spacing 8, width fill ]
+                        (List.map (viewBlock msg input.selected) w)
+                )
+                weeks
+            )
+        ]
+
+
+viewBlock msg selected block =
+    let
+        colour d =
+            if Just d == selected then
+                midGrey
+
+            else
+                paleGrey
+    in
+    case block of
+        Blank ->
+            box white none
+
+        Day d ->
+            Input.button
+                [ width <| maximum maxButtonSize <| fill ]
+                { label = box (colour d) (text <| String.fromInt <| Date.day d)
+                , onPress = Just (msg (DateSelected d))
+                }
+
+
+maxCalendarWidth : Int
+maxCalendarWidth =
+    (7 * maxButtonSize) + (6 * buttonSpacing)
+
+
+maxButtonSize : Int
+maxButtonSize =
+    44
+
+
+buttonSpacing : Int
+buttonSpacing =
+    8
+
+
+white : Color
+white =
+    rgb255 255 255 255
+
+
+midGrey : Color
+midGrey =
+    rgb255 150 150 150
+
+
+paleGrey : Color
+paleGrey =
+    rgb255 225 225 225
+
+
+headerRow : List (Element msg)
+headerRow =
+    [ box white (text "Mo")
+    , box white (text "Tu")
+    , box white (text "We")
+    , box white (text "Th")
+    , box white (text "Fr")
+    , box white (text "Sa")
+    , box white (text "Su")
+    ]
+
+
+box : Color -> Element msg -> Element msg
+box colour content =
+    el
+        [ width <| maximum maxButtonSize <| fill
+        , height <| px maxButtonSize
+        , Background.color colour
+        , alignLeft
+        , Border.rounded 5
+        ]
+        (el [ centerX, centerY ] content)
