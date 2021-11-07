@@ -1,6 +1,7 @@
 module Main exposing (main)
 
 import Browser
+import Date exposing (Date)
 import Element exposing (..)
 import Field
 import Form
@@ -16,13 +17,14 @@ myForm =
         |> Form.withField (Field.string "What is your name?" Set0)
         |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
         |> Form.withField (Field.int "How many smarties can you eat?" Set2)
+        |> Form.withField (Field.date "lalala" Set3)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
 
 type alias Model =
     { page : Page
-    , form : Form.State ( Field.State String, ( Field.State String, ( Field.State String, () ) ) )
+    , form : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State { page : Date, selected : Maybe Date }, () ) ) ) )
     }
 
 
@@ -37,6 +39,7 @@ type Msg
     = Set0 String
     | Set1 String
     | Set2 String
+    | Set3 Field.DateDelta
     | SubmitClicked
     | FormMsg Form.InternalMsg
 
@@ -60,9 +63,13 @@ update msg model =
             myForm.updateField (Form.i1 >> Form.i1) s model.form
                 |> Tuple.mapFirst (\form -> { model | form = form })
 
+        Set3 s ->
+            myForm.updateField (Form.i1 >> Form.i1 >> Form.i1) s model.form
+                |> Tuple.mapFirst (\form -> { model | form = form })
+
         SubmitClicked ->
             case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, () ) ) ) ->
+                Ok ( str, ( flt, ( int, ( date, () ) ) ) ) ->
                     ( { model | page = Submitted { name = str, number = flt, smarties = int } }, Cmd.none )
 
                 Err newForm ->
