@@ -415,7 +415,7 @@ stateSize1 next form_ =
 -- VALIDATING ALL FIELDS
 
 
-validateAll : ((() -> () -> ()) -> form -> state -> a) -> Form form -> State state -> a
+validateAll : ((() -> () -> ()) -> form -> state -> results) -> Form form -> State state -> results
 validateAll size (Form form_) (State _ state_) =
     size (\() () -> ()) form_ state_
 
@@ -456,7 +456,7 @@ accumulateErrors a list =
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
 
 
-collectResults : ((a -> a) -> ( Result error (), b ) -> ( c, d )) -> b -> c
+collectResults : ((a -> a) -> ( Result error (), results ) -> ( collectedResult, d )) -> results -> collectedResult
 collectResults size results =
     size identity ( Ok (), results )
         |> Tuple.first
@@ -581,20 +581,20 @@ renderSize1 next config internalState form_ state_ results =
 
 
 viewElements :
-    a
-    -> ((() -> () -> ()) -> form -> state -> e)
+    config
+    -> ((() -> () -> ()) -> form -> state -> results)
     ->
         ((b -> c -> () -> () -> () -> ())
-         -> a
+         -> config
          -> InternalState
          -> form
          -> state
-         -> e
-         -> d
+         -> results
+         -> elements
         )
     -> Form form
     -> State state
-    -> d
+    -> elements
 viewElements config validateSize renderSize form_ state_ =
     state_
         |> validateAll validateSize form_
