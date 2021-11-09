@@ -381,6 +381,7 @@ renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, 
                 )
             , htmlAttribute (Html.Attributes.id id)
             , Events.onFocus onFocusMsg
+
             -- , Events.onLoseFocus onBlurMsg
             ]
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
@@ -421,7 +422,7 @@ renderDatePicker :
     , label : Maybe String
     }
     -> Element msg
-renderDatePicker { input, msg, label, id, focused, onFocusMsg } =
+renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, typing } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -494,19 +495,40 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg } =
             [ Input.button
                 [ width <| maximum maxButtonSize <| fill
                 , Events.onFocus onFocusMsg
+
                 -- , Events.onLoseFocus onBlurMsg
                 ]
                 { label = box paleGrey (text "<")
                 , onPress = Just (msg (PageChanged Date.Months -1))
                 }
-            , text (Date.format "MMM yyyy" input.page)
+            , text (Date.format "MMM" input.page)
             , Input.button
                 [ width <| maximum maxButtonSize <| fill
                 , Events.onFocus onFocusMsg
+
                 -- , Events.onLoseFocus onBlurMsg
                 ]
                 { label = box paleGrey (text ">")
                 , onPress = Just (msg (PageChanged Date.Months 1))
+                }
+            , Input.button
+                [ width <| maximum maxButtonSize <| fill
+                , Events.onFocus onFocusMsg
+
+                -- , Events.onLoseFocus onBlurMsg
+                ]
+                { label = box paleGrey (text "<")
+                , onPress = Just (msg (PageChanged Date.Years -1))
+                }
+            , text (Date.format "yyyy" input.page)
+            , Input.button
+                [ width <| maximum maxButtonSize <| fill
+                , Events.onFocus onFocusMsg
+
+                -- , Events.onLoseFocus onBlurMsg
+                ]
+                { label = box paleGrey (text ">")
+                , onPress = Just (msg (PageChanged Date.Years 1))
                 }
             ]
         , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
@@ -518,10 +540,16 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg } =
                 )
                 weeks
             )
+        , case ( touched, parsed, typing ) of
+            ( True, Err errs, False ) ->
+                column [ Font.size 12, spacing 5 ] (List.map (errorToString >> text) errs)
+
+            _ ->
+                none
         ]
 
 
-viewBlock : (DateDelta -> a) -> a ->  Maybe Date.Date -> CalendarBlock -> Element a
+viewBlock : (DateDelta -> a) -> a -> Maybe Date.Date -> CalendarBlock -> Element a
 viewBlock msg onFocusMsg selected block =
     let
         colour d =
@@ -539,6 +567,7 @@ viewBlock msg onFocusMsg selected block =
             Input.button
                 [ width <| maximum maxButtonSize <| fill
                 , Events.onFocus onFocusMsg
+
                 -- , Events.onLoseFocus onBlurMsg
                 ]
                 { label = box (colour d) (text <| String.fromInt <| Date.day d)
