@@ -36,7 +36,9 @@ type State state
 
 
 type alias InternalState =
-    Dict.Dict Int { touched : Bool, focused : Bool, lastTouched : Maybe Time.Posix }
+    { fields : Dict.Dict Int { touched : Bool, lastTouched : Maybe Time.Posix }
+    , focused : Maybe Int
+    }
 
 
 type alias Index input delta output element msg restFields restFieldStates form state =
@@ -51,7 +53,7 @@ type alias Index input delta output element msg restFields restFieldStates form 
 
 type InternalMsg
     = Focused Int
-    -- | Blurred Int
+      -- | Blurred Int
     | TypingDetected Int Time.Posix
     | TypingTimedOut Int Time.Posix
 
@@ -94,7 +96,7 @@ form formMsg =
         , renderSize = identity
         , collectElementsSize = identity
         , fieldCount = 0
-        , formState = Dict.empty
+        , formState = { fields = Dict.empty, focused = Nothing }
         , fields = ()
         , layout =
             Element.column
@@ -159,6 +161,10 @@ withField :
             x
             y
 withField (Field fld) (Builder bdr) =
+    let
+        formState =
+            bdr.formState
+    in
     Builder
         { reverseSize = bdr.reverseSize >> reverseSize1
         , anotherReverseSize = bdr.anotherReverseSize >> anotherReverseSize1
@@ -169,12 +175,14 @@ withField (Field fld) (Builder bdr) =
         , collectElementsSize = bdr.collectElementsSize >> collectElementsSize1
         , fieldCount = bdr.fieldCount + 1
         , formState =
-            Dict.insert bdr.fieldCount
-                { touched = False
-                , focused = False
-                , lastTouched = Nothing
-                }
-                bdr.formState
+            { formState
+                | fields =
+                    Dict.insert bdr.fieldCount
+                        { touched = False
+                        , lastTouched = Nothing
+                        }
+                        formState.fields
+            }
         , fields = ( Field { fld | index = bdr.fieldCount }, bdr.fields )
         , layout = bdr.layout
         , submitMsg = bdr.submitMsg
@@ -333,27 +341,26 @@ internalUpdate formMsg msg (State internalState state) =
     let
         ( internalState2, cmd ) =
             case msg of
-                Focused f ->
-                    ( internalState
-                        |> Dict.map (\_ v -> { v | focused = False })
-                        |> Dict.update f (Maybe.map (\s -> { s | focused = True }))
+                Focused fieldIndex ->
+                    ( { internalState
+                        | focused = Just fieldIndex
+                      }
                     , Cmd.none
                     )
 
                 -- Blurred f ->
                 --     ( Dict.update f (Maybe.map (\s -> { s | focused = False })) internalState, Cmd.none )
-
                 TypingDetected f time ->
-                    ( Dict.update f (Maybe.map (\s -> { s | lastTouched = Just time })) internalState
+                    ( { internalState | fields = Dict.update f (Maybe.map (\s -> { s | lastTouched = Just time })) internalState.fields }
                     , Task.perform (\() -> formMsg <| TypingTimedOut f time) (Process.sleep 500)
                     )
 
                 TypingTimedOut f time ->
-                    Dict.get f internalState
+                    Dict.get f internalState.fields
                         |> Maybe.map
                             (\s ->
                                 if s.lastTouched == Just time then
-                                    ( Dict.insert f { s | lastTouched = Nothing } internalState
+                                    ( { internalState | fields = Dict.insert f { s | lastTouched = Nothing } internalState.fields }
                                     , Cmd.none
                                     )
 
@@ -384,7 +391,7 @@ update :
     -> delta
     -> State state
     -> ( State state, Cmd msg )
-update formMsg (Form form_) index delta (State dict state_) =
+update formMsg (Form form_) index delta (State internalState state_) =
     let
         ( selectField, countField ) =
             index ( selectField0, countField0 )
@@ -393,7 +400,7 @@ update formMsg (Form form_) index delta (State dict state_) =
             countField 0
     in
     ( State
-        (Dict.update indexOfUpdatedField (Maybe.map (\s -> { s | touched = True })) dict)
+        { internalState | fields = Dict.update indexOfUpdatedField (Maybe.map (\s -> { s | touched = True })) internalState.fields }
         (selectField
             (Internals.mapBoth2
                 (\(Field f) fieldState -> { fieldState | input = f.updater delta fieldState.input })
@@ -514,8 +521,8 @@ anotherReverseSize1 next ( s, ( fst, rest ) ) =
 
 
 touchAll : State state -> State state
-touchAll (State dict state_) =
-    State (Dict.map (\_ v -> { v | touched = True }) dict) state_
+touchAll (State internalState state_) =
+    State { internalState | fields = Dict.map (\_ v -> { v | touched = True }) internalState.fields } state_
 
 
 
@@ -559,17 +566,16 @@ renderSize1 next config internalState form_ state_ results =
             renderer
                 { input = input
                 , touched =
-                    Dict.get index internalState
+                    Dict.get index internalState.fields
                         |> Maybe.map .touched
                         |> Maybe.withDefault False
-                , focused =
-                    Dict.get index internalState
-                        |> Maybe.map .focused
-                        |> Maybe.withDefault False
                 , typing =
-                    Dict.get index internalState
+                    Dict.get index internalState.fields
                         |> Maybe.map (\{ lastTouched } -> lastTouched /= Nothing)
                         |> Maybe.withDefault False
+                , focused =
+                    internalState.focused == Just index
+
                 -- , onBlurMsg = config.formMsg (Blurred index)
                 , onFocusMsg = config.formMsg (Focused index)
                 , msg = msg
