@@ -17,7 +17,7 @@ myForm =
         |> Form.withField (Field.string "What is your name?" Set0)
         |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
         |> Form.withField (Field.int "How many smarties can you eat?" Set2)
-        |> Form.withField (Field.date "lalala" Set3)
+        |> Form.withField (Field.date "When is your birthday?" Set3)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
@@ -46,26 +46,30 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
+    let
+        wrap =
+            Tuple.mapFirst (\form -> { model | form = form })
+    in
     case msg of
         FormMsg formMsg ->
             myForm.update formMsg model.form
-                |> Tuple.mapFirst (\form -> { model | form = form })
+                |> wrap
 
         Set0 s ->
             myForm.updateField Form.i0 s model.form
-                |> Tuple.mapFirst (\form -> { model | form = form })
+                |> wrap
 
         Set1 s ->
             myForm.updateField Form.i1 s model.form
-                |> Tuple.mapFirst (\form -> { model | form = form })
+                |> wrap
 
         Set2 s ->
             myForm.updateField (Form.i1 >> Form.i1) s model.form
-                |> Tuple.mapFirst (\form -> { model | form = form })
+                |> wrap
 
         Set3 s ->
             myForm.updateField (Form.i1 >> Form.i1 >> Form.i1) s model.form
-                |> Tuple.mapFirst (\form -> { model | form = form })
+                |> wrap
 
         SubmitClicked ->
             case myForm.submit model.form of

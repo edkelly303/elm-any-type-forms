@@ -51,7 +51,7 @@ type alias Index input delta output element msg restFields restFieldStates form 
 
 type InternalMsg
     = Focused Int
-    | Blurred Int
+    -- | Blurred Int
     | TypingDetected Int Time.Posix
     | TypingTimedOut Int Time.Posix
 
@@ -334,10 +334,14 @@ internalUpdate formMsg msg (State internalState state) =
         ( internalState2, cmd ) =
             case msg of
                 Focused f ->
-                    ( Dict.update f (Maybe.map (\s -> { s | focused = True })) internalState, Cmd.none )
+                    ( internalState
+                        |> Dict.map (\_ v -> { v | focused = False })
+                        |> Dict.update f (Maybe.map (\s -> { s | focused = True }))
+                    , Cmd.none
+                    )
 
-                Blurred f ->
-                    ( Dict.update f (Maybe.map (\s -> { s | focused = False })) internalState, Cmd.none )
+                -- Blurred f ->
+                --     ( Dict.update f (Maybe.map (\s -> { s | focused = False })) internalState, Cmd.none )
 
                 TypingDetected f time ->
                     ( Dict.update f (Maybe.map (\s -> { s | lastTouched = Just time })) internalState
@@ -566,7 +570,7 @@ renderSize1 next config internalState form_ state_ results =
                     Dict.get index internalState
                         |> Maybe.map (\{ lastTouched } -> lastTouched /= Nothing)
                         |> Maybe.withDefault False
-                , onBlurMsg = config.formMsg (Blurred index)
+                -- , onBlurMsg = config.formMsg (Blurred index)
                 , onFocusMsg = config.formMsg (Focused index)
                 , msg = msg
                 , parsed = parsed

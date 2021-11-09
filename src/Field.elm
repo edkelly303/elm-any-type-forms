@@ -47,7 +47,8 @@ type Field input delta output element msg
             , touched : Bool
             , focused : Bool
             , typing : Bool
-            , onBlurMsg : msg
+
+            -- , onBlurMsg : msg
             , onFocusMsg : msg
             , msg : delta -> msg
             , parsed : Result (List Error) output
@@ -126,7 +127,8 @@ custom :
             , touched : Bool
             , focused : Bool
             , typing : Bool
-            , onBlurMsg : msg
+
+            -- , onBlurMsg : msg
             , onFocusMsg : msg
             , msg : delta -> msg
             , parsed : Result (List Error) output
@@ -251,7 +253,8 @@ withRenderer :
      , touched : Bool
      , focused : Bool
      , typing : Bool
-     , onBlurMsg : msg
+
+     --  , onBlurMsg : msg
      , onFocusMsg : msg
      , msg : delta -> msg
      , parsed : Result (List Error) output
@@ -337,7 +340,8 @@ floatMustBeLessThan tooHigh float_ =
 
 renderTextField :
     { onFocusMsg : msg
-    , onBlurMsg : msg
+
+    -- , onBlurMsg : msg
     , input : String
     , touched : Bool
     , focused : Bool
@@ -348,7 +352,7 @@ renderTextField :
     , label : Maybe String
     }
     -> Element msg
-renderTextField { input, touched, typing, onFocusMsg, onBlurMsg, focused, msg, parsed, id, label } =
+renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -361,6 +365,7 @@ renderTextField { input, touched, typing, onFocusMsg, onBlurMsg, focused, msg, p
                 rgb255 255 255 255
             )
         , Border.rounded 5
+        , Events.onClick onFocusMsg
         ]
         [ Input.text
             [ Background.color
@@ -376,7 +381,7 @@ renderTextField { input, touched, typing, onFocusMsg, onBlurMsg, focused, msg, p
                 )
             , htmlAttribute (Html.Attributes.id id)
             , Events.onFocus onFocusMsg
-            , Events.onLoseFocus onBlurMsg
+            -- , Events.onLoseFocus onBlurMsg
             ]
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
@@ -404,7 +409,8 @@ type CalendarBlock
 
 renderDatePicker :
     { onFocusMsg : msg
-    , onBlurMsg : msg
+
+    -- , onBlurMsg : msg
     , input : { page : Date.Date, selected : Maybe Date.Date }
     , touched : Bool
     , focused : Bool
@@ -415,7 +421,7 @@ renderDatePicker :
     , label : Maybe String
     }
     -> Element msg
-renderDatePicker { input, msg } =
+renderDatePicker { input, msg, label, id, focused, onFocusMsg } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -468,25 +474,55 @@ renderDatePicker { input, msg } =
                 |> List.map List.reverse
                 |> List.reverse
     in
-    column [ width fill, spacing 10 ]
-        [ row [ spaceEvenly, width <| maximum maxCalendarWidth <| fill, centerX ]
-            [ Input.button [ width <| maximum maxButtonSize <| fill ] { label = box paleGrey (text "<"), onPress = Just (msg (PageChanged Date.Months -1)) }
+    column
+        [ width fill
+        , spacing 10
+        , padding 20
+        , width fill
+        , Events.onClick onFocusMsg
+        , Background.color
+            (if focused then
+                rgb255 220 255 220
+
+             else
+                rgb255 255 255 255
+            )
+        , Border.rounded 5
+        ]
+        [ el [ Font.size 18 ] (text (label |> Maybe.withDefault id))
+        , row [ spaceEvenly, width <| maximum maxCalendarWidth <| fill, centerX ]
+            [ Input.button
+                [ width <| maximum maxButtonSize <| fill
+                , Events.onFocus onFocusMsg
+                -- , Events.onLoseFocus onBlurMsg
+                ]
+                { label = box paleGrey (text "<")
+                , onPress = Just (msg (PageChanged Date.Months -1))
+                }
             , text (Date.format "MMM yyyy" input.page)
-            , Input.button [ width <| maximum maxButtonSize <| fill ] { label = box paleGrey (text ">"), onPress = Just (msg (PageChanged Date.Months 1)) }
+            , Input.button
+                [ width <| maximum maxButtonSize <| fill
+                , Events.onFocus onFocusMsg
+                -- , Events.onLoseFocus onBlurMsg
+                ]
+                { label = box paleGrey (text ">")
+                , onPress = Just (msg (PageChanged Date.Months 1))
+                }
             ]
         , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
         , column [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ]
             (List.map
                 (\w ->
                     row [ spacing 8, width fill ]
-                        (List.map (viewBlock msg input.selected) w)
+                        (List.map (viewBlock msg onFocusMsg input.selected) w)
                 )
                 weeks
             )
         ]
 
 
-viewBlock msg selected block =
+viewBlock : (DateDelta -> a) -> a ->  Maybe Date.Date -> CalendarBlock -> Element a
+viewBlock msg onFocusMsg selected block =
     let
         colour d =
             if Just d == selected then
@@ -501,7 +537,10 @@ viewBlock msg selected block =
 
         Day d ->
             Input.button
-                [ width <| maximum maxButtonSize <| fill ]
+                [ width <| maximum maxButtonSize <| fill
+                , Events.onFocus onFocusMsg
+                -- , Events.onLoseFocus onBlurMsg
+                ]
                 { label = box (colour d) (text <| String.fromInt <| Date.day d)
                 , onPress = Just (msg (DateSelected d))
                 }
