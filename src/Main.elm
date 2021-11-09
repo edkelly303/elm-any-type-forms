@@ -11,7 +11,7 @@ import Form
 
 type Page
     = Form
-    | Submitted { name : String, shoeSize : Float, dogCount : Int, dob : Date.Date }
+    | Submitted { name : String, shoeSize : Float, dogCount : Int, dob : Date.Date, time : Field.TimeState }
 
 
 myForm =
@@ -20,13 +20,26 @@ myForm =
         |> Form.withField (Field.float "What shoe size do you wear?" Set1)
         |> Form.withField (Field.int "How many dogs have you seen today?" Set2)
         |> Form.withField (Field.date "What is your date of birth?" Set3)
+        |> Form.withField (Field.time "What time is it?" Set4)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
 
 type alias Model =
     { page : Page
-    , form : Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State { page : Date, selected : Maybe Date }, () ) ) ) )
+    , form :
+        Form.State
+            ( Field.State String
+            , ( Field.State String
+              , ( Field.State String
+                , ( Field.State Field.DateState
+                  , ( Field.State Field.TimeState
+                    , ()
+                    )
+                  )
+                )
+              )
+            )
     }
 
 
@@ -42,6 +55,7 @@ type Msg
     | Set1 String
     | Set2 String
     | Set3 Field.DateDelta
+    | Set4 Field.TimeDelta
     | SubmitClicked
     | FormMsg Form.InternalMsg
 
@@ -73,10 +87,14 @@ update msg model =
             myForm.updateField (Form.i1 >> Form.i1 >> Form.i1) s model.form
                 |> wrap
 
+        Set4 s ->
+            myForm.updateField (Form.i1 >> Form.i1 >> Form.i1 >> Form.i1) s model.form
+                |> wrap
+
         SubmitClicked ->
             case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, ( date, () ) ) ) ) ->
-                    ( { model | page = Submitted { name = str, shoeSize = flt, dogCount = int, dob = date } }, Cmd.none )
+                Ok ( str, ( flt, ( int, ( date, ( time, () ) ) ) ) ) ->
+                    ( { model | page = Submitted { name = str, shoeSize = flt, dogCount = int, dob = date, time = time } }, Cmd.none )
 
                 Err newForm ->
                     ( { model | form = newForm }, Cmd.none )
@@ -88,7 +106,7 @@ view model =
             Form ->
                 myForm.view model.form
 
-            Submitted { name, shoeSize, dogCount, dob } ->
+            Submitted { name, shoeSize, dogCount, dob, time } ->
                 let
                     bold x =
                         el [ Element.Font.bold ] (text x)
@@ -118,6 +136,10 @@ view model =
                     , paragraph []
                         [ text "Your date of birth is "
                         , bold (Date.format "d MMMM yyyy" dob)
+                        , text " and the time is "
+                        , bold (String.fromInt time.hours |> String.padLeft 2 '0')
+                        , bold ":"
+                        , bold (String.fromInt time.minutes |> String.padLeft 2 '0')
                         ]
                     ]
 

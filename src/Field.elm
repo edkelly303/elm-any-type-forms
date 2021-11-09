@@ -1,8 +1,11 @@
 module Field exposing
     ( DateDelta
+    , DateState
     , Error(..)
     , Field(..)
     , State
+    , TimeDelta
+    , TimeState
     , custom
     , date
     , float
@@ -16,6 +19,7 @@ module Field exposing
     , stringMustBeLongerThan
     , stringMustBeShorterThan
     , stringMustNotContain
+    , time
     , withInitialState
     , withLabel
     , withRenderer
@@ -76,6 +80,7 @@ type Error
     | StringTooLong Int
     | StringMustNotContain String
     | NoDateSelected
+    | Custom String
 
 
 errorToString : Error -> String
@@ -110,6 +115,9 @@ errorToString e =
 
         NoDateSelected ->
             "No date selected"
+
+        Custom str ->
+            str
 
 
 
@@ -194,6 +202,11 @@ type DateDelta
     | DateSelected Date.Date
 
 
+type alias DateState =
+    { page : Date.Date, selected : Maybe Date.Date }
+
+
+date : String -> (DateDelta -> msg) -> Field DateState DateDelta Date.Date (Element msg) msg
 date id msg =
     custom
         { init = { page = Date.fromCalendarDate 2020 Time.Feb 1, selected = Nothing }
@@ -220,6 +233,40 @@ date id msg =
                         }
         , parser = \state -> Result.fromMaybe NoDateSelected state.selected
         , renderer = renderDatePicker
+        , id = id
+        }
+
+
+type alias TimeState =
+    { hours : Int, minutes : Int }
+
+
+type TimeDelta
+    = MinutesChanged Int
+    | HoursChanged Int
+
+
+time : String -> (TimeDelta -> msg) -> Field TimeState TimeDelta TimeState (Element msg) msg
+time id msg =
+    custom
+        { init = { hours = 12, minutes = 0 }
+        , msg = msg
+        , updater =
+            \delta state ->
+                case delta of
+                    HoursChanged diff ->
+                        { state | hours = state.hours + diff |> modBy 24 }
+
+                    MinutesChanged diff ->
+                        { state | minutes = state.minutes + diff |> modBy 60 }
+        , parser =
+            \state ->
+                if state.hours >= 0 && state.hours < 24 && state.minutes >= 0 && state.minutes < 60 then
+                    Ok state
+
+                else
+                    Err (Custom "")
+        , renderer = renderTimePicker
         , id = id
         }
 
@@ -359,10 +406,10 @@ renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, 
         , width fill
         , Background.color
             (if focused then
-                rgb255 220 255 220
+                focusedBlue
 
              else
-                rgb255 255 255 255
+                white
             )
         , Border.rounded 5
         , Events.onClick onFocusMsg
@@ -371,13 +418,13 @@ renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, 
             [ Background.color
                 (case ( touched, parsed, typing ) of
                     ( True, Ok _, False ) ->
-                        rgb255 100 255 100
+                        green
 
                     ( True, Err _, False ) ->
-                        rgb255 255 100 100
+                        red
 
                     _ ->
-                        rgb255 255 255 255
+                        white
                 )
             , htmlAttribute (Html.Attributes.id id)
             , Events.onFocus onFocusMsg
@@ -401,6 +448,21 @@ renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, 
             _ ->
                 none
         ]
+
+
+red : Color
+red =
+    rgb255 255 100 100
+
+
+green : Color
+green =
+    rgb255 100 255 100
+
+
+focusedBlue : Color
+focusedBlue =
+    rgb255 220 255 220
 
 
 type CalendarBlock
@@ -474,6 +536,15 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, 
                 |> Tuple.second
                 |> List.map List.reverse
                 |> List.reverse
+
+        button txt m =
+            Input.button
+                [ width <| px maxButtonSize
+                , Events.onFocus onFocusMsg
+                ]
+                { label = box transparent midGrey (text txt)
+                , onPress = Just (msg m)
+                }
     in
     column
         [ width fill
@@ -492,44 +563,12 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, 
         ]
         [ el [ Font.size 18 ] (text (label |> Maybe.withDefault id))
         , row [ spaceEvenly, width <| maximum maxCalendarWidth <| fill, centerX ]
-            [ Input.button
-                [ width <| maximum maxButtonSize <| fill
-                , Events.onFocus onFocusMsg
-
-                -- , Events.onLoseFocus onBlurMsg
-                ]
-                { label = box paleGrey (text "<")
-                , onPress = Just (msg (PageChanged Date.Months -1))
-                }
+            [ button "<" (PageChanged Date.Months -1)
             , text (Date.format "MMM" input.page)
-            , Input.button
-                [ width <| maximum maxButtonSize <| fill
-                , Events.onFocus onFocusMsg
-
-                -- , Events.onLoseFocus onBlurMsg
-                ]
-                { label = box paleGrey (text ">")
-                , onPress = Just (msg (PageChanged Date.Months 1))
-                }
-            , Input.button
-                [ width <| maximum maxButtonSize <| fill
-                , Events.onFocus onFocusMsg
-
-                -- , Events.onLoseFocus onBlurMsg
-                ]
-                { label = box paleGrey (text "<")
-                , onPress = Just (msg (PageChanged Date.Years -1))
-                }
+            , button ">" (PageChanged Date.Months 1)
+            , button "<" (PageChanged Date.Years -1)
             , text (Date.format "yyyy" input.page)
-            , Input.button
-                [ width <| maximum maxButtonSize <| fill
-                , Events.onFocus onFocusMsg
-
-                -- , Events.onLoseFocus onBlurMsg
-                ]
-                { label = box paleGrey (text ">")
-                , onPress = Just (msg (PageChanged Date.Years 1))
-                }
+            , button ">" (PageChanged Date.Years 1)
             ]
         , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
         , column [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ]
@@ -554,23 +593,27 @@ viewBlock msg onFocusMsg selected block =
     let
         colour d =
             if Just d == selected then
-                midGrey
+                { bg = green, bd = midGrey }
 
             else
-                paleGrey
+                { bg = transparent, bd = midGrey }
     in
     case block of
         Blank ->
-            box transparent none
+            box transparent transparent none
 
         Day d ->
+            let
+                { bg, bd } =
+                    colour d
+            in
             Input.button
                 [ width <| maximum maxButtonSize <| fill
                 , Events.onFocus onFocusMsg
 
                 -- , Events.onLoseFocus onBlurMsg
                 ]
-                { label = box (colour d) (text <| String.fromInt <| Date.day d)
+                { label = box bg bd (text <| String.fromInt <| Date.day d)
                 , onPress = Just (msg (DateSelected d))
                 }
 
@@ -600,6 +643,11 @@ paleGrey =
     rgb255 225 225 225
 
 
+white : Color
+white =
+    rgb255 255 255 255
+
+
 transparent : Color
 transparent =
     rgba255 255 255 255 0
@@ -607,23 +655,88 @@ transparent =
 
 headerRow : List (Element msg)
 headerRow =
-    [ box transparent (text "Mo")
-    , box transparent (text "Tu")
-    , box transparent (text "We")
-    , box transparent (text "Th")
-    , box transparent (text "Fr")
-    , box transparent (text "Sa")
-    , box transparent (text "Su")
+    [ box transparent transparent (text "Mo")
+    , box transparent transparent (text "Tu")
+    , box transparent transparent (text "We")
+    , box transparent transparent (text "Th")
+    , box transparent transparent (text "Fr")
+    , box transparent transparent (text "Sa")
+    , box transparent transparent (text "Su")
     ]
 
 
-box : Color -> Element msg -> Element msg
-box colour content =
+box : Color -> Color -> Element msg -> Element msg
+box bgColour borderColour content =
     el
-        [ width <| maximum maxButtonSize <| fill
+        [ width <| px maxButtonSize
         , height <| px maxButtonSize
-        , Background.color colour
+        , Background.color bgColour
         , alignLeft
-        , Border.rounded 5
+        , Border.color borderColour
+        , Border.width 1
+        , Border.rounded 3
         ]
         (el [ centerX, centerY ] content)
+
+
+renderTimePicker { input, id, label, msg, onFocusMsg, focused } =
+    let
+        button txt m =
+            Input.button
+                [ width <| px 40
+                , height <| px 40
+                , Border.rounded 3
+                , Border.width 1
+                , Border.color midGrey
+                ]
+                { label = text txt, onPress = Just (msg m) }
+
+        hours =
+            String.fromInt input.hours
+                |> String.padLeft 2 '0'
+                |> String.split ""
+                |> List.map (\x -> el [ width <| px 40 ] <| text x)
+
+        minutes =
+            String.fromInt input.minutes
+                |> String.padLeft 2 '0'
+                |> String.split ""
+                |> List.map (\x -> el [ width <| px 40 ] <| text x)
+    in
+    column
+        [ width fill
+        , spacing 10
+        , padding 20
+        , width fill
+        , Events.onClick onFocusMsg
+        , Background.color
+            (if focused then
+                focusedBlue
+
+             else
+                white
+            )
+        , Border.rounded 5
+        , Font.center
+        ]
+        [ text (Maybe.withDefault id label)
+        , row [ spacing 5, centerX ]
+            [ button "+" (HoursChanged 10)
+            , button "+" (HoursChanged 1)
+            , el [ width <| px 40 ] none
+            , button "+" (MinutesChanged 10)
+            , button "+" (MinutesChanged 1)
+            ]
+        , row [ spacing 5, centerX ]
+            (hours
+                ++ [ el [ width <| px 40 ] <| text ":" ]
+                ++ minutes
+            )
+        , row [ spacing 5, centerX ]
+            [ button "-" (HoursChanged -10)
+            , button "-" (HoursChanged -1)
+            , el [ width <| px 40 ] none
+            , button "-" (MinutesChanged -10)
+            , button "-" (MinutesChanged -1)
+            ]
+        ]
