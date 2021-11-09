@@ -3,21 +3,23 @@ module Main exposing (main)
 import Browser
 import Date exposing (Date)
 import Element exposing (..)
+import Element.Border
+import Element.Font
 import Field
 import Form
 
 
 type Page
     = Form
-    | Submitted { name : String, number : Float, smarties : Int }
+    | Submitted { name : String, shoeSize : Float, dogCount : Int, dob : Date.Date }
 
 
 myForm =
     Form.form FormMsg
         |> Form.withField (Field.string "What is your name?" Set0)
-        |> Form.withField (Field.float "What is your favourite non-whole number?" Set1)
-        |> Form.withField (Field.int "How many smarties can you eat?" Set2)
-        |> Form.withField (Field.date "When is your birthday?" Set3)
+        |> Form.withField (Field.float "What shoe size do you wear?" Set1)
+        |> Form.withField (Field.int "How many dogs have you seen today?" Set2)
+        |> Form.withField (Field.date "What is your date of birth?" Set3)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
@@ -74,7 +76,7 @@ update msg model =
         SubmitClicked ->
             case myForm.submit model.form of
                 Ok ( str, ( flt, ( int, ( date, () ) ) ) ) ->
-                    ( { model | page = Submitted { name = str, number = flt, smarties = int } }, Cmd.none )
+                    ( { model | page = Submitted { name = str, shoeSize = flt, dogCount = int, dob = date } }, Cmd.none )
 
                 Err newForm ->
                     ( { model | form = newForm }, Cmd.none )
@@ -86,16 +88,37 @@ view model =
             Form ->
                 myForm.view model.form
 
-            Submitted { name, number, smarties } ->
-                column []
+            Submitted { name, shoeSize, dogCount, dob } ->
+                let
+                    bold x =
+                        el [ Element.Font.bold ] (text x)
+                in
+                column
+                    [ centerX
+                    , centerY
+                    , width <| px 300
+                    , Element.Border.width 1
+                    , Element.Border.rounded 5
+                    , padding 20
+                    , spacing 10
+                    ]
                     [ text "Form submitted!"
-                    , text <| "Hello " ++ name ++ "!"
-                    , text <|
-                        "Your favourite non-whole number is "
-                            ++ String.fromFloat number
-                            ++ " and you can eat "
-                            ++ String.fromInt smarties
-                            ++ " smarties."
+                    , paragraph []
+                        [ text "Hello "
+                        , bold name
+                        , text "!"
+                        ]
+                    , paragraph []
+                        [ text "You wear size "
+                        , bold (String.fromFloat shoeSize)
+                        , text " shoes, and you have seen "
+                        , bold (String.fromInt dogCount)
+                        , text " dogs today."
+                        ]
+                    , paragraph []
+                        [ text "Your date of birth is "
+                        , bold (Date.format "d MMMM yyyy" dob)
+                        ]
                     ]
 
 
