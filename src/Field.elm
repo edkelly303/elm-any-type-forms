@@ -561,7 +561,7 @@ viewBlock msg onFocusMsg selected block =
     in
     case block of
         Blank ->
-            box white none
+            box transparent none
 
         Day d ->
             Input.button
@@ -590,11 +590,6 @@ buttonSpacing =
     8
 
 
-white : Color
-white =
-    rgb255 255 255 255
-
-
 midGrey : Color
 midGrey =
     rgb255 150 150 150
@@ -605,15 +600,20 @@ paleGrey =
     rgb255 225 225 225
 
 
+transparent : Color
+transparent =
+    rgba255 255 255 255 0
+
+
 headerRow : List (Element msg)
 headerRow =
-    [ box white (text "Mo")
-    , box white (text "Tu")
-    , box white (text "We")
-    , box white (text "Th")
-    , box white (text "Fr")
-    , box white (text "Sa")
-    , box white (text "Su")
+    [ box transparent (text "Mo")
+    , box transparent (text "Tu")
+    , box transparent (text "We")
+    , box transparent (text "Th")
+    , box transparent (text "Fr")
+    , box transparent (text "Sa")
+    , box transparent (text "Su")
     ]
 
 
