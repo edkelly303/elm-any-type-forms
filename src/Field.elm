@@ -64,7 +64,7 @@ type Field input delta output element msg
             -> element
         , id : String
         , label : Maybe String
-        , timeoutCmd : input -> Cmd msg
+        , loadCmd : input -> Cmd msg
         }
 
 
@@ -147,10 +147,10 @@ custom :
             }
             -> element
         , id : String
-        , timeoutCmd : input -> Cmd msg
+        , loadCmd : input -> Cmd msg
     }
     -> Field input delta output element msg
-custom { init, deltaMsg, updater, parser, renderer, id, timeoutCmd } =
+custom { init, deltaMsg, updater, parser, renderer, id, loadCmd } =
     Field
         { index = 0
         , init = init
@@ -161,7 +161,7 @@ custom { init, deltaMsg, updater, parser, renderer, id, timeoutCmd } =
         , renderer = renderer
         , id = id
         , label = Nothing
-        , timeoutCmd = timeoutCmd
+        , loadCmd = loadCmd
         }
 
 
@@ -174,7 +174,7 @@ string id msg =
         , parser = Ok
         , renderer = renderTextField
         , id = id
-        , timeoutCmd = always Cmd.none
+        , loadCmd = always Cmd.none
         }
 
 
@@ -187,7 +187,7 @@ float id msg =
         , parser = String.toFloat >> Result.fromMaybe NotValidFloat
         , renderer = renderTextField
         , id = id
-        , timeoutCmd = always Cmd.none
+        , loadCmd = always Cmd.none
         }
 
 
@@ -200,7 +200,7 @@ int id msg =
         , parser = String.toInt >> Result.fromMaybe NotValidInt
         , renderer = renderTextField
         , id = id
-        , timeoutCmd = always Cmd.none
+        , loadCmd = always Cmd.none
         }
 
 
@@ -241,7 +241,7 @@ date id msg =
         , parser = \state -> Result.fromMaybe NoDateSelected state.selected
         , renderer = renderDatePicker
         , id = id
-        , timeoutCmd = always Cmd.none
+        , loadCmd = always Cmd.none
         }
 
 
@@ -276,7 +276,7 @@ time id msg =
                     Err (Custom "")
         , renderer = renderTimePicker
         , id = id
-        , timeoutCmd = always Cmd.none
+        , loadCmd = always Cmd.none
         }
 
 
@@ -297,9 +297,9 @@ search :
     String
     -> (SearchDelta a -> msg)
     -> (a -> String)
-    -> ((List a -> msg) -> SearchState a -> Cmd msg)
+    -> (SearchState a -> Cmd (List a))
     -> Field (SearchState a) (SearchDelta a) a (Element msg) msg
-search id msg toString timeoutCmd =
+search id msg toString loadCmd =
     custom
         { init = { search = "", options = [], selected = Nothing }
         , deltaMsg = msg
@@ -317,7 +317,7 @@ search id msg toString timeoutCmd =
         , parser = \state -> Result.fromMaybe (Custom "Must select something") state.selected
         , renderer = renderSearchField toString
         , id = id
-        , timeoutCmd = timeoutCmd (ResultsLoaded >> msg)
+        , loadCmd = loadCmd >> Cmd.map (ResultsLoaded >> msg)
         }
 
 
@@ -372,7 +372,7 @@ withRenderer r (Field f) =
         , renderer = r
         , id = f.id
         , label = f.label
-        , timeoutCmd = f.timeoutCmd
+        , loadCmd = f.loadCmd
         }
 
 
@@ -464,21 +464,8 @@ renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, i
         , Events.onClick focusMsg
         ]
         [ Input.text
-            [ Background.color
-                (case ( touched, parsed, typing ) of
-                    ( True, Ok _, False ) ->
-                        green
-
-                    ( True, Err _, False ) ->
-                        red
-
-                    _ ->
-                        white
-                )
-            , htmlAttribute (Html.Attributes.id id)
+            [ htmlAttribute (Html.Attributes.id id)
             , Events.onFocus focusMsg
-
-            -- , Events.onLoseFocus onBlurMsg
             ]
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
@@ -490,12 +477,7 @@ renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, i
 
           else
             none
-        , case ( touched, parsed, typing ) of
-            ( True, Err errs, False ) ->
-                column [ Font.size 12, spacing 5 ] (List.map (errorToString >> text) errs)
-
-            _ ->
-                none
+        , viewErrors touched parsed typing
         ]
 
 
@@ -627,12 +609,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
                 )
                 weeks
             )
-        , case ( touched, parsed, typing ) of
-            ( True, Err errs, False ) ->
-                column [ Font.size 12, spacing 5 ] (List.map (errorToString >> text) errs)
-
-            _ ->
-                none
+        , viewErrors touched parsed typing
         ]
 
 
@@ -797,7 +774,7 @@ renderSearchField :
         , label : Maybe String
         }
     -> Element msg
-renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg, focused } =
+renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg, focused, touched, parsed, typing } =
     column
         [ spacing 10
         , padding 20
@@ -842,4 +819,15 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
                         }
                 )
                 input.options
+        , viewErrors touched parsed typing
         ]
+
+
+viewErrors : Bool -> Result (List Error) output -> Bool -> Element msg
+viewErrors touched parsed typing =
+    case ( touched, parsed, typing ) of
+        ( True, Err errs, False ) ->
+            column [ Font.size 12, spacing 5, Font.color (rgb255 220 0 150) ] (List.map (errorToString >> text) errs)
+
+        _ ->
+            none

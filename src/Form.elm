@@ -398,7 +398,7 @@ collectCmds fieldIndex size form_ state_ =
 collectCmdSize1 : (Int -> ( Cmd msg, b, a ) -> c) -> Int -> ( Cmd msg, ( Field d delta output element msg, b ), ( { e | input : d }, a ) ) -> c
 collectCmdSize1 next fieldIndex ( currentCmd, ( Field field, restFields ), ( { input }, restFieldStates ) ) =
     if fieldIndex == field.index then
-        next fieldIndex ( field.timeoutCmd input, restFields, restFieldStates )
+        next fieldIndex ( field.loadCmd input, restFields, restFieldStates )
 
     else
         next fieldIndex ( currentCmd, restFields, restFieldStates )

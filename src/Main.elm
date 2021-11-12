@@ -26,18 +26,21 @@ type Page
 
 myForm =
     Form.form FormMsg
-        |> Form.withField (Field.string "What is your name?" Set0)
+        |> Form.withField
+            (Field.string "What is your name?" Set0
+                |> Field.withValidator (Field.stringMustBeLongerThan 0)
+            )
         |> Form.withField (Field.float "What shoe size do you wear?" Set1)
         |> Form.withField (Field.int "How many dogs have you seen today?" Set2)
         |> Form.withField (Field.date "What is your date of birth?" Set3)
         |> Form.withField (Field.time "What time is it?" Set4)
-        |> Form.withField (Field.search "Who is your favourite Star Wars character?" Set5 identity timeoutCmd)
+        |> Form.withField (Field.search "Who is your favourite Star Wars character?" Set5 identity getStarWarsNames)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
 
-timeoutCmd : (List String -> msg) -> { field | search : String } -> Cmd msg
-timeoutCmd toMsg { search } =
+getStarWarsNames : { input | search : String } -> Cmd (List String)
+getStarWarsNames { search } =
     Http.get
         { url = "https://swapi.dev/api/people?search=" ++ search
         , expect =
@@ -45,10 +48,10 @@ timeoutCmd toMsg { search } =
                 (\res ->
                     case res of
                         Ok list ->
-                            toMsg list
+                            list
 
                         Err _ ->
-                            toMsg []
+                            []
                 )
                 starWarsDecoder
         }
