@@ -222,7 +222,7 @@ type alias DateState =
 date : String -> (DateDelta -> msg) -> Field DateState DateDelta Date.Date (Element msg) msg
 date id msg =
     custom
-        { init = { page = Date.fromCalendarDate 2020 Time.Feb 1, selected = Nothing }
+        { init = { page = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
         , deltaMsg = msg
         , updater =
             \delta state ->

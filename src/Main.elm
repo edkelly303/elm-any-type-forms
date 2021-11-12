@@ -71,7 +71,7 @@ myForm =
         |> Form.withField (Field.string "What is your name?" Field0Changed |> Field.withValidator (Field.stringMustBeLongerThan 0))
         |> Form.withField (Field.float "What shoe size do you wear?" Field1Changed)
         |> Form.withField (Field.int "How many dogs have you seen today?" Field2Changed)
-        |> Form.withField (Field.date "What is your date of birth?" Field3Changed)
+        |> Form.withField (Field.date "What is today's date?" Field3Changed)
         |> Form.withField (Field.time "What time is it?" Field4Changed)
         |> Form.withField (Field.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames)
         |> Form.withSubmit SubmitClicked
@@ -203,7 +203,7 @@ submittedView name shoeSize dogCount dob time favouriteCharacter =
             , text " dogs today."
             ]
         , paragraph []
-            [ text "Your date of birth is "
+            [ text "Today's date is "
             , bold (Date.format "ddd MMMM yyyy" dob)
             , text ", and the time is currently "
             , bold (String.fromInt time.hours |> String.padLeft 2 '0')
