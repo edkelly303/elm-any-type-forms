@@ -9,6 +9,15 @@ module Form exposing
     , form
     , i0
     , i1
+    , i10
+    , i2
+    , i3
+    , i4
+    , i5
+    , i6
+    , i7
+    , i8
+    , i9
     , withField
     , withRenderer
     , withSubmit
@@ -38,7 +47,14 @@ type State state msg
 
 
 type alias InternalState msg =
-    { fields : Dict.Dict Int { touched : Bool, lastTouched : Maybe Time.Posix, cmd : Cmd msg }
+    { fields :
+        Dict.Dict
+            Int
+            { touched : Bool
+            , lastTouched : Maybe Time.Posix
+            , cmd : Cmd msg
+            , typingTimeout : Float
+            }
     , focused : Maybe Int
     }
 
@@ -147,6 +163,7 @@ withField (Field fld) (Builder bdr) =
                         { touched = False
                         , lastTouched = Nothing
                         , cmd = Cmd.none
+                        , typingTimeout = fld.typingTimeout
                         }
                         formState.fields
             }
@@ -249,6 +266,42 @@ i1 =
     compose ( selectField1, countField1 )
 
 
+i2 =
+    i1 >> i1
+
+
+i3 =
+    i2 >> i1
+
+
+i4 =
+    i3 >> i1
+
+
+i5 =
+    i4 >> i1
+
+
+i6 =
+    i5 >> i1
+
+
+i7 =
+    i6 >> i1
+
+
+i8 =
+    i7 >> i1
+
+
+i9 =
+    i8 >> i1
+
+
+i10 =
+    i9 >> i1
+
+
 compose : ( a -> b, c -> d ) -> ( b -> e, d -> f ) -> ( a -> e, c -> f )
 compose ( a, b ) ( a1, b1 ) =
     ( a >> a1, b >> b1 )
@@ -278,9 +331,14 @@ updateForm formMsg msg (State internalState state) =
                     )
 
                 TypingDetected f time ->
-                    ( { internalState | fields = Dict.update f (Maybe.map (\s -> { s | lastTouched = Just time })) internalState.fields }
-                    , Task.perform (\() -> formMsg <| TypingTimedOut f time) (Process.sleep 500)
-                    )
+                    Maybe.map
+                        (\field ->
+                            ( { internalState | fields = Dict.insert f { field | lastTouched = Just time } internalState.fields }
+                            , Task.perform (\() -> formMsg <| TypingTimedOut f time) (Process.sleep field.typingTimeout)
+                            )
+                        )
+                        (Dict.get f internalState.fields)
+                        |> Maybe.withDefault ( internalState, Cmd.none )
 
                 TypingTimedOut f time ->
                     Dict.get f internalState.fields
@@ -288,7 +346,7 @@ updateForm formMsg msg (State internalState state) =
                             (\s ->
                                 if s.lastTouched == Just time then
                                     ( { internalState | fields = Dict.insert f { s | lastTouched = Nothing } internalState.fields }
-                                    , Cmd.none -- s.cmd
+                                    , s.cmd
                                     )
 
                                 else
@@ -335,7 +393,11 @@ updateField collectCmdsSize formMsg (Form form_) index delta (State internalStat
             }
     in
     ( State newInternalState newFieldStates
-    , Task.perform (formMsg << TypingDetected indexOfUpdatedField) Time.now
+    , if newFieldStates == fieldStates then
+        Cmd.none
+
+      else
+        Task.perform (formMsg << TypingDetected indexOfUpdatedField) Time.now
     )
 
 

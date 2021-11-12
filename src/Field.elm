@@ -65,6 +65,7 @@ type Field input delta output element msg
         , id : String
         , label : Maybe String
         , loadCmd : input -> Cmd msg
+        , typingTimeout : Float
         }
 
 
@@ -148,9 +149,10 @@ custom :
             -> element
         , id : String
         , loadCmd : input -> Cmd msg
+        , typingTimeout : Float
     }
     -> Field input delta output element msg
-custom { init, deltaMsg, updater, parser, renderer, id, loadCmd } =
+custom { init, deltaMsg, updater, parser, renderer, id, loadCmd, typingTimeout } =
     Field
         { index = 0
         , init = init
@@ -162,6 +164,7 @@ custom { init, deltaMsg, updater, parser, renderer, id, loadCmd } =
         , id = id
         , label = Nothing
         , loadCmd = loadCmd
+        , typingTimeout = typingTimeout
         }
 
 
@@ -175,6 +178,7 @@ string id msg =
         , renderer = renderTextField
         , id = id
         , loadCmd = always Cmd.none
+        , typingTimeout = 500
         }
 
 
@@ -188,6 +192,7 @@ float id msg =
         , renderer = renderTextField
         , id = id
         , loadCmd = always Cmd.none
+        , typingTimeout = 500
         }
 
 
@@ -201,6 +206,7 @@ int id msg =
         , renderer = renderTextField
         , id = id
         , loadCmd = always Cmd.none
+        , typingTimeout = 500
         }
 
 
@@ -242,6 +248,7 @@ date id msg =
         , renderer = renderDatePicker
         , id = id
         , loadCmd = always Cmd.none
+        , typingTimeout = 500
         }
 
 
@@ -277,6 +284,7 @@ time id msg =
         , renderer = renderTimePicker
         , id = id
         , loadCmd = always Cmd.none
+        , typingTimeout = 500
         }
 
 
@@ -318,6 +326,7 @@ search id msg toString loadCmd =
         , renderer = renderSearchField toString
         , id = id
         , loadCmd = loadCmd >> Cmd.map (ResultsLoaded >> msg)
+        , typingTimeout = 1000
         }
 
 
@@ -373,6 +382,7 @@ withRenderer r (Field f) =
         , id = f.id
         , label = f.label
         , loadCmd = f.loadCmd
+        , typingTimeout = f.typingTimeout
         }
 
 
@@ -635,8 +645,6 @@ viewBlock msg focusMsg selected block =
             Input.button
                 [ width <| maximum maxButtonSize <| fill
                 , Events.onFocus focusMsg
-
-                -- , Events.onLoseFocus onBlurMsg
                 ]
                 { label = box bg bd (text <| String.fromInt <| Date.day d)
                 , onPress = Just (msg (DateSelected d))
@@ -797,6 +805,11 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
                 }
             , Input.button [ padding 10, Border.width 1, Border.rounded 3, Border.color midGrey ] { label = text "search", onPress = Just requestCmdMsg }
             ]
+        , if typing then
+            text "..."
+
+          else
+            none
         , column [ spacing 10, width fill ] <|
             List.map
                 (\item ->
