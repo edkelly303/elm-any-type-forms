@@ -18,14 +18,14 @@ import Json.Decode as JSD
 
 
 type Msg
-    = Set0 String
-    | Set1 String
-    | Set2 String
-    | Set3 Field.DateDelta
-    | Set4 Field.TimeDelta
-    | Set5 (Field.SearchDelta String)
+    = Field0Changed String
+    | Field1Changed String
+    | Field2Changed String
+    | Field3Changed Field.DateDelta
+    | Field4Changed Field.TimeDelta
+    | Field5Changed (Field.SearchDelta String)
     | SubmitClicked
-    | FormMsg Form.InternalMsg
+    | FormChanged Form.InternalMsg
     | BackClicked
 
 
@@ -67,16 +67,13 @@ type Page
 
 
 myForm =
-    Form.form FormMsg
-        |> Form.withField
-            (Field.string "What is your name?" Set0
-                |> Field.withValidator (Field.stringMustBeLongerThan 0)
-            )
-        |> Form.withField (Field.float "What shoe size do you wear?" Set1)
-        |> Form.withField (Field.int "How many dogs have you seen today?" Set2)
-        |> Form.withField (Field.date "What is your date of birth?" Set3)
-        |> Form.withField (Field.time "What time is it?" Set4)
-        |> Form.withField (Field.search "Who is your favourite Star Wars character?" Set5 identity getStarWarsNames)
+    Form.form FormChanged
+        |> Form.withField (Field.string "What is your name?" Field0Changed |> Field.withValidator (Field.stringMustBeLongerThan 0))
+        |> Form.withField (Field.float "What shoe size do you wear?" Field1Changed)
+        |> Form.withField (Field.int "How many dogs have you seen today?" Field2Changed)
+        |> Form.withField (Field.date "What is your date of birth?" Field3Changed)
+        |> Form.withField (Field.time "What time is it?" Field4Changed)
+        |> Form.withField (Field.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
@@ -95,31 +92,31 @@ update msg model =
             Tuple.mapFirst (\form -> { model | form = form })
     in
     case msg of
-        FormMsg formMsg ->
+        FormChanged formMsg ->
             myForm.update formMsg model.form
                 |> wrap
 
-        Set0 s ->
+        Field0Changed s ->
             myForm.updateField Form.i0 s model.form
                 |> wrap
 
-        Set1 s ->
+        Field1Changed s ->
             myForm.updateField Form.i1 s model.form
                 |> wrap
 
-        Set2 s ->
+        Field2Changed s ->
             myForm.updateField Form.i2 s model.form
                 |> wrap
 
-        Set3 s ->
+        Field3Changed s ->
             myForm.updateField Form.i3 s model.form
                 |> wrap
 
-        Set4 s ->
+        Field4Changed s ->
             myForm.updateField Form.i4 s model.form
                 |> wrap
 
-        Set5 s ->
+        Field5Changed s ->
             myForm.updateField Form.i5 s model.form
                 |> wrap
 
