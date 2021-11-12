@@ -96,28 +96,28 @@ update msg model =
             myForm.update formMsg model.form
                 |> wrap
 
-        Field0Changed s ->
-            myForm.updateField Form.i0 s model.form
+        Field0Changed delta ->
+            myForm.updateField Form.i0 delta model.form
                 |> wrap
 
-        Field1Changed s ->
-            myForm.updateField Form.i1 s model.form
+        Field1Changed delta ->
+            myForm.updateField Form.i1 delta model.form
                 |> wrap
 
-        Field2Changed s ->
-            myForm.updateField Form.i2 s model.form
+        Field2Changed delta ->
+            myForm.updateField Form.i2 delta model.form
                 |> wrap
 
-        Field3Changed s ->
-            myForm.updateField Form.i3 s model.form
+        Field3Changed delta ->
+            myForm.updateField Form.i3 delta model.form
                 |> wrap
 
-        Field4Changed s ->
-            myForm.updateField Form.i4 s model.form
+        Field4Changed delta ->
+            myForm.updateField Form.i4 delta model.form
                 |> wrap
 
-        Field5Changed s ->
-            myForm.updateField Form.i5 s model.form
+        Field5Changed delta ->
+            myForm.updateField Form.i5 delta model.form
                 |> wrap
 
         SubmitClicked ->
