@@ -3,6 +3,8 @@ module Field exposing
     , DateState
     , Error(..)
     , Field(..)
+    , SearchDelta(..)
+    , SearchState
     , State
     , TimeDelta
     , TimeState
@@ -15,6 +17,7 @@ module Field exposing
     , int
     , intMustBeGreaterThan
     , intMustBeLessThan
+    , search
     , string
     , stringMustBeLongerThan
     , stringMustBeShorterThan
@@ -42,7 +45,7 @@ type Field input delta output element msg
     = Field
         { index : Int
         , init : input
-        , msg : delta -> msg
+        , deltaMsg : delta -> msg
         , updater : delta -> input -> input
         , parser : input -> Result Error output
         , validators : List (output -> Maybe Error)
@@ -51,10 +54,9 @@ type Field input delta output element msg
             , touched : Bool
             , focused : Bool
             , typing : Bool
-
-            -- , onBlurMsg : msg
-            , onFocusMsg : msg
-            , msg : delta -> msg
+            , deltaMsg : delta -> msg
+            , focusMsg : msg
+            , requestCmdMsg : msg
             , parsed : Result (List Error) output
             , label : Maybe String
             , id : String
@@ -62,6 +64,7 @@ type Field input delta output element msg
             -> element
         , id : String
         , label : Maybe String
+        , timeoutCmd : input -> Cmd msg
         }
 
 
@@ -127,7 +130,7 @@ errorToString e =
 custom :
     { a
         | init : input
-        , msg : delta -> msg
+        , deltaMsg : delta -> msg
         , updater : delta -> input -> input
         , parser : input -> Result Error output
         , renderer :
@@ -135,29 +138,30 @@ custom :
             , touched : Bool
             , focused : Bool
             , typing : Bool
-
-            -- , onBlurMsg : msg
-            , onFocusMsg : msg
-            , msg : delta -> msg
+            , requestCmdMsg : msg
+            , focusMsg : msg
+            , deltaMsg : delta -> msg
             , parsed : Result (List Error) output
             , label : Maybe String
             , id : String
             }
             -> element
         , id : String
+        , timeoutCmd : input -> Cmd msg
     }
     -> Field input delta output element msg
-custom { init, msg, updater, parser, renderer, id } =
+custom { init, deltaMsg, updater, parser, renderer, id, timeoutCmd } =
     Field
         { index = 0
         , init = init
-        , msg = msg
+        , deltaMsg = deltaMsg
         , updater = updater
         , parser = parser
         , validators = []
         , renderer = renderer
         , id = id
         , label = Nothing
+        , timeoutCmd = timeoutCmd
         }
 
 
@@ -165,11 +169,12 @@ string : String -> (String -> msg) -> Field String String String (Element msg) m
 string id msg =
     custom
         { init = ""
-        , msg = msg
+        , deltaMsg = msg
         , updater = \delta _ -> delta
         , parser = Ok
         , renderer = renderTextField
         , id = id
+        , timeoutCmd = always Cmd.none
         }
 
 
@@ -177,11 +182,12 @@ float : String -> (String -> msg) -> Field String String Float (Element msg) msg
 float id msg =
     custom
         { init = ""
-        , msg = msg
+        , deltaMsg = msg
         , updater = \delta _ -> delta
         , parser = String.toFloat >> Result.fromMaybe NotValidFloat
         , renderer = renderTextField
         , id = id
+        , timeoutCmd = always Cmd.none
         }
 
 
@@ -189,11 +195,12 @@ int : String -> (String -> msg) -> Field String String Int (Element msg) msg
 int id msg =
     custom
         { init = ""
-        , msg = msg
+        , deltaMsg = msg
         , updater = \delta _ -> delta
         , parser = String.toInt >> Result.fromMaybe NotValidInt
         , renderer = renderTextField
         , id = id
+        , timeoutCmd = always Cmd.none
         }
 
 
@@ -210,7 +217,7 @@ date : String -> (DateDelta -> msg) -> Field DateState DateDelta Date.Date (Elem
 date id msg =
     custom
         { init = { page = Date.fromCalendarDate 2020 Time.Feb 1, selected = Nothing }
-        , msg = msg
+        , deltaMsg = msg
         , updater =
             \delta state ->
                 case delta of
@@ -234,6 +241,7 @@ date id msg =
         , parser = \state -> Result.fromMaybe NoDateSelected state.selected
         , renderer = renderDatePicker
         , id = id
+        , timeoutCmd = always Cmd.none
         }
 
 
@@ -250,7 +258,7 @@ time : String -> (TimeDelta -> msg) -> Field TimeState TimeDelta TimeState (Elem
 time id msg =
     custom
         { init = { hours = 12, minutes = 0 }
-        , msg = msg
+        , deltaMsg = msg
         , updater =
             \delta state ->
                 case delta of
@@ -268,6 +276,48 @@ time id msg =
                     Err (Custom "")
         , renderer = renderTimePicker
         , id = id
+        , timeoutCmd = always Cmd.none
+        }
+
+
+type SearchDelta a
+    = SearchChanged String
+    | ResultsLoaded (List a)
+    | ResultSelected a
+
+
+type alias SearchState a =
+    { search : String
+    , options : List a
+    , selected : Maybe a
+    }
+
+
+search :
+    String
+    -> (SearchDelta a -> msg)
+    -> (a -> String)
+    -> ((List a -> msg) -> SearchState a -> Cmd msg)
+    -> Field (SearchState a) (SearchDelta a) a (Element msg) msg
+search id msg toString timeoutCmd =
+    custom
+        { init = { search = "", options = [], selected = Nothing }
+        , deltaMsg = msg
+        , updater =
+            \delta state ->
+                case delta of
+                    SearchChanged s ->
+                        { state | search = s }
+
+                    ResultsLoaded l ->
+                        { state | options = l }
+
+                    ResultSelected r ->
+                        { state | selected = Just r }
+        , parser = \state -> Result.fromMaybe (Custom "Must select something") state.selected
+        , renderer = renderSearchField toString
+        , id = id
+        , timeoutCmd = timeoutCmd (ResultsLoaded >> msg)
         }
 
 
@@ -300,10 +350,9 @@ withRenderer :
      , touched : Bool
      , focused : Bool
      , typing : Bool
-
-     --  , onBlurMsg : msg
-     , onFocusMsg : msg
-     , msg : delta -> msg
+     , requestCmdMsg : msg
+     , focusMsg : msg
+     , deltaMsg : delta -> msg
      , parsed : Result (List Error) output
      , label : Maybe String
      , id : String
@@ -316,13 +365,14 @@ withRenderer r (Field f) =
     Field
         { index = f.index
         , init = f.init
-        , msg = f.msg
+        , deltaMsg = f.deltaMsg
         , updater = f.updater
         , parser = f.parser
         , validators = f.validators
         , renderer = r
         , id = f.id
         , label = f.label
+        , timeoutCmd = f.timeoutCmd
         }
 
 
@@ -386,20 +436,19 @@ floatMustBeLessThan tooHigh float_ =
 
 
 renderTextField :
-    { onFocusMsg : msg
-
-    -- , onBlurMsg : msg
+    { focusMsg : msg
+    , requestCmdMsg : msg
+    , deltaMsg : String -> msg
     , input : String
     , touched : Bool
     , focused : Bool
     , typing : Bool
-    , msg : String -> msg
     , parsed : Result (List Error) output
     , id : String
     , label : Maybe String
     }
     -> Element msg
-renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, label } =
+renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -412,7 +461,7 @@ renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, 
                 white
             )
         , Border.rounded 5
-        , Events.onClick onFocusMsg
+        , Events.onClick focusMsg
         ]
         [ Input.text
             [ Background.color
@@ -427,14 +476,14 @@ renderTextField { input, touched, typing, onFocusMsg, focused, msg, parsed, id, 
                         white
                 )
             , htmlAttribute (Html.Attributes.id id)
-            , Events.onFocus onFocusMsg
+            , Events.onFocus focusMsg
 
             -- , Events.onLoseFocus onBlurMsg
             ]
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
             , placeholder = Nothing
-            , onChange = msg
+            , onChange = deltaMsg
             }
         , if typing then
             text "..."
@@ -471,20 +520,19 @@ type CalendarBlock
 
 
 renderDatePicker :
-    { onFocusMsg : msg
-
-    -- , onBlurMsg : msg
+    { focusMsg : msg
+    , requestCmdMsg : msg
     , input : { page : Date.Date, selected : Maybe Date.Date }
     , touched : Bool
     , focused : Bool
     , typing : Bool
-    , msg : DateDelta -> msg
+    , deltaMsg : DateDelta -> msg
     , parsed : Result (List Error) output
     , id : String
     , label : Maybe String
     }
     -> Element msg
-renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, typing } =
+renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parsed, typing } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -540,10 +588,10 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, 
         button txt m =
             Input.button
                 [ width <| px maxButtonSize
-                , Events.onFocus onFocusMsg
+                , Events.onFocus focusMsg
                 ]
                 { label = box transparent midGrey (text txt)
-                , onPress = Just (msg m)
+                , onPress = Just (deltaMsg m)
                 }
     in
     column
@@ -551,7 +599,7 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, 
         , spacing 10
         , padding 20
         , width fill
-        , Events.onClick onFocusMsg
+        , Events.onClick focusMsg
         , Background.color
             (if focused then
                 rgb255 220 255 220
@@ -575,7 +623,7 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, 
             (List.map
                 (\w ->
                     row [ spacing 8, width fill ]
-                        (List.map (viewBlock msg onFocusMsg input.selected) w)
+                        (List.map (viewBlock deltaMsg focusMsg input.selected) w)
                 )
                 weeks
             )
@@ -589,7 +637,7 @@ renderDatePicker { input, msg, label, id, focused, onFocusMsg, touched, parsed, 
 
 
 viewBlock : (DateDelta -> a) -> a -> Maybe Date.Date -> CalendarBlock -> Element a
-viewBlock msg onFocusMsg selected block =
+viewBlock msg focusMsg selected block =
     let
         colour d =
             if Just d == selected then
@@ -609,7 +657,7 @@ viewBlock msg onFocusMsg selected block =
             in
             Input.button
                 [ width <| maximum maxButtonSize <| fill
-                , Events.onFocus onFocusMsg
+                , Events.onFocus focusMsg
 
                 -- , Events.onLoseFocus onBlurMsg
                 ]
@@ -636,11 +684,6 @@ buttonSpacing =
 midGrey : Color
 midGrey =
     rgb255 150 150 150
-
-
-paleGrey : Color
-paleGrey =
-    rgb255 225 225 225
 
 
 white : Color
@@ -679,7 +722,7 @@ box bgColour borderColour content =
         (el [ centerX, centerY ] content)
 
 
-renderTimePicker { input, id, label, msg, onFocusMsg, focused } =
+renderTimePicker { input, id, label, deltaMsg, focusMsg, focused } =
     let
         button txt m =
             Input.button
@@ -689,7 +732,7 @@ renderTimePicker { input, id, label, msg, onFocusMsg, focused } =
                 , Border.width 1
                 , Border.color midGrey
                 ]
-                { label = text txt, onPress = Just (msg m) }
+                { label = text txt, onPress = Just (deltaMsg m) }
 
         hours =
             String.fromInt input.hours
@@ -708,7 +751,7 @@ renderTimePicker { input, id, label, msg, onFocusMsg, focused } =
         , spacing 10
         , padding 20
         , width fill
-        , Events.onClick onFocusMsg
+        , Events.onClick focusMsg
         , Background.color
             (if focused then
                 focusedBlue
@@ -728,10 +771,7 @@ renderTimePicker { input, id, label, msg, onFocusMsg, focused } =
             , button "+" (MinutesChanged 1)
             ]
         , row [ spacing 5, centerX ]
-            (hours
-                ++ [ el [ width <| px 40 ] <| text ":" ]
-                ++ minutes
-            )
+            (hours ++ (el [ width <| px 40 ] (text ":") :: minutes))
         , row [ spacing 5, centerX ]
             [ button "-" (HoursChanged -10)
             , button "-" (HoursChanged -1)
@@ -739,4 +779,67 @@ renderTimePicker { input, id, label, msg, onFocusMsg, focused } =
             , button "-" (MinutesChanged -10)
             , button "-" (MinutesChanged -1)
             ]
+        ]
+
+
+renderSearchField :
+    (a -> String)
+    ->
+        { focusMsg : msg
+        , requestCmdMsg : msg
+        , input : SearchState a
+        , touched : Bool
+        , focused : Bool
+        , typing : Bool
+        , deltaMsg : SearchDelta a -> msg
+        , parsed : Result (List Error) output
+        , id : String
+        , label : Maybe String
+        }
+    -> Element msg
+renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg, focused } =
+    column
+        [ spacing 10
+        , padding 20
+        , Events.onClick focusMsg
+        , Background.color
+            (if focused then
+                focusedBlue
+
+             else
+                white
+            )
+        , Border.rounded 5
+        ]
+        [ row [ spacing 10 ]
+            [ Input.text []
+                { onChange = deltaMsg << SearchChanged
+                , placeholder = Nothing
+                , label = Input.labelAbove [] (text (Maybe.withDefault id label))
+                , text = input.search
+                }
+            , Input.button [ padding 10, Border.width 1, Border.rounded 3, Border.color midGrey ] { label = text "search", onPress = Just requestCmdMsg }
+            ]
+        , column [ spacing 10, width fill ] <|
+            List.map
+                (\item ->
+                    Input.button
+                        [ Background.color
+                            (if Just item == input.selected then
+                                green
+
+                             else
+                                transparent
+                            )
+                        , Border.width 1
+                        , Border.rounded 3
+                        , Border.color midGrey
+                        , padding 10
+                        , width fill
+                        ]
+                        { label = text (toString item)
+                        , onPress = Just (deltaMsg <| ResultSelected item)
+                        }
+                )
+                input.options
         ]

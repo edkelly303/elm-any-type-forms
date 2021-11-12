@@ -1,17 +1,27 @@
-module Main exposing (main)
+module Main exposing (main, myForm)
 
 import Browser
-import Date exposing (Date)
+import Date
 import Element exposing (..)
 import Element.Border
 import Element.Font
+import Element.Input
 import Field
 import Form
+import Http
+import Json.Decode as JSD
 
 
 type Page
     = Form
-    | Submitted { name : String, shoeSize : Float, dogCount : Int, dob : Date.Date, time : Field.TimeState }
+    | Submitted
+        { name : String
+        , shoeSize : Float
+        , dogCount : Int
+        , dob : Date.Date
+        , time : Field.TimeState
+        , favouriteCharacter : String
+        }
 
 
 myForm =
@@ -21,8 +31,37 @@ myForm =
         |> Form.withField (Field.int "How many dogs have you seen today?" Set2)
         |> Form.withField (Field.date "What is your date of birth?" Set3)
         |> Form.withField (Field.time "What time is it?" Set4)
+        |> Form.withField (Field.search "Who is your favourite Star Wars character?" Set5 identity timeoutCmd)
         |> Form.withSubmit SubmitClicked
         |> Form.done
+
+
+timeoutCmd : (List String -> msg) -> { field | search : String } -> Cmd msg
+timeoutCmd toMsg { search } =
+    Http.get
+        { url = "https://swapi.dev/api/people?search=" ++ search
+        , expect =
+            Http.expectJson
+                (\res ->
+                    case res of
+                        Ok list ->
+                            toMsg list
+
+                        Err _ ->
+                            toMsg []
+                )
+                starWarsDecoder
+        }
+
+
+starWarsDecoder : JSD.Decoder (List String)
+starWarsDecoder =
+    JSD.field "results" (JSD.list starWarsPerson)
+
+
+starWarsPerson : JSD.Decoder String
+starWarsPerson =
+    JSD.field "name" JSD.string
 
 
 type alias Model =
@@ -34,12 +73,15 @@ type alias Model =
               , ( Field.State String
                 , ( Field.State Field.DateState
                   , ( Field.State Field.TimeState
-                    , ()
+                    , ( Field.State (Field.SearchState String)
+                      , ()
+                      )
                     )
                   )
                 )
               )
             )
+            Msg
     }
 
 
@@ -56,8 +98,10 @@ type Msg
     | Set2 String
     | Set3 Field.DateDelta
     | Set4 Field.TimeDelta
+    | Set5 (Field.SearchDelta String)
     | SubmitClicked
     | FormMsg Form.InternalMsg
+    | Back
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -91,13 +135,34 @@ update msg model =
             myForm.updateField (Form.i1 >> Form.i1 >> Form.i1 >> Form.i1) s model.form
                 |> wrap
 
+        Set5 s ->
+            myForm.updateField (Form.i1 >> Form.i1 >> Form.i1 >> Form.i1 >> Form.i1) s model.form
+                |> wrap
+
         SubmitClicked ->
             case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, ( date, ( time, () ) ) ) ) ) ->
-                    ( { model | page = Submitted { name = str, shoeSize = flt, dogCount = int, dob = date, time = time } }, Cmd.none )
+                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, () ) ) ) ) ) ) ->
+                    ( { model
+                        | page =
+                            Submitted
+                                { name = str
+                                , shoeSize = flt
+                                , dogCount = int
+                                , dob = date
+                                , time = time
+                                , favouriteCharacter = starwars
+                                }
+                      }
+                    , Cmd.none
+                    )
 
                 Err newForm ->
                     ( { model | form = newForm }, Cmd.none )
+
+        Back ->
+            ( { model | page = Form, form = myForm.init }
+            , Cmd.none
+            )
 
 
 view model =
@@ -106,7 +171,7 @@ view model =
             Form ->
                 myForm.view model.form
 
-            Submitted { name, shoeSize, dogCount, dob, time } ->
+            Submitted { name, shoeSize, dogCount, dob, time, favouriteCharacter } ->
                 let
                     bold x =
                         el [ Element.Font.bold ] (text x)
@@ -114,14 +179,13 @@ view model =
                 column
                     [ centerX
                     , centerY
-                    , width <| px 300
+                    , width <| px 400
                     , Element.Border.width 1
                     , Element.Border.rounded 5
-                    , padding 20
-                    , spacing 10
+                    , padding 30
+                    , spacing 20
                     ]
-                    [ text "Form submitted!"
-                    , paragraph []
+                    [ paragraph []
                         [ text "Hello "
                         , bold name
                         , text "!"
@@ -135,12 +199,23 @@ view model =
                         ]
                     , paragraph []
                         [ text "Your date of birth is "
-                        , bold (Date.format "d MMMM yyyy" dob)
-                        , text " and the time is "
+                        , bold (Date.format "ddd MMMM yyyy" dob)
+                        , text ", and the time is currently "
                         , bold (String.fromInt time.hours |> String.padLeft 2 '0')
                         , bold ":"
                         , bold (String.fromInt time.minutes |> String.padLeft 2 '0')
                         ]
+                    , paragraph []
+                        [ text "Perhaps most important of all, your favourite Star Wars character is "
+                        , bold favouriteCharacter
+                        ]
+                    , Element.Input.button
+                        [ centerX
+                        , padding 10
+                        , Element.Border.rounded 3
+                        , Element.Border.width 1
+                        ]
+                        { label = text "Go back", onPress = Just Back }
                     ]
 
 
