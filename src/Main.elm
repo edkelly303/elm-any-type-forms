@@ -92,8 +92,8 @@ update msg model =
             Tuple.mapFirst (\form -> { model | form = form })
     in
     case msg of
-        FormChanged formMsg ->
-            myForm.update formMsg model.form
+        FormChanged delta ->
+            myForm.updateForm delta model.form
                 |> wrap
 
         Field0Changed delta ->

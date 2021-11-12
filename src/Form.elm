@@ -226,7 +226,7 @@ done (Builder bdr) =
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
     , form = form_
     , updateField = updateField bdr.collectCmdsSize bdr.formMsg form_
-    , update = updateForm bdr.formMsg
+    , updateForm = updateForm bdr.formMsg
     , viewFields = viewElements config bdr.validateSize bdr.renderSize form_
     , view = view config bdr.validateSize bdr.renderSize bdr.collectElementsSize form_
     }
