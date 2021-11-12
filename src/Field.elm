@@ -491,11 +491,6 @@ renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, i
         ]
 
 
-red : Color
-red =
-    rgb255 255 100 100
-
-
 green : Color
 green =
     rgb255 100 255 100
