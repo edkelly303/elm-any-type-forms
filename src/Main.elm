@@ -18,12 +18,12 @@ import Json.Decode as JSD
 
 
 type Msg
-    = Field0Changed String
-    | Field1Changed String
-    | Field2Changed String
-    | Field3Changed Field.DateDelta
-    | Field4Changed Field.TimeDelta
-    | Field5Changed (Field.SearchDelta String)
+    = Field0Changed (Field.Delta String)
+    | Field1Changed (Field.Delta String)
+    | Field2Changed (Field.Delta String)
+    | Field3Changed (Field.Delta Field.DateDelta)
+    | Field4Changed (Field.Delta Field.TimeDelta)
+    | Field5Changed (Field.Delta (Field.SearchDelta String))
     | SubmitClicked
     | FormChanged Form.InternalMsg
     | BackClicked

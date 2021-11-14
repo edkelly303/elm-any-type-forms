@@ -1,6 +1,7 @@
 module Field exposing
     ( DateDelta
     , DateState
+    , Delta(..)
     , Error(..)
     , Field(..)
     , SearchDelta(..)
@@ -41,11 +42,15 @@ import Internals exposing (..)
 import Time
 
 
+type Delta delta
+    = Delta { internal : Bool } delta
+
+
 type Field input delta output element msg
     = Field
         { index : Int
         , init : input
-        , deltaMsg : delta -> msg
+        , deltaMsg : Delta delta -> msg
         , updater : delta -> input -> input
         , parser : input -> Result Error output
         , validators : List (output -> Maybe Error)
@@ -54,7 +59,7 @@ type Field input delta output element msg
             , touched : Bool
             , focused : Bool
             , typing : Bool
-            , deltaMsg : delta -> msg
+            , deltaMsg : Delta delta -> msg
             , focusMsg : msg
             , requestCmdMsg : msg
             , parsed : Result (List Error) output
@@ -131,7 +136,7 @@ errorToString e =
 custom :
     { a
         | init : input
-        , deltaMsg : delta -> msg
+        , deltaMsg : Delta delta -> msg
         , updater : delta -> input -> input
         , parser : input -> Result Error output
         , renderer :
@@ -141,7 +146,7 @@ custom :
             , typing : Bool
             , requestCmdMsg : msg
             , focusMsg : msg
-            , deltaMsg : delta -> msg
+            , deltaMsg : Delta delta -> msg
             , parsed : Result (List Error) output
             , label : Maybe String
             , id : String
@@ -168,7 +173,7 @@ custom { init, deltaMsg, updater, parser, renderer, id, loadCmd, typingTimeout }
         }
 
 
-string : String -> (String -> msg) -> Field String String String (Element msg) msg
+string : String -> (Delta String -> msg) -> Field String String String (Element msg) msg
 string id msg =
     custom
         { init = ""
@@ -182,7 +187,7 @@ string id msg =
         }
 
 
-float : String -> (String -> msg) -> Field String String Float (Element msg) msg
+float : String -> (Delta String -> msg) -> Field String String Float (Element msg) msg
 float id msg =
     custom
         { init = ""
@@ -196,7 +201,7 @@ float id msg =
         }
 
 
-int : String -> (String -> msg) -> Field String String Int (Element msg) msg
+int : String -> (Delta String -> msg) -> Field String String Int (Element msg) msg
 int id msg =
     custom
         { init = ""
@@ -219,11 +224,11 @@ type alias DateState =
     { page : Date.Date, selected : Maybe Date.Date }
 
 
-date : String -> (DateDelta -> msg) -> Field DateState DateDelta Date.Date (Element msg) msg
-date id msg =
+date : String -> (Delta DateDelta -> msg) -> Field DateState DateDelta Date.Date (Element msg) msg
+date id deltaMsg =
     custom
         { init = { page = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
-        , deltaMsg = msg
+        , deltaMsg = deltaMsg
         , updater =
             \delta state ->
                 case delta of
@@ -261,11 +266,11 @@ type TimeDelta
     | HoursChanged Int
 
 
-time : String -> (TimeDelta -> msg) -> Field TimeState TimeDelta TimeState (Element msg) msg
-time id msg =
+time : String -> (Delta TimeDelta -> msg) -> Field TimeState TimeDelta TimeState (Element msg) msg
+time id deltaMsg =
     custom
         { init = { hours = 12, minutes = 0 }
-        , deltaMsg = msg
+        , deltaMsg = deltaMsg
         , updater =
             \delta state ->
                 case delta of
@@ -303,7 +308,7 @@ type alias SearchState a =
 
 search :
     String
-    -> (SearchDelta a -> msg)
+    -> (Delta (SearchDelta a) -> msg)
     -> (a -> String)
     -> (SearchState a -> Cmd (List a))
     -> Field (SearchState a) (SearchDelta a) a (Element msg) msg
@@ -325,7 +330,7 @@ search id msg toString loadCmd =
         , parser = \state -> Result.fromMaybe (Custom "Must select something") state.selected
         , renderer = renderSearchField toString
         , id = id
-        , loadCmd = loadCmd >> Cmd.map (ResultsLoaded >> msg)
+        , loadCmd = loadCmd >> Cmd.map (ResultsLoaded >> Delta { internal = True } >> msg)
         , typingTimeout = 1000
         }
 
@@ -361,7 +366,7 @@ withRenderer :
      , typing : Bool
      , requestCmdMsg : msg
      , focusMsg : msg
-     , deltaMsg : delta -> msg
+     , deltaMsg : Delta delta -> msg
      , parsed : Result (List Error) output
      , label : Maybe String
      , id : String
@@ -448,7 +453,7 @@ floatMustBeLessThan tooHigh float_ =
 renderTextField :
     { focusMsg : msg
     , requestCmdMsg : msg
-    , deltaMsg : String -> msg
+    , deltaMsg : Delta String -> msg
     , input : String
     , touched : Bool
     , focused : Bool
@@ -480,7 +485,7 @@ renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, i
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
             , placeholder = Nothing
-            , onChange = deltaMsg
+            , onChange = Delta { internal = False } >> deltaMsg
             }
         , if typing then
             text "..."
@@ -513,7 +518,7 @@ renderDatePicker :
     , touched : Bool
     , focused : Bool
     , typing : Bool
-    , deltaMsg : DateDelta -> msg
+    , deltaMsg : Delta DateDelta -> msg
     , parsed : Result (List Error) output
     , id : String
     , label : Maybe String
@@ -578,7 +583,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
                 , Events.onFocus focusMsg
                 ]
                 { label = box transparent midGrey (text txt)
-                , onPress = Just (deltaMsg m)
+                , onPress = Just (deltaMsg (Delta { internal = False } m))
                 }
     in
     column
@@ -618,7 +623,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
         ]
 
 
-viewBlock : (DateDelta -> a) -> a -> Maybe Date.Date -> CalendarBlock -> Element a
+viewBlock : (Delta DateDelta -> a) -> a -> Maybe Date.Date -> CalendarBlock -> Element a
 viewBlock msg focusMsg selected block =
     let
         colour d =
@@ -642,7 +647,7 @@ viewBlock msg focusMsg selected block =
                 , Events.onFocus focusMsg
                 ]
                 { label = box bg bd (text <| String.fromInt <| Date.day d)
-                , onPress = Just (msg (DateSelected d))
+                , onPress = Just (msg (Delta { internal = False } (DateSelected d)))
                 }
 
 
@@ -702,6 +707,16 @@ box bgColour borderColour content =
         (el [ centerX, centerY ] content)
 
 
+renderTimePicker :
+    { a
+        | input : TimeState
+        , id : String
+        , label : Maybe String
+        , deltaMsg : Delta TimeDelta -> msg
+        , focusMsg : msg
+        , focused : Bool
+    }
+    -> Element msg
 renderTimePicker { input, id, label, deltaMsg, focusMsg, focused } =
     let
         button txt m =
@@ -712,7 +727,7 @@ renderTimePicker { input, id, label, deltaMsg, focusMsg, focused } =
                 , Border.width 1
                 , Border.color midGrey
                 ]
-                { label = text txt, onPress = Just (deltaMsg m) }
+                { label = text txt, onPress = Just (deltaMsg (Delta { internal = False } m)) }
 
         hours =
             String.fromInt input.hours
@@ -771,7 +786,7 @@ renderSearchField :
         , touched : Bool
         , focused : Bool
         , typing : Bool
-        , deltaMsg : SearchDelta a -> msg
+        , deltaMsg : Delta (SearchDelta a) -> msg
         , parsed : Result (List Error) output
         , id : String
         , label : Maybe String
@@ -793,7 +808,7 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
         ]
         [ row [ spacing 10 ]
             [ Input.text []
-                { onChange = deltaMsg << SearchChanged
+                { onChange = deltaMsg << Delta { internal = False } << SearchChanged
                 , placeholder = Nothing
                 , label = Input.labelAbove [] (text (Maybe.withDefault id label))
                 , text = input.search
@@ -823,7 +838,7 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
                         , width fill
                         ]
                         { label = text (toString item)
-                        , onPress = Just (deltaMsg <| ResultSelected item)
+                        , onPress = Just (deltaMsg <| Delta { internal = False } <| ResultSelected item)
                         }
                 )
                 input.options

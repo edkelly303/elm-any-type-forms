@@ -357,7 +357,7 @@ updateForm formMsg msg (State internalState state) =
     ( State internalState2 state, cmd )
 
 
-updateField collectCmdsSize formMsg (Form form_) index delta (State internalState fieldStates) =
+updateField collectCmdsSize formMsg (Form form_) index (Field.Delta { internal } delta) (State internalState fieldStates) =
     let
         ( selectField, countField ) =
             index ( selectField0, countField0 )
@@ -393,7 +393,7 @@ updateField collectCmdsSize formMsg (Form form_) index delta (State internalStat
             }
     in
     ( State newInternalState newFieldStates
-    , if newFieldStates == fieldStates then
+    , if internal then
         Cmd.none
 
       else
