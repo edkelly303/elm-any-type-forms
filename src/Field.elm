@@ -838,7 +838,7 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
                         , width fill
                         ]
                         { label = text (toString item)
-                        , onPress = Just (deltaMsg <| Delta { internal = False } <| ResultSelected item)
+                        , onPress = Just (deltaMsg <| Delta { internal = True } <| ResultSelected item)
                         }
                 )
                 input.options
