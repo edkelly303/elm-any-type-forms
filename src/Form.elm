@@ -261,7 +261,7 @@ i0 =
     identity
 
 
-i1 : ( (( c, b ) -> ( d, a ) -> ( d, rest2 )) -> e, Int -> f ) -> ( (b -> a -> rest2) -> e, Int -> f )
+i1 : ( (( c, b ) -> ( d, a ) -> ( d, rest2 )) -> e, Int -> Int ) -> ( (b -> a -> rest2) -> e, Int -> Int )
 i1 =
     compose ( selectField1, countField1 )
 
@@ -357,6 +357,30 @@ updateForm formMsg msg (State internalState state) =
     ( State internalState2 state, cmd )
 
 
+updateField :
+    ((a -> ( Cmd msg, (), () ) -> ( Cmd msg, (), () ))
+     -> Int
+     -> ( Cmd msg, form, state )
+     -> ( Cmd msg, form2, state2 )
+    )
+    -> (InternalMsg -> msg)
+    -> Form form
+    ->
+        (( b -> b, Int -> Int )
+         ->
+            ( (( Field input delta output element msg, fields )
+               -> ( Field.State input, fieldStates )
+               -> ( Field.State input, fieldStates )
+              )
+              -> form
+              -> state
+              -> state
+            , Int -> Int
+            )
+        )
+    -> Field.Delta delta
+    -> State state msg
+    -> ( State state msg, Cmd msg )
 updateField collectCmdsSize formMsg (Form form_) index (Field.Delta { internal } delta) (State internalState fieldStates) =
     let
         ( selectField, countField ) =
