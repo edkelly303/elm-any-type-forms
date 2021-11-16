@@ -21,9 +21,6 @@ module Field exposing
     , withValidator
     )
 
-import Element exposing (..)
-import Internals exposing (..)
-
 
 type Delta delta
     = Delta { internal : Bool } delta
@@ -134,10 +131,10 @@ custom :
         , id : String
         }
         -> element
-    , id : String
+    , label : String
     }
     -> Field input delta output element msg
-custom { init, deltaMsg, updater, parser, renderer, id } =
+custom { init, deltaMsg, updater, parser, renderer, label } =
     Field
         { index = 0
         , init = init
@@ -146,10 +143,10 @@ custom { init, deltaMsg, updater, parser, renderer, id } =
         , parser = parser
         , validators = []
         , renderer = renderer
-        , id = id
-        , label = Nothing
+        , id = ""
+        , label = Just label
         , loadCmd = always Cmd.none
-        , inputTimeout = 500
+        , inputTimeout = 0
         }
 
 
