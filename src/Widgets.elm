@@ -25,38 +25,38 @@ import Time
 
 
 string : String -> (Field.Delta String -> msg) -> Field.Field String String String (Element msg) msg
-string id msg =
+string label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> delta
         , parser = Ok
         , renderer = renderTextField
-        , id = id
+        , label = label
         }
 
 
 float : String -> (Field.Delta String -> msg) -> Field.Field String String Float (Element msg) msg
-float id msg =
+float label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> delta
         , parser = String.toFloat >> Result.fromMaybe Field.NotValidFloat
         , renderer = renderTextField
-        , id = id
+        , label = label
         }
 
 
 int : String -> (Field.Delta String -> msg) -> Field.Field String String Int (Element msg) msg
-int id msg =
+int label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> delta
         , parser = String.toInt >> Result.fromMaybe Field.NotValidInt
         , renderer = renderTextField
-        , id = id
+        , label = label
         }
 
 
@@ -132,7 +132,7 @@ type CalendarBlock
 
 
 date : String -> (Field.Delta DateDelta -> msg) -> Field.Field DateState DateDelta Date.Date (Element msg) msg
-date id deltaMsg =
+date label deltaMsg =
     Field.custom
         { init = { page = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
         , deltaMsg = deltaMsg
@@ -158,7 +158,7 @@ date id deltaMsg =
                         }
         , parser = \state -> Result.fromMaybe Field.NoDateSelected state.selected
         , renderer = renderDatePicker
-        , id = id
+        , label = label
         }
 
 
@@ -364,7 +364,7 @@ type TimeDelta
 
 
 time : String -> (Field.Delta TimeDelta -> msg) -> Field.Field TimeState TimeDelta TimeState (Element msg) msg
-time id deltaMsg =
+time label deltaMsg =
     Field.custom
         { init = { hours = 12, minutes = 0 }
         , deltaMsg = deltaMsg
@@ -384,7 +384,7 @@ time id deltaMsg =
                 else
                     Err (Field.Custom "")
         , renderer = renderTimePicker
-        , id = id
+        , label = label
         }
 
 
@@ -488,7 +488,7 @@ search :
     -> (a -> String)
     -> (SearchState a -> Cmd (List a))
     -> Field.Field (SearchState a) (SearchDelta a) a (Element msg) msg
-search id msg toString loadCmd =
+search label msg toString loadCmd =
     Field.custom
         { init = { search = "", options = [], selected = Nothing }
         , deltaMsg = msg
@@ -507,7 +507,7 @@ search id msg toString loadCmd =
             \state ->
                 Result.fromMaybe (Field.Custom "Must select something") state.selected
         , renderer = renderSearchField toString
-        , id = id
+        , label = label
         }
         |> Field.withLoadCmd (loadCmd >> Cmd.map (ResultsLoaded >> Field.Delta { internal = True } >> msg))
         |> Field.withTypingTimeout 1000
