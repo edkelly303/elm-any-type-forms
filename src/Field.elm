@@ -53,7 +53,7 @@ type Field input delta output element msg
         , id : String
         , label : Maybe String
         , loadCmd : input -> Cmd msg
-        , typingTimeout : Float
+        , inputTimeout : Float
         }
 
 
@@ -149,7 +149,7 @@ custom { init, deltaMsg, updater, parser, renderer, id } =
         , id = id
         , label = Nothing
         , loadCmd = always Cmd.none
-        , typingTimeout = 500
+        , inputTimeout = 500
         }
 
 
@@ -178,7 +178,7 @@ withLabel l (Field f) =
 
 withTypingTimeout : Float -> Field input delta output element msg -> Field input delta output element msg
 withTypingTimeout timeout (Field f) =
-    Field { f | typingTimeout = timeout }
+    Field { f | inputTimeout = timeout }
 
 
 withLoadCmd : (input -> Cmd msg) -> Field input delta output element msg -> Field input delta output element msg
@@ -219,7 +219,7 @@ withRenderer r (Field f) =
         , id = f.id
         , label = f.label
         , loadCmd = f.loadCmd
-        , typingTimeout = f.typingTimeout
+        , inputTimeout = f.inputTimeout
         }
 
 

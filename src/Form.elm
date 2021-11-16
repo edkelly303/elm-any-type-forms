@@ -53,7 +53,7 @@ type alias InternalState msg =
             { touched : Bool
             , lastTouched : Maybe Time.Posix
             , cmd : Cmd msg
-            , typingTimeout : Float
+            , inputTimeout : Float
             }
     , focused : Maybe Int
     }
@@ -72,8 +72,8 @@ type alias Index input delta output element msg restFields restFieldStates form 
 type InternalMsg
     = Focused Int
     | CmdRequested Int
-    | TypingDetected Int Time.Posix
-    | TypingTimedOut Int Time.Posix
+    | ChangeDetected Int Time.Posix
+    | ChangeCompleted Int Time.Posix
 
 
 
@@ -163,7 +163,7 @@ withField (Field fld) (Builder bdr) =
                         { touched = False
                         , lastTouched = Nothing
                         , cmd = Cmd.none
-                        , typingTimeout = fld.typingTimeout
+                        , inputTimeout = fld.inputTimeout
                         }
                         formState.fields
             }
@@ -330,17 +330,17 @@ updateForm formMsg msg (State internalState state) =
                         |> Maybe.withDefault Cmd.none
                     )
 
-                TypingDetected f time ->
+                ChangeDetected f time ->
                     Maybe.map
                         (\field ->
                             ( { internalState | fields = Dict.insert f { field | lastTouched = Just time } internalState.fields }
-                            , Task.perform (\() -> formMsg <| TypingTimedOut f time) (Process.sleep field.typingTimeout)
+                            , Task.perform (\() -> formMsg <| ChangeCompleted f time) (Process.sleep field.inputTimeout)
                             )
                         )
                         (Dict.get f internalState.fields)
                         |> Maybe.withDefault ( internalState, Cmd.none )
 
-                TypingTimedOut f time ->
+                ChangeCompleted f time ->
                     Dict.get f internalState.fields
                         |> Maybe.map
                             (\s ->
@@ -421,7 +421,7 @@ updateField collectCmdsSize formMsg (Form form_) index (Field.Delta { internal }
         Cmd.none
 
       else
-        Task.perform (formMsg << TypingDetected indexOfUpdatedField) Time.now
+        Task.perform (formMsg << ChangeDetected indexOfUpdatedField) Time.now
     )
 
 
