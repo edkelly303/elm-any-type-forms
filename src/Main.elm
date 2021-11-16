@@ -11,6 +11,7 @@ import Form
 import Html
 import Http
 import Json.Decode as JSD
+import Widgets
 
 
 
@@ -21,9 +22,9 @@ type Msg
     = Field0Changed (Field.Delta String)
     | Field1Changed (Field.Delta String)
     | Field2Changed (Field.Delta String)
-    | Field3Changed (Field.Delta Field.DateDelta)
-    | Field4Changed (Field.Delta Field.TimeDelta)
-    | Field5Changed (Field.Delta (Field.SearchDelta String))
+    | Field3Changed (Field.Delta Widgets.DateDelta)
+    | Field4Changed (Field.Delta Widgets.TimeDelta)
+    | Field5Changed (Field.Delta (Widgets.SearchDelta String))
     | SubmitClicked
     | FormChanged Form.InternalMsg
     | BackClicked
@@ -36,9 +37,9 @@ type alias Model =
             ( Field.State String
             , ( Field.State String
               , ( Field.State String
-                , ( Field.State Field.DateState
-                  , ( Field.State Field.TimeState
-                    , ( Field.State (Field.SearchState String)
+                , ( Field.State Widgets.DateState
+                  , ( Field.State Widgets.TimeState
+                    , ( Field.State (Widgets.SearchState String)
                       , ()
                       )
                     )
@@ -57,7 +58,7 @@ type Page
         , shoeSize : Float
         , dogCount : Int
         , dob : Date.Date
-        , time : Field.TimeState
+        , time : Widgets.TimeState
         , favouriteCharacter : String
         }
 
@@ -68,12 +69,12 @@ type Page
 
 myForm =
     Form.form FormChanged
-        |> Form.withField (Field.string "What is your name?" Field0Changed |> Field.withValidator (Field.stringMustBeLongerThan 0))
-        |> Form.withField (Field.float "What shoe size do you wear?" Field1Changed)
-        |> Form.withField (Field.int "How many dogs have you seen today?" Field2Changed)
-        |> Form.withField (Field.date "What is today's date?" Field3Changed)
-        |> Form.withField (Field.time "What time is it?" Field4Changed)
-        |> Form.withField (Field.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames)
+        |> Form.withField (Widgets.string "What is your name?" Field0Changed |> Field.withValidator (Field.stringMustBeLongerThan 0))
+        |> Form.withField (Widgets.float "What shoe size do you wear?" Field1Changed)
+        |> Form.withField (Widgets.int "How many dogs have you seen today?" Field2Changed)
+        |> Form.withField (Widgets.date "What is today's date?" Field3Changed)
+        |> Form.withField (Widgets.time "What time is it?" Field4Changed)
+        |> Form.withField (Widgets.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
@@ -175,7 +176,7 @@ main =
 -- HELPER CRAP
 
 
-submittedView : String -> Float -> Int -> Date.Date -> Field.TimeState -> String -> Element Msg
+submittedView : String -> Float -> Int -> Date.Date -> Widgets.TimeState -> String -> Element Msg
 submittedView name shoeSize dogCount dob time favouriteCharacter =
     let
         bold x =
