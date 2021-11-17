@@ -1,6 +1,5 @@
 module Form exposing
     ( Form
-    , Index
     , InternalMsg
     , State
     , collectCmdSize1
@@ -61,16 +60,6 @@ type Interaction
     | Changing Time.Posix
     | Loading
     | Idle
-
-
-type alias Index input delta output element msg restFields restFieldStates form state =
-    (( Field input delta output element msg, restFields )
-     -> ( Field.State input, restFieldStates )
-     -> ( Field.State input, restFieldStates )
-    )
-    -> form
-    -> state
-    -> state
 
 
 type InternalMsg msg
