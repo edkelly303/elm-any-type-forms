@@ -426,7 +426,11 @@ updateField collectCmdsSize formMsg (Form form_) index (Field.Delta ctx delta) (
             }
     in
     ( State newInternalState newFieldStates
-    , Task.perform (formMsg << ChangeDetected indexOfUpdatedField ctx.debounce ctx.cmdName) Time.now
+    , if ctx.debounce == 0 then
+        Dict.get ctx.cmdName updatedCmd |> Maybe.withDefault Cmd.none
+
+      else
+        Task.perform (formMsg << ChangeDetected indexOfUpdatedField ctx.debounce ctx.cmdName) Time.now
     )
 
 
