@@ -7,7 +7,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
-import Field
+import Field exposing (RendererConfig)
 import Html.Attributes
 import Internals exposing (..)
 import Time
@@ -24,7 +24,7 @@ import Time
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-string : String -> (Field.Delta String String msg -> msg) -> Field.Field String String String (Element msg) msg
+string : String -> (Field.Delta String -> msg) -> Field.Field String String String (Element msg) msg
 string label msg =
     Field.custom
         { init = ""
@@ -37,7 +37,7 @@ string label msg =
         |> Field.withDebounce 500
 
 
-float : String -> (Field.Delta String String msg -> msg) -> Field.Field String String Float (Element msg) msg
+float : String -> (Field.Delta String -> msg) -> Field.Field String String Float (Element msg) msg
 float label msg =
     Field.custom
         { init = ""
@@ -50,7 +50,7 @@ float label msg =
         |> Field.withDebounce 500
 
 
-int : String -> (Field.Delta String String msg -> msg) -> Field.Field String String Int (Element msg) msg
+int : String -> (Field.Delta String -> msg) -> Field.Field String String Int (Element msg) msg
 int label msg =
     Field.custom
         { init = ""
@@ -63,20 +63,8 @@ int label msg =
         |> Field.withDebounce 500
 
 
-renderTextField :
-    { focusMsg : msg
-    , requestCmdMsg : msg
-    , deltaMsg : Field.Delta String String msg -> msg
-    , input : String
-    , touched : Bool
-    , focused : Bool
-    , typing : Bool
-    , parsed : Result (List Field.Error) output
-    , id : String
-    , label : Maybe String
-    }
-    -> Element msg
-renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, id, label } =
+renderTextField : RendererConfig String String output msg -> Element msg
+renderTextField { input, touched, typing, focusMsg, focused, delta, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -98,7 +86,7 @@ renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, i
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
             , placeholder = Nothing
-            , onChange = Field.Delta Field.Pure >> deltaMsg
+            , onChange = delta
             }
         , if typing then
             text "..."
@@ -134,7 +122,7 @@ type CalendarBlock
     | Day Date.Date
 
 
-date : String -> (Field.Delta DateState DateDelta msg -> msg) -> Field.Field DateState DateDelta Date.Date (Element msg) msg
+date : String -> (Field.Delta DateDelta -> msg) -> Field.Field DateState DateDelta Date.Date (Element msg) msg
 date label deltaMsg =
     Field.custom
         { init = { page = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
@@ -165,20 +153,8 @@ date label deltaMsg =
         }
 
 
-renderDatePicker :
-    { focusMsg : msg
-    , requestCmdMsg : msg
-    , input : { page : Date.Date, selected : Maybe Date.Date }
-    , touched : Bool
-    , focused : Bool
-    , typing : Bool
-    , deltaMsg : Field.Delta DateState DateDelta msg -> msg
-    , parsed : Result (List Field.Error) output
-    , id : String
-    , label : Maybe String
-    }
-    -> Element msg
-renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parsed, typing } =
+renderDatePicker : RendererConfig DateState DateDelta Date.Date msg -> Element msg
+renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, typing } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -237,7 +213,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
                 , Events.onFocus focusMsg
                 ]
                 { label = box transparent midGrey (text txt)
-                , onPress = Just (deltaMsg (Field.Delta Field.Pure m))
+                , onPress = Just (delta m)
                 }
     in
     column
@@ -248,10 +224,10 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
         , Events.onClick focusMsg
         , Background.color
             (if focused then
-                rgb255 220 255 220
+                focusedBlue
 
              else
-                rgb255 255 255 255
+                white
             )
         , Border.rounded 5
         ]
@@ -269,7 +245,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
             (List.map
                 (\w ->
                     row [ spacing 8, width fill ]
-                        (List.map (viewBlock deltaMsg focusMsg input.selected) w)
+                        (List.map (viewBlock delta focusMsg input.selected) w)
                 )
                 weeks
             )
@@ -277,7 +253,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
         ]
 
 
-viewBlock : (Field.Delta DateState DateDelta a -> a) -> a -> Maybe Date.Date -> CalendarBlock -> Element a
+viewBlock : (DateDelta -> msg) -> msg -> Maybe Date.Date -> CalendarBlock -> Element msg
 viewBlock msg focusMsg selected block =
     let
         colour d =
@@ -301,7 +277,7 @@ viewBlock msg focusMsg selected block =
                 , Events.onFocus focusMsg
                 ]
                 { label = box bg bd (text <| String.fromInt <| Date.day d)
-                , onPress = Just (msg (Field.Delta Field.Pure (DateSelected d)))
+                , onPress = Just (msg (DateSelected d))
                 }
 
 
@@ -366,7 +342,7 @@ type TimeDelta
     | HoursChanged Int
 
 
-time : String -> (Field.Delta String TimeDelta msg -> msg) -> Field.Field TimeState TimeDelta TimeState (Element msg) msg
+time : String -> (Field.Delta TimeDelta -> msg) -> Field.Field TimeState TimeDelta TimeState (Element msg) msg
 time label deltaMsg =
     Field.custom
         { init = { hours = 12, minutes = 0 }
@@ -391,17 +367,8 @@ time label deltaMsg =
         }
 
 
-renderTimePicker :
-    { a
-        | input : TimeState
-        , id : String
-        , label : Maybe String
-        , deltaMsg : Field.Delta TimeState TimeDelta msg -> msg
-        , focusMsg : msg
-        , focused : Bool
-    }
-    -> Element msg
-renderTimePicker { input, id, label, deltaMsg, focusMsg, focused } =
+renderTimePicker : RendererConfig TimeState TimeDelta TimeState msg -> Element msg
+renderTimePicker { input, id, label, delta, focusMsg, focused } =
     let
         button txt m =
             Input.button
@@ -411,7 +378,7 @@ renderTimePicker { input, id, label, deltaMsg, focusMsg, focused } =
                 , Border.width 1
                 , Border.color midGrey
                 ]
-                { label = text txt, onPress = Just (deltaMsg (Field.Delta Field.Pure m)) }
+                { label = text txt, onPress = Just (delta m) }
 
         hours =
             String.fromInt input.hours
@@ -487,7 +454,7 @@ type alias SearchState a =
 
 search :
     String
-    -> (Field.Delta (SearchState a) (SearchDelta a) msg -> msg)
+    -> (Field.Delta (SearchDelta a) -> msg)
     -> (a -> String)
     -> (SearchState a -> Cmd (List a))
     -> Field.Field (SearchState a) (SearchDelta a) a (Element msg) msg
@@ -512,26 +479,15 @@ search label msg toString loadCmd =
         , renderer = renderSearchField toString
         , label = label
         }
-        |> Field.withLoadCmd (loadCmd >> Cmd.map (ResultsLoaded >> Field.Delta Field.Housekeeping >> msg))
+        |> Field.withLoadCmd "loadItems" (loadCmd >> Cmd.map (ResultsLoaded >> Field.Delta { debounce = 0, cmdName = "" } >> msg))
         |> Field.withDebounce 1000
 
 
 renderSearchField :
     (a -> String)
-    ->
-        { focusMsg : msg
-        , requestCmdMsg : msg
-        , input : SearchState a
-        , touched : Bool
-        , focused : Bool
-        , typing : Bool
-        , deltaMsg : Field.Delta (SearchState a) (SearchDelta a) msg -> msg
-        , parsed : Result (List Field.Error) output
-        , id : String
-        , label : Maybe String
-        }
+    -> Field.RendererConfig (SearchState a) (SearchDelta a) a msg
     -> Element msg
-renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg, focused, touched, parsed, typing } =
+renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, requestCmdMsg, focusMsg, focused, touched, parsed, typing } =
     column
         [ spacing 10
         , padding 20
@@ -547,12 +503,15 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
         ]
         [ row [ spacing 10 ]
             [ Input.text []
-                { onChange = deltaMsg << Field.Delta Field.Effectful << SearchChanged
+                { onChange = debouncedEffectfulDelta 1000 "loadItems" << SearchChanged
                 , placeholder = Nothing
                 , label = Input.labelAbove [] (text (Maybe.withDefault id label))
                 , text = input.search
                 }
-            , Input.button [ padding 10, Border.width 1, Border.rounded 3, Border.color midGrey ] { label = text "search", onPress = Just requestCmdMsg }
+            , Input.button [ padding 10, Border.width 1, Border.rounded 3, Border.color midGrey ]
+                { label = text "search"
+                , onPress = Just (requestCmdMsg "")
+                }
             ]
         , if typing then
             text "..."
@@ -577,7 +536,7 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
                         , width fill
                         ]
                         { label = text (toString item)
-                        , onPress = Just (deltaMsg <| Field.Delta Field.Pure <| ResultSelected item)
+                        , onPress = Just (delta (ResultSelected item))
                         }
                 )
                 input.options
@@ -613,7 +572,7 @@ green =
 
 focusedBlue : Color
 focusedBlue =
-    rgb255 220 255 220
+    rgb255 220 220 255
 
 
 midGrey : Color

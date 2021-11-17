@@ -3,6 +3,7 @@ module Field exposing
     , DeltaContext
     , Error(..)
     , Field(..)
+    , RendererConfig
     , State
     , custom
     , errorToString
@@ -22,41 +23,48 @@ module Field exposing
     , withValidator
     )
 
-
-type Delta input delta msg
-    = Delta (DeltaContext input msg) delta
+import Dict
 
 
-type alias DeltaContext input msg =
-    { cmd : input -> Cmd msg, debounce : Float }
+type Delta delta
+    = Delta DeltaContext delta
+
+
+type alias DeltaContext =
+    { cmdName : String, debounce : Float }
 
 
 type Field input delta output element msg
     = Field
         { index : Int
         , init : input
-        , deltaMsg : Delta input delta msg -> msg
+        , deltaMsg : Delta delta -> msg
         , updater : delta -> input -> input
         , parser : input -> Result Error output
         , validators : List (output -> Maybe Error)
-        , renderer :
-            { input : input
-            , touched : Bool
-            , focused : Bool
-            , typing : Bool
-            , deltaMsg : Delta input delta msg -> msg
-            , focusMsg : msg
-            , requestCmdMsg : msg
-            , parsed : Result (List Error) output
-            , label : Maybe String
-            , id : String
-            }
-            -> element
+        , renderer : RendererConfig input delta output msg -> element
         , id : String
         , label : Maybe String
-        , loadCmd : input -> Cmd msg
+        , loadCmd : Dict.Dict String (input -> Cmd msg)
         , inputTimeout : Float
         }
+
+
+type alias RendererConfig input delta output msg =
+    { input : input
+    , touched : Bool
+    , focused : Bool
+    , typing : Bool
+    , delta : delta -> msg
+    , debouncedDelta : Float -> delta -> msg
+    , effectfulDelta : String -> delta -> msg
+    , debouncedEffectfulDelta : Float -> String -> delta -> msg
+    , focusMsg : msg
+    , requestCmdMsg : String -> msg
+    , parsed : Result (List Error) output
+    , label : Maybe String
+    , id : String
+    }
 
 
 type alias State input =
@@ -120,22 +128,10 @@ errorToString e =
 
 custom :
     { init : input
-    , deltaMsg : Delta input delta msg -> msg
+    , deltaMsg : Delta delta -> msg
     , updater : delta -> input -> input
     , parser : input -> Result Error output
-    , renderer :
-        { input : input
-        , touched : Bool
-        , focused : Bool
-        , typing : Bool
-        , requestCmdMsg : msg
-        , focusMsg : msg
-        , deltaMsg : Delta input delta msg -> msg
-        , parsed : Result (List Error) output
-        , label : Maybe String
-        , id : String
-        }
-        -> element
+    , renderer : RendererConfig input delta output msg -> element
     , label : String
     }
     -> Field input delta output element msg
@@ -150,7 +146,7 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
         , renderer = renderer
         , id = ""
         , label = Just label
-        , loadCmd = always Cmd.none
+        , loadCmd = Dict.singleton "" (always Cmd.none)
         , inputTimeout = 0
         }
 
@@ -183,9 +179,9 @@ withDebounce timeout (Field f) =
     Field { f | inputTimeout = timeout }
 
 
-withLoadCmd : (input -> Cmd msg) -> Field input delta output element msg -> Field input delta output element msg
-withLoadCmd loadCmd (Field f) =
-    Field { f | loadCmd = loadCmd }
+withLoadCmd : String -> (input -> Cmd msg) -> Field input delta output element msg -> Field input delta output element msg
+withLoadCmd cmdName loadCmd (Field f) =
+    Field { f | loadCmd = Dict.insert cmdName loadCmd f.loadCmd }
 
 
 withValidator : (output -> Maybe Error) -> Field input delta output element msg -> Field input delta output element msg
@@ -194,19 +190,7 @@ withValidator v (Field f) =
 
 
 withRenderer :
-    ({ input : input
-     , touched : Bool
-     , focused : Bool
-     , typing : Bool
-     , requestCmdMsg : msg
-     , focusMsg : msg
-     , deltaMsg : Delta input delta msg -> msg
-     , parsed : Result (List Error) output
-     , label : Maybe String
-     , id : String
-     }
-     -> element2
-    )
+    (RendererConfig input delta output msg -> element2)
     -> Field input delta output element msg
     -> Field input delta output element2 msg
 withRenderer r (Field f) =
