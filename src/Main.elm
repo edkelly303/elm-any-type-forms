@@ -159,7 +159,7 @@ main =
 
 
 
--- HELPER CRAP
+-- HELPERS
 
 
 submittedView : String -> Float -> Int -> Date.Date -> Widgets.TimeState -> String -> Element Msg
