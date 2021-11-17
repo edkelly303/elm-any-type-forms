@@ -24,7 +24,7 @@ import Time
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-string : String -> (Field.Delta String -> msg) -> Field.Field String String String (Element msg) msg
+string : String -> (Field.Delta String String msg -> msg) -> Field.Field String String String (Element msg) msg
 string label msg =
     Field.custom
         { init = ""
@@ -34,9 +34,10 @@ string label msg =
         , renderer = renderTextField
         , label = label
         }
+        |> Field.withDebounce 500
 
 
-float : String -> (Field.Delta String -> msg) -> Field.Field String String Float (Element msg) msg
+float : String -> (Field.Delta String String msg -> msg) -> Field.Field String String Float (Element msg) msg
 float label msg =
     Field.custom
         { init = ""
@@ -46,9 +47,10 @@ float label msg =
         , renderer = renderTextField
         , label = label
         }
+        |> Field.withDebounce 500
 
 
-int : String -> (Field.Delta String -> msg) -> Field.Field String String Int (Element msg) msg
+int : String -> (Field.Delta String String msg -> msg) -> Field.Field String String Int (Element msg) msg
 int label msg =
     Field.custom
         { init = ""
@@ -58,12 +60,13 @@ int label msg =
         , renderer = renderTextField
         , label = label
         }
+        |> Field.withDebounce 500
 
 
 renderTextField :
     { focusMsg : msg
     , requestCmdMsg : msg
-    , deltaMsg : Field.Delta String -> msg
+    , deltaMsg : Field.Delta String String msg -> msg
     , input : String
     , touched : Bool
     , focused : Bool
@@ -95,7 +98,7 @@ renderTextField { input, touched, typing, focusMsg, focused, deltaMsg, parsed, i
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
             , placeholder = Nothing
-            , onChange = Field.Delta { internal = False } >> deltaMsg
+            , onChange = Field.Delta Field.Pure >> deltaMsg
             }
         , if typing then
             text "..."
@@ -131,7 +134,7 @@ type CalendarBlock
     | Day Date.Date
 
 
-date : String -> (Field.Delta DateDelta -> msg) -> Field.Field DateState DateDelta Date.Date (Element msg) msg
+date : String -> (Field.Delta DateState DateDelta msg -> msg) -> Field.Field DateState DateDelta Date.Date (Element msg) msg
 date label deltaMsg =
     Field.custom
         { init = { page = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
@@ -169,7 +172,7 @@ renderDatePicker :
     , touched : Bool
     , focused : Bool
     , typing : Bool
-    , deltaMsg : Field.Delta DateDelta -> msg
+    , deltaMsg : Field.Delta DateState DateDelta msg -> msg
     , parsed : Result (List Field.Error) output
     , id : String
     , label : Maybe String
@@ -234,7 +237,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
                 , Events.onFocus focusMsg
                 ]
                 { label = box transparent midGrey (text txt)
-                , onPress = Just (deltaMsg (Field.Delta { internal = False } m))
+                , onPress = Just (deltaMsg (Field.Delta Field.Pure m))
                 }
     in
     column
@@ -274,7 +277,7 @@ renderDatePicker { input, deltaMsg, label, id, focused, focusMsg, touched, parse
         ]
 
 
-viewBlock : (Field.Delta DateDelta -> a) -> a -> Maybe Date.Date -> CalendarBlock -> Element a
+viewBlock : (Field.Delta DateState DateDelta a -> a) -> a -> Maybe Date.Date -> CalendarBlock -> Element a
 viewBlock msg focusMsg selected block =
     let
         colour d =
@@ -298,7 +301,7 @@ viewBlock msg focusMsg selected block =
                 , Events.onFocus focusMsg
                 ]
                 { label = box bg bd (text <| String.fromInt <| Date.day d)
-                , onPress = Just (msg (Field.Delta { internal = False } (DateSelected d)))
+                , onPress = Just (msg (Field.Delta Field.Pure (DateSelected d)))
                 }
 
 
@@ -363,7 +366,7 @@ type TimeDelta
     | HoursChanged Int
 
 
-time : String -> (Field.Delta TimeDelta -> msg) -> Field.Field TimeState TimeDelta TimeState (Element msg) msg
+time : String -> (Field.Delta String TimeDelta msg -> msg) -> Field.Field TimeState TimeDelta TimeState (Element msg) msg
 time label deltaMsg =
     Field.custom
         { init = { hours = 12, minutes = 0 }
@@ -393,7 +396,7 @@ renderTimePicker :
         | input : TimeState
         , id : String
         , label : Maybe String
-        , deltaMsg : Field.Delta TimeDelta -> msg
+        , deltaMsg : Field.Delta TimeState TimeDelta msg -> msg
         , focusMsg : msg
         , focused : Bool
     }
@@ -408,7 +411,7 @@ renderTimePicker { input, id, label, deltaMsg, focusMsg, focused } =
                 , Border.width 1
                 , Border.color midGrey
                 ]
-                { label = text txt, onPress = Just (deltaMsg (Field.Delta { internal = False } m)) }
+                { label = text txt, onPress = Just (deltaMsg (Field.Delta Field.Pure m)) }
 
         hours =
             String.fromInt input.hours
@@ -484,7 +487,7 @@ type alias SearchState a =
 
 search :
     String
-    -> (Field.Delta (SearchDelta a) -> msg)
+    -> (Field.Delta (SearchState a) (SearchDelta a) msg -> msg)
     -> (a -> String)
     -> (SearchState a -> Cmd (List a))
     -> Field.Field (SearchState a) (SearchDelta a) a (Element msg) msg
@@ -509,8 +512,8 @@ search label msg toString loadCmd =
         , renderer = renderSearchField toString
         , label = label
         }
-        |> Field.withLoadCmd (loadCmd >> Cmd.map (ResultsLoaded >> Field.Delta { internal = True } >> msg))
-        |> Field.withTypingTimeout 1000
+        |> Field.withLoadCmd (loadCmd >> Cmd.map (ResultsLoaded >> Field.Delta Field.Housekeeping >> msg))
+        |> Field.withDebounce 1000
 
 
 renderSearchField :
@@ -522,7 +525,7 @@ renderSearchField :
         , touched : Bool
         , focused : Bool
         , typing : Bool
-        , deltaMsg : Field.Delta (SearchDelta a) -> msg
+        , deltaMsg : Field.Delta (SearchState a) (SearchDelta a) msg -> msg
         , parsed : Result (List Field.Error) output
         , id : String
         , label : Maybe String
@@ -544,7 +547,7 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
         ]
         [ row [ spacing 10 ]
             [ Input.text []
-                { onChange = deltaMsg << Field.Delta { internal = False } << SearchChanged
+                { onChange = deltaMsg << Field.Delta Field.Effectful << SearchChanged
                 , placeholder = Nothing
                 , label = Input.labelAbove [] (text (Maybe.withDefault id label))
                 , text = input.search
@@ -574,7 +577,7 @@ renderSearchField toString { label, id, input, deltaMsg, requestCmdMsg, focusMsg
                         , width fill
                         ]
                         { label = text (toString item)
-                        , onPress = Just (deltaMsg <| Field.Delta { internal = True } <| ResultSelected item)
+                        , onPress = Just (deltaMsg <| Field.Delta Field.Pure <| ResultSelected item)
                         }
                 )
                 input.options

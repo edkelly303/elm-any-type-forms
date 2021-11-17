@@ -1,5 +1,6 @@
 module Field exposing
     ( Delta(..)
+    , DeltaContext
     , Error(..)
     , Field(..)
     , State
@@ -13,24 +14,28 @@ module Field exposing
     , stringMustBeLongerThan
     , stringMustBeShorterThan
     , stringMustNotContain
+    , withDebounce
     , withInitialState
     , withLabel
     , withLoadCmd
     , withRenderer
-    , withTypingTimeout
     , withValidator
     )
 
 
-type Delta delta
-    = Delta { internal : Bool } delta
+type Delta input delta msg
+    = Delta (DeltaContext input msg) delta
+
+
+type alias DeltaContext input msg =
+    { cmd : input -> Cmd msg, debounce : Float }
 
 
 type Field input delta output element msg
     = Field
         { index : Int
         , init : input
-        , deltaMsg : Delta delta -> msg
+        , deltaMsg : Delta input delta msg -> msg
         , updater : delta -> input -> input
         , parser : input -> Result Error output
         , validators : List (output -> Maybe Error)
@@ -39,7 +44,7 @@ type Field input delta output element msg
             , touched : Bool
             , focused : Bool
             , typing : Bool
-            , deltaMsg : Delta delta -> msg
+            , deltaMsg : Delta input delta msg -> msg
             , focusMsg : msg
             , requestCmdMsg : msg
             , parsed : Result (List Error) output
@@ -115,7 +120,7 @@ errorToString e =
 
 custom :
     { init : input
-    , deltaMsg : Delta delta -> msg
+    , deltaMsg : Delta input delta msg -> msg
     , updater : delta -> input -> input
     , parser : input -> Result Error output
     , renderer :
@@ -125,7 +130,7 @@ custom :
         , typing : Bool
         , requestCmdMsg : msg
         , focusMsg : msg
-        , deltaMsg : Delta delta -> msg
+        , deltaMsg : Delta input delta msg -> msg
         , parsed : Result (List Error) output
         , label : Maybe String
         , id : String
@@ -173,8 +178,8 @@ withLabel l (Field f) =
     Field { f | label = Just l }
 
 
-withTypingTimeout : Float -> Field input delta output element msg -> Field input delta output element msg
-withTypingTimeout timeout (Field f) =
+withDebounce : Float -> Field input delta output element msg -> Field input delta output element msg
+withDebounce timeout (Field f) =
     Field { f | inputTimeout = timeout }
 
 
@@ -195,7 +200,7 @@ withRenderer :
      , typing : Bool
      , requestCmdMsg : msg
      , focusMsg : msg
-     , deltaMsg : Delta delta -> msg
+     , deltaMsg : Delta input delta msg -> msg
      , parsed : Result (List Error) output
      , label : Maybe String
      , id : String

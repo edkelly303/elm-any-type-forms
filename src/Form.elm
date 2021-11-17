@@ -50,13 +50,19 @@ type alias InternalState msg =
     { fields :
         Dict.Dict
             Int
-            { touched : Bool
-            , lastTouched : Maybe Time.Posix
+            { interaction : Interaction
             , cmd : Cmd msg
             , inputTimeout : Float
             }
     , focused : Maybe Int
     }
+
+
+type Interaction
+    = Intact
+    | Changing Time.Posix
+    | Loading
+    | Idle
 
 
 type alias Index input delta output element msg restFields restFieldStates form state =
@@ -69,11 +75,11 @@ type alias Index input delta output element msg restFields restFieldStates form 
     -> state
 
 
-type InternalMsg
+type InternalMsg msg
     = Focused Int
     | CmdRequested Int
-    | ChangeDetected Int Time.Posix
-    | ChangeCompleted Int Time.Posix
+    | ChangeDetected Int Float (Cmd msg) Time.Posix
+    | ChangeCompleted Int (Cmd msg) Time.Posix
 
 
 
@@ -96,7 +102,7 @@ type Builder a b c d e f g h fields element msg
         , layout : List element -> element
         , submitMsg : Maybe msg
         , submitRenderer : msg -> element
-        , formMsg : InternalMsg -> msg
+        , formMsg : InternalMsg msg -> msg
         }
 
 
@@ -104,7 +110,7 @@ type Builder a b c d e f g h fields element msg
 -- CREATING FORMS
 
 
-form : (InternalMsg -> msg) -> Builder (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> h) (i -> i) () (Element msg) msg
+form : (InternalMsg msg -> msg) -> Builder (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> h) (i -> i) () (Element msg) msg
 form formMsg =
     Builder
         { reverseSize = identity
@@ -160,10 +166,9 @@ withField (Field fld) (Builder bdr) =
             { formState
                 | fields =
                     Dict.insert bdr.fieldCount
-                        { touched = False
-                        , lastTouched = Nothing
-                        , cmd = Cmd.none
+                        { cmd = Cmd.none
                         , inputTimeout = fld.inputTimeout
+                        , interaction = Intact
                         }
                         formState.fields
             }
@@ -311,7 +316,7 @@ compose ( a, b ) ( a1, b1 ) =
 -- SETTING FIELDS
 
 
-updateForm : (InternalMsg -> msg) -> InternalMsg -> State state msg -> ( State state msg, Cmd msg )
+updateForm : (InternalMsg msg -> msg) -> InternalMsg msg -> State state msg -> ( State state msg, Cmd msg )
 updateForm formMsg msg (State internalState state) =
     let
         ( internalState2, cmd ) =
@@ -330,58 +335,83 @@ updateForm formMsg msg (State internalState state) =
                         |> Maybe.withDefault Cmd.none
                     )
 
-                ChangeDetected f time ->
-                    Maybe.map
-                        (\field ->
-                            ( { internalState | fields = Dict.insert f { field | lastTouched = Just time } internalState.fields }
-                            , Task.perform (\() -> formMsg <| ChangeCompleted f time) (Process.sleep field.inputTimeout)
+                ChangeDetected fieldIndex debounce cmd_ time ->
+                    Dict.get fieldIndex internalState.fields
+                        |> Maybe.map
+                            (\field ->
+                                ( { internalState
+                                    | fields =
+                                        Dict.insert fieldIndex
+                                            { field | interaction = Changing time }
+                                            internalState.fields
+                                  }
+                                , Task.perform (\() -> formMsg <| ChangeCompleted fieldIndex cmd_ time) (Process.sleep debounce)
+                                )
                             )
-                        )
-                        (Dict.get f internalState.fields)
                         |> Maybe.withDefault ( internalState, Cmd.none )
 
-                ChangeCompleted f time ->
-                    Dict.get f internalState.fields
+                ChangeCompleted fieldIndex cmd_ time ->
+                    Dict.get fieldIndex internalState.fields
                         |> Maybe.map
                             (\s ->
-                                if s.lastTouched == Just time then
-                                    ( { internalState | fields = Dict.insert f { s | lastTouched = Nothing } internalState.fields }
-                                    , s.cmd
-                                    )
+                                case s.interaction of
+                                    Changing lastTouched ->
+                                        if lastTouched == time then
+                                            ( { internalState
+                                                | fields =
+                                                    Dict.insert fieldIndex
+                                                        { s
+                                                            | interaction =
+                                                                if cmd_ == Cmd.none then
+                                                                    Idle
 
-                                else
-                                    ( internalState, Cmd.none )
+                                                                else
+                                                                    Loading
+                                                        }
+                                                        internalState.fields
+                                              }
+                                            , cmd_
+                                            )
+
+                                        else
+                                            ( internalState, Cmd.none )
+
+                                    _ ->
+                                        ( internalState, Cmd.none )
                             )
                         |> Maybe.withDefault ( internalState, Cmd.none )
     in
     ( State internalState2 state, cmd )
 
 
-updateField :
-    ((a -> ( Cmd msg, (), () ) -> ( Cmd msg, (), () ))
-     -> Int
-     -> ( Cmd msg, form, state )
-     -> ( Cmd msg, form2, state2 )
-    )
-    -> (InternalMsg -> msg)
-    -> Form form
-    ->
-        (( b -> b, Int -> Int )
-         ->
-            ( (( Field input delta output element msg, fields )
-               -> ( Field.State input, fieldStates )
-               -> ( Field.State input, fieldStates )
-              )
-              -> form
-              -> state
-              -> state
-            , Int -> Int
-            )
-        )
-    -> Field.Delta delta
-    -> State state msg
-    -> ( State state msg, Cmd msg )
-updateField collectCmdsSize formMsg (Form form_) index (Field.Delta { internal } delta) (State internalState fieldStates) =
+
+-- updateField :
+--     ((a -> ( Cmd msg, (), () ) -> ( Cmd msg, (), () ))
+--      -> Int
+--      -> ( Cmd msg, form, state )
+--      -> ( Cmd msg, form2, state2 )
+--     )
+--     -> (InternalMsg input msg -> msg)
+--     -> Form form
+--     ->
+--         (( b -> b, Int -> Int )
+--          ->
+--             ( (( Field input delta output element msg, fields )
+--                -> ( Field.State input, fieldStates )
+--                -> ( Field.State input, fieldStates )
+--               )
+--               -> form
+--               -> state
+--               -> state
+--             , Int -> Int
+--             )
+--         )
+--     -> Field.Delta input delta msg
+--     -> State state msg
+--     -> ( State state msg, Cmd msg )
+
+
+updateField collectCmdsSize formMsg (Form form_) index (Field.Delta ctx delta) (State internalState fieldStates) =
     let
         ( selectField, countField ) =
             index ( selectField0, countField0 )
@@ -398,30 +428,19 @@ updateField collectCmdsSize formMsg (Form form_) index (Field.Delta { internal }
                 form_
                 fieldStates
 
-        updatedCmd =
-            collectCmds indexOfUpdatedField collectCmdsSize form_ newFieldStates
+        cmd =
+            collectCmds indexOfUpdatedField ctx.cmd collectCmdsSize form_ newFieldStates
 
-        newInternalState =
-            { internalState
-                | fields =
-                    Dict.update indexOfUpdatedField
-                        (Maybe.map
-                            (\s ->
-                                { s
-                                    | touched = True
-                                    , cmd = updatedCmd
-                                }
-                            )
-                        )
-                        internalState.fields
-            }
+        -- newInternalState =
+        --     { internalState
+        --         | fields =
+        --             Dict.update indexOfUpdatedField
+        --                 (Maybe.map (\s -> { s | cmd = updatedCmd }))
+        --                 internalState.fields
+        --     }
     in
-    ( State newInternalState newFieldStates
-    , if internal then
-        Cmd.none
-
-      else
-        Task.perform (formMsg << ChangeDetected indexOfUpdatedField) Time.now
+    ( State internalState newFieldStates
+    , Task.perform (formMsg << ChangeDetected indexOfUpdatedField ctx.debounce cmd) Time.now
     )
 
 
@@ -475,19 +494,59 @@ accumulateErrors a list =
             Err errors
 
 
-collectCmds : Int -> ((b -> ( Cmd msg, (), () ) -> ( Cmd msg, (), () )) -> Int -> ( Cmd msg, form, state ) -> ( Cmd msg, e, f )) -> form -> state -> Cmd msg
-collectCmds fieldIndex size form_ state_ =
-    size (\_ ( cmd, (), () ) -> ( cmd, (), () )) fieldIndex ( Cmd.none, form_, state_ )
+
+-- collectCmds :
+--     Int
+--     -> (input -> Cmd msg)
+--     ->
+--         ((b
+--           -> ( Cmd msg, (), () )
+--           -> ( Cmd msg, (), () )
+--          )
+--          -> Int
+--          -> (input -> Cmd msg)
+--          -> ( Cmd msg, form, state )
+--          -> ( Cmd msg, e, f )
+--         )
+--     -> form
+--     -> state
+--     -> Cmd msg
+
+
+collectCmds :
+    Int
+    -> (input -> Cmd msg)
+    ->
+        ((c
+          -> d
+          -> ( Cmd msg, (), () )
+          -> ( Cmd msg, (), () )
+         )
+         -> Int
+         -> (input -> Cmd msg)
+         -> ( Cmd msg, f, g )
+         -> ( h, i, j )
+        )
+    -> f
+    -> g
+    -> h
+collectCmds fieldIndex cmdFromInput size form_ state_ =
+    size (\_ _ ( cmd, (), () ) -> ( cmd, (), () )) fieldIndex cmdFromInput ( Cmd.none, form_, state_ )
         |> (\( cmd, _, _ ) -> cmd)
 
 
-collectCmdSize1 : (Int -> ( Cmd msg, b, a ) -> c) -> Int -> ( Cmd msg, ( Field d delta output element msg, b ), ( { e | input : d }, a ) ) -> c
-collectCmdSize1 next fieldIndex ( currentCmd, ( Field field, restFields ), ( { input }, restFieldStates ) ) =
+collectCmdSize1 :
+    (Int -> (input -> Cmd msg) -> ( Cmd msg, b, a ) -> c)
+    -> Int
+    -> (input -> Cmd msg)
+    -> ( Cmd msg, ( Field d delta output element msg, b ), ( { e | input : input }, a ) )
+    -> c
+collectCmdSize1 next fieldIndex cmdFromInput ( currentCmd, ( Field field, restFields ), ( { input }, restFieldStates ) ) =
     if fieldIndex == field.index then
-        next fieldIndex ( field.loadCmd input, restFields, restFieldStates )
+        next fieldIndex cmdFromInput ( cmdFromInput input, restFields, restFieldStates )
 
     else
-        next fieldIndex ( currentCmd, restFields, restFieldStates )
+        next fieldIndex cmdFromInput ( currentCmd, restFields, restFieldStates )
 
 
 
@@ -549,7 +608,7 @@ anotherReverseSize1 next ( s, ( fst, rest ) ) =
 
 touchAll : State state msg -> State state msg
 touchAll (State internalState state_) =
-    State { internalState | fields = Dict.map (\_ v -> { v | touched = True }) internalState.fields } state_
+    State { internalState | fields = Dict.map (\_ v -> { v | interaction = Idle }) internalState.fields } state_
 
 
 
@@ -580,8 +639,8 @@ renderAll config size (Form form_) (State internalState state_) results =
 
 
 renderSize1 :
-    ({ a | formMsg : InternalMsg -> msg } -> InternalState msg -> rest -> rest1 -> rest2 -> rest3)
-    -> { a | formMsg : InternalMsg -> msg }
+    ({ a | formMsg : InternalMsg msg -> msg } -> InternalState msg -> rest -> rest1 -> rest2 -> rest3)
+    -> { a | formMsg : InternalMsg msg -> msg }
     -> InternalState msg
     -> ( Field input delta output element msg, rest )
     -> ( { e | input : input }, rest1 )
@@ -594,12 +653,21 @@ renderSize1 next config internalState form_ state_ results =
                 { input = input
                 , touched =
                     Dict.get index internalState.fields
-                        |> Maybe.map .touched
-                        |> Maybe.withDefault False
+                        |> Maybe.map .interaction
+                        |> Maybe.withDefault Intact
+                        |> (\i -> i /= Intact)
                 , typing =
                     Dict.get index internalState.fields
-                        |> Maybe.map (\{ lastTouched } -> lastTouched /= Nothing)
-                        |> Maybe.withDefault False
+                        |> Maybe.map .interaction
+                        |> Maybe.withDefault Intact
+                        |> (\i ->
+                                case i of
+                                    Changing _ ->
+                                        True
+
+                                    _ ->
+                                        False
+                           )
                 , focused = internalState.focused == Just index
                 , requestCmdMsg = config.formMsg (CmdRequested index)
                 , focusMsg = config.formMsg (Focused index)

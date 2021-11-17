@@ -19,14 +19,14 @@ import Widgets
 
 
 type Msg
-    = Field0Changed (Field.Delta String)
-    | Field1Changed (Field.Delta String)
-    | Field2Changed (Field.Delta String)
-    | Field3Changed (Field.Delta Widgets.DateDelta)
-    | Field4Changed (Field.Delta Widgets.TimeDelta)
-    | Field5Changed (Field.Delta (Widgets.SearchDelta String))
+    = Field0Changed (Field.Delta String String Msg)
+    | Field1Changed (Field.Delta String String Msg)
+    | Field2Changed (Field.Delta String String Msg)
+    | Field3Changed (Field.Delta Widgets.DateState Widgets.DateDelta Msg)
+    | Field4Changed (Field.Delta Widgets.TimeState Widgets.TimeDelta Msg)
+    | Field5Changed (Field.Delta (Widgets.SearchState String) (Widgets.SearchDelta String) Msg)
     | SubmitClicked
-    | FormChanged Form.InternalMsg
+    | FormChanged (Form.InternalMsg Msg)
     | BackClicked
 
 
