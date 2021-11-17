@@ -2,8 +2,6 @@ module Form exposing
     ( Form
     , InternalMsg
     , State
-    , collectCmdSize1
-    , collectCmds
     , done
     , form
     , i0
