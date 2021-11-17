@@ -7,6 +7,7 @@ import Element.Border as Border
 import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
+import Element.Keyed
 import Field exposing (RendererConfig)
 import Html.Attributes
 import Internals exposing (..)
@@ -106,12 +107,25 @@ renderTextField { input, touched, typing, focusMsg, focused, debouncedDelta, par
 
 
 type DateDelta
-    = PageChanged Date.Unit Int
+    = MonthsPageOpened
+    | MonthSelected Time.Month
+    | YearsPageOpened
+    | DecadeSelected Int
+    | YearSelected Int
     | DateSelected Date.Date
 
 
 type alias DateState =
-    { page : Date.Date, selected : Maybe Date.Date }
+    { page : Page
+    , viewing : Date.Date
+    , selected : Maybe Date.Date
+    }
+
+
+type Page
+    = CalendarPage
+    | MonthsPage
+    | YearsPage { decade : Int }
 
 
 type CalendarBlock
@@ -122,13 +136,68 @@ type CalendarBlock
 date : String -> (Field.Delta DateDelta -> msg) -> Field.Field DateState DateDelta Date.Date (Element msg) msg
 date label deltaMsg =
     Field.custom
-        { init = { page = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
+        { init = { page = CalendarPage, viewing = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
         , deltaMsg = deltaMsg
         , updater =
             \delta state ->
                 case delta of
-                    PageChanged interval amount ->
-                        { state | page = Date.add interval amount state.page }
+                    MonthsPageOpened ->
+                        { state | page = MonthsPage }
+
+                    MonthSelected month ->
+                        { state
+                            | page = CalendarPage
+                            , viewing =
+                                Date.fromCalendarDate
+                                    (Date.year state.viewing)
+                                    month
+                                    (Date.day state.viewing)
+                            , selected =
+                                case state.selected of
+                                    Nothing ->
+                                        Nothing
+
+                                    Just d ->
+                                        Just
+                                            (Date.fromCalendarDate
+                                                (Date.year d)
+                                                month
+                                                (Date.day d)
+                                            )
+                        }
+
+                    YearsPageOpened ->
+                        { state | page = YearsPage { decade = Date.year state.viewing // 10 } }
+
+                    DecadeSelected decade ->
+                        { state | page = YearsPage { decade = decade } }
+
+                    YearSelected year ->
+                        case state.page of
+                            YearsPage { decade } ->
+                                { state
+                                    | page = CalendarPage
+                                    , viewing =
+                                        Date.fromCalendarDate
+                                            (decade * 10 + year)
+                                            (Date.month state.viewing)
+                                            (Date.day state.viewing)
+                                    , selected =
+                                        case state.selected of
+                                            Nothing ->
+                                                Nothing
+
+                                            Just d ->
+                                                Just
+                                                    (Date.fromCalendarDate
+                                                        (decade * 10 + year)
+                                                        (Date.month d)
+                                                        (Date.day d)
+                                                    )
+                                }
+
+                            _ ->
+                                state
 
                     DateSelected d ->
                         { state
@@ -157,7 +226,7 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
             Date.add Date.Months 1 firstDayOfMonth
 
         firstDayOfMonth =
-            Date.floor Date.Month input.page
+            Date.floor Date.Month input.viewing
 
         days =
             Date.range Date.Day 1 firstDayOfMonth firstDayOfNextMonth
@@ -206,15 +275,37 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
 
         button txt m =
             Input.button
-                [ width <| px maxButtonSize
-                , Events.onFocus focusMsg
+                [ Events.onFocus focusMsg
+                , width fill
+                , Border.width 1
+                , Border.rounded 3
+                , Border.color midGrey
+                , Background.color transparent
+                , padding 10
+                , Font.center
                 ]
-                { label = box transparent midGrey (text txt)
+                { label = text txt
+                , onPress = Just (delta m)
+                }
+
+        selectedButton txt m =
+            Input.button
+                [ Events.onFocus focusMsg
+                , width fill
+                , Border.width 1
+                , Border.rounded 3
+                , Border.color midGrey
+                , Background.color green
+                , padding 10
+                , Font.center
+                ]
+                { label = text txt
                 , onPress = Just (delta m)
                 }
     in
     column
         [ width fill
+        , height <| px 500
         , spacing 10
         , padding 20
         , width fill
@@ -229,24 +320,90 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
         , Border.rounded 5
         ]
         [ el [ Font.size 18 ] (text (label |> Maybe.withDefault id))
-        , row [ spaceEvenly, width <| maximum maxCalendarWidth <| fill, centerX ]
-            [ button "<" (PageChanged Date.Months -1)
-            , text (Date.format "MMM" input.page)
-            , button ">" (PageChanged Date.Months 1)
-            , button "<" (PageChanged Date.Years -1)
-            , text (Date.format "yyyy" input.page)
-            , button ">" (PageChanged Date.Years 1)
-            ]
-        , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
-        , column [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ]
-            (List.map
-                (\w ->
-                    row [ spacing 8, width fill ]
-                        (List.map (viewBlock delta focusMsg input.selected) w)
-                )
-                weeks
-            )
-        , viewErrors touched parsed typing
+        , case input.page of
+            CalendarPage ->
+                column [ spacing 10, width fill ]
+                    [ row [ spacing 10, width <| maximum maxCalendarWidth <| fill, centerX ]
+                        [ button (Date.format "MMMM" input.viewing) MonthsPageOpened
+                        , button (Date.format "yyyy" input.viewing) YearsPageOpened
+                        ]
+                    , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
+                    , column [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ]
+                        (List.map
+                            (\w ->
+                                row [ spacing 8, width fill ]
+                                    (List.map (viewBlock delta focusMsg input.selected) w)
+                            )
+                            weeks
+                        )
+                    , viewErrors touched parsed typing
+                    ]
+
+            YearsPage { decade } ->
+                column [ spacing 10, width fill ]
+                    [ Element.Keyed.row [ width <| fillPortion 1, spacing 10 ]
+                        (List.range (decade - 2) (decade + 2)
+                            |> List.map
+                                (\dec ->
+                                    if dec == decade then
+                                        ( String.fromInt dec, selectedButton (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
+
+                                    else
+                                        ( String.fromInt dec, button (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
+                                )
+                        )
+                    , row [width fill, spacing 10]
+                        [ Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
+                            (List.range 0 4 |> List.map (\yr -> ( String.fromInt decade, button (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
+                        , Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
+                            (List.range 5 9 |> List.map (\yr -> ( String.fromInt decade, button (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
+                        ]
+                    ]
+
+            MonthsPage ->
+                let
+                    monthToString i =
+                        case i of
+                            1 ->
+                                "January"
+
+                            2 ->
+                                "February"
+
+                            3 ->
+                                "March"
+
+                            4 ->
+                                "April"
+
+                            5 ->
+                                "May"
+
+                            6 ->
+                                "June"
+
+                            7 ->
+                                "July"
+
+                            8 ->
+                                "August"
+
+                            9 ->
+                                "September"
+
+                            10 ->
+                                "October"
+
+                            11 ->
+                                "November"
+
+                            _ ->
+                                "December"
+                in
+                row [ spacing 10, width fill ]
+                    [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                    , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                    ]
         ]
 
 
@@ -462,14 +619,27 @@ search label msg toString loadCmd =
         , updater =
             \delta state ->
                 case delta of
-                    SearchChanged s ->
-                        { state | search = s }
+                    SearchChanged str ->
+                        { state | search = str }
 
-                    ResultsLoaded l ->
-                        { state | options = l }
+                    ResultsLoaded list ->
+                        { state
+                            | options = list
+                            , selected =
+                                case state.selected of
+                                    Nothing ->
+                                        Nothing
 
-                    ResultSelected r ->
-                        { state | selected = Just r }
+                                    Just sel ->
+                                        if List.member sel list then
+                                            Just sel
+
+                                        else
+                                            Nothing
+                        }
+
+                    ResultSelected item ->
+                        { state | selected = Just item }
         , parser =
             \state ->
                 Result.fromMaybe (Field.Custom "Must select something") state.selected
@@ -568,7 +738,7 @@ green =
 
 focusedBlue : Color
 focusedBlue =
-    rgb255 220 220 255
+    rgb255 240 230 255
 
 
 midGrey : Color
