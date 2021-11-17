@@ -34,7 +34,6 @@ string label msg =
         , renderer = renderTextField
         , label = label
         }
-        |> Field.withDebounce 500
 
 
 float : String -> (Field.Delta String -> msg) -> Field.Field String String Float (Element msg) msg
@@ -47,7 +46,6 @@ float label msg =
         , renderer = renderTextField
         , label = label
         }
-        |> Field.withDebounce 500
 
 
 int : String -> (Field.Delta String -> msg) -> Field.Field String String Int (Element msg) msg
@@ -60,11 +58,10 @@ int label msg =
         , renderer = renderTextField
         , label = label
         }
-        |> Field.withDebounce 500
 
 
 renderTextField : RendererConfig String String output msg -> Element msg
-renderTextField { input, touched, typing, focusMsg, focused, delta, parsed, id, label } =
+renderTextField { input, touched, typing, focusMsg, focused, debouncedDelta, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -86,7 +83,7 @@ renderTextField { input, touched, typing, focusMsg, focused, delta, parsed, id, 
             { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
             , text = input
             , placeholder = Nothing
-            , onChange = delta
+            , onChange = debouncedDelta 500
             }
         , if typing then
             text "..."
@@ -480,7 +477,6 @@ search label msg toString loadCmd =
         , label = label
         }
         |> Field.withLoadCmd "loadItems" (loadCmd >> Cmd.map (ResultsLoaded >> Field.Delta { debounce = 0, cmdName = "" } >> msg))
-        |> Field.withDebounce 1000
 
 
 renderSearchField :

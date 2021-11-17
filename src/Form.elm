@@ -51,7 +51,6 @@ type alias InternalState msg =
         Dict.Dict Int
             { interaction : Interaction
             , cmd : Dict.Dict String (Cmd msg)
-            , inputTimeout : Float
             }
     , focused : Maybe Int
     }
@@ -166,7 +165,6 @@ withField (Field fld) (Builder bdr) =
                 | fields =
                     Dict.insert bdr.fieldCount
                         { cmd = Dict.empty
-                        , inputTimeout = fld.inputTimeout
                         , interaction = Intact
                         }
                         formState.fields

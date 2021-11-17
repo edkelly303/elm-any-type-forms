@@ -15,7 +15,6 @@ module Field exposing
     , stringMustBeLongerThan
     , stringMustBeShorterThan
     , stringMustNotContain
-    , withDebounce
     , withInitialState
     , withLabel
     , withLoadCmd
@@ -46,7 +45,6 @@ type Field input delta output element msg
         , id : String
         , label : Maybe String
         , loadCmd : Dict.Dict String (input -> Cmd msg)
-        , inputTimeout : Float
         }
 
 
@@ -147,7 +145,6 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
         , id = ""
         , label = Just label
         , loadCmd = Dict.singleton "" (always Cmd.none)
-        , inputTimeout = 0
         }
 
 
@@ -172,11 +169,6 @@ withInitialState input (Field f) =
 withLabel : String -> Field input delta output element msg -> Field input delta output element msg
 withLabel l (Field f) =
     Field { f | label = Just l }
-
-
-withDebounce : Float -> Field input delta output element msg -> Field input delta output element msg
-withDebounce timeout (Field f) =
-    Field { f | inputTimeout = timeout }
 
 
 withLoadCmd : String -> (input -> Cmd msg) -> Field input delta output element msg -> Field input delta output element msg
@@ -205,7 +197,6 @@ withRenderer r (Field f) =
         , id = f.id
         , label = f.label
         , loadCmd = f.loadCmd
-        , inputTimeout = f.inputTimeout
         }
 
 
