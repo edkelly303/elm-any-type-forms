@@ -109,7 +109,7 @@ type Builder a b c d e f g h fields element msg
 -- CREATING FORMS
 
 
-form : (InternalMsg msg -> msg) -> Builder (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> h) (i -> i) () (Element msg) msg
+form : (InternalMsg msg -> msg) -> Builder (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> h) (i -> i) {} (Element msg) msg
 form formMsg =
     Builder
         { reverseSize = identity
@@ -122,7 +122,7 @@ form formMsg =
         , renderSize = identity
         , fieldCount = 0
         , formState = { fields = Dict.empty, focused = Nothing }
-        , fields = ()
+        , fields = {}
         , layout =
             Element.column
                 [ Element.spacing 10
@@ -224,7 +224,7 @@ done (Builder bdr) =
             Form reversedFields
 
         fieldsState =
-            bdr.stateSize (\() -> ()) reversedFields
+            bdr.stateSize (\{} -> {}) reversedFields
     in
     { init = State bdr.formState fieldsState
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
@@ -386,7 +386,7 @@ updateForm formMsg msg (State internalState state) =
 
 
 -- updateField :
---     ((a -> ( Cmd msg, (), () ) -> ( Cmd msg, (), () ))
+--     ((a -> ( Cmd msg, {}, {} ) -> ( Cmd msg, {}, {} ))
 --      -> Int
 --      -> ( Cmd msg, form, state )
 --      -> ( Cmd msg, form2, state2 )
@@ -457,9 +457,9 @@ stateSize1 next form_ =
 -- VALIDATING ALL FIELDS
 
 
-validateAll : ((() -> () -> ()) -> form -> state -> results) -> Form form -> State state msg -> results
+validateAll : (({} -> {} -> {}) -> form -> state -> results) -> Form form -> State state msg -> results
 validateAll size (Form form_) (State _ state_) =
-    size (\() () -> ()) form_ state_
+    size (\{} {} -> {}) form_ state_
 
 
 validateSize1 :
@@ -497,7 +497,7 @@ accumulateErrors a list =
 collectCmds :
     Int
     ->
-        ((b -> ( Dict.Dict String (Cmd msg), (), () ) -> ( Dict.Dict String (Cmd msg), (), () ))
+        ((b -> ( Dict.Dict String (Cmd msg), {}, {} ) -> ( Dict.Dict String (Cmd msg), {}, {} ))
          -> Int
          -> ( Dict.Dict String (Cmd msg), form, state )
          -> ( Dict.Dict String (Cmd msg), e, f )
@@ -506,7 +506,7 @@ collectCmds :
     -> state
     -> Dict.Dict String (Cmd msg)
 collectCmds fieldIndex size form_ state_ =
-    size (\_ ( cmd, (), () ) -> ( cmd, (), () )) fieldIndex ( Dict.empty, form_, state_ )
+    size (\_ ( cmd, {}, {} ) -> ( cmd, {}, {} )) fieldIndex ( Dict.empty, form_, state_ )
         |> (\( cmd, _, _ ) -> cmd)
 
 
@@ -523,9 +523,9 @@ collectCmdSize1 next fieldIndex ( currentCmd, ( Field field, restFields ), ( { i
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
 
 
-collectResults : ((a -> a) -> ( Result error (), results ) -> ( collectedResult, d )) -> results -> collectedResult
+collectResults : ((a -> a) -> ( Result error {}, results ) -> ( collectedResult, d )) -> results -> collectedResult
 collectResults size results =
-    size identity ( Ok (), results )
+    size identity ( Ok {}, results )
         |> Tuple.first
 
 
@@ -556,9 +556,9 @@ collectResultsSize1 next ( s, ( fst, rst ) ) =
 -- REVERSING TUPLES
 
 
-reverseTuple : ((a -> a) -> ( (), b ) -> ( c, d )) -> b -> c
+reverseTuple : ((a -> a) -> ( {}, b ) -> ( c, d )) -> b -> c
 reverseTuple size results =
-    size identity ( (), results )
+    size identity ( {}, results )
         |> Tuple.first
 
 
@@ -586,9 +586,9 @@ touchAll (State internalState state_) =
 
 
 submit :
-    ((() -> () -> ()) -> form -> state -> b)
-    -> ((a -> a) -> ( Result error (), b ) -> ( Result c d, e ))
-    -> ((f -> f) -> ( (), d ) -> ( g, h ))
+    (({} -> {} -> {}) -> form -> state -> b)
+    -> ((a -> a) -> ( Result error {}, b ) -> ( Result c d, e ))
+    -> ((f -> f) -> ( {}, d ) -> ( g, h ))
     -> Form form
     -> State state msg
     -> Result (State state msg) g
@@ -603,9 +603,9 @@ submit validateSize collectResultsSize reverseSize form_ state_ =
 -- CONVERTING TO ELEMENTS
 
 
-renderAll : a -> ((b -> c -> () -> () -> () -> ()) -> a -> InternalState msg -> form -> state -> e -> d) -> Form form -> State state msg -> e -> d
+renderAll : a -> ((b -> c -> {} -> {} -> {} -> {}) -> a -> InternalState msg -> form -> state -> e -> d) -> Form form -> State state msg -> e -> d
 renderAll config size (Form form_) (State internalState state_) results =
-    size (\_ _ () () () -> ()) config internalState form_ state_ results
+    size (\_ _ {} {} {} -> {}) config internalState form_ state_ results
 
 
 renderSize1 :
@@ -641,10 +641,10 @@ renderSize1 next config internalState form_ state_ results =
                 , focused = internalState.focused == Just index
                 , requestCmdMsg = \cmdName -> config.formMsg (CmdRequested cmdName index)
                 , focusMsg = config.formMsg (Focused index)
-                , delta = \delta -> Field.Delta {debounce = 0, cmdName = ""} delta |> deltaMsg
-                , effectfulDelta = \eff delta -> Field.Delta {debounce = 0, cmdName = eff} delta |> deltaMsg
-                , debouncedDelta = \db delta -> Field.Delta {debounce = db, cmdName = ""} delta |> deltaMsg
-                , debouncedEffectfulDelta = \db eff delta -> Field.Delta {debounce = db, cmdName = eff} delta |> deltaMsg
+                , delta = \delta -> Field.Delta { debounce = 0, cmdName = "" } delta |> deltaMsg
+                , effectfulDelta = \eff delta -> Field.Delta { debounce = 0, cmdName = eff } delta |> deltaMsg
+                , debouncedDelta = \db delta -> Field.Delta { debounce = db, cmdName = "" } delta |> deltaMsg
+                , debouncedEffectfulDelta = \db eff delta -> Field.Delta { debounce = db, cmdName = eff } delta |> deltaMsg
                 , parsed = parsed
                 , id = id
                 , label = label
@@ -658,9 +658,9 @@ renderSize1 next config internalState form_ state_ results =
 
 viewElements :
     config
-    -> ((() -> () -> ()) -> form -> state -> results)
+    -> (({} -> {} -> {}) -> form -> state -> results)
     ->
-        ((b -> c -> () -> () -> () -> ())
+        ((b -> c -> {} -> {} -> {} -> {})
          -> config
          -> InternalState msg
          -> form
@@ -690,9 +690,9 @@ collectElementsSize1 next ( s, ( fst, rst ) ) =
 
 view :
     { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d }
-    -> ((() -> () -> ()) -> form -> state -> e)
+    -> (({} -> {} -> {}) -> form -> state -> e)
     ->
-        ((f -> g -> () -> () -> () -> ())
+        ((f -> g -> {} -> {} -> {} -> {})
          -> { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d }
          -> InternalState msg
          -> form
