@@ -113,6 +113,7 @@ type DateDelta
     | DecadeSelected Int
     | YearSelected Int
     | DateSelected Date.Date
+    | CalendarPageChanged Int
 
 
 type alias DateState =
@@ -213,6 +214,9 @@ date label deltaMsg =
                                         else
                                             Just d
                         }
+
+                    CalendarPageChanged i ->
+                        { state | viewing = Date.add Date.Months i state.viewing }
         , parser = \state -> Result.fromMaybe Field.NoDateSelected state.selected
         , renderer = renderDatePicker
         , label = label
@@ -273,17 +277,19 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
                 |> List.map List.reverse
                 |> List.reverse
 
-        button txt m =
+        button attrs txt m =
             Input.button
-                [ Events.onFocus focusMsg
-                , width fill
-                , Border.width 1
-                , Border.rounded 3
-                , Border.color midGrey
-                , Background.color transparent
-                , padding 10
-                , Font.center
-                ]
+                ([ Events.onFocus focusMsg
+                 , width fill
+                 , Border.width 1
+                 , Border.rounded 3
+                 , Border.color midGrey
+                 , Background.color white
+                 , padding 10
+                 , Font.center
+                 ]
+                    ++ attrs
+                )
                 { label = text txt
                 , onPress = Just (delta m)
                 }
@@ -324,8 +330,10 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
             CalendarPage ->
                 column [ spacing 10, width fill ]
                     [ row [ spacing 10, width <| maximum maxCalendarWidth <| fill, centerX ]
-                        [ button (Date.format "MMMM" input.viewing) MonthsPageOpened
-                        , button (Date.format "yyyy" input.viewing) YearsPageOpened
+                        [ button [ width <| px 44 ] "<" (CalendarPageChanged -1)
+                        , button [] (Date.format "MMMM" input.viewing) MonthsPageOpened
+                        , button [] (Date.format "yyyy" input.viewing) YearsPageOpened
+                        , button [ width <| px 44 ] ">" (CalendarPageChanged 1)
                         ]
                     , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
                     , column [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ]
@@ -349,14 +357,14 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
                                         ( String.fromInt dec, selectedButton (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
 
                                     else
-                                        ( String.fromInt dec, button (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
+                                        ( String.fromInt dec, button [] (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
                                 )
                         )
-                    , row [width fill, spacing 10]
+                    , row [ width fill, spacing 10 ]
                         [ Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
-                            (List.range 0 4 |> List.map (\yr -> ( String.fromInt decade, button (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
+                            (List.range 0 4 |> List.map (\yr -> ( String.fromInt decade, button [] (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
                         , Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
-                            (List.range 5 9 |> List.map (\yr -> ( String.fromInt decade, button (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
+                            (List.range 5 9 |> List.map (\yr -> ( String.fromInt decade, button [] (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
                         ]
                     ]
 
@@ -401,8 +409,8 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
                                 "December"
                 in
                 row [ spacing 10, width fill ]
-                    [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button (monthToString m) (MonthSelected (Date.numberToMonth m))))
-                    , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                    [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                    , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
                     ]
         ]
 
@@ -415,7 +423,7 @@ viewBlock msg focusMsg selected block =
                 { bg = green, bd = midGrey }
 
             else
-                { bg = transparent, bd = midGrey }
+                { bg = white, bd = midGrey }
     in
     case block of
         Blank ->
@@ -531,6 +539,7 @@ renderTimePicker { input, id, label, delta, focusMsg, focused } =
                 , Border.rounded 3
                 , Border.width 1
                 , Border.color midGrey
+                , Background.color white
                 ]
                 { label = text txt, onPress = Just (delta m) }
 
@@ -538,13 +547,13 @@ renderTimePicker { input, id, label, delta, focusMsg, focused } =
             String.fromInt input.hours
                 |> String.padLeft 2 '0'
                 |> String.split ""
-                |> List.map (\x -> el [ width <| px 40 ] <| text x)
+                |> List.map (\x -> el [ width <| px 40, Font.size 30 ] <| text x)
 
         minutes =
             String.fromInt input.minutes
                 |> String.padLeft 2 '0'
                 |> String.split ""
-                |> List.map (\x -> el [ width <| px 40 ] <| text x)
+                |> List.map (\x -> el [ width <| px 40, Font.size 30 ] <| text x)
     in
     column
         [ width fill
@@ -673,10 +682,6 @@ renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, r
                 , placeholder = Nothing
                 , label = Input.labelAbove [] (text (Maybe.withDefault id label))
                 , text = input.search
-                }
-            , Input.button [ padding 10, Border.width 1, Border.rounded 3, Border.color midGrey ]
-                { label = text "search"
-                , onPress = Just (requestCmdMsg "")
                 }
             ]
         , if typing then
