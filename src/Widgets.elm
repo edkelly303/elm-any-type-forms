@@ -8,6 +8,7 @@ import Element.Events as Events
 import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed
+import FeatherIcons as FI
 import Field exposing (RendererConfig)
 import Html.Attributes
 import Internals exposing (..)
@@ -62,7 +63,7 @@ int label msg =
 
 
 renderTextField : RendererConfig String String output msg -> Element msg
-renderTextField { input, touched, typing, focusMsg, focused, debouncedDelta, parsed, id, label } =
+renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -75,24 +76,47 @@ renderTextField { input, touched, typing, focusMsg, focused, debouncedDelta, par
                 white
             )
         , Border.rounded 5
+        , Border.width 1
+        , Border.color paleGrey
         , Events.onClick focusMsg
         ]
-        [ Input.text
-            [ htmlAttribute (Html.Attributes.id id)
-            , Events.onFocus focusMsg
+        [ row [ spacing 10, width fill ]
+            [ Input.text
+                [ htmlAttribute (Html.Attributes.id id)
+                , Events.onFocus focusMsg
+                ]
+                { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
+                , text = input
+                , placeholder = Nothing
+                , onChange = debouncedDelta 500
+                }
+            , statusToIcon status parsed
             ]
-            { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
-            , text = input
-            , placeholder = Nothing
-            , onChange = debouncedDelta 500
-            }
-        , if typing then
-            text "..."
-
-          else
-            none
-        , viewErrors touched parsed typing
+        , viewErrors status parsed
         ]
+
+
+statusToIcon : Field.Status -> Result error value -> Element msg
+statusToIcon status parsed =
+    el [ padding 10 ] <|
+        html <|
+            FI.toHtml []
+                (case ( status, parsed ) of
+                    ( Field.Changing, _ ) ->
+                        FI.moreHorizontal
+
+                    ( Field.Idle, Ok _ ) ->
+                        FI.checkCircle
+
+                    ( Field.Idle, Err _ ) ->
+                        FI.xCircle
+
+                    ( Field.Intact, _ ) ->
+                        FI.helpCircle
+
+                    ( Field.Loading, _ ) ->
+                        FI.save
+                )
 
 
 
@@ -224,7 +248,7 @@ date label deltaMsg =
 
 
 renderDatePicker : RendererConfig DateState DateDelta Date.Date msg -> Element msg
-renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, typing } =
+renderDatePicker { input, delta, label, id, focused, focusMsg, status, parsed } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -324,6 +348,8 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
                 white
             )
         , Border.rounded 5
+        , Border.width 1
+        , Border.color paleGrey
         ]
         [ el [ Font.size 18 ] (text (label |> Maybe.withDefault id))
         , case input.page of
@@ -344,7 +370,7 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, touched, parsed, 
                             )
                             weeks
                         )
-                    , viewErrors touched parsed typing
+                    , viewErrors status parsed
                     ]
 
             YearsPage { decade } ->
@@ -569,6 +595,8 @@ renderTimePicker { input, id, label, delta, focusMsg, focused } =
                 white
             )
         , Border.rounded 5
+        , Border.width 1
+        , Border.color paleGrey
         , Font.center
         ]
         [ text (Maybe.withDefault id label)
@@ -662,7 +690,7 @@ renderSearchField :
     (a -> String)
     -> Field.RendererConfig (SearchState a) (SearchDelta a) a msg
     -> Element msg
-renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, requestCmdMsg, focusMsg, focused, touched, parsed, typing } =
+renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, focusMsg, focused, parsed, status } =
     column
         [ height <| px 400
         , spacing 10
@@ -676,6 +704,8 @@ renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, r
                 white
             )
         , Border.rounded 5
+        , Border.width 1
+        , Border.color paleGrey
         ]
         [ row [ spacing 10 ]
             [ Input.text []
@@ -684,15 +714,19 @@ renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, r
                 , label = Input.labelAbove [] (text (Maybe.withDefault id label))
                 , text = input.search
                 }
+            , statusToIcon status parsed
             ]
-        , if typing then
-            text "..."
-
-          else
-            none
         , case input.options of
             [] ->
-                el [centerX, centerY, Font.color midGrey] (text (if touched then "[ no characters found ]" else "[ start typing to find characters ]"))
+                el [ centerX, centerY, Font.color midGrey ]
+                    (text
+                        (if status /= Field.Intact then
+                            "[ no results found ]"
+
+                         else
+                            "[ start typing to search ]"
+                        )
+                    )
 
             _ ->
                 column [ spacing 10, width fill ] <|
@@ -717,7 +751,7 @@ renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, r
                                 }
                         )
                         input.options
-        , viewErrors touched parsed typing
+        , viewErrors status parsed
         ]
 
 
@@ -732,10 +766,13 @@ renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, r
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-viewErrors : Bool -> Result (List Field.Error) output -> Bool -> Element msg
-viewErrors touched parsed typing =
-    case ( touched, parsed, typing ) of
-        ( True, Err errs, False ) ->
+viewErrors : Field.Status -> Result (List Field.Error) output -> Element msg
+viewErrors status parsed =
+    case ( status, parsed ) of
+        ( Field.Intact, _ ) ->
+            none
+
+        ( _, Err errs ) ->
             column [ Font.size 12, spacing 5, Font.color (rgb255 220 0 150) ] (List.map (Field.errorToString >> text) errs)
 
         _ ->
@@ -755,6 +792,11 @@ focusedBlue =
 midGrey : Color
 midGrey =
     rgb255 150 150 150
+
+
+paleGrey : Color
+paleGrey =
+    rgb255 200 200 200
 
 
 white : Color

@@ -5,6 +5,7 @@ module Field exposing
     , Field(..)
     , RendererConfig
     , State
+    , Status(..)
     , custom
     , errorToString
     , floatMustBeGreaterThan
@@ -33,6 +34,13 @@ type alias DeltaContext =
     { cmdName : String, debounce : Float }
 
 
+type Status
+    = Intact
+    | Idle
+    | Changing
+    | Loading
+
+
 type Field input delta output element msg
     = Field
         { index : Int
@@ -50,9 +58,8 @@ type Field input delta output element msg
 
 type alias RendererConfig input delta output msg =
     { input : input
-    , touched : Bool
+    , status : Status
     , focused : Bool
-    , typing : Bool
     , delta : delta -> msg
     , debouncedDelta : Float -> delta -> msg
     , effectfulDelta : String -> delta -> msg

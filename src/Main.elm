@@ -223,7 +223,7 @@ getStarWarsNames { search } =
                             List.take 5 list
 
                         Err _ ->
-                            [ "han solo", "chewie" ]
+                            []
                 )
                 starWarsDecoder
         }

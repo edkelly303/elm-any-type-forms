@@ -115,9 +115,6 @@ form formMsg =
                 [ Element.spacing 10
                 , Element.padding 10
                 , Element.centerX
-                , Element.Border.width 1
-                , Element.Border.color (Element.rgb255 200 200 200)
-                , Element.Border.rounded 5
                 ]
         , submitMsg = Nothing
         , submitRenderer =
@@ -370,33 +367,30 @@ updateForm formMsg msg (State internalState state) =
     ( State internalState2 state, cmd )
 
 
-
--- updateField :
---     ((a -> ( Cmd msg, (), () ) -> ( Cmd msg, (), () ))
---      -> Int
---      -> ( Cmd msg, form, state )
---      -> ( Cmd msg, form2, state2 )
---     )
---     -> (InternalMsg input msg -> msg)
---     -> Form form
---     ->
---         (( b -> b, Int -> Int )
---          ->
---             ( (( Field input delta output element msg, fields )
---                -> ( Field.State input, fieldStates )
---                -> ( Field.State input, fieldStates )
---               )
---               -> form
---               -> state
---               -> state
---             , Int -> Int
---             )
---         )
---     -> Field.Delta input delta msg
---     -> State state msg
---     -> ( State state msg, Cmd msg )
-
-
+updateField :
+    ((a -> ( Dict.Dict String (Cmd msg), (), () ) -> ( Dict.Dict String (Cmd msg), (), () ))
+     -> Int
+     -> ( Dict.Dict String (Cmd msg), form, state )
+     -> ( Dict.Dict String (Cmd msg), form2, state2 )
+    )
+    -> (InternalMsg msg -> msg)
+    -> Form form
+    ->
+        (( b -> b, Int -> Int )
+         ->
+            ( (( Field input delta output element msg, fields )
+               -> ( Field.State input, fieldStates )
+               -> ( Field.State input, fieldStates )
+              )
+              -> form
+              -> state
+              -> state
+            , Int -> Int
+            )
+        )
+    -> Field.Delta delta
+    -> State state msg
+    -> ( State state msg, Cmd msg )
 updateField collectCmdsSize formMsg (Form form_) index (Field.Delta ctx delta) (State internalState fieldStates) =
     let
         ( selectField, countField ) =
@@ -421,7 +415,7 @@ updateField collectCmdsSize formMsg (Form form_) index (Field.Delta ctx delta) (
             { internalState
                 | fields =
                     Dict.update indexOfUpdatedField
-                        (Maybe.map (\s -> { s | cmd = updatedCmd }))
+                        (Maybe.map (\s -> { s | cmd = updatedCmd, interaction = Idle }))
                         internalState.fields
             }
     in
@@ -611,23 +605,25 @@ renderSize1 next config internalState form_ state_ results =
         (\(Field { index, renderer, deltaMsg, id, label }) { input } parsed ->
             renderer
                 { input = input
-                , touched =
+                , status =
                     Dict.get index internalState.fields
                         |> Maybe.map .interaction
-                        |> Maybe.withDefault Intact
-                        |> (\i -> i /= Intact)
-                , typing =
-                    Dict.get index internalState.fields
-                        |> Maybe.map .interaction
-                        |> Maybe.withDefault Intact
-                        |> (\i ->
+                        |> Maybe.map
+                            (\i ->
                                 case i of
-                                    Changing _ ->
-                                        True
+                                    Intact ->
+                                        Field.Intact
 
-                                    _ ->
-                                        False
-                           )
+                                    Changing _ ->
+                                        Field.Changing
+
+                                    Idle ->
+                                        Field.Idle
+
+                                    Loading ->
+                                        Field.Loading
+                            )
+                        |> Maybe.withDefault Field.Intact
                 , focused = internalState.focused == Just index
                 , requestCmdMsg = \cmdName -> config.formMsg (CmdRequested cmdName index)
                 , focusMsg = config.formMsg (Focused index)
