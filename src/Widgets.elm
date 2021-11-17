@@ -664,7 +664,8 @@ renderSearchField :
     -> Element msg
 renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, requestCmdMsg, focusMsg, focused, touched, parsed, typing } =
     column
-        [ spacing 10
+        [ height <| px 400
+        , spacing 10
         , padding 20
         , Events.onClick focusMsg
         , Background.color
@@ -689,28 +690,33 @@ renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, r
 
           else
             none
-        , column [ spacing 10, width fill ] <|
-            List.map
-                (\item ->
-                    Input.button
-                        [ Background.color
-                            (if Just item == input.selected then
-                                green
+        , case input.options of
+            [] ->
+                el [centerX, centerY, Font.color midGrey] (text (if touched then "[ no characters found ]" else "[ start typing to find characters ]"))
 
-                             else
-                                transparent
-                            )
-                        , Border.width 1
-                        , Border.rounded 3
-                        , Border.color midGrey
-                        , padding 10
-                        , width fill
-                        ]
-                        { label = text (toString item)
-                        , onPress = Just (delta (ResultSelected item))
-                        }
-                )
-                input.options
+            _ ->
+                column [ spacing 10, width fill ] <|
+                    List.map
+                        (\item ->
+                            Input.button
+                                [ Background.color
+                                    (if Just item == input.selected then
+                                        green
+
+                                     else
+                                        transparent
+                                    )
+                                , Border.width 1
+                                , Border.rounded 3
+                                , Border.color midGrey
+                                , padding 10
+                                , width fill
+                                ]
+                                { label = text (toString item)
+                                , onPress = Just (delta (ResultSelected item))
+                                }
+                        )
+                        input.options
         , viewErrors touched parsed typing
         ]
 

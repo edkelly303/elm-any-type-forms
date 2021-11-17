@@ -220,7 +220,7 @@ getStarWarsNames { search } =
                 (\res ->
                     case res of
                         Ok list ->
-                            list
+                            List.take 5 list
 
                         Err _ ->
                             [ "han solo", "chewie" ]
