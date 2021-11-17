@@ -33,7 +33,7 @@ type Msg
 type alias Model =
     { page : Page
     , form :
-        Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State Widgets.DateState, ( Field.State Widgets.TimeState, ( Field.State (Widgets.SearchState String), {} ) ) ) ) ) ) Msg
+        Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State Widgets.DateState, ( Field.State Widgets.TimeState, ( Field.State (Widgets.SearchState String), () ) ) ) ) ) ) Msg
     }
 
 
@@ -109,7 +109,7 @@ update msg model =
 
         SubmitClicked ->
             case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, {} ) ) ) ) ) ) ->
+                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, () ) ) ) ) ) ) ->
                     ( { model
                         | page =
                             Submitted
