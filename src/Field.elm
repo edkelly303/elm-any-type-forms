@@ -51,7 +51,7 @@ type Field input delta output element msg
         , validators : List (output -> Maybe Error)
         , renderer : RendererConfig input delta output msg -> element
         , id : String
-        , label : Maybe String
+        , label : String
         , loadCmd : Dict.Dict String (input -> Cmd msg)
         }
 
@@ -67,7 +67,7 @@ type alias RendererConfig input delta output msg =
     , focusMsg : msg
     , requestCmdMsg : String -> msg
     , parsed : Result (List Error) output
-    , label : Maybe String
+    , label : String
     , id : String
     }
 
@@ -150,7 +150,7 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
         , validators = []
         , renderer = renderer
         , id = ""
-        , label = Just label
+        , label = label
         , loadCmd = Dict.singleton "" (always Cmd.none)
         }
 
@@ -175,7 +175,7 @@ withInitialState input (Field f) =
 
 withLabel : String -> Field input delta output element msg -> Field input delta output element msg
 withLabel l (Field f) =
-    Field { f | label = Just l }
+    Field { f | label = l }
 
 
 withLoadCmd : String -> (input -> Cmd msg) -> Field input delta output element msg -> Field input delta output element msg

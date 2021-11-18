@@ -85,7 +85,7 @@ renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, id, 
                 [ htmlAttribute (Html.Attributes.id id)
                 , Events.onFocus focusMsg
                 ]
-                { label = Input.labelAbove [ Font.size 18 ] (text (label |> Maybe.withDefault id))
+                { label = Input.labelAbove [ Font.size 18 ] (text label)
                 , text = input
                 , placeholder = Nothing
                 , onChange = debouncedDelta 500
@@ -351,7 +351,7 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, status, parsed } 
         , Border.width 1
         , Border.color paleGrey
         ]
-        [ el [ Font.size 18 ] (text (label |> Maybe.withDefault id))
+        [ el [ Font.size 18 ] (text label)
         , case input.page of
             CalendarPage ->
                 column [ spacing 10, width fill ]
@@ -599,7 +599,7 @@ renderTimePicker { input, id, label, delta, focusMsg, focused } =
         , Border.color paleGrey
         , Font.center
         ]
-        [ text (Maybe.withDefault id label)
+        [ text label
         , row [ spacing 5, centerX ]
             [ button "+" (HoursChanged 10)
             , button "+" (HoursChanged 1)
@@ -711,7 +711,7 @@ renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, f
             [ Input.text []
                 { onChange = debouncedEffectfulDelta 1000 "loadItems" << SearchChanged
                 , placeholder = Nothing
-                , label = Input.labelAbove [] (text (Maybe.withDefault id label))
+                , label = Input.labelAbove [] (text label)
                 , text = input.search
                 }
             , statusToIcon status parsed
