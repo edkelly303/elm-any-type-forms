@@ -562,7 +562,23 @@ anotherReverseSize1 next ( s, ( fst, rest ) ) =
 
 touchAll : State state msg -> State state msg
 touchAll (State internalState state_) =
-    State { internalState | fields = Dict.map (\_ v -> { v | interaction = Idle }) internalState.fields } state_
+    State
+        { internalState
+            | fields =
+                Dict.map
+                    (\_ v ->
+                        { v
+                            | interaction =
+                                if v.interaction == Intact then
+                                    Idle
+
+                                else
+                                    v.interaction
+                        }
+                    )
+                    internalState.fields
+        }
+        state_
 
 
 
