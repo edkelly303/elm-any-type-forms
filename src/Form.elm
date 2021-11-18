@@ -403,15 +403,9 @@ updateField collectCmdsSize formMsg (Form form_) index (Field.Delta ctx delta) (
         newFieldStates =
             selectField
                 (Internals.mapBoth2
-                    (\(Field f) fieldState ->
-                        let
-                            input =
-                                f.updater delta fieldState.input
-
-                            validated =
-                                parseAndValidate (Field f) fieldState
-                        in
-                        { input = input, validated = validated }
+                    (\((Field f) as field) fieldState ->
+                        { fieldState | input = f.updater delta fieldState.input }
+                            |> parseAndValidate field
                     )
                     (\_ restFieldStates -> restFieldStates)
                 )
@@ -462,20 +456,29 @@ validateSize1 :
     -> ( Field.State input output, rest1 )
     -> ( Field.State input output, rest2 )
 validateSize1 next form_ state_ =
-    Internals.mapBoth2 (\(Field f) fieldState -> { fieldState | validated = parseAndValidate (Field f) fieldState }) next form_ state_
+    Internals.mapBoth2
+        (\field fieldState ->
+            parseAndValidate field fieldState
+        )
+        next
+        form_
+        state_
 
 
-parseAndValidate : Field input delta output element msg -> Field.State input output -> Result (List Field.Error) output
-parseAndValidate (Field { parser, validators }) data =
-    data.input
-        |> parser
-        |> Result.mapError List.singleton
-        |> Result.andThen
-            (\parsed ->
-                validators
-                    |> List.map (\v -> v parsed)
-                    |> accumulateErrors parsed
-            )
+parseAndValidate : Field input delta output element msg -> Field.State input output -> Field.State input output
+parseAndValidate (Field { parser, validators }) fieldState =
+    { fieldState
+        | validated =
+            fieldState.input
+                |> parser
+                |> Result.mapError List.singleton
+                |> Result.andThen
+                    (\parsed ->
+                        validators
+                            |> List.map (\v -> v parsed)
+                            |> accumulateErrors parsed
+                    )
+    }
 
 
 accumulateErrors : a -> List (Maybe Field.Error) -> Result (List Field.Error) a

@@ -793,10 +793,7 @@ renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focus
 viewErrors : Field.Status -> Result (List Field.Error) output -> Element msg
 viewErrors status parsed =
     case ( status, parsed ) of
-        ( Field.Intact, _ ) ->
-            none
-
-        ( _, Err errs ) ->
+        ( Field.Idle, Err errs ) ->
             column
                 [ Font.size 12
                 , spacing 5
