@@ -303,7 +303,7 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                 , height <| px 44
                 , Border.width 1
                 , Border.rounded 3
-                , Border.color midGrey
+                , Border.color primaryColor
                 , Background.color primaryColor
                 , Font.color white
                 , padding 10

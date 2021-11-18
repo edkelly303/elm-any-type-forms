@@ -76,7 +76,7 @@ type Page
 expensive : (Field.Delta () -> msg) -> Field.Field Int () Int (Element msg) msg
 expensive deltaMsg =
     Field.custom
-        { init = 40
+        { init = 41
         , deltaMsg = deltaMsg
         , updater = \() input -> input
         , parser = \input -> Ok (fib input)
