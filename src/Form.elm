@@ -451,18 +451,18 @@ stateSize1 next form_ =
 -- VALIDATING ALL FIELDS
 
 
-validateAll : ((() -> () -> ()) -> form -> state -> results) -> Form form -> State state msg -> results
-validateAll size (Form form_) (State _ state_) =
-    size (\() () -> ()) form_ state_
+validateAll : ((() -> () -> ()) -> form -> state -> state) -> Form form -> State state msg -> State state msg
+validateAll size (Form form_) (State internalState state_) =
+    State internalState (size (\() () -> ()) form_ state_)
 
 
 validateSize1 :
     (rest0 -> rest1 -> rest2)
     -> ( Field input delta output element msg, rest0 )
     -> ( Field.State input output, rest1 )
-    -> ( Result (List Field.Error) output, rest2 )
+    -> ( Field.State input output, rest2 )
 validateSize1 next form_ state_ =
-    Internals.mapBoth2 parseAndValidate next form_ state_
+    Internals.mapBoth2 (\(Field f) fieldState -> { fieldState | validated = parseAndValidate (Field f) fieldState }) next form_ state_
 
 
 parseAndValidate : Field input delta output element msg -> Field.State input output -> Result (List Field.Error) output
@@ -515,22 +515,25 @@ collectCmdSize1 next fieldIndex ( currentCmd, ( Field field, restFields ), ( { i
 
 
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
+-- collectResults : ((a -> a) -> ( Result error (), results ) -> ( collectedResult, d )) -> results -> collectedResult
 
 
-collectResults : ((a -> a) -> ( Result error (), results ) -> ( collectedResult, d )) -> results -> collectedResult
-collectResults size results =
-    size identity ( Ok (), results )
+collectResults size (State _ state_) =
+    size identity ( Ok (), state_ )
         |> Tuple.first
 
 
-collectResultsSize1 :
-    (( Result (List Field.Error) ( value, b ), restResults ) -> d)
-    -> ( Result (List Field.Error) b, ( Result (List Field.Error) value, restResults ) )
-    -> d
+
+-- collectResultsSize1 :
+--     (( Result (List Field.Error) ( value, b ), restResults ) -> d)
+--     -> ( Result (List Field.Error) b, ( Result (List Field.Error) value, restResults ) )
+--     -> d
+
+
 collectResultsSize1 next ( s, ( fst, rst ) ) =
     case s of
         Ok tuple ->
-            case fst of
+            case fst.validated of
                 Ok okF ->
                     next ( Ok ( okF, tuple ), rst )
 
@@ -538,7 +541,7 @@ collectResultsSize1 next ( s, ( fst, rst ) ) =
                     next ( Err e, rst )
 
         Err es ->
-            case fst of
+            case fst.validated of
                 Ok _ ->
                     next ( Err es, rst )
 
@@ -596,17 +599,21 @@ touchAll (State internalState state_) =
 
 
 submit :
-    ((() -> () -> ()) -> form -> state -> b)
-    -> ((a -> a) -> ( Result error (), b ) -> ( Result c d, e ))
+    ((() -> () -> ()) -> form -> state -> state)
+    -> ((a -> a) -> ( Result error (), state ) -> ( Result c d, e ))
     -> ((f -> f) -> ( (), d ) -> ( g, h ))
     -> Form form
     -> State state msg
     -> Result (State state msg) g
 submit validateSize collectResultsSize reverseSize form_ state_ =
-    validateAll validateSize form_ state_
+    let
+        newState =
+            validateAll validateSize form_ state_
+    in
+    newState
         |> collectResults collectResultsSize
         |> Result.map (reverseTuple reverseSize)
-        |> Result.mapError (\_ -> touchAll state_)
+        |> Result.mapError (\_ -> touchAll newState)
 
 
 
