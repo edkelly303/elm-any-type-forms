@@ -99,24 +99,28 @@ renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, id, 
 statusToIcon : Field.Status -> Result error value -> Element msg
 statusToIcon status parsed =
     el [ padding 10 ] <|
-        html <|
-            FI.toHtml []
-                (case ( status, parsed ) of
-                    ( Field.Changing, _ ) ->
-                        FI.moreHorizontal
+        icon
+            (case ( status, parsed ) of
+                ( Field.Changing, _ ) ->
+                    FI.moreHorizontal
 
-                    ( Field.Idle, Ok _ ) ->
-                        FI.checkCircle
+                ( Field.Idle, Ok _ ) ->
+                    FI.checkCircle
 
-                    ( Field.Idle, Err _ ) ->
-                        FI.xCircle
+                ( Field.Idle, Err _ ) ->
+                    FI.xCircle
 
-                    ( Field.Intact, _ ) ->
-                        FI.helpCircle
+                ( Field.Intact, _ ) ->
+                    FI.helpCircle
 
-                    ( Field.Loading, _ ) ->
-                        FI.save
-                )
+                ( Field.Loading, _ ) ->
+                    FI.save
+            )
+
+
+icon : FI.Icon -> Element msg
+icon =
+    FI.toHtml [] >> html
 
 
 
@@ -248,7 +252,7 @@ date label deltaMsg =
 
 
 renderDatePicker : RendererConfig DateState DateDelta Date.Date msg -> Element msg
-renderDatePicker { input, delta, label, id, focused, focusMsg, status, parsed } =
+renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -305,6 +309,7 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, status, parsed } 
             Input.button
                 ([ Events.onFocus focusMsg
                  , width fill
+                 , height <| px 44
                  , Border.width 1
                  , Border.rounded 3
                  , Border.color midGrey
@@ -322,6 +327,7 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, status, parsed } 
             Input.button
                 [ Events.onFocus focusMsg
                 , width fill
+                , height <| px 44
                 , Border.width 1
                 , Border.rounded 3
                 , Border.color midGrey
@@ -330,6 +336,24 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, status, parsed } 
                 , Font.center
                 ]
                 { label = text txt
+                , onPress = Just (delta m)
+                }
+
+        iconButton attrs i m =
+            Input.button
+                ([ Events.onFocus focusMsg
+                 , width fill
+                 , height <| px 44
+                 , Border.width 1
+                 , Border.rounded 3
+                 , Border.color midGrey
+                 , Background.color white
+                 , padding 10
+                 , Font.center
+                 ]
+                    ++ attrs
+                )
+                { label = i
                 , onPress = Just (delta m)
                 }
     in
@@ -356,10 +380,10 @@ renderDatePicker { input, delta, label, id, focused, focusMsg, status, parsed } 
             CalendarPage ->
                 column [ spacing 10, width fill ]
                     [ row [ spacing 10, width <| maximum maxCalendarWidth <| fill, centerX ]
-                        [ button [ width <| px 44 ] "<" (CalendarPageChanged -1)
-                        , button [] (Date.format "MMMM" input.viewing) MonthsPageOpened
-                        , button [] (Date.format "yyyy" input.viewing) YearsPageOpened
-                        , button [ width <| px 44 ] ">" (CalendarPageChanged 1)
+                        [ iconButton [ width <| px 44 ] (icon FI.arrowLeft) (CalendarPageChanged -1)
+                        , iconButton [ width <| fillPortion 3 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "MMMM" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) MonthsPageOpened
+                        , iconButton [ width <| fillPortion 2 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "yyyy" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) YearsPageOpened
+                        , iconButton [ width <| px 44 ] (icon FI.arrowRight) (CalendarPageChanged 1)
                         ]
                     , row [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ] headerRow
                     , column [ spacing 8, width <| maximum maxCalendarWidth <| fill, centerX ]
@@ -556,7 +580,7 @@ time label deltaMsg =
 
 
 renderTimePicker : RendererConfig TimeState TimeDelta TimeState msg -> Element msg
-renderTimePicker { input, id, label, delta, focusMsg, focused } =
+renderTimePicker { input, label, delta, focusMsg, focused } =
     let
         button txt m =
             Input.button
@@ -632,7 +656,7 @@ renderTimePicker { input, id, label, delta, focusMsg, focused } =
 
 type SearchDelta a
     = SearchChanged String
-    | ResultsLoaded (List a)
+    | ItemsLoaded (List a)
     | ResultSelected a
 
 
@@ -649,7 +673,7 @@ search :
     -> (a -> String)
     -> (SearchState a -> Cmd (List a))
     -> Field.Field (SearchState a) (SearchDelta a) a (Element msg) msg
-search label msg toString loadCmd =
+search label msg toString loadItemsCmd =
     Field.custom
         { init = { search = "", options = [], selected = Nothing }
         , deltaMsg = msg
@@ -659,7 +683,7 @@ search label msg toString loadCmd =
                     SearchChanged str ->
                         { state | search = str }
 
-                    ResultsLoaded list ->
+                    ItemsLoaded list ->
                         { state
                             | options = list
                             , selected =
@@ -690,7 +714,7 @@ renderSearchField :
     (a -> String)
     -> Field.RendererConfig (SearchState a) (SearchDelta a) a msg
     -> Element msg
-renderSearchField toString { label, id, input, delta, debouncedEffectfulDelta, focusMsg, focused, parsed, status } =
+renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focusMsg, focused, parsed, status } =
     column
         [ height <| px 400
         , spacing 10
