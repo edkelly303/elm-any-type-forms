@@ -96,33 +96,6 @@ renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, id, 
         ]
 
 
-statusToIcon : Field.Status -> Result error value -> Element msg
-statusToIcon status parsed =
-    el [ padding 10 ] <|
-        icon
-            (case ( status, parsed ) of
-                ( Field.Changing, _ ) ->
-                    FI.moreHorizontal
-
-                ( Field.Idle, Ok _ ) ->
-                    FI.checkCircle
-
-                ( Field.Idle, Err _ ) ->
-                    FI.xCircle
-
-                ( Field.Intact, _ ) ->
-                    FI.helpCircle
-
-                ( Field.Loading, _ ) ->
-                    FI.save
-            )
-
-
-icon : FI.Icon -> Element msg
-icon =
-    FI.toHtml [] >> html
-
-
 
 -- d8888b.  .d8b.  d888888b d88888b
 -- 88  `8D d8' `8b `~~88~~' 88'
@@ -331,7 +304,8 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                 , Border.width 1
                 , Border.rounded 3
                 , Border.color midGrey
-                , Background.color green
+                , Background.color primaryColor
+                , Font.color white
                 , padding 10
                 , Font.center
                 ]
@@ -470,49 +444,50 @@ viewBlock msg focusMsg selected block =
     let
         colour d =
             if Just d == selected then
-                { bg = green, bd = midGrey }
+                { bg = primaryColor, bd = primaryColor, font = white }
 
             else
-                { bg = white, bd = midGrey }
+                { bg = white, bd = midGrey, font = black }
     in
     case block of
         Blank ->
-            box transparent transparent none
+            box transparent transparent transparent none
 
         Day d ->
             let
-                { bg, bd } =
+                { bg, bd, font } =
                     colour d
             in
             Input.button
                 [ width <| maximum maxButtonSize <| fill
                 , Events.onFocus focusMsg
                 ]
-                { label = box bg bd (text <| String.fromInt <| Date.day d)
+                { label = box bg font bd (text <| String.fromInt <| Date.day d)
                 , onPress = Just (msg (DateSelected d))
                 }
 
 
 headerRow : List (Element msg)
 headerRow =
-    [ box transparent transparent (text "Mo")
-    , box transparent transparent (text "Tu")
-    , box transparent transparent (text "We")
-    , box transparent transparent (text "Th")
-    , box transparent transparent (text "Fr")
-    , box transparent transparent (text "Sa")
-    , box transparent transparent (text "Su")
+    [ box transparent black transparent (text "Mo")
+    , box transparent black transparent (text "Tu")
+    , box transparent black transparent (text "We")
+    , box transparent black transparent (text "Th")
+    , box transparent black transparent (text "Fr")
+    , box transparent black transparent (text "Sa")
+    , box transparent black transparent (text "Su")
     ]
 
 
-box : Color -> Color -> Element msg -> Element msg
-box bgColour borderColour content =
+box : Color -> Color -> Color -> Element msg -> Element msg
+box bgColour fontColour borderColor content =
     el
         [ width <| px maxButtonSize
         , height <| px maxButtonSize
         , Background.color bgColour
         , alignLeft
-        , Border.color borderColour
+        , Font.color fontColour
+        , Border.color borderColor
         , Border.width 1
         , Border.rounded 3
         ]
@@ -759,14 +734,27 @@ renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focus
                             Input.button
                                 [ Background.color
                                     (if Just item == input.selected then
-                                        green
+                                        primaryColor
 
                                      else
                                         transparent
                                     )
+                                , Font.color
+                                    (if Just item == input.selected then
+                                        white
+
+                                     else
+                                        black
+                                    )
                                 , Border.width 1
                                 , Border.rounded 3
-                                , Border.color midGrey
+                                , Border.color
+                                    (if Just item == input.selected then
+                                        primaryColor
+
+                                     else
+                                        midGrey
+                                    )
                                 , padding 10
                                 , width fill
                                 ]
@@ -797,7 +785,7 @@ viewErrors status parsed =
             column
                 [ Font.size 12
                 , spacing 5
-                , Font.color (rgb255 220 0 150)
+                , Font.color errorColor
                 ]
                 (List.map (Field.errorToString >> text) errs)
 
@@ -805,14 +793,67 @@ viewErrors status parsed =
             none
 
 
-green : Color
-green =
-    rgb255 100 255 100
+red : Color
+red =
+    rgb255 220 0 150
+
+
+statusToIcon : Field.Status -> Result error value -> Element msg
+statusToIcon status parsed =
+    let
+        ( c, i ) =
+            case ( status, parsed ) of
+                ( Field.Changing, _ ) ->
+                    ( infoColor, FI.moreHorizontal )
+
+                ( Field.Idle, Ok _ ) ->
+                    ( okColor, FI.checkCircle )
+
+                ( Field.Idle, Err _ ) ->
+                    ( errorColor, FI.xCircle )
+
+                ( Field.Intact, _ ) ->
+                    ( primaryColor, FI.helpCircle )
+
+                ( Field.Loading, _ ) ->
+                    ( infoColor, FI.save )
+    in
+    el
+        [ Font.color c
+        , alignTop
+        ]
+        (icon i)
+
+
+icon : FI.Icon -> Element msg
+icon i =
+    FI.toHtml [] i
+        |> html
+
+
+okColor : Color
+okColor =
+    rgb255 92 184 92
+
+
+errorColor : Color
+errorColor =
+    rgb255 217 83 79
+
+
+primaryColor : Color
+primaryColor =
+    rgb255 2 117 216
+
+
+infoColor : Color
+infoColor =
+    rgb255 91 192 222
 
 
 focusedBlue : Color
 focusedBlue =
-    rgb255 240 230 255
+    rgb255 245 245 245
 
 
 midGrey : Color
@@ -828,6 +869,11 @@ paleGrey =
 white : Color
 white =
     rgb255 255 255 255
+
+
+black : Color
+black =
+    rgb255 0 0 0
 
 
 transparent : Color

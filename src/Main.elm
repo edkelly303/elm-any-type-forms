@@ -3,7 +3,9 @@ module Main exposing (main, myForm)
 import Browser
 import Date
 import Element exposing (..)
+import Element.Background
 import Element.Border
+import Element.Events
 import Element.Font
 import Element.Input
 import Field
@@ -63,6 +65,7 @@ type Page
         , dob : Date.Date
         , time : Widgets.TimeState
         , favouriteCharacter : String
+        , fibonacci : Int
         }
 
 
@@ -76,8 +79,48 @@ expensive deltaMsg =
         { init = 40
         , deltaMsg = deltaMsg
         , updater = \() input -> input
-        , parser = \input -> Ok (Debug.log "Parsing..." fib input)
-        , renderer = \{ delta } -> Element.Input.button [] { label = text "fib", onPress = Just (delta ()) }
+        , parser = \input -> Ok (fib input)
+        , renderer =
+            \{ input, delta, parsed, focusMsg, focused } ->
+                Element.column
+                    [ Element.width Element.fill
+                    , Element.spacing 20
+                    , Element.padding 20
+                    , Element.Border.width 1
+                    , Element.Border.rounded 5
+                    , Element.Border.color Widgets.paleGrey
+                    , Element.Events.onClick focusMsg
+                    , Element.Background.color
+                        (if focused then
+                            Widgets.focusedBlue
+
+                         else
+                            Widgets.white
+                        )
+                    ]
+                    [ Element.Input.button
+                        [ Element.padding 10
+                        , Element.Border.width 1
+                        , Element.Border.rounded 3
+                        , Element.Border.color Widgets.midGrey
+                        , Element.width Element.fill
+                        , Element.Background.color Widgets.white
+                        , Element.Font.center
+                        ]
+                        { label = text ("Number " ++ String.fromInt input ++ " in the Fibonacci sequence is...")
+                        , onPress = Just (delta ())
+                        }
+                    , Element.el [ Element.centerX, Element.Font.size 50 ]
+                        (text
+                            (case parsed of
+                                Ok n ->
+                                    String.fromInt n
+
+                                Err _ ->
+                                    "?"
+                            )
+                        )
+                    ]
         , label = "Now let's do some hard work"
         }
 
@@ -166,6 +209,7 @@ update msg model =
                                 , dob = date
                                 , time = time
                                 , favouriteCharacter = starwars
+                                , fibonacci = fibonacci
                                 }
                       }
                     , Cmd.none
@@ -187,8 +231,8 @@ view model =
             Form ->
                 myForm.view model.form
 
-            Submitted { name, shoeSize, dogCount, dob, time, favouriteCharacter } ->
-                submittedView name shoeSize dogCount dob time favouriteCharacter
+            Submitted { name, shoeSize, dogCount, dob, time, favouriteCharacter, fibonacci } ->
+                submittedView name shoeSize dogCount dob time favouriteCharacter fibonacci
 
 
 
@@ -209,8 +253,8 @@ main =
 -- HELPERS
 
 
-submittedView : String -> Float -> Int -> Date.Date -> Widgets.TimeState -> String -> Element Msg
-submittedView name shoeSize dogCount dob time favouriteCharacter =
+submittedView : String -> Float -> Int -> Date.Date -> Widgets.TimeState -> String -> Int -> Element Msg
+submittedView name shoeSize dogCount dob time favouriteCharacter fibonacci =
     let
         bold x =
             el [ Element.Font.bold ] (text x)
@@ -247,6 +291,11 @@ submittedView name shoeSize dogCount dob time favouriteCharacter =
         , paragraph []
             [ text "Perhaps most important of all, your favourite Star Wars character is "
             , bold favouriteCharacter
+            ]
+        , paragraph []
+            [ text "Finally, did you know that "
+            , bold (String.fromInt fibonacci)
+            , text " is a number in the Fibonacci sequence?"
             ]
         , Element.Input.button
             [ centerX
