@@ -797,7 +797,12 @@ viewErrors status parsed =
             none
 
         ( _, Err errs ) ->
-            column [ Font.size 12, spacing 5, Font.color (rgb255 220 0 150) ] (List.map (Field.errorToString >> text) errs)
+            column
+                [ Font.size 12
+                , spacing 5
+                , Font.color (rgb255 220 0 150)
+                ]
+                (List.map (Field.errorToString >> text) errs)
 
         _ ->
             none
