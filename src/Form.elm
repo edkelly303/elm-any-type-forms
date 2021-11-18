@@ -448,6 +448,7 @@ stateSize1 next form_ =
 validateAll : ((() -> () -> ()) -> form -> state -> state) -> Form form -> State state msg -> State state msg
 validateAll size (Form form_) (State internalState state_) =
     State internalState (size (\() () -> ()) form_ state_)
+        |> Debug.log "only parse & validate fields that are currently Intact - any others will already have been p&v'd"
 
 
 validateSize1 :
