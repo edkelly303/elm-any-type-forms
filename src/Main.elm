@@ -25,6 +25,7 @@ type Msg
     | Field3Changed (Field.Delta Widgets.DateDelta)
     | Field4Changed (Field.Delta Widgets.TimeDelta)
     | Field5Changed (Field.Delta (Widgets.SearchDelta String))
+    | Field6Changed (Field.Delta ())
     | SubmitClicked
     | FormChanged (Form.InternalMsg Msg)
     | BackClicked
@@ -33,7 +34,23 @@ type Msg
 type alias Model =
     { page : Page
     , form :
-        Form.State ( Field.State String, ( Field.State String, ( Field.State String, ( Field.State Widgets.DateState, ( Field.State Widgets.TimeState, ( Field.State (Widgets.SearchState String), () ) ) ) ) ) ) Msg
+        Form.State
+            ( Field.State String String
+            , ( Field.State String Float
+              , ( Field.State String Int
+                , ( Field.State Widgets.DateState Date.Date
+                  , ( Field.State Widgets.TimeState Widgets.TimeState
+                    , ( Field.State (Widgets.SearchState String) String
+                      , ( Field.State Int Int
+                        , ()
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+            Msg
     }
 
 
@@ -53,6 +70,31 @@ type Page
 -- CORE LOGIC
 
 
+expensive : (Field.Delta () -> msg) -> Field.Field Int () Int (Element msg) msg
+expensive deltaMsg =
+    Field.custom
+        { init = 35
+        , deltaMsg = deltaMsg
+        , updater = \() input -> input
+        , parser = \input -> Ok (Debug.log "Parsing..." fib input)
+        , renderer = \_ -> none
+        , label = "Now let's do some hard work"
+        }
+
+
+fib : Int -> Int
+fib x =
+    case x of
+        0 ->
+            1
+
+        1 ->
+            1
+
+        _ ->
+            fib (x - 1) + fib (x - 2)
+
+
 myForm =
     Form.form FormChanged
         |> Form.withField (Widgets.string "What is your name?" Field0Changed |> Field.withValidator (Field.stringMustBeLongerThan 0))
@@ -61,6 +103,7 @@ myForm =
         |> Form.withField (Widgets.date "What is today's date?" Field3Changed)
         |> Form.withField (Widgets.time "What time is it?" Field4Changed)
         |> Form.withField (Widgets.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames)
+        |> Form.withField (expensive Field6Changed)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
@@ -107,9 +150,13 @@ update msg model =
             myForm.updateField Form.i5 delta model.form
                 |> wrap
 
+        Field6Changed delta ->
+            myForm.updateField Form.i6 delta model.form
+                |> wrap
+
         SubmitClicked ->
             case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, () ) ) ) ) ) ) ->
+                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, () ) ) ) ) ) ) ) ->
                     ( { model
                         | page =
                             Submitted
