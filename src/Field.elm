@@ -16,9 +16,9 @@ module Field exposing
     , stringMustBeLongerThan
     , stringMustBeShorterThan
     , stringMustNotContain
+    , withCmd
     , withInitialState
     , withLabel
-    , withCmd
     , withRenderer
     , withValidator
     )
@@ -72,8 +72,8 @@ type alias RendererConfig input delta output msg =
     }
 
 
-type alias State input =
-    { input : input }
+type alias State input output =
+    { input : input, validated : Result (List Error) output }
 
 
 type Error
@@ -159,9 +159,9 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
 -- EXTRACTING STATE FROM FIELDS
 
 
-initialize : Field input delta output element msg -> State input
+initialize : Field input delta output element msg -> State input output
 initialize (Field { init }) =
-    { input = init }
+    { input = init, validated = Err [] }
 
 
 

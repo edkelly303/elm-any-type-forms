@@ -44,13 +44,14 @@ type State state msg
 
 
 type alias InternalState msg =
-    { fields :
-        Dict.Dict
-            Int
-            { interaction : Interaction
-            , cmd : Dict.Dict String (Cmd msg)
-            }
+    { fields : Dict.Dict Int (InternalFieldState msg)
     , focused : Maybe Int
+    }
+
+
+type alias InternalFieldState msg =
+    { interaction : Interaction
+    , cmd : Dict.Dict String (Cmd msg)
     }
 
 
@@ -214,8 +215,8 @@ done (Builder bdr) =
     , form = form_
     , updateField = updateField bdr.collectCmdsSize bdr.formMsg form_
     , updateForm = updateForm bdr.formMsg
-    , viewFields = viewElements config bdr.validateSize bdr.renderSize form_
-    , view = view config bdr.validateSize bdr.renderSize bdr.collectElementsSize form_
+    , viewFields = renderAll config bdr.renderSize form_
+    , view = view config bdr.renderSize bdr.collectElementsSize form_
     }
 
 
@@ -379,8 +380,8 @@ updateField :
         (( b -> b, Int -> Int )
          ->
             ( (( Field input delta output element msg, fields )
-               -> ( Field.State input, fieldStates )
-               -> ( Field.State input, fieldStates )
+               -> ( Field.State input output, fieldStates )
+               -> ( Field.State input output, fieldStates )
               )
               -> form
               -> state
@@ -402,8 +403,17 @@ updateField collectCmdsSize formMsg (Form form_) index (Field.Delta ctx delta) (
         newFieldStates =
             selectField
                 (Internals.mapBoth2
-                    (\(Field f) fieldState -> { fieldState | input = f.updater delta fieldState.input })
-                    (\_ fieldState -> fieldState)
+                    (\(Field f) fieldState ->
+                        let
+                            input =
+                                f.updater delta fieldState.input
+
+                            validated =
+                                parseAndValidate (Field f) fieldState
+                        in
+                        { input = input, validated = validated }
+                    )
+                    (\_ restFieldStates -> restFieldStates)
                 )
                 form_
                 fieldStates
@@ -432,7 +442,7 @@ updateField collectCmdsSize formMsg (Form form_) index (Field.Delta ctx delta) (
 -- EXTRACTING STATE
 
 
-stateSize1 : (restFields -> restFieldStates) -> ( Field input delta output element msg, restFields ) -> ( Field.State input, restFieldStates )
+stateSize1 : (restFields -> restFieldStates) -> ( Field input delta output element msg, restFields ) -> ( Field.State input output, restFieldStates )
 stateSize1 next form_ =
     Tuple.mapBoth Field.initialize next form_
 
@@ -449,13 +459,13 @@ validateAll size (Form form_) (State _ state_) =
 validateSize1 :
     (rest0 -> rest1 -> rest2)
     -> ( Field input delta output element msg, rest0 )
-    -> ( Field.State input, rest1 )
+    -> ( Field.State input output, rest1 )
     -> ( Result (List Field.Error) output, rest2 )
 validateSize1 next form_ state_ =
     Internals.mapBoth2 parseAndValidate next form_ state_
 
 
-parseAndValidate : Field input delta output element msg -> Field.State input -> Result (List Field.Error) output
+parseAndValidate : Field input delta output element msg -> Field.State input output -> Result (List Field.Error) output
 parseAndValidate (Field { parser, validators }) data =
     data.input
         |> parser
@@ -603,22 +613,26 @@ submit validateSize collectResultsSize reverseSize form_ state_ =
 -- CONVERTING TO ELEMENTS
 
 
-renderAll : a -> ((b -> c -> () -> () -> () -> ()) -> a -> InternalState msg -> form -> state -> e -> d) -> Form form -> State state msg -> e -> d
-renderAll config size (Form form_) (State internalState state_) results =
-    size (\_ _ () () () -> ()) config internalState form_ state_ results
+renderAll :
+    config
+    -> ((b -> c -> () -> () -> ()) -> config -> InternalState msg -> form -> state -> element)
+    -> Form form
+    -> State state msg
+    -> element
+renderAll config size (Form form_) (State internalState state_) =
+    size (\_ _ () () -> ()) config internalState form_ state_
 
 
 renderSize1 :
-    ({ a | formMsg : InternalMsg msg -> msg } -> InternalState msg -> rest -> rest1 -> rest2 -> rest3)
+    ({ a | formMsg : InternalMsg msg -> msg } -> InternalState msg -> rest0 -> rest1 -> rest2)
     -> { a | formMsg : InternalMsg msg -> msg }
     -> InternalState msg
-    -> ( Field input delta output element msg, rest )
-    -> ( { e | input : input }, rest1 )
-    -> ( Result (List Field.Error) output, rest2 )
-    -> ( element, rest3 )
-renderSize1 next config internalState form_ state_ results =
-    Internals.mapBoth3
-        (\(Field { index, renderer, deltaMsg, id, label }) { input } parsed ->
+    -> ( Field input delta output element msg, rest0 )
+    -> ( Field.State input output, rest1 )
+    -> ( element, rest2 )
+renderSize1 next config internalState form_ state_ =
+    Internals.mapBoth2
+        (\(Field { index, renderer, deltaMsg, id, label }) { input, validated } ->
             renderer
                 { input = input
                 , status =
@@ -647,7 +661,7 @@ renderSize1 next config internalState form_ state_ results =
                 , effectfulDelta = \eff delta -> Field.Delta { debounce = 0, cmdName = eff } delta |> deltaMsg
                 , debouncedDelta = \db delta -> Field.Delta { debounce = db, cmdName = "" } delta |> deltaMsg
                 , debouncedEffectfulDelta = \db eff delta -> Field.Delta { debounce = db, cmdName = eff } delta |> deltaMsg
-                , parsed = parsed
+                , parsed = validated
                 , id = id
                 , label = label
                 }
@@ -655,28 +669,6 @@ renderSize1 next config internalState form_ state_ results =
         (next config internalState)
         form_
         state_
-        results
-
-
-viewElements :
-    config
-    -> ((() -> () -> ()) -> form -> state -> results)
-    ->
-        ((b -> c -> () -> () -> () -> ())
-         -> config
-         -> InternalState msg
-         -> form
-         -> state
-         -> results
-         -> elements
-        )
-    -> Form form
-    -> State state msg
-    -> elements
-viewElements config validateSize renderSize form_ state_ =
-    state_
-        |> validateAll validateSize form_
-        |> renderAll config renderSize form_ state_
 
 
 collectElements : ((a -> a) -> ( List element, restElements ) -> ( d, e )) -> restElements -> d
@@ -691,23 +683,21 @@ collectElementsSize1 next ( s, ( fst, rst ) ) =
 
 
 view :
-    { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d }
-    -> ((() -> () -> ()) -> form -> state -> e)
+    { a | submitMsg : Maybe msg, submitRenderer : msg -> element, layout : List element -> element }
     ->
-        ((f -> g -> () -> () -> () -> ())
-         -> { a | submitMsg : Maybe b, submitRenderer : b -> c, layout : List c -> d }
+        ((f -> g -> () -> () -> ())
+         -> { a | submitMsg : Maybe msg, submitRenderer : msg -> element, layout : List element -> element }
          -> InternalState msg
          -> form
          -> state
-         -> e
          -> restElements
         )
-    -> ((h -> h) -> ( List element, restElements ) -> ( List c, i ))
+    -> ((h -> h) -> ( List element, restElements ) -> ( List element, restElements2 ))
     -> Form form
     -> State state msg
-    -> d
-view config validateSize renderSize collectElementsSize form_ state_ =
-    viewElements config validateSize renderSize form_ state_
+    -> element
+view config renderSize collectElementsSize form_ state_ =
+    renderAll config renderSize form_ state_
         |> collectElements collectElementsSize
         |> (\list ->
                 case config.submitMsg of

@@ -73,11 +73,11 @@ type Page
 expensive : (Field.Delta () -> msg) -> Field.Field Int () Int (Element msg) msg
 expensive deltaMsg =
     Field.custom
-        { init = 35
+        { init = 40
         , deltaMsg = deltaMsg
         , updater = \() input -> input
         , parser = \input -> Ok (Debug.log "Parsing..." fib input)
-        , renderer = \_ -> none
+        , renderer = \{ delta } -> Element.Input.button [] { label = text "fib", onPress = Just (delta ()) }
         , label = "Now let's do some hard work"
         }
 
