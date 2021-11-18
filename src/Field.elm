@@ -18,7 +18,7 @@ module Field exposing
     , stringMustNotContain
     , withInitialState
     , withLabel
-    , withLoadCmd
+    , withCmd
     , withRenderer
     , withValidator
     )
@@ -178,9 +178,17 @@ withLabel l (Field f) =
     Field { f | label = l }
 
 
-withLoadCmd : String -> (input -> Cmd msg) -> Field input delta output element msg -> Field input delta output element msg
-withLoadCmd cmdName loadCmd (Field f) =
-    Field { f | loadCmd = Dict.insert cmdName loadCmd f.loadCmd }
+withCmd : String -> (result -> delta) -> (input -> Cmd result) -> Field input delta output element msg -> Field input delta output element msg
+withCmd cmdName toDelta toReturn (Field f) =
+    let
+        toCmdMsg input =
+            input
+                |> toReturn
+                |> Cmd.map toDelta
+                |> Cmd.map (Delta { debounce = 0, cmdName = "" })
+                |> Cmd.map f.deltaMsg
+    in
+    Field { f | loadCmd = Dict.insert cmdName toCmdMsg f.loadCmd }
 
 
 withValidator : (output -> Maybe Error) -> Field input delta output element msg -> Field input delta output element msg

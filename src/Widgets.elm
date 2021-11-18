@@ -683,7 +683,7 @@ search label msg toString loadCmd =
         , renderer = renderSearchField toString
         , label = label
         }
-        |> Field.withLoadCmd "loadItems" (loadCmd >> Cmd.map (ResultsLoaded >> Field.Delta { debounce = 0, cmdName = "" } >> msg))
+        |> Field.withCmd "loadItems" ItemsLoaded loadItemsCmd
 
 
 renderSearchField :
