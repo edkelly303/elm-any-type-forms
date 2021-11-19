@@ -43,7 +43,7 @@ float label msg =
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> delta
-        , parser = String.toFloat >> Result.fromMaybe (Field.fail "must be a number")
+        , parser = String.toFloat >> Result.fromMaybe (Field.fail "Must be a number")
         , renderer = renderTextField
         , label = label
         }
@@ -55,7 +55,7 @@ int label msg =
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> delta
-        , parser = String.toInt >> Result.fromMaybe (Field.fail "must be a whole number")
+        , parser = String.toInt >> Result.fromMaybe (Field.fail "Must be a whole number")
         , renderer = renderTextField
         , label = label
         }
@@ -218,7 +218,7 @@ date label deltaMsg =
 
 
 renderDatePicker : RendererConfig DateState DateDelta Date.Date msg -> Element msg
-renderDatePicker { input, delta, label, focused, focusMsg, status, feedback } =
+renderDatePicker { input, delta, label, focused, focusMsg, status, parsed, feedback } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -342,7 +342,7 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, feedback } =
         , Border.width 1
         , Border.color paleGrey
         ]
-        [ el [ Font.size 18 ] (text label)
+        [ row [ width fill, spaceEvenly ] [ el [ Font.size 18 ] (text label), statusToIcon status parsed ]
         , case input.page of
             CalendarPage ->
                 column [ spacing 10, width fill ]
@@ -537,18 +537,21 @@ time label deltaMsg =
                         { state | minutes = state.minutes + diff |> modBy 60 }
         , parser =
             \state ->
-                if state.hours >= 0 && state.hours < 24 && state.minutes >= 0 && state.minutes < 60 then
-                    Ok state
+                if state.hours < 0 || state.hours > 23 then
+                    Err (Field.fail "Hours must be between 0 & 23")
+
+                else if state.minutes < 0 || state.minutes > 59 then
+                    Err (Field.fail "Minutes must be between 0 & 59")
 
                 else
-                    Err (Field.fail "Invalid hours")
+                    Ok state
         , renderer = renderTimePicker
         , label = label
         }
 
 
 renderTimePicker : RendererConfig TimeState TimeDelta TimeState msg -> Element msg
-renderTimePicker { input, label, delta, focusMsg, focused } =
+renderTimePicker { input, label, delta, focusMsg, focused, status, parsed } =
     let
         button txt m =
             Input.button
@@ -591,7 +594,7 @@ renderTimePicker { input, label, delta, focusMsg, focused } =
         , Border.color paleGrey
         , Font.center
         ]
-        [ text label
+        [ row [ width fill, spaceEvenly ] [ el [ Font.size 18 ] (text label), statusToIcon status parsed ]
         , row [ spacing 5, centerX ]
             [ button "+" (HoursChanged 10)
             , button "+" (HoursChanged 1)
@@ -834,7 +837,7 @@ statusToIcon status parsed =
         ( c, i ) =
             case ( status, parsed ) of
                 ( Field.Changing, _ ) ->
-                    ( infoColor, FI.moreHorizontal )
+                    ( midGrey, FI.moreHorizontal )
 
                 ( Field.Idle, Just _ ) ->
                     ( passColor, FI.checkCircle )
@@ -843,10 +846,10 @@ statusToIcon status parsed =
                     ( failColor, FI.xCircle )
 
                 ( Field.Intact, _ ) ->
-                    ( primaryColor, FI.helpCircle )
+                    ( midGrey, FI.helpCircle )
 
                 ( Field.Loading, _ ) ->
-                    ( infoColor, FI.save )
+                    ( midGrey, FI.save )
     in
     el
         [ Font.color c

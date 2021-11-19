@@ -152,12 +152,26 @@ myForm =
                     )
                     "Names usually start with a capital letter"
                 |> Field.infoIf (\x -> String.length x > 20) "Hey, that's a pretty long name you have there!"
+                |> Field.infoIf (\x -> String.toLower x == "rebecca") "Let me guess, last night you dreamt you went to Manderley again?"
             )
-        |> Form.withField (Widgets.float "What shoe size do you wear?" Field1Changed)
-        |> Form.withField (Widgets.int "How many dogs have you seen today?" Field2Changed)
+        |> Form.withField
+            (Widgets.float "What shoe size do you wear?" Field1Changed
+                |> Field.warnIf (\x -> x > 15) "Gosh those are big feet!"
+                |> Field.warnIf (\x -> x < 4) "Gosh those are tiny feet!"
+                |> Field.failIf (\x -> x < 0) "You can't have a negative shoe size."
+            )
+        |> Form.withField
+            (Widgets.int "How many dogs have you seen today?" Field2Changed
+                |> Field.failIf (\x -> x < 0) "Really? What does a negative dog look like?"
+                |> Field.infoIf (\x -> x == 101) "Hello Cruella!"
+            )
         |> Form.withField (Widgets.date "What is today's date?" Field3Changed)
         |> Form.withField (Widgets.time "What time is it?" Field4Changed)
-        |> Form.withField (Widgets.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames)
+        |> Form.withField
+            (Widgets.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames
+                |> Field.failIf (\x -> x == "Jar Jar Binks") "Jar Jar Binks cannot be your favourite character."
+                |> Field.infoIf (\x -> x == "Lando Calrissian") "You are a person of taste!"
+            )
         |> Form.withField (expensive Field6Changed)
         |> Form.withSubmit SubmitClicked
         |> Form.done
