@@ -1,26 +1,24 @@
 module Field exposing
     ( Delta(..)
     , DeltaContext
-    , Error(..)
+    , Feedback
+    , FeedbackTag(..)
     , Field(..)
     , RendererConfig
     , State
     , Status(..)
     , custom
-    , errorToString
-    , floatMustBeGreaterThan
-    , floatMustBeLessThan
+    , fail
+    , failIf
+    , info
     , initialize
-    , intMustBeGreaterThan
-    , intMustBeLessThan
-    , stringMustBeLongerThan
-    , stringMustBeShorterThan
-    , stringMustNotContain
+    , pass
+    , warn
+    , warnIf
     , withCmd
     , withInitialState
-    , withLabel
     , withRenderer
-    , withValidator
+    , withValidator, infoIf
     )
 
 import Dict
@@ -31,7 +29,9 @@ type Delta delta
 
 
 type alias DeltaContext =
-    { cmdName : String, debounce : Float }
+    { cmdName : String
+    , debounce : Float
+    }
 
 
 type Status
@@ -47,8 +47,8 @@ type Field input delta output element msg
         , init : input
         , deltaMsg : Delta delta -> msg
         , updater : delta -> input -> input
-        , parser : input -> Result Error output
-        , validators : List (output -> Maybe Error)
+        , parser : input -> Result Feedback output
+        , validators : List (output -> Maybe Feedback)
         , renderer : RendererConfig input delta output msg -> element
         , id : String
         , label : String
@@ -66,65 +66,46 @@ type alias RendererConfig input delta output msg =
     , debouncedEffectfulDelta : Float -> String -> delta -> msg
     , focusMsg : msg
     , requestCmdMsg : String -> msg
-    , parsed : Result (List Error) output
+    , parsed : Maybe output
+    , feedback : List Feedback
     , label : String
     , id : String
     }
 
 
 type alias State input output =
-    { input : input, validated : Result (List Error) output }
+    { input : input, validated : Result (List Feedback) ( output, List Feedback ) }
 
 
-type Error
-    = NotValidInt
-    | NotValidFloat
-    | IntTooLow Int
-    | IntTooHigh Int
-    | FloatTooLow Float
-    | FloatTooHigh Float
-    | StringTooShort Int
-    | StringTooLong Int
-    | StringMustNotContain String
-    | NoDateSelected
-    | Custom String
+type alias Feedback =
+    { tag : FeedbackTag, text : String }
 
 
-errorToString : Error -> String
-errorToString e =
-    case e of
-        NotValidInt ->
-            "Must be a whole number"
+type FeedbackTag
+    = Info
+    | Pass
+    | Fail
+    | Warn
 
-        NotValidFloat ->
-            "Must be a number"
 
-        IntTooLow i ->
-            "Must be a whole number higher than " ++ String.fromInt i
+info : String -> Feedback
+info str =
+    Feedback Info str
 
-        IntTooHigh i ->
-            "Must be a whole number lower than " ++ String.fromInt i
 
-        FloatTooLow f ->
-            "Must be a number higher than " ++ String.fromFloat f
+pass : String -> Feedback
+pass str =
+    Feedback Pass str
 
-        FloatTooHigh f ->
-            "Must be a number lower than " ++ String.fromFloat f
 
-        StringTooShort i ->
-            "Must be longer than " ++ String.fromInt i ++ " characters"
+fail : String -> Feedback
+fail str =
+    Feedback Fail str
 
-        StringTooLong i ->
-            "Must be shorter than " ++ String.fromInt i ++ " characters"
 
-        StringMustNotContain str ->
-            "Must not contain '" ++ str ++ "'"
-
-        NoDateSelected ->
-            "No date selected"
-
-        Custom str ->
-            str
+warn : String -> Feedback
+warn str =
+    Feedback Warn str
 
 
 
@@ -135,7 +116,7 @@ custom :
     { init : input
     , deltaMsg : Delta delta -> msg
     , updater : delta -> input -> input
-    , parser : input -> Result Error output
+    , parser : input -> Result Feedback output
     , renderer : RendererConfig input delta output msg -> element
     , label : String
     }
@@ -173,11 +154,6 @@ withInitialState input (Field f) =
     Field { f | init = input }
 
 
-withLabel : String -> Field input delta output element msg -> Field input delta output element msg
-withLabel l (Field f) =
-    Field { f | label = l }
-
-
 withCmd : String -> (result -> delta) -> (input -> Cmd result) -> Field input delta output element msg -> Field input delta output element msg
 withCmd cmdName toDelta toReturn (Field f) =
     let
@@ -191,9 +167,39 @@ withCmd cmdName toDelta toReturn (Field f) =
     Field { f | loadCmd = Dict.insert cmdName toCmdMsg f.loadCmd }
 
 
-withValidator : (output -> Maybe Error) -> Field input delta output element msg -> Field input delta output element msg
+withValidator : (output -> Maybe Feedback) -> Field input delta output element msg -> Field input delta output element msg
 withValidator v (Field f) =
     Field { f | validators = v :: f.validators }
+
+
+failIf : (output -> Bool) -> String -> Field input delta output element msg -> Field input delta output element msg
+failIf test message field =
+    withValidator
+        (validator test fail message)
+        field
+
+
+warnIf : (output -> Bool) -> String -> Field input delta output element msg -> Field input delta output element msg
+warnIf test message field =
+    withValidator
+        (validator test warn message)
+        field
+
+
+infoIf : (output -> Bool) -> String -> Field input delta output element msg -> Field input delta output element msg
+infoIf test message field =
+    withValidator
+        (validator test info message)
+        field
+
+
+validator : (output -> Bool) -> (String -> Feedback) -> String -> output -> Maybe Feedback
+validator test feedback message output =
+    if test output then
+        Just (feedback message)
+
+    else
+        Nothing
 
 
 withRenderer :
@@ -213,58 +219,3 @@ withRenderer r (Field f) =
         , label = f.label
         , loadCmd = f.loadCmd
         }
-
-
-
--- CREATING VALIDATORS
-
-
-ifTrueThenJust : a -> Bool -> Maybe a
-ifTrueThenJust a bool =
-    if bool then
-        Just a
-
-    else
-        Nothing
-
-
-stringMustBeLongerThan : Int -> String -> Maybe Error
-stringMustBeLongerThan numberOfChars str =
-    (String.length str <= numberOfChars)
-        |> ifTrueThenJust (StringTooShort numberOfChars)
-
-
-stringMustBeShorterThan : Int -> String -> Maybe Error
-stringMustBeShorterThan numberOfChars str =
-    (String.length str >= numberOfChars)
-        |> ifTrueThenJust (StringTooLong numberOfChars)
-
-
-stringMustNotContain : String -> String -> Maybe Error
-stringMustNotContain content str =
-    String.contains content str
-        |> ifTrueThenJust (StringMustNotContain content)
-
-
-intMustBeGreaterThan : Int -> Int -> Maybe Error
-intMustBeGreaterThan tooLow int_ =
-    (int_ <= tooLow)
-        |> ifTrueThenJust (IntTooLow tooLow)
-
-
-intMustBeLessThan : Int -> Int -> Maybe Error
-intMustBeLessThan tooHigh int_ =
-    (int_ >= tooHigh)
-        |> ifTrueThenJust (IntTooHigh tooHigh)
-
-
-floatMustBeGreaterThan : Float -> Float -> Maybe Error
-floatMustBeGreaterThan tooLow float_ =
-    (float_ <= tooLow)
-        |> ifTrueThenJust (FloatTooLow tooLow)
-
-
-floatMustBeLessThan : Float -> Float -> Maybe Error
-floatMustBeLessThan tooHigh float_ =
-    (float_ >= tooHigh)
-        |> ifTrueThenJust (FloatTooHigh tooHigh)

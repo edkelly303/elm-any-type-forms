@@ -1,4 +1,4 @@
-module Main exposing (main, myForm)
+module Main exposing (main)
 
 import Browser
 import Date
@@ -113,10 +113,10 @@ expensive deltaMsg =
                     , Element.el [ Element.centerX, Element.Font.size 50 ]
                         (text
                             (case parsed of
-                                Ok n ->
+                                Just n ->
                                     String.fromInt n
 
-                                Err _ ->
+                                Nothing ->
                                     "?"
                             )
                         )
@@ -140,7 +140,19 @@ fib x =
 
 myForm =
     Form.form FormChanged
-        |> Form.withField (Widgets.string "What is your name?" Field0Changed |> Field.withValidator (Field.stringMustBeLongerThan 0))
+        |> Form.withField
+            (Widgets.string "What is your name?" Field0Changed
+                |> Field.failIf (\x -> String.length x < 1) "Must be at least 1 character"
+                |> Field.warnIf
+                    (\x ->
+                        String.uncons x
+                            |> Maybe.map Tuple.first
+                            |> Maybe.map Char.isLower
+                            |> Maybe.withDefault True
+                    )
+                    "Names usually start with a capital letter"
+                |> Field.infoIf (\x -> String.length x > 20) "Hey, that's a pretty long name you have there!"
+            )
         |> Form.withField (Widgets.float "What shoe size do you wear?" Field1Changed)
         |> Form.withField (Widgets.int "How many dogs have you seen today?" Field2Changed)
         |> Form.withField (Widgets.date "What is today's date?" Field3Changed)

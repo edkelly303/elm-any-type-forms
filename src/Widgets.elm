@@ -11,7 +11,6 @@ import Element.Keyed
 import FeatherIcons as FI
 import Field exposing (RendererConfig)
 import Html.Attributes
-import Internals exposing (..)
 import Time
 
 
@@ -44,7 +43,7 @@ float label msg =
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> delta
-        , parser = String.toFloat >> Result.fromMaybe Field.NotValidFloat
+        , parser = String.toFloat >> Result.fromMaybe (Field.fail "must be a number")
         , renderer = renderTextField
         , label = label
         }
@@ -56,14 +55,14 @@ int label msg =
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> delta
-        , parser = String.toInt >> Result.fromMaybe Field.NotValidInt
+        , parser = String.toInt >> Result.fromMaybe (Field.fail "must be a whole number")
         , renderer = renderTextField
         , label = label
         }
 
 
 renderTextField : RendererConfig String String output msg -> Element msg
-renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, id, label } =
+renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, feedback, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -92,7 +91,7 @@ renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, id, 
                 }
             , statusToIcon status parsed
             ]
-        , viewErrors status parsed
+        , viewFeedback status feedback
         ]
 
 
@@ -155,17 +154,14 @@ date label deltaMsg =
                                     month
                                     (Date.day state.viewing)
                             , selected =
-                                case state.selected of
-                                    Nothing ->
-                                        Nothing
-
-                                    Just d ->
-                                        Just
-                                            (Date.fromCalendarDate
+                                state.selected
+                                    |> Maybe.map
+                                        (\d ->
+                                            Date.fromCalendarDate
                                                 (Date.year d)
                                                 month
                                                 (Date.day d)
-                                            )
+                                        )
                         }
 
                     YearsPageOpened ->
@@ -185,17 +181,14 @@ date label deltaMsg =
                                             (Date.month state.viewing)
                                             (Date.day state.viewing)
                                     , selected =
-                                        case state.selected of
-                                            Nothing ->
-                                                Nothing
-
-                                            Just d ->
-                                                Just
-                                                    (Date.fromCalendarDate
+                                        state.selected
+                                            |> Maybe.map
+                                                (\d ->
+                                                    Date.fromCalendarDate
                                                         (decade * 10 + year)
                                                         (Date.month d)
                                                         (Date.day d)
-                                                    )
+                                                )
                                 }
 
                             _ ->
@@ -218,14 +211,14 @@ date label deltaMsg =
 
                     CalendarPageChanged i ->
                         { state | viewing = Date.add Date.Months i state.viewing }
-        , parser = \state -> Result.fromMaybe Field.NoDateSelected state.selected
+        , parser = \state -> Result.fromMaybe (Field.fail "Must select a date") state.selected
         , renderer = renderDatePicker
         , label = label
         }
 
 
 renderDatePicker : RendererConfig DateState DateDelta Date.Date msg -> Element msg
-renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
+renderDatePicker { input, delta, label, focused, focusMsg, status, feedback } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -368,7 +361,7 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                             )
                             weeks
                         )
-                    , viewErrors status parsed
+                    , viewFeedback status feedback
                     ]
 
             YearsPage { decade } ->
@@ -548,7 +541,7 @@ time label deltaMsg =
                     Ok state
 
                 else
-                    Err (Field.Custom "")
+                    Err (Field.fail "Invalid hours")
         , renderer = renderTimePicker
         , label = label
         }
@@ -662,23 +655,22 @@ search label msg toString loadItemsCmd =
                         { state
                             | options = list
                             , selected =
-                                case state.selected of
-                                    Nothing ->
-                                        Nothing
+                                state.selected
+                                    |> Maybe.andThen
+                                        (\sel ->
+                                            if List.member sel list then
+                                                Just sel
 
-                                    Just sel ->
-                                        if List.member sel list then
-                                            Just sel
-
-                                        else
-                                            Nothing
+                                            else
+                                                Nothing
+                                        )
                         }
 
                     ResultSelected item ->
                         { state | selected = Just item }
         , parser =
             \state ->
-                Result.fromMaybe (Field.Custom "Must select something") state.selected
+                Result.fromMaybe (Field.fail "Must select something") state.selected
         , renderer = renderSearchField toString
         , label = label
         }
@@ -689,7 +681,7 @@ renderSearchField :
     (a -> String)
     -> Field.RendererConfig (SearchState a) (SearchDelta a) a msg
     -> Element msg
-renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focusMsg, focused, parsed, status } =
+renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focusMsg, focused, parsed, status, feedback } =
     column
         [ height <| px 400
         , spacing 10
@@ -763,7 +755,7 @@ renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focus
                                 }
                         )
                         input.options
-        , viewErrors status parsed
+        , viewFeedback status feedback
         ]
 
 
@@ -778,27 +770,65 @@ renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focus
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-viewErrors : Field.Status -> Result (List Field.Error) output -> Element msg
-viewErrors status parsed =
-    case ( status, parsed ) of
-        ( Field.Idle, Err errs ) ->
+viewFeedback : Field.Status -> List Field.Feedback -> Element msg
+viewFeedback status feedback =
+    case status of
+        Field.Idle ->
             column
                 [ Font.size 12
                 , spacing 5
-                , Font.color errorColor
+                , width fill
                 ]
-                (List.map (Field.errorToString >> text) errs)
+                (feedback
+                    |> List.sortWith
+                        (\f1 f2 ->
+                            let
+                                tagToInt t =
+                                    case t of
+                                        Field.Fail ->
+                                            0
+
+                                        Field.Warn ->
+                                            1
+
+                                        Field.Pass ->
+                                            2
+
+                                        Field.Info ->
+                                            3
+                            in
+                            Basics.compare (tagToInt f1.tag) (tagToInt f2.tag)
+                        )
+                    |> List.map
+                        (\f ->
+                            row [ spacing 5, width fill ]
+                                [ viewFeedbackIcon f.tag
+                                , el [] (text f.text)
+                                ]
+                        )
+                )
 
         _ ->
             none
 
 
-red : Color
-red =
-    rgb255 220 0 150
+viewFeedbackIcon : Field.FeedbackTag -> Element msg
+viewFeedbackIcon tag =
+    case tag of
+        Field.Info ->
+            el [ Font.color infoColor ] (smallIcon FI.info)
+
+        Field.Pass ->
+            el [ Font.color passColor ] (smallIcon FI.checkCircle)
+
+        Field.Fail ->
+            el [ Font.color failColor ] (smallIcon FI.xCircle)
+
+        Field.Warn ->
+            el [ Font.color warnColor ] (smallIcon FI.alertTriangle)
 
 
-statusToIcon : Field.Status -> Result error value -> Element msg
+statusToIcon : Field.Status -> Maybe value -> Element msg
 statusToIcon status parsed =
     let
         ( c, i ) =
@@ -806,11 +836,11 @@ statusToIcon status parsed =
                 ( Field.Changing, _ ) ->
                     ( infoColor, FI.moreHorizontal )
 
-                ( Field.Idle, Ok _ ) ->
-                    ( okColor, FI.checkCircle )
+                ( Field.Idle, Just _ ) ->
+                    ( passColor, FI.checkCircle )
 
-                ( Field.Idle, Err _ ) ->
-                    ( errorColor, FI.xCircle )
+                ( Field.Idle, Nothing ) ->
+                    ( failColor, FI.xCircle )
 
                 ( Field.Intact, _ ) ->
                     ( primaryColor, FI.helpCircle )
@@ -827,28 +857,41 @@ statusToIcon status parsed =
 
 icon : FI.Icon -> Element msg
 icon i =
-    FI.toHtml [] i
+    i
+        |> FI.toHtml []
         |> html
 
 
-okColor : Color
-okColor =
+smallIcon : FI.Icon -> Element msg
+smallIcon i =
+    i
+        |> FI.withSize 16
+        |> icon
+
+
+passColor : Color
+passColor =
     rgb255 92 184 92
 
 
-errorColor : Color
-errorColor =
+failColor : Color
+failColor =
     rgb255 217 83 79
-
-
-primaryColor : Color
-primaryColor =
-    rgb255 2 117 216
 
 
 infoColor : Color
 infoColor =
     rgb255 91 192 222
+
+
+warnColor : Color
+warnColor =
+    rgb255 255 193 7
+
+
+primaryColor : Color
+primaryColor =
+    rgb255 2 117 216
 
 
 focusedBlue : Color

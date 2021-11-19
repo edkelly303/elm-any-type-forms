@@ -482,13 +482,17 @@ parseAndValidate (Field { parser, validators }) fieldState =
     }
 
 
-accumulateErrors : a -> List (Maybe Field.Error) -> Result (List Field.Error) a
+accumulateErrors : a -> List (Maybe Field.Feedback) -> Result (List Field.Feedback) ( a, List Field.Feedback )
 accumulateErrors a list =
-    case List.filterMap identity list of
-        [] ->
-            Ok a
+    case
+        list
+            |> List.filterMap identity
+            |> List.partition (\{ tag } -> tag == Field.Fail)
+    of
+        ( [], others ) ->
+            Ok ( a, others )
 
-        errors ->
+        ( errors, _ ) ->
             Err errors
 
 
@@ -538,7 +542,7 @@ collectResultsSize1 next ( s, ( fst, rst ) ) =
     case s of
         Ok tuple ->
             case fst.validated of
-                Ok okF ->
+                Ok (okF, _) ->
                     next ( Ok ( okF, tuple ), rst )
 
                 Err e ->
@@ -672,7 +676,14 @@ renderSize1 next config internalState form_ state_ =
                 , effectfulDelta = \eff delta -> Field.Delta { debounce = 0, cmdName = eff } delta |> deltaMsg
                 , debouncedDelta = \db delta -> Field.Delta { debounce = db, cmdName = "" } delta |> deltaMsg
                 , debouncedEffectfulDelta = \db eff delta -> Field.Delta { debounce = db, cmdName = eff } delta |> deltaMsg
-                , parsed = validated
+                , parsed = validated |> Result.toMaybe |> Maybe.map Tuple.first
+                , feedback =
+                    case validated of
+                        Ok ( _, feedback ) ->
+                            feedback
+
+                        Err feedback ->
+                            feedback
                 , id = id
                 , label = label
                 }
