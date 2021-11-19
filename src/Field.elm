@@ -11,6 +11,7 @@ module Field exposing
     , fail
     , failIf
     , info
+    , infoIf
     , initialize
     , pass
     , warn
@@ -18,14 +19,18 @@ module Field exposing
     , withCmd
     , withInitialState
     , withRenderer
-    , withValidator, infoIf
+    , withValidator
     )
 
 import Dict
+import Time
 
 
 type Delta delta
     = Delta DeltaContext delta
+    | Focused
+    | ChangeDetected Float String Time.Posix
+    | ChangeCompleted String Time.Posix
 
 
 type alias DeltaContext =
@@ -59,15 +64,14 @@ type Field input delta output element msg
 type alias RendererConfig input delta output msg =
     { input : input
     , status : Status
-    , focused : Bool
+    , parsed : Maybe output
+    , feedback : List Feedback
     , delta : delta -> msg
     , debouncedDelta : Float -> delta -> msg
     , effectfulDelta : String -> delta -> msg
     , debouncedEffectfulDelta : Float -> String -> delta -> msg
     , focusMsg : msg
-    , requestCmdMsg : String -> msg
-    , parsed : Maybe output
-    , feedback : List Feedback
+    , focused : Bool
     , label : String
     , id : String
     }

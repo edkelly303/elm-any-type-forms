@@ -29,7 +29,6 @@ type Msg
     | Field5Changed (Field.Delta (Widgets.SearchDelta String))
     | Field6Changed (Field.Delta ())
     | SubmitClicked
-    | FormChanged (Form.InternalMsg Msg)
     | BackClicked
 
 
@@ -139,7 +138,7 @@ fib x =
 
 
 myForm =
-    Form.form FormChanged
+    Form.form 
         |> Form.withField
             (Widgets.string "What is your name?" Field0Changed
                 |> Field.failIf (\x -> String.length x < 1) "Must be at least 1 character"
@@ -191,10 +190,6 @@ update msg model =
             Tuple.mapFirst (\form -> { model | form = form })
     in
     case msg of
-        FormChanged delta ->
-            myForm.updateForm delta model.form
-                |> wrap
-
         Field0Changed delta ->
             myForm.updateField Form.i0 delta model.form
                 |> wrap
