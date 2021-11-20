@@ -291,7 +291,10 @@ updateField (Form form_) index wrappedDelta (State internalState fieldStates) =
         Field.Delta ctx delta ->
             let
                 newFieldState =
-                    { fieldState | input = field_.updater delta fieldState.input }
+                    { fieldState
+                        | input = field_.updater delta fieldState.input
+                        , status = Field.Idle_
+                    }
 
                 newFieldStates =
                     fieldStateMapper
