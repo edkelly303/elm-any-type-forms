@@ -51,7 +51,6 @@ type alias Model =
                 )
               )
             )
-            Msg
     }
 
 
@@ -138,7 +137,7 @@ fib x =
 
 
 myForm =
-    Form.form 
+    Form.form
         |> Form.withField
             (Widgets.string "What is your name?" Field0Changed
                 |> Field.failIf (\x -> String.length x < 1) "Must be at least 1 character"

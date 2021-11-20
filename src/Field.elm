@@ -4,6 +4,7 @@ module Field exposing
     , Feedback
     , FeedbackTag(..)
     , Field(..)
+    , Interaction(..)
     , RendererConfig
     , State
     , Status(..)
@@ -30,13 +31,20 @@ type Delta delta
     = Delta DeltaContext delta
     | Focused
     | ChangeDetected Float String Time.Posix
-    | ChangeCompleted String Time.Posix
+    | ChangeCompleted String (Maybe Time.Posix)
 
 
 type alias DeltaContext =
     { cmdName : String
     , debounce : Float
     }
+
+
+type Interaction
+    = Intact_
+    | Changing_ Time.Posix
+    | Loading_
+    | Idle_
 
 
 type Status
@@ -78,7 +86,10 @@ type alias RendererConfig input delta output msg =
 
 
 type alias State input output =
-    { input : input, validated : Result (List Feedback) ( output, List Feedback ) }
+    { input : input
+    , validated : Result (List Feedback) ( output, List Feedback )
+    , status : Interaction
+    }
 
 
 type alias Feedback =
@@ -146,7 +157,7 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
 
 initialize : Field input delta output element msg -> State input output
 initialize (Field { init }) =
-    { input = init, validated = Err [] }
+    { input = init, validated = Err [], status = Intact_ }
 
 
 
