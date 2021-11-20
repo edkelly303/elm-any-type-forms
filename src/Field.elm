@@ -29,9 +29,9 @@ import Time
 
 type Delta delta
     = Delta DeltaContext delta
-    | Focused
     | ChangeDetected Float String Time.Posix
     | ChangeCompleted String (Maybe Time.Posix)
+    | Focused
 
 
 type alias DeltaContext =
