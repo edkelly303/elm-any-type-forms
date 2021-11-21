@@ -4,7 +4,7 @@ module Field exposing
     , Feedback
     , FeedbackTag(..)
     , Field(..)
-    , Interaction(..)
+    , InternalStatus(..)
     , RendererConfig
     , State
     , Status(..)
@@ -28,9 +28,13 @@ import Time
 
 
 type Delta delta
-    = Delta DeltaContext delta
-    | ChangeDetected Float String Time.Posix
-    | ChangeCompleted String (Maybe Time.Posix)
+    = UpdateInput DeltaContext delta
+    | TransitionToChanging DeltaContext Time.Posix
+    | TransitionToLoading DeltaContext Time.Posix
+    | ExecuteLoading delta
+    | TransitionToParsing
+    | ExecuteParsing
+    | TransitionToIdle
     | Focused
 
 
@@ -40,18 +44,20 @@ type alias DeltaContext =
     }
 
 
-type Interaction
+type InternalStatus
     = Intact_
     | Changing_ Time.Posix
     | Loading_
+    | Parsing_
     | Idle_
 
 
 type Status
     = Intact
-    | Idle
     | Changing
     | Loading
+    | Parsing
+    | Idle
 
 
 type Field input delta output element msg
@@ -88,7 +94,7 @@ type alias RendererConfig input delta output msg =
 type alias State input output =
     { input : input
     , validated : Result (List Feedback) ( output, List Feedback )
-    , status : Interaction
+    , status : InternalStatus
     }
 
 
@@ -147,7 +153,7 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
         , renderer = renderer
         , id = ""
         , label = label
-        , loadCmd = Dict.singleton "" (always Cmd.none)
+        , loadCmd = Dict.empty
         }
 
 
@@ -176,7 +182,7 @@ withCmd cmdName toDelta toReturn (Field f) =
             input
                 |> toReturn
                 |> Cmd.map toDelta
-                |> Cmd.map (Delta { debounce = 0, cmdName = "" })
+                |> Cmd.map ExecuteLoading
                 |> Cmd.map f.deltaMsg
     in
     Field { f | loadCmd = Dict.insert cmdName toCmdMsg f.loadCmd }

@@ -196,12 +196,12 @@ getFieldAndFieldState getter form_ state_ =
         state_
 
 
-fieldMapper0 : a -> a
-fieldMapper0 =
+fieldStateSetter0 : a -> a
+fieldStateSetter0 =
     identity
 
 
-fieldMapper1 mapRest ( this, rest ) =
+fieldStateSetter1 mapRest ( this, rest ) =
     Tuple.mapBoth identity mapRest ( this, rest )
 
 
@@ -221,7 +221,7 @@ i0 =
 
 
 i1 =
-    compose ( fieldMapper1, fieldCounter1, fieldAndFieldStateGetter1 )
+    compose ( fieldStateSetter1, fieldCounter1, fieldAndFieldStateGetter1 )
 
 
 i2 =
@@ -271,14 +271,24 @@ compose ( a, b, c ) ( a1, b1, c1 ) =
 
 updateField (Form form_) index wrappedDelta (State internalState fieldStates) =
     let
-        ( fieldStateMapper, countField, fieldAndFieldStateGetter ) =
-            index ( fieldMapper0, fieldCounter0, fieldAndFieldStateGetter0 )
+        ( fieldStateSetter, countField, fieldAndFieldStateGetter ) =
+            index ( fieldStateSetter0, fieldCounter0, fieldAndFieldStateGetter0 )
 
         indexOfUpdatedField =
             countField 0
 
         ( Field field_, fieldState ) =
             getFieldAndFieldState fieldAndFieldStateGetter form_ fieldStates
+
+        updateState fs =
+            State internalState
+                (fieldStateSetter
+                    (Tuple.mapBoth (\_ -> fs) identity)
+                    fieldStates
+                )
+
+        unchanged =
+            ( State internalState fieldStates, Cmd.none )
     in
     case wrappedDelta of
         Field.Focused ->
@@ -288,90 +298,73 @@ updateField (Form form_) index wrappedDelta (State internalState fieldStates) =
             , Cmd.none
             )
 
-        Field.Delta ctx delta ->
-            let
-                newFieldState =
-                    { fieldState
-                        | input = field_.updater delta fieldState.input
-                        , status = Field.Idle_
-                    }
-
-                newFieldStates =
-                    fieldStateMapper
-                        (Tuple.mapBoth (\_ -> newFieldState) identity)
-                        fieldStates
-            in
-            ( State internalState newFieldStates
-            , if ctx.debounce == 0 then
-                Task.perform
-                    (\() -> field_.deltaMsg (Field.ChangeCompleted ctx.cmdName Nothing))
-                    (Process.sleep 0)
-
-              else
-                Task.perform
-                    (\time -> field_.deltaMsg (Field.ChangeDetected ctx.debounce ctx.cmdName time))
-                    Time.now
-            )
-
-        Field.ChangeDetected debounce cmdName time ->
-            let
-                newFieldState =
-                    { fieldState | status = Field.Changing_ time }
-
-                newFieldStates =
-                    fieldStateMapper
-                        (Tuple.mapBoth (\_ -> newFieldState) identity)
-                        fieldStates
-            in
-            ( State internalState newFieldStates
+        Field.UpdateInput ctx delta ->
+            ( updateState
+                { fieldState | input = field_.updater delta fieldState.input }
             , Task.perform
-                (\() -> field_.deltaMsg <| Field.ChangeCompleted cmdName (Just time))
-                (Process.sleep debounce)
+                (\time -> field_.deltaMsg (Field.TransitionToChanging ctx time))
+                Time.now
             )
 
-        Field.ChangeCompleted cmdName maybeTime ->
-            let
-                runUpdate () =
-                    let
-                        newFieldState =
-                            { fieldState
-                                | status =
-                                    if cmdName == "" then
-                                        Field.Idle_
+        Field.TransitionToChanging ctx time ->
+            ( updateState
+                { fieldState | status = Field.Changing_ time }
+            , Task.perform
+                (\() -> field_.deltaMsg <| Field.TransitionToLoading ctx time)
+                (Process.sleep ctx.debounce)
+            )
 
-                                    else
-                                        Field.Loading_
-                            }
-                                |> parseAndValidate (Field field_)
-
-                        newFieldStates =
-                            fieldStateMapper
-                                (Tuple.mapBoth (\_ -> newFieldState) identity)
-                                fieldStates
-
-                        cmd =
-                            field_.loadCmd
-                                |> Dict.get cmdName
-                                |> Maybe.map (\toCmd -> toCmd fieldState.input)
-                                |> Maybe.withDefault Cmd.none
-                    in
-                    ( State internalState newFieldStates
-                    , cmd
-                    )
-            in
+        Field.TransitionToLoading ctx time ->
             case fieldState.status of
                 Field.Changing_ lastTouched ->
-                    if maybeTime == Just lastTouched then
-                        runUpdate ()
+                    if time == lastTouched then
+                        ( updateState
+                            { fieldState | status = Field.Loading_ }
+                        , field_.loadCmd
+                            |> Dict.get ctx.cmdName
+                            |> Maybe.map (\toCmd -> toCmd fieldState.input)
+                            |> Maybe.withDefault (Task.perform (\() -> field_.deltaMsg Field.TransitionToParsing) (Process.sleep 0))
+                        )
 
                     else
-                        ( State internalState fieldStates, Cmd.none )
-
-                Field.Idle_ ->
-                    runUpdate ()
+                        unchanged
 
                 _ ->
-                    ( State internalState fieldStates, Cmd.none )
+                    unchanged
+
+        Field.ExecuteLoading delta ->
+            ( updateState
+                { fieldState | input = field_.updater delta fieldState.input }
+            , Task.perform
+                (\() -> field_.deltaMsg Field.TransitionToParsing)
+                (Process.sleep 0)
+            )
+
+        Field.TransitionToParsing ->
+            ( updateState
+                { fieldState | status = Field.Parsing_ }
+            , Task.perform
+                (\() -> field_.deltaMsg Field.ExecuteParsing)
+                (Process.sleep 20)
+              {- this 20ms delay is a hack; we need to wait until the next
+                 AnimationFrame before starting the parsing step, otherwise the
+                 UI will lock up before we can show the "parsing" icon
+              -}
+            )
+
+        Field.ExecuteParsing ->
+            ( updateState
+                (parseAndValidate (Field field_) fieldState)
+            , Task.perform
+                (\() -> field_.deltaMsg Field.TransitionToIdle)
+                (Process.sleep 0)
+            )
+
+        Field.TransitionToIdle ->
+            ( updateState
+                { fieldState | status = Field.Idle_ }
+            , Cmd.none
+            )
 
 
 
@@ -570,6 +563,9 @@ renderSize1 next internalState form_ state_ =
 
                         Field.Loading_ ->
                             Field.Loading
+
+                        Field.Parsing_ ->
+                            Field.Parsing
                 , parsed =
                     validated
                         |> Result.toMaybe
@@ -581,10 +577,10 @@ renderSize1 next internalState form_ state_ =
 
                         Err feedback ->
                             feedback
-                , delta = \delta -> Field.Delta { debounce = 0, cmdName = "" } delta |> deltaMsg
-                , effectfulDelta = \eff delta -> Field.Delta { debounce = 0, cmdName = eff } delta |> deltaMsg
-                , debouncedDelta = \db delta -> Field.Delta { debounce = db, cmdName = "" } delta |> deltaMsg
-                , debouncedEffectfulDelta = \db eff delta -> Field.Delta { debounce = db, cmdName = eff } delta |> deltaMsg
+                , delta = \delta -> Field.UpdateInput { debounce = 0, cmdName = "" } delta |> deltaMsg
+                , effectfulDelta = \eff delta -> Field.UpdateInput { debounce = 0, cmdName = eff } delta |> deltaMsg
+                , debouncedDelta = \db delta -> Field.UpdateInput { debounce = db, cmdName = "" } delta |> deltaMsg
+                , debouncedEffectfulDelta = \db eff delta -> Field.UpdateInput { debounce = db, cmdName = eff } delta |> deltaMsg
                 , focusMsg = deltaMsg Field.Focused
                 , focused = internalState.focused == Just index
                 , id = id

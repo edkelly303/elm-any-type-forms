@@ -3,9 +3,7 @@ module Main exposing (main)
 import Browser
 import Date
 import Element exposing (..)
-import Element.Background
 import Element.Border
-import Element.Events
 import Element.Font
 import Element.Input
 import Field
@@ -71,71 +69,6 @@ type Page
 -- CORE LOGIC
 
 
-expensive : (Field.Delta () -> msg) -> Field.Field Int () Int (Element msg) msg
-expensive deltaMsg =
-    Field.custom
-        { init = 41
-        , deltaMsg = deltaMsg
-        , updater = \() input -> input
-        , parser = \input -> Ok (fib input)
-        , renderer =
-            \{ input, delta, parsed, focusMsg, focused } ->
-                Element.column
-                    [ Element.width Element.fill
-                    , Element.spacing 20
-                    , Element.padding 20
-                    , Element.Border.width 1
-                    , Element.Border.rounded 5
-                    , Element.Border.color Widgets.paleGrey
-                    , Element.Events.onClick focusMsg
-                    , Element.Background.color
-                        (if focused then
-                            Widgets.focusedBlue
-
-                         else
-                            Widgets.white
-                        )
-                    ]
-                    [ Element.Input.button
-                        [ Element.padding 10
-                        , Element.Border.width 1
-                        , Element.Border.rounded 3
-                        , Element.Border.color Widgets.midGrey
-                        , Element.width Element.fill
-                        , Element.Background.color Widgets.white
-                        , Element.Font.center
-                        ]
-                        { label = text ("Number " ++ String.fromInt input ++ " in the Fibonacci sequence is...")
-                        , onPress = Just (delta ())
-                        }
-                    , Element.el [ Element.centerX, Element.Font.size 50 ]
-                        (text
-                            (case parsed of
-                                Just n ->
-                                    String.fromInt n
-
-                                Nothing ->
-                                    "?"
-                            )
-                        )
-                    ]
-        , label = "Now let's do some hard work"
-        }
-
-
-fib : Int -> Int
-fib x =
-    case x of
-        0 ->
-            1
-
-        1 ->
-            1
-
-        _ ->
-            fib (x - 1) + fib (x - 2)
-
-
 myForm =
     Form.form
         |> Form.withField
@@ -170,7 +103,7 @@ myForm =
                 |> Field.failIf (\x -> x == "Jar Jar Binks") "Jar Jar Binks cannot be your favourite character."
                 |> Field.infoIf (\x -> x == "Lando Calrissian") "You are a person of taste!"
             )
-        |> Form.withField (expensive Field6Changed)
+        |> Form.withField (Widgets.expensive Field6Changed)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 

@@ -850,6 +850,9 @@ statusToIcon status parsed =
 
                 ( Field.Loading, _ ) ->
                     ( midGrey, FI.save )
+
+                ( Field.Parsing, _ ) ->
+                    ( midGrey, FI.cpu )
     in
     el
         [ Font.color c
@@ -925,3 +928,75 @@ black =
 transparent : Color
 transparent =
     rgba255 255 255 255 0
+
+
+expensive : (Field.Delta () -> msg) -> Field.Field Int () Int (Element msg) msg
+expensive deltaMsg =
+    Field.custom
+        { init = 41
+        , deltaMsg = deltaMsg
+        , updater = \() input -> input
+        , parser = \input -> Ok (fib input)
+        , renderer =
+            \{ label, input, delta, parsed, status, focusMsg, focused } ->
+                column
+                    [ width Element.fill
+                    , spacing 20
+                    , padding 20
+                    , Border.width 1
+                    , Border.rounded 5
+                    , Border.color paleGrey
+                    , Events.onClick focusMsg
+                    , Background.color
+                        (if focused then
+                            focusedBlue
+
+                         else
+                            white
+                        )
+                    ]
+                    [ row [ spaceEvenly, width fill ]
+                        [ text label
+                        , statusToIcon status parsed
+                        ]
+                    , Input.button
+                        [ padding 10
+                        , Border.width 1
+                        , Border.rounded 3
+                        , Border.color midGrey
+                        , width Element.fill
+                        , Background.color white
+                        , Font.center
+                        ]
+                        { label = text ("Number " ++ String.fromInt input ++ " in the Fibonacci sequence is...")
+                        , onPress = Just (delta ())
+                        }
+                    , el
+                        [ centerX
+                        , Font.size 50
+                        ]
+                        (text
+                            (case parsed of
+                                Just n ->
+                                    String.fromInt n
+
+                                Nothing ->
+                                    "?"
+                            )
+                        )
+                    ]
+        , label = "Now let's do some hard work"
+        }
+
+
+fib : Int -> Int
+fib x =
+    case x of
+        0 ->
+            1
+
+        1 ->
+            1
+
+        _ ->
+            fib (x - 1) + fib (x - 2)
