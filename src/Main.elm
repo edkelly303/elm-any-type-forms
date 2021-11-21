@@ -242,13 +242,12 @@ submittedView name shoeSize dogCount dob time favouriteCharacter fibonacci =
             , bold (String.fromInt time.minutes |> String.padLeft 2 '0')
             ]
         , paragraph []
-            [ text "Perhaps most important of all, your favourite Star Wars character is "
+            [ text "Your favourite Star Wars character is "
             , bold favouriteCharacter
             ]
         , paragraph []
-            [ text "Finally, did you know that "
+            [ text "And your favourite number in the Fibonacci series is "
             , bold (String.fromInt fibonacci)
-            , text " is a number in the Fibonacci sequence?"
             ]
         , Element.Input.button
             [ centerX
