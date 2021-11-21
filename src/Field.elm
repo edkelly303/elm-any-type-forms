@@ -95,6 +95,7 @@ type alias State input output =
     { input : input
     , validated : Result (List Feedback) ( output, List Feedback )
     , status : InternalStatus
+    , focused : Bool
     }
 
 
@@ -163,7 +164,11 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
 
 initialize : Field input delta output element msg -> State input output
 initialize (Field { init }) =
-    { input = init, validated = Err [], status = Intact_ }
+    { input = init
+    , validated = Err []
+    , status = Intact_
+    , focused = False
+    }
 
 
 

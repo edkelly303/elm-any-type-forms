@@ -25,7 +25,6 @@ import Element.Border
 import Element.Input
 import Field exposing (Field(..))
 import Internals
-import Json.Decode exposing (index)
 import Process
 import Task
 import Time
@@ -40,11 +39,7 @@ type Form form
 
 
 type State state
-    = State InternalState state
-
-
-type alias InternalState =
-    { focused : Maybe Int }
+    = State state
 
 
 
@@ -57,11 +52,11 @@ type Builder a b c d e f g h fields element msg
         , anotherReverseSize : b
         , stateSize : c
         , validateSize : d
-        , renderSize : f
         , collectResultsSize : e
+        , renderSize : f
         , collectElementsSize : g
+        , fieldStateFocuser : h
         , fieldCount : Int
-        , formState : InternalState
         , fields : fields
         , layout : List element -> element
         , submitMsg : Maybe msg
@@ -83,8 +78,8 @@ form =
         , collectResultsSize = identity
         , collectElementsSize = identity
         , renderSize = identity
+        , fieldStateFocuser = identity
         , fieldCount = 0
-        , formState = { focused = Nothing }
         , fields = ()
         , layout =
             Element.column
@@ -114,8 +109,8 @@ withField (Field fld) (Builder bdr) =
         , collectResultsSize = bdr.collectResultsSize >> collectResultsSize1
         , collectElementsSize = bdr.collectElementsSize >> collectElementsSize1
         , renderSize = bdr.renderSize >> renderSize1
+        , fieldStateFocuser = bdr.fieldStateFocuser >> fieldStateFocuser1
         , fieldCount = bdr.fieldCount + 1
-        , formState = bdr.formState
         , fields = ( Field { fld | index = bdr.fieldCount }, bdr.fields )
         , layout = bdr.layout
         , submitMsg = bdr.submitMsg
@@ -136,8 +131,8 @@ withRenderer args (Builder bdr) =
         , renderSize = bdr.renderSize
         , collectResultsSize = bdr.collectResultsSize
         , collectElementsSize = bdr.collectElementsSize
+        , fieldStateFocuser = bdr.fieldStateFocuser
         , fieldCount = bdr.fieldCount
-        , formState = bdr.formState
         , fields = bdr.fields
         , layout = args.layout
         , submitRenderer = args.submit
@@ -167,10 +162,10 @@ done (Builder bdr) =
         fieldsState =
             bdr.stateSize (\() -> ()) reversedFields
     in
-    { init = State bdr.formState fieldsState
+    { init = State fieldsState
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
     , form = form_
-    , updateField = updateField form_
+    , updateField = updateField bdr.fieldStateFocuser form_
     , viewFields = renderAll bdr.renderSize form_
     , view = view config bdr.renderSize bdr.collectElementsSize form_
     }
@@ -180,15 +175,22 @@ done (Builder bdr) =
 -- INDEXES FOR SETTING FIELDS
 
 
+fieldStateFocuser1 : (b -> y) -> ( { a | focused : Bool }, b ) -> ( { a | focused : Bool }, y )
+fieldStateFocuser1 =
+    Tuple.mapBoth (\fs -> { fs | focused = False })
+
+
 fieldAndFieldStateGetter0 : a -> a
 fieldAndFieldStateGetter0 =
     identity
 
 
+fieldAndFieldStateGetter1 : (b -> a -> c) -> ( d, b ) -> ( e, a ) -> c
 fieldAndFieldStateGetter1 next ( _, restFields ) ( _, restFieldStates ) =
     next restFields restFieldStates
 
 
+getFieldAndFieldState : ((( a, b ) -> ( c, d ) -> ( a, c )) -> e -> f -> g) -> e -> f -> g
 getFieldAndFieldState getter form_ state_ =
     getter
         (\( field_, _ ) ( fieldState, _ ) -> ( field_, fieldState ))
@@ -201,18 +203,9 @@ fieldStateSetter0 =
     identity
 
 
+fieldStateSetter1 : (b -> y) -> ( a, b ) -> ( a, y )
 fieldStateSetter1 mapRest ( this, rest ) =
     Tuple.mapBoth identity mapRest ( this, rest )
-
-
-fieldCounter0 : Int -> Int
-fieldCounter0 =
-    (+) 0
-
-
-fieldCounter1 : Int -> Int
-fieldCounter1 =
-    (+) 1
 
 
 i0 : a -> a
@@ -221,7 +214,7 @@ i0 =
 
 
 i1 =
-    compose ( fieldStateSetter1, fieldCounter1, fieldAndFieldStateGetter1 )
+    compose ( fieldStateSetter1, fieldAndFieldStateGetter1 )
 
 
 i2 =
@@ -260,41 +253,41 @@ i10 =
     i9 >> i1
 
 
-compose : ( a -> b, c -> d, e -> f ) -> ( b -> g, d -> h, f -> i ) -> ( a -> g, c -> h, e -> i )
-compose ( a, b, c ) ( a1, b1, c1 ) =
-    ( a >> a1, b >> b1, c >> c1 )
+compose : ( a -> b, c -> d ) -> ( b -> e, d -> f ) -> ( a -> e, c -> f )
+compose ( a, b ) ( a1, b1 ) =
+    ( a >> a1, b >> b1 )
 
 
 
 -- SETTING FIELDS
 
 
-updateField (Form form_) index wrappedDelta (State internalState fieldStates) =
+updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates) =
     let
-        ( fieldStateSetter, countField, fieldAndFieldStateGetter ) =
-            index ( fieldStateSetter0, fieldCounter0, fieldAndFieldStateGetter0 )
-
-        indexOfUpdatedField =
-            countField 0
+        ( fieldStateSetter, fieldAndFieldStateGetter ) =
+            index ( fieldStateSetter0, fieldAndFieldStateGetter0 )
 
         ( Field field_, fieldState ) =
             getFieldAndFieldState fieldAndFieldStateGetter form_ fieldStates
 
         updateState fs =
-            State internalState
+            State
                 (fieldStateSetter
                     (Tuple.mapBoth (\_ -> fs) identity)
                     fieldStates
                 )
 
         unchanged =
-            ( State internalState fieldStates, Cmd.none )
+            ( State fieldStates, Cmd.none )
     in
     case wrappedDelta of
         Field.Focused ->
-            ( State
-                { internalState | focused = Just indexOfUpdatedField }
-                fieldStates
+            let
+                newFieldStates =
+                    fieldStateFocuser (\() -> ()) fieldStates
+                        |> fieldStateSetter (Tuple.mapBoth (\_ -> { fieldState | focused = True }) identity)
+            in
+            ( State newFieldStates
             , Cmd.none
             )
 
@@ -381,8 +374,8 @@ stateSize1 next form_ =
 
 
 validateAll : ((() -> () -> ()) -> form -> state -> state) -> Form form -> State state -> State state
-validateAll size (Form form_) (State internalState state_) =
-    State internalState (size (\() () -> ()) form_ state_)
+validateAll size (Form form_) (State state_) =
+    State (size (\() () -> ()) form_ state_)
         |> Debug.log "only parse & validate fields that are currently Intact - any others will already have been p&v'd"
 
 
@@ -394,7 +387,12 @@ validateSize1 :
 validateSize1 next form_ state_ =
     Internals.mapBoth2
         (\field fieldState ->
-            parseAndValidate field fieldState
+            case fieldState.status of
+                Field.Intact_ ->
+                    parseAndValidate field { fieldState | status = Field.Idle_ }
+
+                _ ->
+                    fieldState
         )
         next
         form_
@@ -435,7 +433,7 @@ accumulateErrors a list =
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
 
 
-collectResults size (State _ state_) =
+collectResults size (State state_) =
     size identity ( Ok (), state_ )
         |> Tuple.first
 
@@ -480,31 +478,6 @@ anotherReverseSize1 next ( s, ( fst, rest ) ) =
 
 
 
--- TOUCHING ALL FIELDS
-
-
-touchAll : State state -> State state
-touchAll _ =
-    Debug.todo "implement this using Tuple.mapBoth"
-
-
-
--- State
---     { internalState
---         | fields =
---             Dict.map
---                 (\_ v ->
---                     { v
---                         | interaction =
---                             if v.interaction == Field.Intact_ then
---                                 Field.Idle_
---                             else
---                                 v.interaction
---                     }
---                 )
---                 internalState.fields
---     }
---     state_
 -- SUBMITTING A FORM
 
 
@@ -523,7 +496,7 @@ submit validateSize collectResultsSize reverseSize form_ state_ =
     newState
         |> collectResults collectResultsSize
         |> Result.map (reverseTuple reverseSize)
-        |> Result.mapError (\_ -> touchAll newState)
+        |> Result.mapError (\_ -> newState)
 
 
 
@@ -531,23 +504,22 @@ submit validateSize collectResultsSize reverseSize form_ state_ =
 
 
 renderAll :
-    ((b -> () -> () -> ()) -> InternalState -> form -> state -> element)
+    ((b -> () -> () -> ()) -> form -> state -> element)
     -> Form form
     -> State state
     -> element
-renderAll size (Form form_) (State internalState state_) =
-    size (\_ () () -> ()) internalState form_ state_
+renderAll size (Form form_) (State state_) =
+    size (\_ () () -> ()) form_ state_
 
 
 renderSize1 :
-    (InternalState -> rest0 -> rest1 -> rest2)
-    -> InternalState
+    (rest0 -> rest1 -> rest2)
     -> ( Field input delta output element msg, rest0 )
     -> ( Field.State input output, rest1 )
     -> ( element, rest2 )
-renderSize1 next internalState form_ state_ =
+renderSize1 next form_ state_ =
     Internals.mapBoth2
-        (\(Field { index, renderer, deltaMsg, id, label }) { input, validated, status } ->
+        (\(Field { renderer, deltaMsg, id, label }) { input, validated, status, focused } ->
             renderer
                 { input = input
                 , status =
@@ -582,12 +554,12 @@ renderSize1 next internalState form_ state_ =
                 , debouncedDelta = \db delta -> Field.UpdateInput { debounce = db, cmdName = "" } delta |> deltaMsg
                 , debouncedEffectfulDelta = \db eff delta -> Field.UpdateInput { debounce = db, cmdName = eff } delta |> deltaMsg
                 , focusMsg = deltaMsg Field.Focused
-                , focused = internalState.focused == Just index
+                , focused = focused
                 , id = id
                 , label = label
                 }
         )
-        (next internalState)
+        next
         form_
         state_
 
@@ -606,8 +578,7 @@ collectElementsSize1 next ( s, ( fst, rst ) ) =
 view :
     { a | submitMsg : Maybe msg, submitRenderer : msg -> element, layout : List element -> element }
     ->
-        ((f -> () -> () -> ())
-         -> InternalState
+        ((b -> () -> () -> ())
          -> form
          -> state
          -> restElements
