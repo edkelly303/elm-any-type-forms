@@ -763,6 +763,94 @@ renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focus
 
 
 
+-- d88888b d888888b d8888b.  .d88b.  d8b   db  .d8b.   .o88b.  .o88b. d888888b
+-- 88'       `88'   88  `8D .8P  Y8. 888o  88 d8' `8b d8P  Y8 d8P  Y8   `88'
+-- 88ooo      88    88oooY' 88    88 88V8o 88 88ooo88 8P      8P         88
+-- 88~~~      88    88~~~b. 88    88 88 V8o88 88~~~88 8b      8b         88
+-- 88        .88.   88   8D `8b  d8' 88  V888 88   88 Y8b  d8 Y8b  d8   .88.
+-- YP      Y888888P Y8888P'  `Y88P'  VP   V8P YP   YP  `Y88P'  `Y88P' Y888888P
+--
+-- https://www.coolgenerator.com/ascii-text-generator / font = Basic
+
+
+fibonacci : (Field.Delta String -> msg) -> Field.Field String String Int (Element msg) msg
+fibonacci deltaMsg =
+    Field.custom
+        { init = ""
+        , deltaMsg = deltaMsg
+        , updater = \delta _ -> delta
+        , parser = \input -> String.toInt input |> Result.fromMaybe (Field.fail "Must be a whole number") |> Result.map fib
+        , renderer =
+            renderFibonacci
+        , label = "What's your favourite Fibonacci number?"
+        }
+
+
+renderFibonacci : { input : String, status : Field.Status, parsed : Maybe Int, feedback : List Field.Feedback, delta : String -> msg, debouncedDelta : Float -> String -> msg, effectfulDelta : String -> String -> msg, debouncedEffectfulDelta : Float -> String -> String -> msg, focusMsg : msg, focused : Bool, label : String, id : String } -> Element msg
+renderFibonacci { label, input, debouncedDelta, parsed, status, focusMsg, focused, feedback } =
+    column
+        [ width Element.fill
+        , spacing 20
+        , padding 20
+        , Border.width 1
+        , Border.rounded 5
+        , Border.color paleGrey
+        , Events.onClick focusMsg
+        , Background.color
+            (if focused then
+                focusedBlue
+
+             else
+                white
+            )
+        ]
+        [ row [ spaceEvenly, width fill ]
+            [ Input.text
+                [ padding 10
+                , Border.width 1
+                , Border.rounded 3
+                , Border.color midGrey
+                , width Element.fill
+                , Background.color white
+                ]
+                { label = Input.labelAbove [] (paragraph [] [ text label ])
+                , onChange = debouncedDelta 1000
+                , placeholder = Nothing
+                , text = input
+                }
+            , statusToIcon status parsed
+            ]
+        , el
+            [ centerX
+            , Font.size 50
+            ]
+            (text
+                (case parsed of
+                    Just n ->
+                        String.fromInt n
+
+                    Nothing ->
+                        "?"
+                )
+            )
+        , viewFeedback status feedback
+        ]
+
+
+fib : Int -> Int
+fib x =
+    case x of
+        0 ->
+            1
+
+        1 ->
+            1
+
+        _ ->
+            fib (x - 1) + fib (x - 2)
+
+
+
 -- db   db d88888b db      d8888b. d88888b d8888b. .d8888.
 -- 88   88 88'     88      88  `8D 88'     88  `8D 88'  YP
 -- 88ooo88 88ooooo 88      88oodD' 88ooooo 88oobY' `8bo.
@@ -933,75 +1021,3 @@ black =
 transparent : Color
 transparent =
     rgba255 255 255 255 0
-
-
-expensive : (Field.Delta () -> msg) -> Field.Field Int () Int (Element msg) msg
-expensive deltaMsg =
-    Field.custom
-        { init = 41
-        , deltaMsg = deltaMsg
-        , updater = \() input -> input
-        , parser = \input -> Ok (fib input)
-        , renderer =
-            \{ label, input, delta, parsed, status, focusMsg, focused } ->
-                column
-                    [ width Element.fill
-                    , spacing 20
-                    , padding 20
-                    , Border.width 1
-                    , Border.rounded 5
-                    , Border.color paleGrey
-                    , Events.onClick focusMsg
-                    , Background.color
-                        (if focused then
-                            focusedBlue
-
-                         else
-                            white
-                        )
-                    ]
-                    [ row [ spaceEvenly, width fill ]
-                        [ text label
-                        , statusToIcon status parsed
-                        ]
-                    , Input.button
-                        [ padding 10
-                        , Border.width 1
-                        , Border.rounded 3
-                        , Border.color midGrey
-                        , width Element.fill
-                        , Background.color white
-                        , Font.center
-                        ]
-                        { label = text ("Number " ++ String.fromInt input ++ " in the Fibonacci sequence is...")
-                        , onPress = Just (delta ())
-                        }
-                    , el
-                        [ centerX
-                        , Font.size 50
-                        ]
-                        (text
-                            (case parsed of
-                                Just n ->
-                                    String.fromInt n
-
-                                Nothing ->
-                                    "?"
-                            )
-                        )
-                    ]
-        , label = "Now let's do some hard work"
-        }
-
-
-fib : Int -> Int
-fib x =
-    case x of
-        0 ->
-            1
-
-        1 ->
-            1
-
-        _ ->
-            fib (x - 1) + fib (x - 2)

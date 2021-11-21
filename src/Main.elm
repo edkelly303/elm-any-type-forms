@@ -25,7 +25,7 @@ type Msg
     | Field3Changed (Field.Delta Widgets.DateDelta)
     | Field4Changed (Field.Delta Widgets.TimeDelta)
     | Field5Changed (Field.Delta (Widgets.SearchDelta String))
-    | Field6Changed (Field.Delta ())
+    | Field6Changed (Field.Delta String)
     | SubmitClicked
     | BackClicked
 
@@ -40,7 +40,7 @@ type alias Model =
                 , ( Field.State Widgets.DateState Date.Date
                   , ( Field.State Widgets.TimeState Widgets.TimeState
                     , ( Field.State (Widgets.SearchState String) String
-                      , ( Field.State Int Int
+                      , ( Field.State String Int
                         , ()
                         )
                       )
@@ -103,7 +103,7 @@ myForm =
                 |> Field.failIf (\x -> x == "Jar Jar Binks") "Jar Jar Binks cannot be your favourite character."
                 |> Field.infoIf (\x -> x == "Lando Calrissian") "You are a person of taste!"
             )
-        |> Form.withField (Widgets.expensive Field6Changed)
+        |> Form.withField (Widgets.fibonacci Field6Changed)
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
