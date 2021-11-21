@@ -346,7 +346,7 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed, feedb
         , case input.page of
             CalendarPage ->
                 column [ spacing 10, width fill ]
-                    [ row [ spacing 10, width <| maximum maxCalendarWidth <| fill, centerX ]
+                    [ row [ spacing 10, width fill, centerX ]
                         [ iconButton [ width <| px 44 ] (icon FI.arrowLeft) (CalendarPageChanged -1)
                         , iconButton [ width <| fillPortion 3 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "MMMM" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) MonthsPageOpened
                         , iconButton [ width <| fillPortion 2 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "yyyy" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) YearsPageOpened
@@ -366,7 +366,14 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed, feedb
 
             YearsPage { decade } ->
                 column [ spacing 10, width fill ]
-                    [ Element.Keyed.row [ width <| fillPortion 1, spacing 10 ]
+                    [ row [ spacing 10, width fill, centerX ]
+                        [ iconButton [ width <| px 44 ] (icon FI.arrowLeft) (CalendarPageChanged -1)
+                        , iconButton [ width <| fillPortion 3 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "MMMM" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) MonthsPageOpened
+                        , iconButton [ width <| fillPortion 2 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "yyyy" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) YearsPageOpened
+                        , iconButton [ width <| px 44 ] (icon FI.arrowRight) (CalendarPageChanged 1)
+                        ]
+                    , Element.Keyed.row
+                        [ width <| fillPortion 1, spacing 10, Font.color midGrey, Font.size 16 ]
                         (List.range (decade - 2) (decade + 2)
                             |> List.map
                                 (\dec ->
@@ -425,9 +432,17 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed, feedb
                             _ ->
                                 "December"
                 in
-                row [ spacing 10, width fill ]
-                    [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
-                    , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                column [ width fill, spacing 10 ]
+                    [ row [ spacing 10, width fill, centerX ]
+                        [ iconButton [ width <| px 44 ] (icon FI.arrowLeft) (CalendarPageChanged -1)
+                        , iconButton [ width <| fillPortion 3 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "MMMM" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) MonthsPageOpened
+                        , iconButton [ width <| fillPortion 2 ] (row [ spacing 10, width fill ] [ el [] (text (Date.format "yyyy" input.viewing)), el [ alignRight ] (icon FI.chevronDown) ]) YearsPageOpened
+                        , iconButton [ width <| px 44 ] (icon FI.arrowRight) (CalendarPageChanged 1)
+                        ]
+                    , row [ spacing 10, width fill ]
+                        [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                        , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                        ]
                     ]
         ]
 
