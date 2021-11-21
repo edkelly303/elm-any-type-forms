@@ -627,7 +627,7 @@ renderTimePicker { input, label, delta, focusMsg, focused, status, parsed } =
 
 type SearchDelta a
     = SearchChanged String
-    | ItemsLoaded (List a)
+    | ItemsLoaded (Result (List a) (List a))
     | ResultSelected a
 
 
@@ -635,6 +635,7 @@ type alias SearchState a =
     { search : String
     , options : List a
     , selected : Maybe a
+    , error : String
     }
 
 
@@ -642,11 +643,11 @@ search :
     String
     -> (Field.Delta (SearchDelta a) -> msg)
     -> (a -> String)
-    -> (SearchState a -> Cmd (List a))
+    -> (SearchState a -> Cmd (Result (List a) (List a)))
     -> Field.Field (SearchState a) (SearchDelta a) a (Element msg) msg
 search label msg toString loadItemsCmd =
     Field.custom
-        { init = { search = "", options = [], selected = Nothing }
+        { init = { search = "", options = [], selected = Nothing, error = "" }
         , deltaMsg = msg
         , updater =
             \delta state ->
@@ -654,9 +655,10 @@ search label msg toString loadItemsCmd =
                     SearchChanged str ->
                         { state | search = str }
 
-                    ItemsLoaded list ->
+                    ItemsLoaded (Ok list) ->
                         { state
-                            | options = list
+                            | error = ""
+                            , options = list
                             , selected =
                                 state.selected
                                     |> Maybe.andThen
@@ -667,6 +669,12 @@ search label msg toString loadItemsCmd =
                                             else
                                                 Nothing
                                         )
+                        }
+
+                    ItemsLoaded (Err list) ->
+                        { state
+                            | error = "Loading failed!"
+                            , options = list
                         }
 
                     ResultSelected item ->
@@ -710,6 +718,11 @@ renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focus
                 }
             , statusToIcon status parsed
             ]
+        , if input.error /= "" then
+            el [ centerX ] (text input.error)
+
+          else
+            none
         , case input.options of
             [] ->
                 el [ centerX, centerY, Font.color midGrey ]

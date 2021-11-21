@@ -260,20 +260,13 @@ submittedView name shoeSize dogCount dob time favouriteCharacter fibonacci =
         ]
 
 
-getStarWarsNames : { input | search : String } -> Cmd (List String)
+getStarWarsNames : { input | search : String } -> Cmd (Result (List String) (List String))
 getStarWarsNames { search } =
     Http.get
         { url = "https://swapi.dev/api/people?search=" ++ search
         , expect =
             Http.expectJson
-                (\res ->
-                    case res of
-                        Ok list ->
-                            List.take 5 list
-
-                        Err _ ->
-                            []
-                )
+                (Result.map (List.take 5) >> Result.mapError (\_ -> [ "Lando Calrissian" ]))
                 starWarsDecoder
         }
 
