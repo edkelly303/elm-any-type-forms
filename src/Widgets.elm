@@ -777,39 +777,44 @@ viewFeedback : Field.Status -> List Field.Feedback -> Element msg
 viewFeedback status feedback =
     case status of
         Field.Idle ->
-            column
-                [ Font.size 12
-                , spacing 5
-                , width fill
-                ]
-                (feedback
-                    |> List.sortWith
-                        (\f1 f2 ->
-                            let
-                                tagToInt t =
-                                    case t of
-                                        Field.Fail ->
-                                            0
+            case feedback of
+                [] ->
+                    none
 
-                                        Field.Warn ->
-                                            1
+                _ ->
+                    column
+                        [ Font.size 12
+                        , spacing 5
+                        , width fill
+                        ]
+                        (feedback
+                            |> List.sortWith
+                                (\f1 f2 ->
+                                    let
+                                        tagToInt t =
+                                            case t of
+                                                Field.Fail ->
+                                                    0
 
-                                        Field.Pass ->
-                                            2
+                                                Field.Warn ->
+                                                    1
 
-                                        Field.Info ->
-                                            3
-                            in
-                            Basics.compare (tagToInt f1.tag) (tagToInt f2.tag)
+                                                Field.Pass ->
+                                                    2
+
+                                                Field.Info ->
+                                                    3
+                                    in
+                                    Basics.compare (tagToInt f1.tag) (tagToInt f2.tag)
+                                )
+                            |> List.map
+                                (\f ->
+                                    row [ spacing 5, width fill ]
+                                        [ viewFeedbackIcon f.tag
+                                        , el [] (text f.text)
+                                        ]
+                                )
                         )
-                    |> List.map
-                        (\f ->
-                            row [ spacing 5, width fill ]
-                                [ viewFeedbackIcon f.tag
-                                , el [] (text f.text)
-                                ]
-                        )
-                )
 
         _ ->
             none
