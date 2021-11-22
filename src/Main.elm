@@ -118,37 +118,34 @@ initialModel =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        wrap =
-            Tuple.mapFirst (\form -> { model | form = form })
+        updateField fieldIndex delta =
+            let
+                ( form, cmd ) =
+                    myForm.updateField fieldIndex delta model.form
+            in
+            ( { model | form = form }, cmd )
     in
     case msg of
         Field0Changed delta ->
-            myForm.updateField Form.i0 delta model.form
-                |> wrap
+            updateField Form.i0 delta
 
         Field1Changed delta ->
-            myForm.updateField Form.i1 delta model.form
-                |> wrap
+            updateField Form.i1 delta
 
         Field2Changed delta ->
-            myForm.updateField Form.i2 delta model.form
-                |> wrap
+            updateField Form.i2 delta
 
         Field3Changed delta ->
-            myForm.updateField Form.i3 delta model.form
-                |> wrap
+            updateField Form.i3 delta
 
         Field4Changed delta ->
-            myForm.updateField Form.i4 delta model.form
-                |> wrap
+            updateField Form.i4 delta
 
         Field5Changed delta ->
-            myForm.updateField Form.i5 delta model.form
-                |> wrap
+            updateField Form.i5 delta
 
         Field6Changed delta ->
-            myForm.updateField Form.i6 delta model.form
-                |> wrap
+            updateField Form.i6 delta
 
         SubmitClicked ->
             case myForm.submit model.form of
