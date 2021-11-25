@@ -5,10 +5,13 @@ module Field exposing
     , FeedbackTag(..)
     , Field(..)
     , InternalStatus(..)
+    , Opt(..)
     , RendererConfig
     , State
     , Status(..)
     , custom
+    , debounce
+    , dontValidate
     , fail
     , failIf
     , info
@@ -17,7 +20,6 @@ module Field exposing
     , pass
     , warn
     , warnIf
-    , withCmd
     , withInitialState
     , withRenderer
     , withValidator
@@ -28,25 +30,26 @@ import Time
 
 
 type Delta delta
-    = UpdateInput DeltaContext delta
-    | TransitionToChanging DeltaContext Time.Posix
-    | TransitionToLoading DeltaContext Time.Posix
-    | ExecuteLoading delta
+    = UpdateInput delta
+    | TransitionToDebouncing (DeltaContext delta) Time.Posix
+    | TransitionToLoading (DeltaContext delta) Time.Posix
+    | ExecuteLoading Bool delta
     | TransitionToParsing
     | ExecuteParsing
     | TransitionToIdle
     | Focused
 
 
-type alias DeltaContext =
-    { cmdName : String
+type alias DeltaContext delta =
+    { cmd : Cmd delta
     , debounce : Float
+    , shouldValidate : Bool
     }
 
 
 type InternalStatus
     = Intact_
-    | Changing_ Time.Posix
+    | Debouncing_ Time.Posix
     | Loading_
     | Parsing_
     | Idle_
@@ -54,10 +57,25 @@ type InternalStatus
 
 type Status
     = Intact
-    | Changing
+    | Debouncing
     | Loading
     | Parsing
     | Idle
+
+
+type Opt
+    = DontValidate
+    | Debounce Float
+
+
+debounce : Float -> Opt
+debounce millis =
+    Debounce millis
+
+
+dontValidate : Opt
+dontValidate =
+    DontValidate
 
 
 type Field input delta output element msg
@@ -65,7 +83,7 @@ type Field input delta output element msg
         { index : Int
         , init : input
         , deltaMsg : Delta delta -> msg
-        , updater : delta -> input -> input
+        , updater : delta -> input -> ( input, Cmd delta, List Opt )
         , parser : input -> Result Feedback output
         , validators : List (output -> Maybe Feedback)
         , renderer : RendererConfig input delta output msg -> element
@@ -81,9 +99,6 @@ type alias RendererConfig input delta output msg =
     , parsed : Maybe output
     , feedback : List Feedback
     , delta : delta -> msg
-    , debouncedDelta : Float -> delta -> msg
-    , effectfulDelta : String -> delta -> msg
-    , debouncedEffectfulDelta : Float -> String -> delta -> msg
     , focusMsg : msg
     , focused : Bool
     , label : String
@@ -137,7 +152,7 @@ warn str =
 custom :
     { init : input
     , deltaMsg : Delta delta -> msg
-    , updater : delta -> input -> input
+    , updater : delta -> input -> ( input, Cmd delta, List Opt )
     , parser : input -> Result Feedback output
     , renderer : RendererConfig input delta output msg -> element
     , label : String
@@ -178,19 +193,6 @@ initialize (Field { init }) =
 withInitialState : input -> Field input delta output element msg -> Field input delta output element msg
 withInitialState input (Field f) =
     Field { f | init = input }
-
-
-withCmd : String -> (result -> delta) -> (input -> Cmd result) -> Field input delta output element msg -> Field input delta output element msg
-withCmd cmdName toDelta toReturn (Field f) =
-    let
-        toCmdMsg input =
-            input
-                |> toReturn
-                |> Cmd.map toDelta
-                |> Cmd.map ExecuteLoading
-                |> Cmd.map f.deltaMsg
-    in
-    Field { f | loadCmd = Dict.insert cmdName toCmdMsg f.loadCmd }
 
 
 withValidator : (output -> Maybe Feedback) -> Field input delta output element msg -> Field input delta output element msg

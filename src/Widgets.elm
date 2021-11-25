@@ -1,5 +1,6 @@
 module Widgets exposing (..)
 
+import Browser.Navigation exposing (load)
 import Date
 import Element exposing (..)
 import Element.Background as Background
@@ -30,7 +31,7 @@ string label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
-        , updater = \delta _ -> delta
+        , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
         , parser = Ok
         , renderer = renderTextField
         , label = label
@@ -42,7 +43,7 @@ float label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
-        , updater = \delta _ -> delta
+        , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
         , parser = String.toFloat >> Result.fromMaybe (Field.fail "Must be a number")
         , renderer = renderTextField
         , label = label
@@ -54,7 +55,7 @@ int label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
-        , updater = \delta _ -> delta
+        , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
         , parser = String.toInt >> Result.fromMaybe (Field.fail "Must be a whole number")
         , renderer = renderTextField
         , label = label
@@ -62,7 +63,7 @@ int label msg =
 
 
 renderTextField : RendererConfig String String output msg -> Element msg
-renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, feedback, id, label } =
+renderTextField { input, status, focusMsg, focused, delta, parsed, feedback, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -87,7 +88,7 @@ renderTextField { input, status, focusMsg, focused, debouncedDelta, parsed, feed
                 { label = Input.labelAbove [ Font.size 18 ] (text label)
                 , text = input
                 , placeholder = Nothing
-                , onChange = debouncedDelta 500
+                , onChange = delta
                 }
             , statusToIcon status parsed
             ]
@@ -143,10 +144,13 @@ date label deltaMsg =
             \delta state ->
                 case delta of
                     MonthsPageOpened ->
-                        { state | page = MonthsPage }
+                        ( { state | page = MonthsPage }
+                        , Cmd.none
+                        , []
+                        )
 
                     MonthSelected month ->
-                        { state
+                        ( { state
                             | page = CalendarPage
                             , viewing =
                                 Date.fromCalendarDate
@@ -162,18 +166,27 @@ date label deltaMsg =
                                                 month
                                                 (Date.day d)
                                         )
-                        }
+                          }
+                        , Cmd.none
+                        , []
+                        )
 
                     YearsPageOpened ->
-                        { state | page = YearsPage { decade = Date.year state.viewing // 10 } }
+                        ( { state | page = YearsPage { decade = Date.year state.viewing // 10 } }
+                        , Cmd.none
+                        , []
+                        )
 
                     DecadeSelected decade ->
-                        { state | page = YearsPage { decade = decade } }
+                        ( { state | page = YearsPage { decade = decade } }
+                        , Cmd.none
+                        , []
+                        )
 
                     YearSelected year ->
                         case state.page of
                             YearsPage { decade } ->
-                                { state
+                                ( { state
                                     | page = CalendarPage
                                     , viewing =
                                         Date.fromCalendarDate
@@ -189,13 +202,19 @@ date label deltaMsg =
                                                         (Date.month d)
                                                         (Date.day d)
                                                 )
-                                }
+                                  }
+                                , Cmd.none
+                                , []
+                                )
 
                             _ ->
-                                state
+                                ( state
+                                , Cmd.none
+                                , []
+                                )
 
                     DateSelected d ->
-                        { state
+                        ( { state
                             | selected =
                                 case state.selected of
                                     Nothing ->
@@ -207,10 +226,13 @@ date label deltaMsg =
 
                                         else
                                             Just d
-                        }
+                          }
+                        , Cmd.none
+                        , []
+                        )
 
                     CalendarPageChanged i ->
-                        { state | viewing = Date.add Date.Months i state.viewing }
+                        ( { state | viewing = Date.add Date.Months i state.viewing }, Cmd.none, [] )
         , parser = \state -> Result.fromMaybe (Field.fail "Must select a date") state.selected
         , renderer = renderDatePicker
         , label = label
@@ -546,10 +568,10 @@ time label deltaMsg =
             \delta state ->
                 case delta of
                     HoursChanged diff ->
-                        { state | hours = state.hours + diff |> modBy 24 }
+                        ( { state | hours = state.hours + diff |> modBy 24 }, Cmd.none, [] )
 
                     MinutesChanged diff ->
-                        { state | minutes = state.minutes + diff |> modBy 60 }
+                        ( { state | minutes = state.minutes + diff |> modBy 60 }, Cmd.none, [] )
         , parser =
             \state ->
                 if state.hours < 0 || state.hours > 23 then
@@ -668,10 +690,17 @@ search label msg toString loadItemsCmd =
             \delta state ->
                 case delta of
                     SearchChanged str ->
-                        { state | search = str }
+                        let
+                            newState =
+                                { state | search = str }
+                        in
+                        ( newState
+                        , Cmd.map ItemsLoaded (loadItemsCmd newState)
+                        , [Field.debounce 1000]
+                        )
 
                     ItemsLoaded (Ok list) ->
-                        { state
+                        ( { state
                             | error = ""
                             , options = list
                             , selected =
@@ -684,30 +713,38 @@ search label msg toString loadItemsCmd =
                                             else
                                                 Nothing
                                         )
-                        }
+                          }
+                        , Cmd.none
+                        , []
+                        )
 
                     ItemsLoaded (Err list) ->
-                        { state
+                        ( { state
                             | error = "Loading failed!"
                             , options = list
-                        }
+                          }
+                        , Cmd.none
+                        , []
+                        )
 
                     ResultSelected item ->
-                        { state | selected = Just item }
+                        ( { state | selected = Just item }
+                        , Cmd.none
+                        , []
+                        )
         , parser =
             \state ->
                 Result.fromMaybe (Field.fail "Must select something") state.selected
         , renderer = renderSearchField toString
         , label = label
         }
-        |> Field.withCmd "loadItems" ItemsLoaded loadItemsCmd
 
 
 renderSearchField :
     (a -> String)
     -> Field.RendererConfig (SearchState a) (SearchDelta a) a msg
     -> Element msg
-renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focusMsg, focused, parsed, status, feedback } =
+renderSearchField toString { label, input, delta, focusMsg, focused, parsed, status, feedback } =
     column
         [ height <| px 400
         , spacing 10
@@ -726,7 +763,7 @@ renderSearchField toString { label, input, delta, debouncedEffectfulDelta, focus
         ]
         [ row [ spacing 10 ]
             [ Input.text []
-                { onChange = debouncedEffectfulDelta 1000 "loadItems" << SearchChanged
+                { onChange = delta << SearchChanged
                 , placeholder = Nothing
                 , label = Input.labelAbove [] (text label)
                 , text = input.search
@@ -806,7 +843,12 @@ fibonacci deltaMsg =
     Field.custom
         { init = ""
         , deltaMsg = deltaMsg
-        , updater = \delta _ -> delta
+        , updater =
+            \delta _ ->
+                ( delta
+                , Cmd.none
+                , []
+                )
         , parser = \input -> String.toInt input |> Result.fromMaybe (Field.fail "Must be a whole number") |> Result.map fib
         , renderer =
             renderFibonacci
@@ -814,8 +856,10 @@ fibonacci deltaMsg =
         }
 
 
-renderFibonacci : { input : String, status : Field.Status, parsed : Maybe Int, feedback : List Field.Feedback, delta : String -> msg, debouncedDelta : Float -> String -> msg, effectfulDelta : String -> String -> msg, debouncedEffectfulDelta : Float -> String -> String -> msg, focusMsg : msg, focused : Bool, label : String, id : String } -> Element msg
-renderFibonacci { label, input, debouncedDelta, parsed, status, focusMsg, focused, feedback } =
+renderFibonacci :
+    RendererConfig String String Int msg
+    -> Element msg
+renderFibonacci { label, input, delta, parsed, status, focusMsg, focused, feedback } =
     column
         [ width Element.fill
         , spacing 20
@@ -842,7 +886,7 @@ renderFibonacci { label, input, debouncedDelta, parsed, status, focusMsg, focuse
                 , Background.color white
                 ]
                 { label = Input.labelAbove [] (paragraph [] [ text label ])
-                , onChange = debouncedDelta 1000
+                , onChange = delta
                 , placeholder = Nothing
                 , text = input
                 }
@@ -957,7 +1001,7 @@ statusToIcon status parsed =
     let
         ( c, i ) =
             case ( status, parsed ) of
-                ( Field.Changing, _ ) ->
+                ( Field.Debouncing, _ ) ->
                     ( midGrey, FI.moreHorizontal )
 
                 ( Field.Idle, Just _ ) ->
