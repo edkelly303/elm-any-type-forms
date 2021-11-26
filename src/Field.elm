@@ -40,9 +40,10 @@ type Delta delta
 
 
 type alias DeltaContext delta =
-    { cmd : Cmd delta
+    { shouldSendCmd : Bool
     , debounce : Float
     , shouldValidate : Bool
+    , delta : delta
     }
 
 

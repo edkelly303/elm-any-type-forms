@@ -310,10 +310,14 @@ updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates
                 newFieldState =
                     { fieldState | input = newInput }
 
+                shouldSendCmd =
+                    cmd /= Cmd.none
+
                 ctx =
                     { debounce = debounce
-                    , cmd = cmd
+                    , shouldSendCmd = shouldSendCmd
                     , shouldValidate = shouldValidate
+                    , delta = delta
                     }
             in
             if debounce /= 0 then
@@ -322,7 +326,7 @@ updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates
                 , Task.perform (\time -> field_.deltaMsg (Field.StartDebouncing ctx time)) Time.now
                 )
 
-            else if cmd /= Cmd.none then
+            else if shouldSendCmd then
                 -- send the Cmd!
                 ( updateState { newFieldState | status = Field.Loading_ }
                 , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) cmd
@@ -351,10 +355,14 @@ updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates
             case fieldState.status of
                 Field.Debouncing_ lastTouched ->
                     if time == lastTouched then
-                        if ctx.cmd /= Cmd.none then
+                        if ctx.shouldSendCmd then
+                            let
+                                ( _, cmd, _ ) =
+                                    field_.updater ctx.delta fieldState.input
+                            in
                             -- send the Cmd!
                             ( updateState { fieldState | status = Field.Loading_ }
-                            , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) ctx.cmd
+                            , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) cmd
                             )
 
                         else if ctx.shouldValidate then
@@ -375,18 +383,18 @@ updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates
                 _ ->
                     unchanged
 
-        Field.ExecuteLoading ctx delta ->
+        Field.ExecuteLoading ctx newDelta ->
             let
-                ( newInput, cmd, _ ) =
-                    field_.updater delta fieldState.input
+                ( newInput, newCmd, _ ) =
+                    field_.updater newDelta fieldState.input
 
                 newFieldState =
                     { fieldState | input = newInput }
             in
-            if cmd /= Cmd.none then
+            if newCmd /= Cmd.none then
                 -- send the next Cmd!
                 ( updateState { newFieldState | status = Field.Loading_ }
-                , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) cmd
+                , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) newCmd
                 )
 
             else if ctx.shouldValidate then
