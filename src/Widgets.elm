@@ -1,4 +1,20 @@
-module Widgets exposing (..)
+module Widgets exposing
+    ( DateDelta
+    , DateState
+    , SearchDelta
+    , SearchState
+    , TimeDelta
+    , TimeState
+    , date
+    , fibonacci
+    , float
+    , int
+    , radioColumn
+    , radioRow
+    , search
+    , string
+    , time
+    )
 
 import Date
 import Element exposing (..)
@@ -61,7 +77,7 @@ int label msg =
         }
 
 
-renderTextField : RendererConfig String String output msg -> Element msg
+renderTextField : Field.RendererConfig String String output msg -> Element msg
 renderTextField { input, status, focusMsg, focused, delta, parsed, id, label } =
     column
         [ spacing 10
@@ -238,7 +254,7 @@ date label deltaMsg =
         }
 
 
-renderDatePicker : RendererConfig DateState DateDelta Date.Date msg -> Element msg
+renderDatePicker : Field.RendererConfig DateState DateDelta Date.Date msg -> Element msg
 renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
     let
         firstDayOfNextMonth =
@@ -291,24 +307,6 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                 |> Tuple.second
                 |> List.map List.reverse
                 |> List.reverse
-
-        button attrs txt m =
-            Input.button
-                ([ Events.onFocus focusMsg
-                 , width fill
-                 , height <| px 44
-                 , Border.width 1
-                 , Border.rounded 3
-                 , Border.color midGrey
-                 , Background.color white
-                 , padding 10
-                 , Font.center
-                 ]
-                    ++ attrs
-                )
-                { label = text txt
-                , onPress = Just (delta m)
-                }
 
         selectedButton txt m =
             Input.button
@@ -402,14 +400,14 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                                         ( String.fromInt dec, selectedButton (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
 
                                     else
-                                        ( String.fromInt dec, button [] (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
+                                        ( String.fromInt dec, button [] (text <| String.fromInt (dec * 10) ++ "s") (delta <| DecadeSelected dec) )
                                 )
                         )
                     , row [ width fill, spacing 10 ]
                         [ Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
-                            (List.range 0 4 |> List.map (\yr -> ( String.fromInt decade, button [] (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
+                            (List.range 0 4 |> List.map (\yr -> ( String.fromInt decade, button [] (text <| String.fromInt decade ++ String.fromInt yr) (delta <| YearSelected yr) )))
                         , Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
-                            (List.range 5 9 |> List.map (\yr -> ( String.fromInt decade, button [] (String.fromInt decade ++ String.fromInt yr) (YearSelected yr) )))
+                            (List.range 5 9 |> List.map (\yr -> ( String.fromInt decade, button [] (text <| String.fromInt decade ++ String.fromInt yr) (delta <| YearSelected yr) )))
                         ]
                     ]
 
@@ -461,8 +459,8 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                         , iconButton [ width <| px 44 ] (icon FI.arrowRight) (CalendarPageChanged 1)
                         ]
                     , row [ spacing 10, width fill ]
-                        [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
-                        , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button [] (monthToString m) (MonthSelected (Date.numberToMonth m))))
+                        [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button [] (text <| monthToString m) (delta <| MonthSelected (Date.numberToMonth m))))
+                        , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button [] (text <| monthToString m) (delta <| MonthSelected (Date.numberToMonth m))))
                         ]
                     ]
         ]
@@ -539,6 +537,108 @@ buttonSpacing =
 
 
 
+-- d8888b.  .d8b.  d8888b. d888888b  .d88b.
+-- 88  `8D d8' `8b 88  `8D   `88'   .8P  Y8.
+-- 88oobY' 88ooo88 88   88    88    88    88
+-- 88`8b   88~~~88 88   88    88    88    88
+-- 88 `88. 88   88 88  .8D   .88.   `8b  d8'
+-- 88   YD YP   YP Y8888D' Y888888P  `Y88P'
+--
+-- https://www.coolgenerator.com/ascii-text-generator / font = Basic
+
+
+radioRow : String -> (Field.Delta delta -> msg) -> List ( delta, Element msg ) -> Field.Field (Maybe delta) delta delta (Element msg) msg
+radioRow label deltaMsg options =
+    Field.custom
+        { init = Nothing
+        , deltaMsg = deltaMsg
+        , label = label
+        , parser = Result.fromMaybe (Field.fail "Must select something")
+        , renderer = radioRenderer wrappedRow options
+        , updater =
+            \delta input ->
+                ( case input of
+                    Nothing ->
+                        Just delta
+
+                    Just prev ->
+                        if delta == prev then
+                            Nothing
+
+                        else
+                            Just delta
+                , Cmd.none
+                , []
+                )
+        }
+
+
+radioColumn :
+    String
+    -> (Field.Delta item -> msg)
+    -> List ( item, Element msg )
+    -> Field.Field (Maybe item) item item (Element msg) msg
+radioColumn label deltaMsg options =
+    radioRow label deltaMsg options
+        |> Field.withRenderer (radioRenderer column options)
+
+
+radioRenderer :
+    (List (Attribute msg) -> List (Element msg) -> Element msg)
+    -> List ( item, Element msg )
+    -> RendererConfig (Maybe item) item item msg
+    -> Element msg
+radioRenderer layout options { parsed, delta, label, status, focusMsg, focused } =
+    column
+        [ width fill
+        , spacing 10
+        , padding 20
+        , width fill
+        , Events.onClick focusMsg
+        , Background.color
+            (if focused then
+                focusedBlue
+
+             else
+                white
+            )
+        , Border.rounded 5
+        , Border.width 1
+        , Border.color paleGrey
+        , Font.center
+        ]
+        [ row [ width fill, spaceEvenly ]
+            [ el [ Font.size 18 ] (text label)
+            , statusToIcon status parsed
+            ]
+        , layout [ spacing 10 ]
+            (List.map
+                (\( item, lbl ) ->
+                    let
+                        attrs =
+                            case parsed of
+                                Field.Passed output _ ->
+                                    if output == item then
+                                        [ Border.color primaryColor
+                                        , Background.color primaryColor
+                                        , Font.color white
+                                        ]
+
+                                    else
+                                        []
+
+                                _ ->
+                                    []
+                    in
+                    button ([ width shrink, padding 10 ] ++ attrs) lbl (delta item)
+                )
+                options
+            )
+        , viewFeedback status parsed
+        ]
+
+
+
 -- d888888b d888888b .88b  d88. d88888b
 -- `~~88~~'   `88'   88'YbdP`88 88'
 --    88       88    88  88  88 88ooooo
@@ -586,19 +686,26 @@ time label deltaMsg =
         }
 
 
-renderTimePicker : RendererConfig TimeState TimeDelta TimeState msg -> Element msg
+button : List (Attribute msg) -> Element msg -> msg -> Element msg
+button attrs label msg =
+    Input.button
+        ([ width <| px 40
+         , height <| px 40
+         , Border.rounded 3
+         , Border.width 1
+         , Border.color midGrey
+         , Background.color white
+         ]
+            ++ attrs
+        )
+        { label = label, onPress = Just msg }
+
+
+renderTimePicker : Field.RendererConfig TimeState TimeDelta TimeState msg -> Element msg
 renderTimePicker { input, label, delta, focusMsg, focused, status, parsed } =
     let
-        button txt m =
-            Input.button
-                [ width <| px 40
-                , height <| px 40
-                , Border.rounded 3
-                , Border.width 1
-                , Border.color midGrey
-                , Background.color white
-                ]
-                { label = text txt, onPress = Just (delta m) }
+        btn txt m =
+            button [] (text txt) (delta m)
 
         hours =
             String.fromInt input.hours
@@ -632,20 +739,20 @@ renderTimePicker { input, label, delta, focusMsg, focused, status, parsed } =
         ]
         [ row [ width fill, spaceEvenly ] [ el [ Font.size 18 ] (text label), statusToIcon status parsed ]
         , row [ spacing 5, centerX ]
-            [ button "+" (HoursChanged 10)
-            , button "+" (HoursChanged 1)
+            [ btn "+" (HoursChanged 10)
+            , btn "+" (HoursChanged 1)
             , el [ width <| px 40 ] none
-            , button "+" (MinutesChanged 10)
-            , button "+" (MinutesChanged 1)
+            , btn "+" (MinutesChanged 10)
+            , btn "+" (MinutesChanged 1)
             ]
         , row [ spacing 5, centerX ]
             (hours ++ (el [ width <| px 40 ] (text ":") :: minutes))
         , row [ spacing 5, centerX ]
-            [ button "-" (HoursChanged -10)
-            , button "-" (HoursChanged -1)
+            [ btn "-" (HoursChanged -10)
+            , btn "-" (HoursChanged -1)
             , el [ width <| px 40 ] none
-            , button "-" (MinutesChanged -10)
-            , button "-" (MinutesChanged -1)
+            , btn "-" (MinutesChanged -10)
+            , btn "-" (MinutesChanged -1)
             ]
         ]
 
@@ -758,6 +865,7 @@ renderSearchField :
 renderSearchField toString { label, input, delta, focusMsg, focused, parsed, status } =
     column
         [ height <| px 400
+        , width fill
         , spacing 10
         , padding 20
         , Events.onClick focusMsg
@@ -864,9 +972,7 @@ fibonacci deltaMsg =
         }
 
 
-renderFibonacci :
-    RendererConfig String String Int msg
-    -> Element msg
+renderFibonacci : Field.RendererConfig String String Int msg -> Element msg
 renderFibonacci { label, input, delta, parsed, status, focusMsg, focused } =
     column
         [ width Element.fill
@@ -949,8 +1055,14 @@ viewFeedback status parsed =
                 Field.Intact ->
                     none
 
+                Field.Passed _ [] ->
+                    none
+
                 Field.Passed _ feedback ->
                     viewFeedback2 feedback
+
+                Field.Failed [] ->
+                    none
 
                 Field.Failed feedback ->
                     viewFeedback2 feedback
