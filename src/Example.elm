@@ -1,4 +1,4 @@
-module Main exposing (main)
+module Example exposing (main)
 
 import Browser
 import Date
@@ -171,7 +171,7 @@ update msg model =
 
         SubmitClicked ->
             case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, ( animal, () ) ) ) ) ) ) ) ) ->
+                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, ( _, () ) ) ) ) ) ) ) ) ->
                     ( { model
                         | page =
                             Submitted
