@@ -669,10 +669,15 @@ type SearchDelta a
 
 type alias SearchState a =
     { search : String
-    , options : List a
+    , options : RemoteData a
     , selected : Maybe a
     , error : String
     }
+
+
+type RemoteData a
+    = NotAsked
+    | Results (List a)
 
 
 search :
@@ -683,7 +688,7 @@ search :
     -> Field.Field (SearchState a) (SearchDelta a) a (Element msg) msg
 search label msg toString loadItemsCmd =
     Field.custom
-        { init = { search = "", options = [], selected = Nothing, error = "" }
+        { init = { search = "", options = NotAsked, selected = Nothing, error = "" }
         , deltaMsg = msg
         , updater =
             \delta state ->
@@ -701,7 +706,7 @@ search label msg toString loadItemsCmd =
                     ItemsLoaded (Ok list) ->
                         ( { state
                             | error = ""
-                            , options = list
+                            , options = Results list
                             , selected =
                                 state.selected
                                     |> Maybe.andThen
@@ -720,7 +725,7 @@ search label msg toString loadItemsCmd =
                     ItemsLoaded (Err list) ->
                         ( { state
                             | error = "Loading failed!"
-                            , options = list
+                            , options = Results list
                           }
                         , Cmd.none
                         , []
@@ -782,18 +787,15 @@ renderSearchField toString { label, input, delta, focusMsg, focused, parsed, sta
           else
             none
         , case input.options of
-            [] ->
+            NotAsked ->
                 el [ centerX, centerY, Font.color midGrey ]
-                    (text
-                        (if parsed == Field.Intact then
-                            "[ start typing to search ]"
+                    (text "[ start typing to search ]")
 
-                         else
-                            "[ no results found ]"
-                        )
-                    )
+            Results [] ->
+                el [ centerX, centerY, Font.color midGrey ]
+                    (text "[ no results found ]")
 
-            _ ->
+            Results list ->
                 column [ spacing 10, width fill ] <|
                     List.map
                         (\item ->
@@ -828,7 +830,7 @@ renderSearchField toString { label, input, delta, focusMsg, focused, parsed, sta
                                 , onPress = Just (delta (ResultSelected item))
                                 }
                         )
-                        input.options
+                        list
         , viewFeedback status parsed
         ]
 
