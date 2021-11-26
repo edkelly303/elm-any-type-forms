@@ -26,6 +26,7 @@ type Msg
     | Field4Changed (Field.Delta Widgets.TimeDelta)
     | Field5Changed (Field.Delta (Widgets.SearchDelta String))
     | Field6Changed (Field.Delta String)
+    | Field7Changed (Field.Delta Option)
     | SubmitClicked
     | BackClicked
 
@@ -41,7 +42,9 @@ type alias Model =
                   , ( Field.State Widgets.TimeState Widgets.TimeState
                     , ( Field.State (Widgets.SearchState String) String
                       , ( Field.State String Int
-                        , ()
+                        , ( Field.State (Maybe Option) Option
+                          , ()
+                          )
                         )
                       )
                     )
@@ -63,6 +66,13 @@ type Page
         , favouriteCharacter : String
         , fibonacci : Int
         }
+
+
+type Option
+    = Cats
+    | Dogs
+    | GuineaPigs
+    | Sharks
 
 
 
@@ -104,6 +114,15 @@ myForm =
                 |> Field.infoIf (\x -> x == "Lando Calrissian") "You are a person of taste!"
             )
         |> Form.withField (Widgets.fibonacci Field6Changed)
+        |> Form.withField
+            (Widgets.radioColumn "Which are your preferred animals?"
+                Field7Changed
+                [ ( Cats, text "Cats" )
+                , ( Dogs, text "Dogs" )
+                , ( GuineaPigs, text "Guinea pigs" )
+                , ( Sharks, text "Sharks" )
+                ]
+            )
         |> Form.withSubmit SubmitClicked
         |> Form.done
 
@@ -147,9 +166,12 @@ update msg model =
         Field6Changed delta ->
             updateField Form.i6 delta
 
+        Field7Changed delta ->
+            updateField Form.i7 delta
+
         SubmitClicked ->
             case myForm.submit model.form of
-                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, () ) ) ) ) ) ) ) ->
+                Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, ( animal, () ) ) ) ) ) ) ) ) ->
                     ( { model
                         | page =
                             Submitted
