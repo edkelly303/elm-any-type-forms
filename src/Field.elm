@@ -11,7 +11,7 @@ module Field exposing
     , Status(..)
     , custom
     , debounce
-    , dontValidate
+    , doNotValidate
     , fail
     , failIf
     , info
@@ -31,12 +31,10 @@ import Time
 
 type Delta delta
     = UpdateInput delta
-    | TransitionToDebouncing (DeltaContext delta) Time.Posix
-    | TransitionToLoading (DeltaContext delta) Time.Posix
-    | ExecuteLoading Bool delta
-    | TransitionToParsing
+    | StartDebouncing (DeltaContext delta) Time.Posix
+    | CheckDebouncingTimeout (DeltaContext delta) Time.Posix
+    | ExecuteLoading (DeltaContext delta) delta
     | ExecuteParsing
-    | TransitionToIdle
     | Focused
 
 
@@ -73,8 +71,8 @@ debounce millis =
     Debounce millis
 
 
-dontValidate : Opt
-dontValidate =
+doNotValidate : Opt
+doNotValidate =
     DontValidate
 
 

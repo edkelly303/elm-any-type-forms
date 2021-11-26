@@ -1,6 +1,5 @@
 module Widgets exposing (..)
 
-import Browser.Navigation exposing (load)
 import Date
 import Element exposing (..)
 import Element.Background as Background
@@ -696,7 +695,7 @@ search label msg toString loadItemsCmd =
                         in
                         ( newState
                         , Cmd.map ItemsLoaded (loadItemsCmd newState)
-                        , [Field.debounce 1000]
+                        , [ Field.debounce 1000, Field.doNotValidate ]
                         )
 
                     ItemsLoaded (Ok list) ->
@@ -728,7 +727,14 @@ search label msg toString loadItemsCmd =
                         )
 
                     ResultSelected item ->
-                        ( { state | selected = Just item }
+                        ( { state
+                            | selected =
+                                if state.selected == Just item then
+                                    Nothing
+
+                                else
+                                    Just item
+                          }
                         , Cmd.none
                         , []
                         )
@@ -847,7 +853,7 @@ fibonacci deltaMsg =
             \delta _ ->
                 ( delta
                 , Cmd.none
-                , []
+                , [ Field.debounce 500 ]
                 )
         , parser = \input -> String.toInt input |> Result.fromMaybe (Field.fail "Must be a whole number") |> Result.map fib
         , renderer =

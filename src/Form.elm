@@ -23,7 +23,7 @@ import Dict
 import Element exposing (Element)
 import Element.Border
 import Element.Input
-import Field exposing (Field(..), debounce, dontValidate)
+import Field exposing (Field(..), debounce, doNotValidate)
 import Internals
 import Process
 import Task
@@ -310,78 +310,65 @@ updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates
 
                 newFieldState =
                     { fieldState | input = newInput }
+
+                ctx =
+                    { debounce = debounce
+                    , cmd = cmd
+                    , shouldValidate = shouldValidate
+                    }
             in
             if debounce /= 0 then
                 --transition to debouncing
                 ( updateState newFieldState
-                , Task.perform
-                    (\time ->
-                        field_.deltaMsg
-                            (Field.TransitionToDebouncing
-                                { debounce = debounce
-                                , cmd = cmd
-                                , shouldValidate = shouldValidate
-                                }
-                                time
-                            )
-                    )
-                    Time.now
+                , Task.perform (\time -> field_.deltaMsg (Field.StartDebouncing ctx time)) Time.now
                 )
 
             else if cmd /= Cmd.none then
                 -- send the Cmd!
                 ( updateState { newFieldState | status = Field.Loading_ }
-                , Cmd.map (field_.deltaMsg << Field.ExecuteLoading shouldValidate) cmd
+                , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) cmd
                 )
 
             else if shouldValidate then
                 -- transition to parsing
-                ( updateState newFieldState
-                , Task.perform (\() -> field_.deltaMsg Field.TransitionToParsing) (Process.sleep 0)
+                ( updateState { newFieldState | status = Field.Parsing_ }
+                , Task.perform (\() -> field_.deltaMsg Field.ExecuteParsing) (Process.sleep 20)
                 )
 
             else
                 -- transition to idle
-                ( updateState newFieldState
-                , Task.perform (\() -> field_.deltaMsg Field.TransitionToIdle) (Process.sleep 0)
+                ( updateState { newFieldState | status = Field.Idle_ }
+                , Cmd.none
                 )
 
-        Field.TransitionToDebouncing ctx time ->
-            ( updateState
-                { fieldState | status = Field.Debouncing_ time }
-            , if ctx.cmd /= Cmd.none then
-                -- transition to loading
-                Task.perform
-                    (\() -> field_.deltaMsg <| Field.TransitionToLoading ctx time)
-                    (Process.sleep ctx.debounce)
-
-              else if ctx.shouldValidate then
-                -- transition to parsing
-                Task.perform (\() -> field_.deltaMsg Field.TransitionToParsing) (Process.sleep 0)
-
-              else
-                -- transition to idle
-                Task.perform (\() -> field_.deltaMsg Field.TransitionToIdle) (Process.sleep 0)
+        Field.StartDebouncing ctx time ->
+            ( updateState { fieldState | status = Field.Debouncing_ time }
+            , Task.perform
+                (\() -> field_.deltaMsg <| Field.CheckDebouncingTimeout ctx time)
+                (Process.sleep ctx.debounce)
             )
 
-        Field.TransitionToLoading ctx time ->
+        Field.CheckDebouncingTimeout ctx time ->
             case fieldState.status of
                 Field.Debouncing_ lastTouched ->
                     if time == lastTouched then
-                        ( updateState
-                            { fieldState | status = Field.Loading_ }
-                        , if ctx.cmd /= Cmd.none then
+                        if ctx.cmd /= Cmd.none then
                             -- send the Cmd!
-                            Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx.shouldValidate) ctx.cmd
+                            ( updateState { fieldState | status = Field.Loading_ }
+                            , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) ctx.cmd
+                            )
 
-                          else if ctx.shouldValidate then
+                        else if ctx.shouldValidate then
                             -- transition to parsing
-                            Task.perform (\() -> field_.deltaMsg Field.TransitionToParsing) (Process.sleep 0)
+                            ( updateState { fieldState | status = Field.Parsing_ }
+                            , Task.perform (\() -> field_.deltaMsg Field.ExecuteParsing) (Process.sleep 20)
+                            )
 
-                          else
+                        else
                             -- transition to idle
-                            Task.perform (\() -> field_.deltaMsg Field.TransitionToIdle) (Process.sleep 0)
-                        )
+                            ( updateState { fieldState | status = Field.Idle_ }
+                            , Cmd.none
+                            )
 
                     else
                         unchanged
@@ -389,47 +376,36 @@ updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates
                 _ ->
                     unchanged
 
-        Field.ExecuteLoading shouldValidate delta ->
+        Field.ExecuteLoading ctx delta ->
             let
                 ( newInput, cmd, _ ) =
                     field_.updater delta fieldState.input
+
+                newFieldState =
+                    { fieldState | input = newInput }
             in
-            ( updateState
-                { fieldState | input = newInput }
-            , if cmd == Cmd.none then
-                if shouldValidate then
-                    Task.perform (\() -> field_.deltaMsg Field.TransitionToParsing) (Process.sleep 0)
+            if cmd /= Cmd.none then
+                -- send the next Cmd!
+                ( updateState { newFieldState | status = Field.Loading_ }
+                , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) cmd
+                )
 
-                else
-                    Task.perform (\() -> field_.deltaMsg Field.TransitionToIdle) (Process.sleep 0)
+            else if ctx.shouldValidate then
+                -- transition to parsing
+                ( updateState { newFieldState | status = Field.Parsing_ }
+                , Task.perform (\() -> field_.deltaMsg Field.ExecuteParsing) (Process.sleep 20)
+                )
 
-              else
-                Cmd.map (field_.deltaMsg << Field.ExecuteLoading shouldValidate) cmd
-            )
-
-        Field.TransitionToParsing ->
-            ( updateState
-                { fieldState | status = Field.Parsing_ }
-            , Task.perform
-                (\() -> field_.deltaMsg Field.ExecuteParsing)
-                (Process.sleep 20)
-              {- this 20ms delay is a hack; we need to wait until the next
-                 AnimationFrame before starting the parsing step, otherwise the
-                 UI will lock up before we can show the "parsing" icon
-              -}
-            )
+            else
+                -- transition to idle
+                ( updateState { newFieldState | status = Field.Idle_ }
+                , Cmd.none
+                )
 
         Field.ExecuteParsing ->
-            ( updateState
-                (parseAndValidate (Field field_) fieldState)
-            , Task.perform
-                (\() -> field_.deltaMsg Field.TransitionToIdle)
-                (Process.sleep 0)
-            )
-
-        Field.TransitionToIdle ->
-            ( updateState
-                { fieldState | status = Field.Idle_ }
+            ( { fieldState | status = Field.Idle_ }
+                |> parseAndValidate (Field field_)
+                |> updateState
             , Cmd.none
             )
 
