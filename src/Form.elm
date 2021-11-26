@@ -23,7 +23,6 @@ import Element exposing (Element)
 import Element.Border
 import Element.Input
 import Field exposing (Field(..))
-import Internals
 import Process
 import Task
 import Time
@@ -434,7 +433,7 @@ validateSize1 :
     -> ( Field.State input output, rest1 )
     -> ( Field.State input output, rest2 )
 validateSize1 next form_ state_ =
-    Internals.mapBoth2
+    mapBoth2
         (\field fieldState ->
             case fieldState.validated of
                 Field.Intact ->
@@ -580,7 +579,7 @@ renderSize1 :
     -> ( Field.State input output, rest1 )
     -> ( element, rest2 )
 renderSize1 next form_ state_ =
-    Internals.mapBoth2
+    mapBoth2
         (\(Field { renderer, deltaMsg, id, label }) { input, validated, status, focused } ->
             renderer
                 { input = input
@@ -646,3 +645,8 @@ view config renderSize collectElementsSize form_ state_ =
            )
         |> List.reverse
         |> config.layout
+
+
+mapBoth2 : (this0 -> this1 -> this2) -> (rest0 -> rest1 -> rest2) -> ( this0, rest0 ) -> ( this1, rest1 ) -> ( this2, rest2 )
+mapBoth2 mapThis mapRest ( this0, rest0 ) ( this1, rest1 ) =
+    ( mapThis this0 this1, mapRest rest0 rest1 )
