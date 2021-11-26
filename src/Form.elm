@@ -85,6 +85,7 @@ form =
                 [ Element.spacing 10
                 , Element.padding 10
                 , Element.centerX
+                , Element.width <| Element.px 500
                 ]
         , submitMsg = Nothing
         , submitRenderer =
