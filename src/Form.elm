@@ -19,11 +19,10 @@ module Form exposing
     , withSubmit
     )
 
-import Dict
 import Element exposing (Element)
 import Element.Border
 import Element.Input
-import Field exposing (Field(..), debounce, doNotValidate)
+import Field exposing (Field(..))
 import Internals
 import Process
 import Task
@@ -436,8 +435,8 @@ validateSize1 :
 validateSize1 next form_ state_ =
     Internals.mapBoth2
         (\field fieldState ->
-            case fieldState.status of
-                Field.Intact_ ->
+            case fieldState.validated of
+                Field.Intact ->
                     parseAndValidate field { fieldState | status = Field.Idle_ }
 
                 _ ->
@@ -452,15 +451,22 @@ parseAndValidate : Field input delta output element msg -> Field.State input out
 parseAndValidate (Field { parser, validators }) fieldState =
     { fieldState
         | validated =
-            fieldState.input
-                |> parser
-                |> Result.mapError List.singleton
-                |> Result.andThen
-                    (\parsed ->
-                        validators
-                            |> List.map (\v -> v parsed)
-                            |> accumulateErrors parsed
-                    )
+            case
+                fieldState.input
+                    |> parser
+                    |> Result.mapError List.singleton
+                    |> Result.andThen
+                        (\parsed ->
+                            validators
+                                |> List.map (\v -> v parsed)
+                                |> accumulateErrors parsed
+                        )
+            of
+                Ok ( output, feedback ) ->
+                    Field.Passed output feedback
+
+                Err feedback ->
+                    Field.Failed feedback
     }
 
 
@@ -491,19 +497,25 @@ collectResultsSize1 next ( s, ( fst, rst ) ) =
     case s of
         Ok tuple ->
             case fst.validated of
-                Ok ( okF, _ ) ->
+                Field.Passed okF _ ->
                     next ( Ok ( okF, tuple ), rst )
 
-                Err e ->
+                Field.Failed e ->
                     next ( Err e, rst )
+
+                Field.Intact ->
+                    next ( Err [], rst )
 
         Err es ->
             case fst.validated of
-                Ok _ ->
+                Field.Passed _ _ ->
                     next ( Err es, rst )
 
-                Err e ->
+                Field.Failed e ->
                     next ( Err (List.concat [ e, es ]), rst )
+
+                Field.Intact ->
+                    next ( Err es, rst )
 
 
 
@@ -573,9 +585,6 @@ renderSize1 next form_ state_ =
                 { input = input
                 , status =
                     case status of
-                        Field.Intact_ ->
-                            Field.Intact
-
                         Field.Debouncing_ _ ->
                             Field.Debouncing
 
@@ -587,17 +596,7 @@ renderSize1 next form_ state_ =
 
                         Field.Parsing_ ->
                             Field.Parsing
-                , parsed =
-                    validated
-                        |> Result.toMaybe
-                        |> Maybe.map Tuple.first
-                , feedback =
-                    case validated of
-                        Ok ( _, feedback ) ->
-                            feedback
-
-                        Err feedback ->
-                            feedback
+                , parsed = validated
                 , delta = \delta -> Field.UpdateInput delta |> deltaMsg
                 , focusMsg = deltaMsg Field.Focused
                 , focused = focused

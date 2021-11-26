@@ -9,6 +9,7 @@ module Field exposing
     , RendererConfig
     , State
     , Status(..)
+    , ValidationStatus(..)
     , custom
     , debounce
     , doNotValidate
@@ -46,16 +47,14 @@ type alias DeltaContext delta =
 
 
 type InternalStatus
-    = Intact_
-    | Debouncing_ Time.Posix
+    = Debouncing_ Time.Posix
     | Loading_
     | Parsing_
     | Idle_
 
 
 type Status
-    = Intact
-    | Debouncing
+    = Debouncing
     | Loading
     | Parsing
     | Idle
@@ -94,8 +93,7 @@ type Field input delta output element msg
 type alias RendererConfig input delta output msg =
     { input : input
     , status : Status
-    , parsed : Maybe output
-    , feedback : List Feedback
+    , parsed : ValidationStatus output
     , delta : delta -> msg
     , focusMsg : msg
     , focused : Bool
@@ -106,10 +104,16 @@ type alias RendererConfig input delta output msg =
 
 type alias State input output =
     { input : input
-    , validated : Result (List Feedback) ( output, List Feedback )
+    , validated : ValidationStatus output
     , status : InternalStatus
     , focused : Bool
     }
+
+
+type ValidationStatus output
+    = Intact
+    | Passed output (List Feedback)
+    | Failed (List Feedback)
 
 
 type alias Feedback =
@@ -178,8 +182,8 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
 initialize : Field input delta output element msg -> State input output
 initialize (Field { init }) =
     { input = init
-    , validated = Err []
-    , status = Intact_
+    , validated = Intact
+    , status = Idle_
     , focused = False
     }
 

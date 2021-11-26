@@ -62,7 +62,7 @@ int label msg =
 
 
 renderTextField : RendererConfig String String output msg -> Element msg
-renderTextField { input, status, focusMsg, focused, delta, parsed, feedback, id, label } =
+renderTextField { input, status, focusMsg, focused, delta, parsed, id, label } =
     column
         [ spacing 10
         , padding 20
@@ -91,7 +91,7 @@ renderTextField { input, status, focusMsg, focused, delta, parsed, feedback, id,
                 }
             , statusToIcon status parsed
             ]
-        , viewFeedback status feedback
+        , viewFeedback status parsed
         ]
 
 
@@ -239,7 +239,7 @@ date label deltaMsg =
 
 
 renderDatePicker : RendererConfig DateState DateDelta Date.Date msg -> Element msg
-renderDatePicker { input, delta, label, focused, focusMsg, status, parsed, feedback } =
+renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
     let
         firstDayOfNextMonth =
             Date.add Date.Months 1 firstDayOfMonth
@@ -382,7 +382,7 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed, feedb
                             )
                             weeks
                         )
-                    , viewFeedback status feedback
+                    , viewFeedback status parsed
                     ]
 
             YearsPage { decade } ->
@@ -750,7 +750,7 @@ renderSearchField :
     (a -> String)
     -> Field.RendererConfig (SearchState a) (SearchDelta a) a msg
     -> Element msg
-renderSearchField toString { label, input, delta, focusMsg, focused, parsed, status, feedback } =
+renderSearchField toString { label, input, delta, focusMsg, focused, parsed, status } =
     column
         [ height <| px 400
         , spacing 10
@@ -785,11 +785,11 @@ renderSearchField toString { label, input, delta, focusMsg, focused, parsed, sta
             [] ->
                 el [ centerX, centerY, Font.color midGrey ]
                     (text
-                        (if status /= Field.Intact then
-                            "[ no results found ]"
+                        (if parsed == Field.Intact then
+                            "[ start typing to search ]"
 
                          else
-                            "[ start typing to search ]"
+                            "[ no results found ]"
                         )
                     )
 
@@ -829,7 +829,7 @@ renderSearchField toString { label, input, delta, focusMsg, focused, parsed, sta
                                 }
                         )
                         input.options
-        , viewFeedback status feedback
+        , viewFeedback status parsed
         ]
 
 
@@ -865,7 +865,7 @@ fibonacci deltaMsg =
 renderFibonacci :
     RendererConfig String String Int msg
     -> Element msg
-renderFibonacci { label, input, delta, parsed, status, focusMsg, focused, feedback } =
+renderFibonacci { label, input, delta, parsed, status, focusMsg, focused } =
     column
         [ width Element.fill
         , spacing 20
@@ -904,14 +904,14 @@ renderFibonacci { label, input, delta, parsed, status, focusMsg, focused, feedba
             ]
             (text
                 (case parsed of
-                    Just n ->
+                    Field.Passed n _ ->
                         String.fromInt n
 
-                    Nothing ->
+                    _ ->
                         "?"
                 )
             )
-        , viewFeedback status feedback
+        , viewFeedback status parsed
         ]
 
 
@@ -939,51 +939,59 @@ fib x =
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-viewFeedback : Field.Status -> List Field.Feedback -> Element msg
-viewFeedback status feedback =
+viewFeedback : Field.Status -> Field.ValidationStatus output -> Element msg
+viewFeedback status parsed =
     case status of
         Field.Idle ->
-            case feedback of
-                [] ->
+            case parsed of
+                Field.Intact ->
                     none
 
-                _ ->
-                    column
-                        [ Font.size 12
-                        , spacing 5
-                        , width fill
-                        ]
-                        (feedback
-                            |> List.sortWith
-                                (\f1 f2 ->
-                                    let
-                                        tagToInt t =
-                                            case t of
-                                                Field.Fail ->
-                                                    0
+                Field.Passed _ feedback ->
+                    viewFeedback2 feedback
 
-                                                Field.Warn ->
-                                                    1
-
-                                                Field.Pass ->
-                                                    2
-
-                                                Field.Info ->
-                                                    3
-                                    in
-                                    Basics.compare (tagToInt f1.tag) (tagToInt f2.tag)
-                                )
-                            |> List.map
-                                (\f ->
-                                    row [ spacing 5, width fill ]
-                                        [ viewFeedbackIcon f.tag
-                                        , el [] (text f.text)
-                                        ]
-                                )
-                        )
+                Field.Failed feedback ->
+                    viewFeedback2 feedback
 
         _ ->
             none
+
+
+viewFeedback2 : List Field.Feedback -> Element msg
+viewFeedback2 feedback =
+    column
+        [ Font.size 12
+        , spacing 5
+        , width fill
+        ]
+        (feedback
+            |> List.sortWith
+                (\f1 f2 ->
+                    let
+                        tagToInt t =
+                            case t of
+                                Field.Fail ->
+                                    0
+
+                                Field.Warn ->
+                                    1
+
+                                Field.Pass ->
+                                    2
+
+                                Field.Info ->
+                                    3
+                    in
+                    Basics.compare (tagToInt f1.tag) (tagToInt f2.tag)
+                )
+            |> List.map
+                (\f ->
+                    row [ spacing 5, width fill ]
+                        [ viewFeedbackIcon f.tag
+                        , el [] (text f.text)
+                        ]
+                )
+        )
 
 
 viewFeedbackIcon : Field.FeedbackTag -> Element msg
@@ -1002,7 +1010,7 @@ viewFeedbackIcon tag =
             el [ Font.color warnColor ] (smallIcon FI.alertTriangle)
 
 
-statusToIcon : Field.Status -> Maybe value -> Element msg
+statusToIcon : Field.Status -> Field.ValidationStatus output -> Element msg
 statusToIcon status parsed =
     let
         ( c, i ) =
@@ -1010,14 +1018,14 @@ statusToIcon status parsed =
                 ( Field.Debouncing, _ ) ->
                     ( midGrey, FI.moreHorizontal )
 
-                ( Field.Idle, Just _ ) ->
+                ( Field.Idle, Field.Intact ) ->
+                    ( midGrey, FI.helpCircle )
+
+                ( Field.Idle, Field.Passed _ _ ) ->
                     ( passColor, FI.checkCircle )
 
-                ( Field.Idle, Nothing ) ->
+                ( Field.Idle, Field.Failed _ ) ->
                     ( failColor, FI.xCircle )
-
-                ( Field.Intact, _ ) ->
-                    ( midGrey, FI.helpCircle )
 
                 ( Field.Loading, _ ) ->
                     ( midGrey, FI.save )
