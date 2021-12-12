@@ -15,13 +15,8 @@ module Form exposing
     , i8
     , i9
     , withField
-    , withRenderer
-    , withSubmit
     )
 
-import Element exposing (Element)
-import Element.Border
-import Element.Input
 import Field exposing (Field(..))
 import Process
 import Task
@@ -56,9 +51,6 @@ type Builder a b c d e f g h fields element msg
         , fieldStateFocuser : h
         , fieldCount : Int
         , fields : fields
-        , layout : List element -> element
-        , submitMsg : Maybe msg
-        , submitRenderer : msg -> element
         }
 
 
@@ -66,7 +58,7 @@ type Builder a b c d e f g h fields element msg
 -- CREATING FORMS
 
 
-form : Builder (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> h) (i -> i) () (Element msg) msg
+form : Builder (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> h) (i -> i) () element msg
 form =
     Builder
         { reverseSize = identity
@@ -79,23 +71,6 @@ form =
         , fieldStateFocuser = identity
         , fieldCount = 0
         , fields = ()
-        , layout =
-            Element.column
-                [ Element.spacing 10
-                , Element.padding 10
-                , Element.centerX
-                , Element.width <| Element.px 500
-                ]
-        , submitMsg = Nothing
-        , submitRenderer =
-            \msg ->
-                Element.Input.button
-                    [ Element.centerX
-                    , Element.padding 10
-                    , Element.Border.width 1
-                    , Element.Border.rounded 5
-                    ]
-                    { label = Element.text "Submit", onPress = Just msg }
         }
 
 
@@ -111,47 +86,11 @@ withField (Field fld) (Builder bdr) =
         , fieldStateFocuser = bdr.fieldStateFocuser >> fieldStateFocuser1
         , fieldCount = bdr.fieldCount + 1
         , fields = ( Field { fld | index = bdr.fieldCount }, bdr.fields )
-        , layout = bdr.layout
-        , submitMsg = bdr.submitMsg
-        , submitRenderer = bdr.submitRenderer
         }
-
-
-withRenderer :
-    { layout : List element2 -> element2, submit : msg -> element2 }
-    -> Builder b c d e f g h i fields element msg
-    -> Builder b c d e f g h i fields element2 msg
-withRenderer args (Builder bdr) =
-    Builder
-        { reverseSize = bdr.reverseSize
-        , anotherReverseSize = bdr.anotherReverseSize
-        , stateSize = bdr.stateSize
-        , validateSize = bdr.validateSize
-        , renderSize = bdr.renderSize
-        , collectResultsSize = bdr.collectResultsSize
-        , collectElementsSize = bdr.collectElementsSize
-        , fieldStateFocuser = bdr.fieldStateFocuser
-        , fieldCount = bdr.fieldCount
-        , fields = bdr.fields
-        , layout = args.layout
-        , submitRenderer = args.submit
-        , submitMsg = bdr.submitMsg
-        }
-
-
-withSubmit : msg -> Builder b c d e f g h i fields element msg -> Builder b c d e f g h i fields element msg
-withSubmit msg (Builder bdr) =
-    Builder { bdr | submitMsg = Just msg }
 
 
 done (Builder bdr) =
     let
-        config =
-            { layout = bdr.layout
-            , submitRenderer = bdr.submitRenderer
-            , submitMsg = bdr.submitMsg
-            }
-
         reversedFields =
             reverseTuple bdr.reverseSize bdr.fields
 
@@ -165,7 +104,7 @@ done (Builder bdr) =
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
     , updateField = updateField bdr.fieldStateFocuser form_
     , viewFields = renderAll bdr.renderSize form_
-    , view = view config bdr.renderSize bdr.collectElementsSize form_
+    , viewList = view bdr.renderSize bdr.collectElementsSize form_
     }
 
 
@@ -629,30 +568,19 @@ collectElementsSize1 next ( s, ( fst, rst ) ) =
 
 
 view :
-    { a | submitMsg : Maybe msg, submitRenderer : msg -> element, layout : List element -> element }
-    ->
-        ((b -> () -> () -> ())
-         -> form
-         -> state
-         -> restElements
-        )
+    ((b -> () -> () -> ())
+     -> form
+     -> state
+     -> restElements
+    )
     -> ((h -> h) -> ( List element, restElements ) -> ( List element, restElements2 ))
     -> Form form
     -> State state
-    -> element
-view config renderSize collectElementsSize form_ state_ =
+    -> List element
+view renderSize collectElementsSize form_ state_ =
     renderAll renderSize form_ state_
         |> collectElements collectElementsSize
-        |> (\list ->
-                case config.submitMsg of
-                    Just msg ->
-                        config.submitRenderer msg :: list
-
-                    Nothing ->
-                        list
-           )
         |> List.reverse
-        |> config.layout
 
 
 mapBoth2 : (this0 -> this1 -> this2) -> (rest0 -> rest1 -> rest2) -> ( this0, rest0 ) -> ( this1, rest1 ) -> ( this2, rest2 )
