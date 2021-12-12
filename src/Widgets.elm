@@ -400,14 +400,14 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                                         ( String.fromInt dec, selectedButton (String.fromInt (dec * 10) ++ "s") (DecadeSelected dec) )
 
                                     else
-                                        ( String.fromInt dec, button [] (text <| String.fromInt (dec * 10) ++ "s") (delta <| DecadeSelected dec) )
+                                        ( String.fromInt dec, button [ width fill, padding 10 ] (text <| String.fromInt (dec * 10) ++ "s") (delta <| DecadeSelected dec) )
                                 )
                         )
                     , row [ width fill, spacing 10 ]
                         [ Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
-                            (List.range 0 4 |> List.map (\yr -> ( String.fromInt decade, button [] (text <| String.fromInt decade ++ String.fromInt yr) (delta <| YearSelected yr) )))
+                            (List.range 0 4 |> List.map (\yr -> ( String.fromInt decade, button [ width fill, padding 10 ] (text <| String.fromInt decade ++ String.fromInt yr) (delta <| YearSelected yr) )))
                         , Element.Keyed.column [ width <| fillPortion 2, spacing 10 ]
-                            (List.range 5 9 |> List.map (\yr -> ( String.fromInt decade, button [] (text <| String.fromInt decade ++ String.fromInt yr) (delta <| YearSelected yr) )))
+                            (List.range 5 9 |> List.map (\yr -> ( String.fromInt decade, button [ width fill, padding 10 ] (text <| String.fromInt decade ++ String.fromInt yr) (delta <| YearSelected yr) )))
                         ]
                     ]
 
@@ -459,8 +459,8 @@ renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
                         , iconButton [ width <| px 44 ] (icon FI.arrowRight) (CalendarPageChanged 1)
                         ]
                     , row [ spacing 10, width fill ]
-                        [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button [] (text <| monthToString m) (delta <| MonthSelected (Date.numberToMonth m))))
-                        , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button [] (text <| monthToString m) (delta <| MonthSelected (Date.numberToMonth m))))
+                        [ column [ width fill, spacing 10 ] (List.range 1 6 |> List.map (\m -> button [ width fill, padding 10 ] (text <| monthToString m) (delta <| MonthSelected (Date.numberToMonth m))))
+                        , column [ width fill, spacing 10 ] (List.range 7 12 |> List.map (\m -> button [ width fill, padding 10 ] (text <| monthToString m) (delta <| MonthSelected (Date.numberToMonth m))))
                         ]
                     ]
         ]
@@ -695,6 +695,8 @@ button attrs label msg =
          , Border.width 1
          , Border.color midGrey
          , Background.color white
+         , Font.center
+         , padding 10
          ]
             ++ attrs
         )
