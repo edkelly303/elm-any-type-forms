@@ -123,7 +123,7 @@ myForm =
                 , ( Sharks, text "Sharks" )
                 ]
             )
-        |> Form.withSubmit SubmitClicked
+        
         |> Form.done
 
 
@@ -201,7 +201,19 @@ view model =
     layout [ padding 20 ] <|
         case model.page of
             Form ->
-                myForm.view model.form
+                column [spacing 10] 
+                    [ column [spacing 10] (myForm.viewList model.form)
+                    , Element.Input.button             
+                        [ centerX
+                        , padding 10
+                        , Element.Border.rounded 3
+                        , Element.Border.width 1
+                        ] 
+                        { label = text "Submit"
+                        , onPress = Just SubmitClicked 
+                        }
+                    ]
+                
 
             Submitted { name, shoeSize, dogCount, dob, time, favouriteCharacter, fibonacci } ->
                 submittedView name shoeSize dogCount dob time favouriteCharacter fibonacci
