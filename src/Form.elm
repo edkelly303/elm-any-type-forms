@@ -102,6 +102,7 @@ done (Builder bdr) =
     in
     { init = State fieldsState
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
+    , initializeField = initializeField form_
     , updateField = updateField bdr.fieldStateFocuser form_
     , viewFields = renderAll bdr.renderSize form_
     , viewList = view bdr.renderSize bdr.collectElementsSize form_
@@ -197,6 +198,24 @@ compose ( a, b ) ( a1, b1 ) =
 
 
 -- SETTING FIELDS
+
+
+initializeField (Form form_) index input (State fieldStates) =
+    let
+        ( fieldStateSetter, fieldAndFieldStateGetter ) =
+            index ( fieldStateSetter0, fieldAndFieldStateGetter0 )
+
+        ( _, fieldState ) =
+            getFieldAndFieldState fieldAndFieldStateGetter form_ fieldStates
+
+        newFieldState =
+            { fieldState | input = input }
+    in
+    State
+        (fieldStateSetter
+            (Tuple.mapBoth (\_ -> newFieldState) identity)
+            fieldStates
+        )
 
 
 updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates) =
