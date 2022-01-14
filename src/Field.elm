@@ -25,8 +25,8 @@ module Field exposing
     , warn
     , warnIf
     , withInitialState
-    , withView
     , withValidator
+    , withView
     )
 
 import Dict
