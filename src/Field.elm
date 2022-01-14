@@ -1,11 +1,9 @@
 module Field exposing
     ( Delta(..)
-    , DeltaContext
     , Feedback
     , FeedbackTag(..)
     , Field(..)
     , InternalStatus(..)
-    , Opt(..)
     , State
     , Status(..)
     , ValidationStatus(..)
@@ -18,9 +16,10 @@ module Field exposing
     , info
     , infoIf
     , init
-    , parseAndValidate
     , pass
+    , submit
     , update
+    , validate
     , view
     , warn
     , warnIf
@@ -324,13 +323,27 @@ update (Field field_) wrappedDelta fieldState =
 
         ExecuteParsing ->
             ( { fieldState | status = Idle_ }
-                |> parseAndValidate (Field field_)
+                |> validate (Field field_)
             , Cmd.none
             )
 
 
-parseAndValidate : Field input delta output element msg -> State input output -> State input output
-parseAndValidate (Field { parser, validators }) fieldState =
+submit : Field input delta output element msg -> State input output -> Result (State input output) output
+submit field fieldState =
+    case fieldState.validated of
+        Passed output _ ->
+            Ok output
+
+        Failed _ ->
+            Err { fieldState | status = Idle_ }
+
+        Intact ->
+            validate field fieldState
+                |> submit field
+
+
+validate : Field input delta output element msg -> State input output -> State input output
+validate (Field { parser, validators }) fieldState =
     { fieldState
         | validated =
             case
@@ -367,11 +380,11 @@ accumulateErrors a list =
 
 
 view : Field input delta output element msg -> State input output -> element
-view (Field f) { input, validated, status, focused } =
+view (Field f) s =
     f.view
-        { input = input
+        { input = s.input
         , status =
-            case status of
+            case s.status of
                 Debouncing_ _ ->
                     Debouncing
 
@@ -383,10 +396,10 @@ view (Field f) { input, validated, status, focused } =
 
                 Parsing_ ->
                     Parsing
-        , parsed = validated
+        , parsed = s.validated
         , delta = \delta -> UpdateInput delta |> f.deltaMsg
         , focusMsg = f.deltaMsg Focused
-        , focused = focused
+        , focused = s.focused
         , id = f.id
         , label = f.label
         }

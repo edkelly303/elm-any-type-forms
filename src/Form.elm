@@ -325,7 +325,7 @@ validateSize1 next form_ state_ =
         (\field fieldState ->
             case fieldState.validated of
                 Field.Intact ->
-                    Field.parseAndValidate field { fieldState | status = Field.Idle_ }
+                    Field.validate field { fieldState | status = Field.Idle_ }
 
                 _ ->
                     fieldState
