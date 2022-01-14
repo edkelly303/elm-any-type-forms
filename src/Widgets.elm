@@ -25,7 +25,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed
 import FeatherIcons as FI
-import Field exposing (RendererConfig)
+import Field exposing (ViewConfig)
 import Html.Attributes
 import Time
 
@@ -77,7 +77,7 @@ int label msg =
         }
 
 
-renderTextField : Field.RendererConfig String String output msg -> Element msg
+renderTextField : Field.ViewConfig String String output msg -> Element msg
 renderTextField { input, status, focusMsg, focused, delta, parsed, id, label } =
     column
         [ spacing 10
@@ -254,7 +254,7 @@ date label deltaMsg =
         }
 
 
-renderDatePicker : Field.RendererConfig DateState DateDelta Date.Date msg -> Element msg
+renderDatePicker : Field.ViewConfig DateState DateDelta Date.Date msg -> Element msg
 renderDatePicker { input, delta, label, focused, focusMsg, status, parsed } =
     let
         firstDayOfNextMonth =
@@ -580,13 +580,13 @@ radioColumn :
     -> Field.Field (Maybe item) item item (Element msg) msg
 radioColumn label deltaMsg options =
     radioRow label deltaMsg options
-        |> Field.withRenderer (radioRenderer column options)
+        |> Field.withView (radioRenderer column options)
 
 
 radioRenderer :
     (List (Attribute msg) -> List (Element msg) -> Element msg)
     -> List ( item, Element msg )
-    -> RendererConfig (Maybe item) item item msg
+    -> ViewConfig (Maybe item) item item msg
     -> Element msg
 radioRenderer layout options { parsed, delta, label, status, focusMsg, focused } =
     column
@@ -703,7 +703,7 @@ button attrs label msg =
         { label = label, onPress = Just msg }
 
 
-renderTimePicker : Field.RendererConfig TimeState TimeDelta TimeState msg -> Element msg
+renderTimePicker : Field.ViewConfig TimeState TimeDelta TimeState msg -> Element msg
 renderTimePicker { input, label, delta, focusMsg, focused, status, parsed } =
     let
         btn txt m =
@@ -862,7 +862,7 @@ search label msg toString loadItemsCmd =
 
 renderSearchField :
     (a -> String)
-    -> Field.RendererConfig (SearchState a) (SearchDelta a) a msg
+    -> Field.ViewConfig (SearchState a) (SearchDelta a) a msg
     -> Element msg
 renderSearchField toString { label, input, delta, focusMsg, focused, parsed, status } =
     column
@@ -974,7 +974,7 @@ fibonacci deltaMsg =
         }
 
 
-renderFibonacci : Field.RendererConfig String String Int msg -> Element msg
+renderFibonacci : Field.ViewConfig String String Int msg -> Element msg
 renderFibonacci { label, input, delta, parsed, status, focusMsg, focused } =
     column
         [ width Element.fill

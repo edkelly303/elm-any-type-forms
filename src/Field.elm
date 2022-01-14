@@ -6,10 +6,10 @@ module Field exposing
     , Field(..)
     , InternalStatus(..)
     , Opt(..)
-    , RendererConfig
     , State
     , Status(..)
     , ValidationStatus(..)
+    , ViewConfig
     , custom
     , debounce
     , doNotValidate
@@ -17,16 +17,21 @@ module Field exposing
     , failIf
     , info
     , infoIf
-    , initialize
+    , init
+    , parseAndValidate
     , pass
+    , update
+    , view
     , warn
     , warnIf
     , withInitialState
-    , withRenderer
+    , withView
     , withValidator
     )
 
 import Dict
+import Process
+import Task
 import Time
 
 
@@ -84,14 +89,14 @@ type Field input delta output element msg
         , updater : delta -> input -> ( input, Cmd delta, List Opt )
         , parser : input -> Result Feedback output
         , validators : List (output -> Maybe Feedback)
-        , renderer : RendererConfig input delta output msg -> element
+        , view : ViewConfig input delta output msg -> element
         , id : String
         , label : String
         , loadCmd : Dict.Dict String (input -> Cmd msg)
         }
 
 
-type alias RendererConfig input delta output msg =
+type alias ViewConfig input delta output msg =
     { input : input
     , status : Status
     , parsed : ValidationStatus output
@@ -157,21 +162,21 @@ custom :
     , deltaMsg : Delta delta -> msg
     , updater : delta -> input -> ( input, Cmd delta, List Opt )
     , parser : input -> Result Feedback output
-    , renderer : RendererConfig input delta output msg -> element
+    , renderer : ViewConfig input delta output msg -> element
     , label : String
     }
     -> Field input delta output element msg
-custom { init, deltaMsg, updater, parser, renderer, label } =
+custom args =
     Field
         { index = 0
-        , init = init
-        , deltaMsg = deltaMsg
-        , updater = updater
-        , parser = parser
+        , init = args.init
+        , deltaMsg = args.deltaMsg
+        , updater = args.updater
+        , parser = args.parser
         , validators = []
-        , renderer = renderer
+        , view = args.renderer
         , id = ""
-        , label = label
+        , label = args.label
         , loadCmd = Dict.empty
         }
 
@@ -180,13 +185,211 @@ custom { init, deltaMsg, updater, parser, renderer, label } =
 -- EXTRACTING STATE FROM FIELDS
 
 
-initialize : Field input delta output element msg -> State input output
-initialize (Field { init }) =
-    { input = init
+init : Field input delta output element msg -> State input output
+init (Field f) =
+    { input = f.init
     , validated = Intact
     , status = Idle_
     , focused = False
     }
+
+
+update : Field input delta output element msg -> Delta delta -> State input output -> ( State input output, Cmd msg )
+update (Field field_) wrappedDelta fieldState =
+    case wrappedDelta of
+        Focused ->
+            ( { fieldState | focused = True }
+            , Cmd.none
+            )
+
+        UpdateInput delta ->
+            let
+                ( newInput, cmd, opts ) =
+                    field_.updater delta fieldState.input
+
+                ( debounce_, shouldValidate ) =
+                    List.foldl
+                        (\opt ( d, sv ) ->
+                            case opt of
+                                Debounce millis ->
+                                    ( millis, sv )
+
+                                DontValidate ->
+                                    ( d, False )
+                        )
+                        ( 0, True )
+                        opts
+
+                newFieldState =
+                    { fieldState | input = newInput }
+
+                shouldSendCmd =
+                    cmd /= Cmd.none
+
+                ctx =
+                    { debounce = debounce_
+                    , shouldSendCmd = shouldSendCmd
+                    , shouldValidate = shouldValidate
+                    , delta = delta
+                    }
+            in
+            if debounce_ /= 0 then
+                --transition to debouncing
+                ( newFieldState
+                , Task.perform (\time -> field_.deltaMsg (StartDebouncing ctx time)) Time.now
+                )
+
+            else if shouldSendCmd then
+                -- send the Cmd!
+                ( { newFieldState | status = Loading_ }
+                , Cmd.map (field_.deltaMsg << ExecuteLoading ctx) cmd
+                )
+
+            else if shouldValidate then
+                -- transition to parsing
+                ( { newFieldState | status = Parsing_ }
+                , Task.perform (\() -> field_.deltaMsg ExecuteParsing) (Process.sleep 20)
+                )
+
+            else
+                -- transition to idle
+                ( { newFieldState | status = Idle_ }
+                , Cmd.none
+                )
+
+        StartDebouncing ctx time ->
+            ( { fieldState | status = Debouncing_ time }
+            , Task.perform
+                (\() -> field_.deltaMsg <| CheckDebouncingTimeout ctx time)
+                (Process.sleep ctx.debounce)
+            )
+
+        CheckDebouncingTimeout ctx time ->
+            case fieldState.status of
+                Debouncing_ lastTouched ->
+                    if time == lastTouched then
+                        if ctx.shouldSendCmd then
+                            let
+                                ( _, cmd, _ ) =
+                                    field_.updater ctx.delta fieldState.input
+                            in
+                            -- send the Cmd!
+                            ( { fieldState | status = Loading_ }
+                            , Cmd.map (field_.deltaMsg << ExecuteLoading ctx) cmd
+                            )
+
+                        else if ctx.shouldValidate then
+                            -- transition to parsing
+                            ( { fieldState | status = Parsing_ }
+                            , Task.perform (\() -> field_.deltaMsg ExecuteParsing) (Process.sleep 20)
+                            )
+
+                        else
+                            -- transition to idle
+                            ( { fieldState | status = Idle_ }
+                            , Cmd.none
+                            )
+
+                    else
+                        ( fieldState, Cmd.none )
+
+                _ ->
+                    ( fieldState, Cmd.none )
+
+        ExecuteLoading ctx newDelta ->
+            let
+                ( newInput, newCmd, _ ) =
+                    field_.updater newDelta fieldState.input
+
+                newFieldState =
+                    { fieldState | input = newInput }
+            in
+            if newCmd /= Cmd.none then
+                -- send the next Cmd!
+                ( { newFieldState | status = Loading_ }
+                , Cmd.map (field_.deltaMsg << ExecuteLoading ctx) newCmd
+                )
+
+            else if ctx.shouldValidate then
+                -- transition to parsing
+                ( { newFieldState | status = Parsing_ }
+                , Task.perform (\() -> field_.deltaMsg ExecuteParsing) (Process.sleep 20)
+                )
+
+            else
+                -- transition to idle
+                ( { newFieldState | status = Idle_ }
+                , Cmd.none
+                )
+
+        ExecuteParsing ->
+            ( { fieldState | status = Idle_ }
+                |> parseAndValidate (Field field_)
+            , Cmd.none
+            )
+
+
+parseAndValidate : Field input delta output element msg -> State input output -> State input output
+parseAndValidate (Field { parser, validators }) fieldState =
+    { fieldState
+        | validated =
+            case
+                fieldState.input
+                    |> parser
+                    |> Result.mapError List.singleton
+                    |> Result.andThen
+                        (\parsed ->
+                            validators
+                                |> List.map (\v -> v parsed)
+                                |> accumulateErrors parsed
+                        )
+            of
+                Ok ( output, feedback ) ->
+                    Passed output feedback
+
+                Err feedback ->
+                    Failed feedback
+    }
+
+
+accumulateErrors : a -> List (Maybe Feedback) -> Result (List Feedback) ( a, List Feedback )
+accumulateErrors a list =
+    case
+        list
+            |> List.filterMap identity
+            |> List.partition (\{ tag } -> tag == Fail)
+    of
+        ( [], others ) ->
+            Ok ( a, others )
+
+        ( errors, _ ) ->
+            Err errors
+
+
+view : Field input delta output element msg -> State input output -> element
+view (Field f) { input, validated, status, focused } =
+    f.view
+        { input = input
+        , status =
+            case status of
+                Debouncing_ _ ->
+                    Debouncing
+
+                Idle_ ->
+                    Idle
+
+                Loading_ ->
+                    Loading
+
+                Parsing_ ->
+                    Parsing
+        , parsed = validated
+        , delta = \delta -> UpdateInput delta |> f.deltaMsg
+        , focusMsg = f.deltaMsg Focused
+        , focused = focused
+        , id = f.id
+        , label = f.label
+        }
 
 
 
@@ -233,11 +436,11 @@ validator test feedback message output =
         Nothing
 
 
-withRenderer :
-    (RendererConfig input delta output msg -> element2)
+withView :
+    (ViewConfig input delta output msg -> element2)
     -> Field input delta output element msg
     -> Field input delta output element2 msg
-withRenderer r (Field f) =
+withView r (Field f) =
     Field
         { index = f.index
         , init = f.init
@@ -245,7 +448,7 @@ withRenderer r (Field f) =
         , updater = f.updater
         , parser = f.parser
         , validators = f.validators
-        , renderer = r
+        , view = r
         , id = f.id
         , label = f.label
         , loadCmd = f.loadCmd

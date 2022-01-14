@@ -18,9 +18,6 @@ module Form exposing
     )
 
 import Field exposing (Field(..))
-import Process
-import Task
-import Time
 
 
 
@@ -48,8 +45,7 @@ type Builder a b c d e f g h fields element msg
         , collectResultsSize : e
         , renderSize : f
         , collectElementsSize : g
-        , fieldStateFocuser : h
-        , fieldCount : Int
+        , fieldStateUnfocuser : h
         , fields : fields
         }
 
@@ -68,8 +64,7 @@ form =
         , collectResultsSize = identity
         , collectElementsSize = identity
         , renderSize = identity
-        , fieldStateFocuser = identity
-        , fieldCount = 0
+        , fieldStateUnfocuser = identity
         , fields = ()
         }
 
@@ -83,9 +78,8 @@ withField (Field fld) (Builder bdr) =
         , collectResultsSize = bdr.collectResultsSize >> collectResultsSize1
         , collectElementsSize = bdr.collectElementsSize >> collectElementsSize1
         , renderSize = bdr.renderSize >> renderSize1
-        , fieldStateFocuser = bdr.fieldStateFocuser >> fieldStateFocuser1
-        , fieldCount = bdr.fieldCount + 1
-        , fields = ( Field { fld | index = bdr.fieldCount }, bdr.fields )
+        , fieldStateUnfocuser = bdr.fieldStateUnfocuser >> fieldStateUnfocuser1
+        , fields = ( Field fld, bdr.fields )
         }
 
 
@@ -97,13 +91,13 @@ done (Builder bdr) =
         form_ =
             Form reversedFields
 
-        fieldsState =
+        fieldStates =
             bdr.stateSize (\() -> ()) reversedFields
     in
-    { init = State fieldsState
+    { init = State fieldStates
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
     , initializeField = initializeField form_
-    , updateField = updateField bdr.fieldStateFocuser form_
+    , updateField = updateField bdr.fieldStateUnfocuser form_
     , viewFields = renderAll bdr.renderSize form_
     , viewList = view bdr.renderSize bdr.collectElementsSize form_
     }
@@ -113,22 +107,37 @@ done (Builder bdr) =
 -- INDEXES FOR SETTING FIELDS
 
 
-fieldStateFocuser1 : (b -> y) -> ( { a | focused : Bool }, b ) -> ( { a | focused : Bool }, y )
-fieldStateFocuser1 =
+fieldStateUnfocuser1 : (rest -> rest) -> ( Field.State input output, rest ) -> ( Field.State input output, rest )
+fieldStateUnfocuser1 =
     Tuple.mapBoth (\fs -> { fs | focused = False })
 
 
-fieldAndFieldStateGetter0 : a -> a
+fieldAndFieldStateGetter0 : rest -> rest
 fieldAndFieldStateGetter0 =
     identity
 
 
-fieldAndFieldStateGetter1 : (b -> a -> c) -> ( d, b ) -> ( e, a ) -> c
+fieldAndFieldStateGetter1 :
+    (restFields -> restFieldStates -> ( Field.Field input2 delta2 output2 element2 msg2, Field.State input2 output2 ))
+    -> ( Field.Field input delta output element msg, restFields )
+    -> ( Field.State input output, restFieldStates )
+    -> ( Field.Field input2 delta2 output2 element2 msg2, Field.State input2 output2 )
 fieldAndFieldStateGetter1 next ( _, restFields ) ( _, restFieldStates ) =
     next restFields restFieldStates
 
 
-getFieldAndFieldState : ((( a, b ) -> ( c, d ) -> ( a, c )) -> e -> f -> g) -> e -> f -> g
+getFieldAndFieldState :
+    ((( Field.Field input delta output element msg, restFields )
+      -> ( Field.State input output, restFieldStates )
+      -> ( Field.Field input delta output element msg, Field.State input output )
+     )
+     -> form
+     -> state
+     -> ( Field.Field input delta output element msg, Field.State input output )
+    )
+    -> form
+    -> state
+    -> ( Field.Field input delta output element msg, Field.State input output )
 getFieldAndFieldState getter form_ state_ =
     getter
         (\( field_, _ ) ( fieldState, _ ) -> ( field_, fieldState ))
@@ -136,12 +145,15 @@ getFieldAndFieldState getter form_ state_ =
         state_
 
 
-fieldStateSetter0 : a -> a
+fieldStateSetter0 : rest -> rest
 fieldStateSetter0 =
     identity
 
 
-fieldStateSetter1 : (b -> y) -> ( a, b ) -> ( a, y )
+fieldStateSetter1 :
+    (rest -> rest)
+    -> ( Field.State input output, rest )
+    -> ( Field.State input output, rest )
 fieldStateSetter1 mapRest ( this, rest ) =
     Tuple.mapBoth identity mapRest ( this, rest )
 
@@ -191,15 +203,33 @@ i10 =
     i9 >> i1
 
 
-compose : ( a -> b, c -> d ) -> ( b -> e, d -> f ) -> ( a -> e, c -> f )
-compose ( a, b ) ( a1, b1 ) =
-    ( a >> a1, b >> b1 )
+compose : ( fst -> fst2, snd -> snd2 ) -> ( fst2 -> fst3, snd2 -> snd3 ) -> ( fst -> fst3, snd -> snd3 )
+compose ( fst1To2, snd1To2 ) ( fst2To3, snd2To3 ) =
+    ( fst1To2 >> fst2To3, snd1To2 >> snd2To3 )
 
 
 
 -- SETTING FIELDS
 
 
+initializeField :
+    Form form
+    ->
+        (( rest -> rest, Field.State input output -> Field.State input output )
+         ->
+            ( (( Field.State input output, rest ) -> ( Field.State input output, rest )) -> state -> state
+            , (( Field input delta output element msg, restFields )
+               -> ( Field.State input output, restFieldStates )
+               -> ( Field input delta output element msg, Field.State input output )
+              )
+              -> form
+              -> state
+              -> ( Field input delta output element msg, Field.State input output )
+            )
+        )
+    -> input
+    -> State state
+    -> State state
 initializeField (Form form_) index input (State fieldStates) =
     let
         ( fieldStateSetter, fieldAndFieldStateGetter ) =
@@ -218,161 +248,53 @@ initializeField (Form form_) index input (State fieldStates) =
         )
 
 
-updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates) =
+updateField :
+    ((() -> ()) -> fieldStates -> fieldStates)
+    -> Form form
+    ->
+        (( a -> a, b -> b )
+         ->
+            ( (( Field.State input output, restFieldStates ) -> ( Field.State input output, restFieldStates )) -> fieldStates -> fieldStates
+            , (( Field input delta output element msg, restFields )
+               -> ( Field.State input output, restFieldStates )
+               -> ( Field input delta output element msg, Field.State input output )
+              )
+              -> form
+              -> fieldStates
+              -> ( Field input delta output element msg, Field.State input output )
+            )
+        )
+    -> Field.Delta delta
+    -> State fieldStates
+    -> ( State fieldStates, Cmd msg )
+updateField fieldStateUnfocuser (Form form_) index wrappedDelta (State fieldStates) =
     let
         ( fieldStateSetter, fieldAndFieldStateGetter ) =
             index ( fieldStateSetter0, fieldAndFieldStateGetter0 )
 
-        ( Field field_, fieldState ) =
+        ( field_, fieldState ) =
             getFieldAndFieldState fieldAndFieldStateGetter form_ fieldStates
 
-        updateState fs =
+        updateState fs fss =
             State
                 (fieldStateSetter
                     (Tuple.mapBoth (\_ -> fs) identity)
-                    fieldStates
+                    fss
                 )
 
-        unchanged =
-            ( State fieldStates, Cmd.none )
+        ( newFieldState, cmd ) =
+            Field.update field_ wrappedDelta fieldState
     in
     case wrappedDelta of
         Field.Focused ->
             let
-                newFieldStates =
-                    fieldStateFocuser (\() -> ()) fieldStates
-                        |> fieldStateSetter (Tuple.mapBoth (\_ -> { fieldState | focused = True }) identity)
+                unfocusedFieldStates =
+                    fieldStateUnfocuser (\() -> ()) fieldStates
             in
-            ( State newFieldStates
-            , Cmd.none
-            )
+            ( updateState newFieldState unfocusedFieldStates, cmd )
 
-        Field.UpdateInput delta ->
-            let
-                ( newInput, cmd, opts ) =
-                    field_.updater delta fieldState.input
-
-                ( debounce, shouldValidate ) =
-                    List.foldl
-                        (\opt ( d, sv ) ->
-                            case opt of
-                                Field.Debounce millis ->
-                                    ( millis, sv )
-
-                                Field.DontValidate ->
-                                    ( d, False )
-                        )
-                        ( 0, True )
-                        opts
-
-                newFieldState =
-                    { fieldState | input = newInput }
-
-                shouldSendCmd =
-                    cmd /= Cmd.none
-
-                ctx =
-                    { debounce = debounce
-                    , shouldSendCmd = shouldSendCmd
-                    , shouldValidate = shouldValidate
-                    , delta = delta
-                    }
-            in
-            if debounce /= 0 then
-                --transition to debouncing
-                ( updateState newFieldState
-                , Task.perform (\time -> field_.deltaMsg (Field.StartDebouncing ctx time)) Time.now
-                )
-
-            else if shouldSendCmd then
-                -- send the Cmd!
-                ( updateState { newFieldState | status = Field.Loading_ }
-                , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) cmd
-                )
-
-            else if shouldValidate then
-                -- transition to parsing
-                ( updateState { newFieldState | status = Field.Parsing_ }
-                , Task.perform (\() -> field_.deltaMsg Field.ExecuteParsing) (Process.sleep 20)
-                )
-
-            else
-                -- transition to idle
-                ( updateState { newFieldState | status = Field.Idle_ }
-                , Cmd.none
-                )
-
-        Field.StartDebouncing ctx time ->
-            ( updateState { fieldState | status = Field.Debouncing_ time }
-            , Task.perform
-                (\() -> field_.deltaMsg <| Field.CheckDebouncingTimeout ctx time)
-                (Process.sleep ctx.debounce)
-            )
-
-        Field.CheckDebouncingTimeout ctx time ->
-            case fieldState.status of
-                Field.Debouncing_ lastTouched ->
-                    if time == lastTouched then
-                        if ctx.shouldSendCmd then
-                            let
-                                ( _, cmd, _ ) =
-                                    field_.updater ctx.delta fieldState.input
-                            in
-                            -- send the Cmd!
-                            ( updateState { fieldState | status = Field.Loading_ }
-                            , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) cmd
-                            )
-
-                        else if ctx.shouldValidate then
-                            -- transition to parsing
-                            ( updateState { fieldState | status = Field.Parsing_ }
-                            , Task.perform (\() -> field_.deltaMsg Field.ExecuteParsing) (Process.sleep 20)
-                            )
-
-                        else
-                            -- transition to idle
-                            ( updateState { fieldState | status = Field.Idle_ }
-                            , Cmd.none
-                            )
-
-                    else
-                        unchanged
-
-                _ ->
-                    unchanged
-
-        Field.ExecuteLoading ctx newDelta ->
-            let
-                ( newInput, newCmd, _ ) =
-                    field_.updater newDelta fieldState.input
-
-                newFieldState =
-                    { fieldState | input = newInput }
-            in
-            if newCmd /= Cmd.none then
-                -- send the next Cmd!
-                ( updateState { newFieldState | status = Field.Loading_ }
-                , Cmd.map (field_.deltaMsg << Field.ExecuteLoading ctx) newCmd
-                )
-
-            else if ctx.shouldValidate then
-                -- transition to parsing
-                ( updateState { newFieldState | status = Field.Parsing_ }
-                , Task.perform (\() -> field_.deltaMsg Field.ExecuteParsing) (Process.sleep 20)
-                )
-
-            else
-                -- transition to idle
-                ( updateState { newFieldState | status = Field.Idle_ }
-                , Cmd.none
-                )
-
-        Field.ExecuteParsing ->
-            ( { fieldState | status = Field.Idle_ }
-                |> parseAndValidate (Field field_)
-                |> updateState
-            , Cmd.none
-            )
+        _ ->
+            ( updateState newFieldState fieldStates, cmd )
 
 
 
@@ -381,7 +303,7 @@ updateField fieldStateFocuser (Form form_) index wrappedDelta (State fieldStates
 
 stateSize1 : (restFields -> restFieldStates) -> ( Field input delta output element msg, restFields ) -> ( Field.State input output, restFieldStates )
 stateSize1 next form_ =
-    Tuple.mapBoth Field.initialize next form_
+    Tuple.mapBoth Field.init next form_
 
 
 
@@ -403,7 +325,7 @@ validateSize1 next form_ state_ =
         (\field fieldState ->
             case fieldState.validated of
                 Field.Intact ->
-                    parseAndValidate field { fieldState | status = Field.Idle_ }
+                    Field.parseAndValidate field { fieldState | status = Field.Idle_ }
 
                 _ ->
                     fieldState
@@ -411,43 +333,6 @@ validateSize1 next form_ state_ =
         next
         form_
         state_
-
-
-parseAndValidate : Field input delta output element msg -> Field.State input output -> Field.State input output
-parseAndValidate (Field { parser, validators }) fieldState =
-    { fieldState
-        | validated =
-            case
-                fieldState.input
-                    |> parser
-                    |> Result.mapError List.singleton
-                    |> Result.andThen
-                        (\parsed ->
-                            validators
-                                |> List.map (\v -> v parsed)
-                                |> accumulateErrors parsed
-                        )
-            of
-                Ok ( output, feedback ) ->
-                    Field.Passed output feedback
-
-                Err feedback ->
-                    Field.Failed feedback
-    }
-
-
-accumulateErrors : a -> List (Maybe Field.Feedback) -> Result (List Field.Feedback) ( a, List Field.Feedback )
-accumulateErrors a list =
-    case
-        list
-            |> List.filterMap identity
-            |> List.partition (\{ tag } -> tag == Field.Fail)
-    of
-        ( [], others ) ->
-            Ok ( a, others )
-
-        ( errors, _ ) ->
-            Err errors
 
 
 
@@ -546,30 +431,7 @@ renderSize1 :
     -> ( element, rest2 )
 renderSize1 next form_ state_ =
     mapBoth2
-        (\(Field { renderer, deltaMsg, id, label }) { input, validated, status, focused } ->
-            renderer
-                { input = input
-                , status =
-                    case status of
-                        Field.Debouncing_ _ ->
-                            Field.Debouncing
-
-                        Field.Idle_ ->
-                            Field.Idle
-
-                        Field.Loading_ ->
-                            Field.Loading
-
-                        Field.Parsing_ ->
-                            Field.Parsing
-                , parsed = validated
-                , delta = \delta -> Field.UpdateInput delta |> deltaMsg
-                , focusMsg = deltaMsg Field.Focused
-                , focused = focused
-                , id = id
-                , label = label
-                }
-        )
+        Field.view
         next
         form_
         state_
