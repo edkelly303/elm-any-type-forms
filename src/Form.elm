@@ -215,7 +215,7 @@ compose ( fst1To2, snd1To2 ) ( fst2To3, snd2To3 ) =
 initializeField :
     Form form
     ->
-        (( rest -> rest, Field.State input output -> Field.State input output )
+        (( a -> a, b -> b )
          ->
             ( (( Field.State input output, rest ) -> ( Field.State input output, rest )) -> state -> state
             , (( Field input delta output element msg, restFields )
