@@ -137,37 +137,37 @@ initialModel =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     let
-        updateField fieldIndex delta =
+        updateAt fieldIndex delta =
             let
                 ( form, cmd ) =
-                    myForm.updateField fieldIndex delta model.form
+                    myForm.updateAt fieldIndex delta model.form
             in
             ( { model | form = form }, cmd )
     in
     case msg of
         Field0Changed delta ->
-            updateField Form.i0 delta
+            updateAt Form.i0 delta
 
         Field1Changed delta ->
-            updateField Form.i1 delta
+            updateAt Form.i1 delta
 
         Field2Changed delta ->
-            updateField Form.i2 delta
+            updateAt Form.i2 delta
 
         Field3Changed delta ->
-            updateField Form.i3 delta
+            updateAt Form.i3 delta
 
         Field4Changed delta ->
-            updateField Form.i4 delta
+            updateAt Form.i4 delta
 
         Field5Changed delta ->
-            updateField Form.i5 delta
+            updateAt Form.i5 delta
 
         Field6Changed delta ->
-            updateField Form.i6 delta
+            updateAt Form.i6 delta
 
         Field7Changed delta ->
-            updateField Form.i7 delta
+            updateAt Form.i7 delta
 
         SubmitClicked ->
             case myForm.submit model.form of

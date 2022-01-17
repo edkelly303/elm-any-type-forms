@@ -28,7 +28,6 @@ module Field exposing
     , withView
     )
 
-import Dict
 import Process
 import Task
 import Time
@@ -91,7 +90,6 @@ type Field input delta output element msg
         , view : ViewConfig input delta output msg -> element
         , id : String
         , label : String
-        , loadCmd : Dict.Dict String (input -> Cmd msg)
         }
 
 
@@ -176,7 +174,6 @@ custom args =
         , view = args.renderer
         , id = ""
         , label = args.label
-        , loadCmd = Dict.empty
         }
 
 
@@ -335,7 +332,7 @@ submit field fieldState =
             Ok output
 
         Failed _ ->
-            Err { fieldState | status = Idle_ }
+            Err fieldState
 
         Intact ->
             validate field fieldState
@@ -345,7 +342,8 @@ submit field fieldState =
 validate : Field input delta output element msg -> State input output -> State input output
 validate (Field { parser, validators }) fieldState =
     { fieldState
-        | validated =
+        | status = Idle_
+        , validated =
             case
                 fieldState.input
                     |> parser
@@ -397,7 +395,7 @@ view (Field f) s =
                 Parsing_ ->
                     Parsing
         , parsed = s.validated
-        , delta = \delta -> UpdateInput delta |> f.deltaMsg
+        , delta = f.deltaMsg << UpdateInput
         , focusMsg = f.deltaMsg Focused
         , focused = s.focused
         , id = f.id
@@ -464,5 +462,4 @@ withView r (Field f) =
         , view = r
         , id = f.id
         , label = f.label
-        , loadCmd = f.loadCmd
         }

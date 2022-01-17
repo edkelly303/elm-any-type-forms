@@ -95,10 +95,10 @@ done (Builder bdr) =
             bdr.stateSize (\() -> ()) reversedFields
     in
     { init = State fieldStates
+    , setAt = initializeField form_
+    , updateAt = updateField bdr.fieldStateUnfocuser form_
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
-    , initializeField = initializeField form_
-    , updateField = updateField bdr.fieldStateUnfocuser form_
-    , viewFields = renderAll bdr.renderSize form_
+    , view = renderAll bdr.renderSize form_
     , viewList = view bdr.renderSize bdr.collectElementsSize form_
     }
 
@@ -325,7 +325,7 @@ validateSize1 next form_ state_ =
         (\field fieldState ->
             case fieldState.validated of
                 Field.Intact ->
-                    Field.validate field { fieldState | status = Field.Idle_ }
+                    Field.validate field fieldState
 
                 _ ->
                     fieldState
@@ -339,11 +339,16 @@ validateSize1 next form_ state_ =
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
 
 
+collectResults : ((a -> a) -> ( Result error (), state ) -> ( b, c )) -> State state -> b
 collectResults size (State state_) =
     size identity ( Ok (), state_ )
         |> Tuple.first
 
 
+collectResultsSize1 :
+    (( Result (List Field.Feedback) ( output, value ), restFieldStates ) -> a)
+    -> ( Result (List Field.Feedback) value, ( Field.State input output, restFieldStates ) )
+    -> a
 collectResultsSize1 next ( s, ( fst, rst ) ) =
     case s of
         Ok tuple ->
