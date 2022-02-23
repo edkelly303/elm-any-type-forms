@@ -1097,44 +1097,69 @@ viewFeedback2 feedback =
                     let
                         tagToInt t =
                             case t of
-                                Field.Fail ->
+                                Field.Fail _ ->
                                     0
 
-                                Field.Warn ->
+                                Field.Warn _ ->
                                     1
 
-                                Field.Pass ->
+                                Field.Pass _ ->
                                     2
 
-                                Field.Info ->
+                                Field.Info _ ->
                                     3
+
+                                Field.None ->
+                                    4
                     in
-                    Basics.compare (tagToInt f1.tag) (tagToInt f2.tag)
+                    Basics.compare (tagToInt f1) (tagToInt f2)
                 )
             |> List.map
                 (\f ->
                     row [ spacing 5, width fill ]
-                        [ viewFeedbackIcon f.tag
-                        , el [] (text f.text)
+                        [ viewFeedbackIcon f
+                        , el [] (text (feedbackToString f))
                         ]
                 )
         )
 
 
-viewFeedbackIcon : Field.FeedbackTag -> Element msg
+feedbackToString : Field.Feedback -> String
+feedbackToString f =
+    case f of
+        Field.Info str ->
+            str
+
+        Field.Pass str ->
+            str
+
+        Field.Fail str ->
+            str
+
+        Field.Warn str ->
+            str
+
+        Field.None ->
+            ""
+
+
+viewFeedbackIcon : Field.Feedback -> Element msg
 viewFeedbackIcon tag =
     case tag of
-        Field.Info ->
+        Field.Info _ ->
             el [ Font.color infoColor ] (smallIcon FI.info)
 
-        Field.Pass ->
+        Field.Pass _ ->
             el [ Font.color passColor ] (smallIcon FI.checkCircle)
 
-        Field.Fail ->
+        Field.Fail _ ->
             el [ Font.color failColor ] (smallIcon FI.xCircle)
 
-        Field.Warn ->
+        Field.Warn _ ->
             el [ Font.color warnColor ] (smallIcon FI.alertTriangle)
+
+        Field.None ->
+            none
 
 
 statusToIcon : Field.Status -> Field.ValidationStatus output -> Element msg

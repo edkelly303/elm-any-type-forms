@@ -94,7 +94,14 @@ myForm =
                     "Names usually start with a capital letter"
                 |> Field.infoIf (\_ x -> String.length x > 20) "Hey, that's a pretty long name you have there!"
                 |> Field.infoIf (\_ x -> String.toLower x == "rebecca") "Let me guess, last night you dreamt you went to Manderley again?"
-                |> Field.withValidator (\{ctx} _ -> if ctx >= 1 then Just (Field.info ("Context is " ++ String.fromInt ctx ++ "!")) else Nothing)
+                |> Field.withValidator
+                    (\{ ctx } _ ->
+                        if ctx >= 1 then
+                            Field.info ("Context is " ++ String.fromInt ctx ++ "!")
+
+                        else
+                            Field.none
+                    )
             )
         |> Form.withField
             (Widgets.float "What shoe size do you wear?" Field1Changed
@@ -124,7 +131,6 @@ myForm =
                 , ( Sharks, text "Sharks" )
                 ]
             )
-        
         |> Form.done
 
 
@@ -141,7 +147,7 @@ update msg model =
         updateAt fieldIndex delta =
             let
                 ( form, cmd ) =
-                    myForm.updateAt {ctx = 2} fieldIndex delta model.form
+                    myForm.updateAt { ctx = 2 } fieldIndex delta model.form
             in
             ( { model | form = form }, cmd )
     in
@@ -171,7 +177,7 @@ update msg model =
             updateAt Form.i7 delta
 
         SubmitClicked ->
-            case myForm.submit {ctx = 1} model.form of
+            case myForm.submit { ctx = 1 } model.form of
                 Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, ( _, () ) ) ) ) ) ) ) ) ->
                     ( { model
                         | page =
@@ -202,19 +208,18 @@ view model =
     layout [ padding 20 ] <|
         case model.page of
             Form ->
-                column [spacing 10] 
-                    [ column [spacing 10] (myForm.viewList model.form)
-                    , Element.Input.button             
+                column [ spacing 10 ]
+                    [ column [ spacing 10 ] (myForm.viewList model.form)
+                    , Element.Input.button
                         [ centerX
                         , padding 10
                         , Element.Border.rounded 3
                         , Element.Border.width 1
-                        ] 
+                        ]
                         { label = text "Submit"
-                        , onPress = Just SubmitClicked 
+                        , onPress = Just SubmitClicked
                         }
                     ]
-                
 
             Submitted { name, shoeSize, dogCount, dob, time, favouriteCharacter, fibonacci } ->
                 submittedView name shoeSize dogCount dob time favouriteCharacter fibonacci

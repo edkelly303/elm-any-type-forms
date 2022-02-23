@@ -1,7 +1,6 @@
 module Field exposing
     ( Delta(..)
-    , Feedback
-    , FeedbackTag(..)
+    , Feedback(..)
     , Field(..)
     , InternalStatus(..)
     , State
@@ -16,6 +15,7 @@ module Field exposing
     , info
     , infoIf
     , init
+    , none
     , pass
     , submit
     , update
@@ -86,7 +86,7 @@ type Field input delta output context element msg
         , deltaMsg : Delta delta -> msg
         , updater : delta -> input -> ( input, Cmd delta, List Opt )
         , parser : context -> input -> Result Feedback output
-        , validators : List (context -> output -> Maybe Feedback)
+        , validators : List (context -> output -> Feedback)
         , view : ViewConfig input delta output msg -> element
         , id : String
         , label : String
@@ -119,35 +119,37 @@ type ValidationStatus output
     | Failed (List Feedback)
 
 
-type alias Feedback =
-    { tag : FeedbackTag, text : String }
-
-
-type FeedbackTag
-    = Info
-    | Pass
-    | Fail
-    | Warn
+type Feedback
+    = Info String
+    | Pass String
+    | Fail String
+    | Warn String
+    | None
 
 
 info : String -> Feedback
 info str =
-    Feedback Info str
+    Info str
 
 
 pass : String -> Feedback
 pass str =
-    Feedback Pass str
+    Pass str
 
 
 fail : String -> Feedback
 fail str =
-    Feedback Fail str
+    Fail str
 
 
 warn : String -> Feedback
 warn str =
-    Feedback Warn str
+    Warn str
+
+
+none : Feedback
+none =
+    None
 
 
 
@@ -363,12 +365,20 @@ validate (Field { parser, validators }) context fieldState =
     }
 
 
-accumulateErrors : a -> List (Maybe Feedback) -> Result (List Feedback) ( a, List Feedback )
+accumulateErrors : a -> List Feedback -> Result (List Feedback) ( a, List Feedback )
 accumulateErrors a list =
     case
         list
-            |> List.filterMap identity
-            |> List.partition (\{ tag } -> tag == Fail)
+            |> List.filter (\tag -> tag /= None)
+            |> List.partition
+                (\tag ->
+                    case tag of
+                        Fail _ ->
+                            True
+
+                        _ ->
+                            False
+                )
     of
         ( [], others ) ->
             Ok ( a, others )
@@ -412,39 +422,48 @@ withInitialState input (Field f) =
     Field { f | init = input }
 
 
-withValidator : (context -> output -> Maybe Feedback) -> Field input delta output context element msg -> Field input delta output context element msg
+withValidator : (context -> output -> Feedback) -> Field input delta output context element msg -> Field input delta output context element msg
 withValidator v (Field f) =
     Field { f | validators = v :: f.validators }
 
 
 failIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
 failIf test message field =
-    withValidator
-        (validator test fail message)
-        field
+    field
+        |> withValidator
+            (\context input ->
+                if test context input then
+                    fail message
+
+                else
+                    none
+            )
 
 
 warnIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
 warnIf test message field =
-    withValidator
-        (validator test warn message)
-        field
+    field
+        |> withValidator
+            (\context input ->
+                if test context input then
+                    warn message
+
+                else
+                    none
+            )
 
 
 infoIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
 infoIf test message field =
-    withValidator
-        (validator test info message)
-        field
+    field
+        |> withValidator
+            (\context input ->
+                if test context input then
+                    info message
 
-
-validator : (context -> output -> Bool) -> (String -> Feedback) -> String -> context -> output -> Maybe Feedback
-validator test feedback message context output =
-    if test context output then
-        Just (feedback message)
-
-    else
-        Nothing
+                else
+                    none
+            )
 
 
 withView :
