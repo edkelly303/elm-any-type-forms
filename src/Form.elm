@@ -52,22 +52,22 @@ type Builder a b c d e f g h fields context element msg
 
 
 -- CREATING FORMS
--- form :
---     Builder
---         (b -> b)
---         (c -> c)
---         (d -> d)
---         (e -> e)
---         (f -> f)
---         (g -> g)
---         (h -> h)
---         (i -> i)
---         ()
---         {}
---         element
---         msg
 
 
+form :
+    Builder
+        (b -> b)
+        (c -> c)
+        (d -> d)
+        (e -> e)
+        (f -> f)
+        (g -> g)
+        (h -> h)
+        (i -> i)
+        ()
+        context
+        element
+        msg
 form =
     Builder
         { reverseSize = identity
@@ -82,6 +82,36 @@ form =
         }
 
 
+withField :
+    Field input2 delta2 output2 context2 element2 msg2
+    ->
+        Builder
+            (a -> ( ( b, c ), d ) -> e)
+            (f -> ( ( g, h ), i ) -> j)
+            (k -> l -> y)
+            (m -> n -> o -> p -> q)
+            (r -> ( Result (List Field.Feedback) ( s, value ), t ) -> u)
+            (v -> w -> x -> z)
+            (a1 -> ( List b1, c1 ) -> d1)
+            (e1 -> f1 -> g1)
+            fields
+            h1
+            i1
+            j1
+    ->
+        Builder
+            (a -> ( c, ( b, d ) ) -> e)
+            (f -> ( h, ( g, i ) ) -> j)
+            (k -> ( Field input delta output context element msg, l ) -> ( Field.State input output, y ))
+            (m -> n -> ( Field q1 r1 s1 n t1 u1, o ) -> ( Field.State q1 s1, p ) -> ( Field.State q1 s1, q ))
+            (r -> ( Result (List Field.Feedback) value, ( Field.State v1 s, t ) ) -> u)
+            (v -> ( Field w1 x1 y1 z1 a2 b2, w ) -> ( Field.State w1 y1, x ) -> ( a2, z ))
+            (a1 -> ( List b1, ( b1, c1 ) ) -> d1)
+            (e1 -> ( Field.State input output, f1 ) -> ( Field.State input output, g1 ))
+            ( Field input2 delta2 output2 context2 element2 msg2, fields )
+            d2
+            e2
+            f2
 withField (Field fld) (Builder bdr) =
     Builder
         { reverseSize = bdr.reverseSize >> reverseSize1
@@ -96,6 +126,68 @@ withField (Field fld) (Builder bdr) =
         }
 
 
+done :
+    Builder
+        ((a -> a) -> ( (), fields ) -> ( form, c ))
+        ((d -> d)
+         -> ( (), e )
+         -> ( f, g )
+        )
+        ((() -> ()) -> form -> state)
+        ((j -> () -> () -> ()) -> k -> form -> state -> state)
+        ((n -> n) -> ( Result error (), state ) -> ( Result error e, q ))
+        ((r -> () -> () -> ()) -> form -> state -> u)
+        ((v -> v) -> ( List w, u ) -> ( List element, y ))
+        ((() -> ()) -> state -> state)
+        fields
+        context
+        element
+        msg
+    ->
+        { init : State state
+        , setAt :
+            (( c1 -> c1, d1 -> d1 )
+             ->
+                ( (( e1, f1 )
+                   -> ( Field.State input output, f1 )
+                  )
+                  -> state
+                  -> state
+                , (( k1, l1 )
+                   -> ( m1, n1 )
+                   -> ( k1, m1 )
+                  )
+                  -> form
+                  -> state
+                  -> ( p1, Field.State input output )
+                )
+            )
+            -> input
+            -> State state
+            -> State state
+        , updateAt :
+            context
+            ->
+                (( t1 -> t1, u1 -> u1 )
+                 ->
+                    ( (( v1, w1 )
+                       -> ( Field.State input output, w1 )
+                      )
+                      -> state
+                      -> state
+                    , (( a2, b2 ) -> ( c2, d2 ) -> ( a2, c2 ))
+                      -> form
+                      -> state
+                      -> ( Field input delta output context element msg, Field.State input output )
+                    )
+                )
+            -> Field.Delta delta
+            -> State state
+            -> ( State state, Cmd msg )
+        , submit : k -> State state -> Result (State state) f
+        , view : State state -> u
+        , viewList : State state -> List element
+        }
 done (Builder bdr) =
     let
         reversedFields =
@@ -497,13 +589,13 @@ submit validateSize collectResultsSize reverseSize form_ context state_ =
 
 
 -- CONVERTING TO ELEMENTS
--- renderAll :
---     ((b -> () -> () -> ()) -> form -> state -> element)
---     -> Form form
---     -> State state
---     -> element
 
 
+renderAll :
+    ((b -> () -> () -> ()) -> form -> state -> element)
+    -> Form form
+    -> State state
+    -> element
 renderAll size (Form form_) (State state_) =
     size (\_ () () -> ()) form_ state_
 
