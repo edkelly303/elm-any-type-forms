@@ -25,7 +25,7 @@ import Element.Font as Font
 import Element.Input as Input
 import Element.Keyed
 import FeatherIcons as FI
-import Field exposing (ViewConfig)
+import Field exposing (Field, ViewConfig)
 import Html.Attributes
 import Time
 
@@ -41,37 +41,45 @@ import Time
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-string : String -> (Field.Delta String -> msg) -> Field.Field String String String (Element msg) msg
+string : String -> (Field.Delta String -> msg) -> Field String String String context (Element msg) msg
 string label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
-        , parser = Ok
+        , parser = \_ input -> Ok input
         , renderer = renderTextField
         , label = label
         }
 
 
-float : String -> (Field.Delta String -> msg) -> Field.Field String String Float (Element msg) msg
+float : String -> (Field.Delta String -> msg) -> Field String String Float context (Element msg) msg
 float label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
-        , parser = String.toFloat >> Result.fromMaybe (Field.fail "Must be a number")
+        , parser =
+            \_ input ->
+                input
+                    |> String.toFloat
+                    |> Result.fromMaybe (Field.fail "Must be a number")
         , renderer = renderTextField
         , label = label
         }
 
 
-int : String -> (Field.Delta String -> msg) -> Field.Field String String Int (Element msg) msg
+int : String -> (Field.Delta String -> msg) -> Field String String Int context (Element msg) msg
 int label msg =
     Field.custom
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
-        , parser = String.toInt >> Result.fromMaybe (Field.fail "Must be a whole number")
+        , parser =
+            \_ input ->
+                input
+                    |> String.toInt
+                    |> Result.fromMaybe (Field.fail "Must be a whole number")
         , renderer = renderTextField
         , label = label
         }
@@ -150,7 +158,7 @@ type CalendarBlock
     | Day Date.Date
 
 
-date : String -> (Field.Delta DateDelta -> msg) -> Field.Field DateState DateDelta Date.Date (Element msg) msg
+date : String -> (Field.Delta DateDelta -> msg) -> Field DateState DateDelta Date.Date context (Element msg) msg
 date label deltaMsg =
     Field.custom
         { init = { page = CalendarPage, viewing = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
@@ -248,7 +256,7 @@ date label deltaMsg =
 
                     CalendarPageChanged i ->
                         ( { state | viewing = Date.add Date.Months i state.viewing }, Cmd.none, [] )
-        , parser = \state -> Result.fromMaybe (Field.fail "Must select a date") state.selected
+        , parser = \_ input -> Result.fromMaybe (Field.fail "Must select a date") input.selected
         , renderer = renderDatePicker
         , label = label
         }
@@ -547,13 +555,16 @@ buttonSpacing =
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-radioRow : String -> (Field.Delta delta -> msg) -> List ( delta, Element msg ) -> Field.Field (Maybe delta) delta delta (Element msg) msg
+radioRow : String -> (Field.Delta delta -> msg) -> List ( delta, Element msg ) -> Field (Maybe delta) delta delta context (Element msg) msg
 radioRow label deltaMsg options =
     Field.custom
         { init = Nothing
         , deltaMsg = deltaMsg
         , label = label
-        , parser = Result.fromMaybe (Field.fail "Must select something")
+        , parser =
+            \_ input ->
+                input
+                    |> Result.fromMaybe (Field.fail "Must select something")
         , renderer = radioRenderer wrappedRow options
         , updater =
             \delta input ->
@@ -577,7 +588,7 @@ radioColumn :
     String
     -> (Field.Delta item -> msg)
     -> List ( item, Element msg )
-    -> Field.Field (Maybe item) item item (Element msg) msg
+    -> Field.Field (Maybe item) item item context (Element msg) msg
 radioColumn label deltaMsg options =
     radioRow label deltaMsg options
         |> Field.withView (radioRenderer column options)
@@ -658,7 +669,7 @@ type TimeDelta
     | HoursChanged Int
 
 
-time : String -> (Field.Delta TimeDelta -> msg) -> Field.Field TimeState TimeDelta TimeState (Element msg) msg
+time : String -> (Field.Delta TimeDelta -> msg) -> Field TimeState TimeDelta TimeState context (Element msg) msg
 time label deltaMsg =
     Field.custom
         { init = { hours = 12, minutes = 0 }
@@ -672,7 +683,7 @@ time label deltaMsg =
                     MinutesChanged diff ->
                         ( { state | minutes = state.minutes + diff |> modBy 60 }, Cmd.none, [] )
         , parser =
-            \state ->
+            \_ state ->
                 if state.hours < 0 || state.hours > 23 then
                     Err (Field.fail "Hours must be between 0 & 23")
 
@@ -794,7 +805,7 @@ search :
     -> (Field.Delta (SearchDelta a) -> msg)
     -> (a -> String)
     -> (SearchState a -> Cmd (Result (List a) (List a)))
-    -> Field.Field (SearchState a) (SearchDelta a) a (Element msg) msg
+    -> Field (SearchState a) (SearchDelta a) a context (Element msg) msg
 search label msg toString loadItemsCmd =
     Field.custom
         { init = { search = "", options = NotAsked, selected = Nothing, error = "" }
@@ -853,7 +864,7 @@ search label msg toString loadItemsCmd =
                         , []
                         )
         , parser =
-            \state ->
+            \_ state ->
                 Result.fromMaybe (Field.fail "Must select something") state.selected
         , renderer = renderSearchField toString
         , label = label
@@ -956,7 +967,7 @@ renderSearchField toString { label, input, delta, focusMsg, focused, parsed, sta
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-fibonacci : (Field.Delta String -> msg) -> Field.Field String String Int (Element msg) msg
+fibonacci : (Field.Delta String -> msg) -> Field String String Int context (Element msg) msg
 fibonacci deltaMsg =
     Field.custom
         { init = ""
@@ -967,7 +978,7 @@ fibonacci deltaMsg =
                 , Cmd.none
                 , [ Field.debounce 500 ]
                 )
-        , parser = \input -> String.toInt input |> Result.fromMaybe (Field.fail "Must be a whole number") |> Result.map fib
+        , parser = \_ input -> String.toInt input |> Result.fromMaybe (Field.fail "Must be a whole number") |> Result.map fib
         , renderer =
             renderFibonacci
         , label = "What's your favourite Fibonacci number?"

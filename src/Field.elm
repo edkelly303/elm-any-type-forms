@@ -79,14 +79,14 @@ doNotValidate =
     DontValidate
 
 
-type Field input delta output element msg
+type Field input delta output context element msg
     = Field
         { index : Int
         , init : input
         , deltaMsg : Delta delta -> msg
         , updater : delta -> input -> ( input, Cmd delta, List Opt )
-        , parser : input -> Result Feedback output
-        , validators : List (output -> Maybe Feedback)
+        , parser : context -> input -> Result Feedback output
+        , validators : List (context -> output -> Maybe Feedback)
         , view : ViewConfig input delta output msg -> element
         , id : String
         , label : String
@@ -158,11 +158,11 @@ custom :
     { init : input
     , deltaMsg : Delta delta -> msg
     , updater : delta -> input -> ( input, Cmd delta, List Opt )
-    , parser : input -> Result Feedback output
+    , parser : context -> input -> Result Feedback output
     , renderer : ViewConfig input delta output msg -> element
     , label : String
     }
-    -> Field input delta output element msg
+    -> Field input delta output context element msg
 custom args =
     Field
         { index = 0
@@ -181,7 +181,7 @@ custom args =
 -- EXTRACTING STATE FROM FIELDS
 
 
-init : Field input delta output element msg -> State input output
+init : Field input delta output context element msg -> State input output
 init (Field f) =
     { input = f.init
     , validated = Intact
@@ -190,8 +190,8 @@ init (Field f) =
     }
 
 
-update : Field input delta output element msg -> Delta delta -> State input output -> ( State input output, Cmd msg )
-update (Field field_) wrappedDelta fieldState =
+update : Field input delta output context element msg -> Delta delta -> context -> State input output -> ( State input output, Cmd msg )
+update (Field field_) wrappedDelta context fieldState =
     case wrappedDelta of
         Focused ->
             ( { fieldState | focused = True }
@@ -320,13 +320,13 @@ update (Field field_) wrappedDelta fieldState =
 
         ExecuteParsing ->
             ( { fieldState | status = Idle_ }
-                |> validate (Field field_)
+                |> validate (Field field_) context
             , Cmd.none
             )
 
 
-submit : Field input delta output element msg -> State input output -> Result (State input output) output
-submit field fieldState =
+submit : Field input delta output context element msg -> context -> State input output -> Result (State input output) output
+submit field context fieldState =
     case fieldState.validated of
         Passed output _ ->
             Ok output
@@ -335,23 +335,23 @@ submit field fieldState =
             Err fieldState
 
         Intact ->
-            validate field fieldState
-                |> submit field
+            validate field context fieldState
+                |> submit field context
 
 
-validate : Field input delta output element msg -> State input output -> State input output
-validate (Field { parser, validators }) fieldState =
+validate : Field input delta output context element msg -> context -> State input output -> State input output
+validate (Field { parser, validators }) context fieldState =
     { fieldState
         | status = Idle_
         , validated =
             case
                 fieldState.input
-                    |> parser
+                    |> parser context
                     |> Result.mapError List.singleton
                     |> Result.andThen
                         (\parsed ->
                             validators
-                                |> List.map (\v -> v parsed)
+                                |> List.map (\v -> v context parsed)
                                 |> accumulateErrors parsed
                         )
             of
@@ -377,7 +377,7 @@ accumulateErrors a list =
             Err errors
 
 
-view : Field input delta output element msg -> State input output -> element
+view : Field input delta output context element msg -> State input output -> element
 view (Field f) s =
     f.view
         { input = s.input
@@ -407,40 +407,40 @@ view (Field f) s =
 -- BUILDING FIELDS
 
 
-withInitialState : input -> Field input delta output element msg -> Field input delta output element msg
+withInitialState : input -> Field input delta output context element msg -> Field input delta output context element msg
 withInitialState input (Field f) =
     Field { f | init = input }
 
 
-withValidator : (output -> Maybe Feedback) -> Field input delta output element msg -> Field input delta output element msg
+withValidator : (context -> output -> Maybe Feedback) -> Field input delta output context element msg -> Field input delta output context element msg
 withValidator v (Field f) =
     Field { f | validators = v :: f.validators }
 
 
-failIf : (output -> Bool) -> String -> Field input delta output element msg -> Field input delta output element msg
+failIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
 failIf test message field =
     withValidator
         (validator test fail message)
         field
 
 
-warnIf : (output -> Bool) -> String -> Field input delta output element msg -> Field input delta output element msg
+warnIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
 warnIf test message field =
     withValidator
         (validator test warn message)
         field
 
 
-infoIf : (output -> Bool) -> String -> Field input delta output element msg -> Field input delta output element msg
+infoIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
 infoIf test message field =
     withValidator
         (validator test info message)
         field
 
 
-validator : (output -> Bool) -> (String -> Feedback) -> String -> output -> Maybe Feedback
-validator test feedback message output =
-    if test output then
+validator : (context -> output -> Bool) -> (String -> Feedback) -> String -> context -> output -> Maybe Feedback
+validator test feedback message context output =
+    if test context output then
         Just (feedback message)
 
     else
@@ -449,8 +449,8 @@ validator test feedback message output =
 
 withView :
     (ViewConfig input delta output msg -> element2)
-    -> Field input delta output element msg
-    -> Field input delta output element2 msg
+    -> Field input delta output context element msg
+    -> Field input delta output context element2 msg
 withView r (Field f) =
     Field
         { index = f.index

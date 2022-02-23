@@ -83,35 +83,36 @@ myForm =
     Form.form
         |> Form.withField
             (Widgets.string "What is your name?" Field0Changed
-                |> Field.failIf (\x -> String.length x < 1) "Must be at least 1 character"
+                |> Field.failIf (\_ x -> String.length x < 1) "Must be at least 1 character"
                 |> Field.warnIf
-                    (\x ->
+                    (\_ x ->
                         String.uncons x
                             |> Maybe.map Tuple.first
                             |> Maybe.map Char.isLower
                             |> Maybe.withDefault True
                     )
                     "Names usually start with a capital letter"
-                |> Field.infoIf (\x -> String.length x > 20) "Hey, that's a pretty long name you have there!"
-                |> Field.infoIf (\x -> String.toLower x == "rebecca") "Let me guess, last night you dreamt you went to Manderley again?"
+                |> Field.infoIf (\_ x -> String.length x > 20) "Hey, that's a pretty long name you have there!"
+                |> Field.infoIf (\_ x -> String.toLower x == "rebecca") "Let me guess, last night you dreamt you went to Manderley again?"
+                |> Field.withValidator (\{ctx} _ -> if ctx >= 1 then Just (Field.info ("Context is " ++ String.fromInt ctx ++ "!")) else Nothing)
             )
         |> Form.withField
             (Widgets.float "What shoe size do you wear?" Field1Changed
-                |> Field.warnIf (\x -> x > 15) "Gosh those are big feet!"
-                |> Field.warnIf (\x -> x < 4) "Gosh those are tiny feet!"
-                |> Field.failIf (\x -> x < 0) "You can't have a negative shoe size."
+                |> Field.warnIf (\_ x -> x > 15) "Gosh those are big feet!"
+                |> Field.warnIf (\_ x -> x < 4) "Gosh those are tiny feet!"
+                |> Field.failIf (\_ x -> x < 0) "You can't have a negative shoe size."
             )
         |> Form.withField
             (Widgets.int "How many dogs have you seen today?" Field2Changed
-                |> Field.failIf (\x -> x < 0) "Really? What does a negative dog look like?"
-                |> Field.infoIf (\x -> x == 101) "Hello Cruella!"
+                |> Field.failIf (\_ x -> x < 0) "Really? What does a negative dog look like?"
+                |> Field.infoIf (\_ x -> x == 101) "Hello Cruella!"
             )
         |> Form.withField (Widgets.date "What is today's date?" Field3Changed)
         |> Form.withField (Widgets.time "What time is it?" Field4Changed)
         |> Form.withField
             (Widgets.search "Who is your favourite Star Wars character?" Field5Changed identity getStarWarsNames
-                |> Field.failIf (\x -> x == "Jar Jar Binks") "Jar Jar Binks cannot be your favourite character."
-                |> Field.infoIf (\x -> x == "Lando Calrissian") "You are a person of taste!"
+                |> Field.failIf (\_ x -> x == "Jar Jar Binks") "Jar Jar Binks cannot be your favourite character."
+                |> Field.infoIf (\_ x -> x == "Lando Calrissian") "You are a person of taste!"
             )
         |> Form.withField (Widgets.fibonacci Field6Changed)
         |> Form.withField
@@ -140,7 +141,7 @@ update msg model =
         updateAt fieldIndex delta =
             let
                 ( form, cmd ) =
-                    myForm.updateAt fieldIndex delta model.form
+                    myForm.updateAt {ctx = 2} fieldIndex delta model.form
             in
             ( { model | form = form }, cmd )
     in
@@ -170,7 +171,7 @@ update msg model =
             updateAt Form.i7 delta
 
         SubmitClicked ->
-            case myForm.submit model.form of
+            case myForm.submit {ctx = 1} model.form of
                 Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, ( _, () ) ) ) ) ) ) ) ) ->
                     ( { model
                         | page =
