@@ -93,7 +93,7 @@ withField :
             (r -> ( Result (List Field.Feedback) ( s, value ), t ) -> u)
             (v -> w -> x -> z)
             (a1 -> ( List b1, c1 ) -> d1)
-            (e1 -> f1 -> g1)
+            (e1 -> f1 -> f1)
             fields
             h1
             i1
@@ -107,7 +107,7 @@ withField :
             (r -> ( Result (List Field.Feedback) value, ( Field.State v1 s, t ) ) -> u)
             (v -> ( Field w1 x1 y1 z1 a2 b2, w ) -> ( Field.State w1 y1, x ) -> ( a2, z ))
             (a1 -> ( List b1, ( b1, c1 ) ) -> d1)
-            (e1 -> ( Field.State input output, f1 ) -> ( Field.State input output, g1 ))
+            (e1 -> ( Field.State input output, f1 ) -> ( Field.State input output, f1 ))
             ( Field input2 delta2 output2 context2 element2 msg2, fields )
             d2
             e2
@@ -134,10 +134,10 @@ done :
          -> ( f, g )
         )
         ((() -> ()) -> form -> state)
-        ((j -> () -> () -> ()) -> k -> form -> state -> state)
+        ((context -> () -> () -> ()) -> context -> form -> state -> state)
         ((n -> n) -> ( Result error (), state ) -> ( Result error e, q ))
         ((r -> () -> () -> ()) -> form -> state -> u)
-        ((v -> v) -> ( List w, u ) -> ( List element, y ))
+        ((v -> v) -> ( List element, u ) -> ( List element, y ))
         ((() -> ()) -> state -> state)
         fields
         context
@@ -148,18 +148,18 @@ done :
         , setAt :
             (( c1 -> c1, d1 -> d1 )
              ->
-                ( (( e1, f1 )
+                ( (( Field.State input output, f1 )
                    -> ( Field.State input output, f1 )
                   )
                   -> state
                   -> state
-                , (( k1, l1 )
-                   -> ( m1, n1 )
-                   -> ( k1, m1 )
+                , (( Field input delta1 output context1 element2 msg1, l1 )
+                   -> ( Field.State input output, n1 )
+                   -> ( Field input delta1 output context1 element2 msg1, Field.State input output )
                   )
                   -> form
                   -> state
-                  -> ( p1, Field.State input output )
+                  -> ( Field input delta1 output context1 element2 msg1, Field.State input output )
                 )
             )
             -> input
@@ -170,21 +170,24 @@ done :
             ->
                 (( t1 -> t1, u1 -> u1 )
                  ->
-                    ( (( v1, w1 )
+                    ( (( Field.State input output, w1 )
                        -> ( Field.State input output, w1 )
                       )
                       -> state
                       -> state
-                    , (( a2, b2 ) -> ( c2, d2 ) -> ( a2, c2 ))
+                    , (( Field input delta output context element1 msg, b2 )
+                       -> ( Field.State input output, w1 )
+                       -> ( Field input delta output context element1 msg, Field.State input output )
+                      )
                       -> form
                       -> state
-                      -> ( Field input delta output context element msg, Field.State input output )
+                      -> ( Field input delta output context element1 msg, Field.State input output )
                     )
                 )
             -> Field.Delta delta
             -> State state
             -> ( State state, Cmd msg )
-        , submit : k -> State state -> Result (State state) f
+        , submit : context -> State state -> Result (State state) f
         , view : State state -> u
         , viewList : State state -> List element
         }
@@ -210,53 +213,42 @@ done (Builder bdr) =
 
 
 -- INDEXES FOR SETTING FIELDS
--- fieldStateUnfocuser1 :
---     (rest -> rest)
---     -> ( Field.State input output, rest )
---     -> ( Field.State input output, rest )
 
 
+fieldStateUnfocuser1 :
+    (rest -> rest)
+    -> ( Field.State input output, rest )
+    -> ( Field.State input output, rest )
 fieldStateUnfocuser1 =
     Tuple.mapBoth (\fs -> { fs | focused = False })
 
 
-
--- fieldAndFieldStateGetter0 :
---     rest
---     -> rest
-
-
+fieldAndFieldStateGetter0 : rest -> rest
 fieldAndFieldStateGetter0 =
     identity
 
 
-
--- fieldAndFieldStateGetter1 :
---     (restFields -> restFieldStates -> ( Field.Field input2 delta2 output2 context2 element2 msg2, Field.State input2 output2 ))
---     -> ( Field.Field input delta output context element msg, restFields )
---     -> ( Field.State input output, restFieldStates )
---     -> ( Field.Field input2 delta2 output2 context2 element2 msg2, Field.State input2 output2 )
-
-
+fieldAndFieldStateGetter1 :
+    (restFields -> restFieldStates -> ( Field.Field input2 delta2 output2 context2 element2 msg2, Field.State input2 output2 ))
+    -> ( Field.Field input delta output context element msg, restFields )
+    -> ( Field.State input output, restFieldStates )
+    -> ( Field.Field input2 delta2 output2 context2 element2 msg2, Field.State input2 output2 )
 fieldAndFieldStateGetter1 next ( _, restFields ) ( _, restFieldStates ) =
     next restFields restFieldStates
 
 
-
--- getFieldAndFieldState :
---     ((( Field.Field input delta output context element msg, restFields )
---       -> ( Field.State input output, restFieldStates )
---       -> ( Field.Field input delta output context element msg, Field.State input output )
---      )
---      -> form
---      -> state
---      -> ( Field.Field input delta output context element msg, Field.State input output )
---     )
---     -> form
---     -> state
---     -> ( Field.Field input delta output context element msg, Field.State input output )
-
-
+getFieldAndFieldState :
+    ((( Field.Field input delta output context element msg, restFields )
+      -> ( Field.State input output, restFieldStates )
+      -> ( Field.Field input delta output context element msg, Field.State input output )
+     )
+     -> form
+     -> state
+     -> ( Field.Field input delta output context element msg, Field.State input output )
+    )
+    -> form
+    -> state
+    -> ( Field.Field input delta output context element msg, Field.State input output )
 getFieldAndFieldState getter form_ state_ =
     getter
         (\( field_, _ ) ( fieldState, _ ) -> ( field_, fieldState ))
@@ -264,31 +256,20 @@ getFieldAndFieldState getter form_ state_ =
         state_
 
 
-
--- fieldStateSetter0 :
---     rest
---     -> rest
-
-
+fieldStateSetter0 : rest -> rest
 fieldStateSetter0 =
     identity
 
 
-
--- fieldStateSetter1 :
---     (rest -> rest)
---     -> ( Field.State input output, rest )
---     -> ( Field.State input output, rest )
-
-
+fieldStateSetter1 :
+    (rest -> rest)
+    -> ( Field.State input output, rest )
+    -> ( Field.State input output, rest )
 fieldStateSetter1 mapRest ( this, rest ) =
     Tuple.mapBoth identity mapRest ( this, rest )
 
 
-
--- i0 : a -> a
-
-
+i0 : a -> a
 i0 =
     identity
 
@@ -333,39 +314,36 @@ i10 =
     i9 >> i1
 
 
-
--- compose :
---     ( fst -> fst2, snd -> snd2 )
---     -> ( fst2 -> fst3, snd2 -> snd3 )
---     -> ( fst -> fst3, snd -> snd3 )
-
-
+compose :
+    ( fst -> fst2, snd -> snd2 )
+    -> ( fst2 -> fst3, snd2 -> snd3 )
+    -> ( fst -> fst3, snd -> snd3 )
 compose ( fst1To2, snd1To2 ) ( fst2To3, snd2To3 ) =
     ( fst1To2 >> fst2To3, snd1To2 >> snd2To3 )
 
 
 
 -- SETTING FIELDS
--- initializeField :
---     Form form
---     ->
---         (( a -> a, b -> b )
---          ->
---             ( (( Field.State input output, rest ) -> ( Field.State input output, rest )) -> state -> state
---             , (( Field input delta output context element msg, restFields )
---                -> ( Field.State input output, restFieldStates )
---                -> ( Field input delta output context element msg, Field.State input output )
---               )
---               -> form
---               -> state
---               -> ( Field input delta output context element msg, Field.State input output )
---             )
---         )
---     -> input
---     -> State state
---     -> State state
 
 
+initializeField :
+    Form form
+    ->
+        (( a -> a, b -> b )
+         ->
+            ( (( Field.State input output, rest ) -> ( Field.State input output, rest )) -> state -> state
+            , (( Field input delta output context element msg, restFields )
+               -> ( Field.State input output, restFieldStates )
+               -> ( Field input delta output context element msg, Field.State input output )
+              )
+              -> form
+              -> state
+              -> ( Field input delta output context element msg, Field.State input output )
+            )
+        )
+    -> input
+    -> State state
+    -> State state
 initializeField (Form form_) index input (State fieldStates) =
     let
         ( fieldStateSetter, fieldAndFieldStateGetter ) =
@@ -384,29 +362,26 @@ initializeField (Form form_) index input (State fieldStates) =
         )
 
 
-
--- updateField :
---     ((() -> ()) -> fieldStates -> fieldStates)
---     -> Form form
---     ->
---         (( a -> a, b -> b )
---          ->
---             ( (( Field.State input output, restFieldStates ) -> ( Field.State input output, restFieldStates )) -> fieldStates -> fieldStates
---             , (( Field input delta output context element msg, restFields )
---                -> ( Field.State input output, restFieldStates )
---                -> ( Field input delta output context element msg, Field.State input output )
---               )
---               -> form
---               -> fieldStates
---               -> ( Field input delta output context element msg, Field.State input output )
---             )
---         )
---     -> Field.Delta delta
---     -> context
---     -> State fieldStates
---     -> ( State fieldStates, Cmd msg )
-
-
+updateField :
+    ((() -> ()) -> fieldStates -> fieldStates)
+    -> Form form
+    -> context
+    ->
+        (( a -> a, b -> b )
+         ->
+            ( (( Field.State input output, restFieldStates ) -> ( Field.State input output, restFieldStates )) -> fieldStates -> fieldStates
+            , (( Field input delta output context element msg, restFields )
+               -> ( Field.State input output, restFieldStates )
+               -> ( Field input delta output context element msg, Field.State input output )
+              )
+              -> form
+              -> fieldStates
+              -> ( Field input delta output context element msg, Field.State input output )
+            )
+        )
+    -> Field.Delta delta
+    -> State fieldStates
+    -> ( State fieldStates, Cmd msg )
 updateField fieldStateUnfocuser (Form form_) context index wrappedDelta (State fieldStates) =
     let
         ( fieldStateSetter, fieldAndFieldStateGetter ) =
@@ -439,37 +414,36 @@ updateField fieldStateUnfocuser (Form form_) context index wrappedDelta (State f
 
 
 -- EXTRACTING STATE
--- stateSize1 :
---     (restFields -> restFieldStates)
---     -> ( Field input delta output context element msg, restFields )
---     -> ( Field.State input output, restFieldStates )
 
 
+stateSize1 :
+    (restFields -> restFieldStates)
+    -> ( Field input delta output context element msg, restFields )
+    -> ( Field.State input output, restFieldStates )
 stateSize1 next form_ =
     Tuple.mapBoth Field.init next form_
 
 
 
 -- VALIDATING ALL FIELDS
--- validateAll :
---     ((() -> () -> ()) -> form -> state -> state)
---     -> Form form
---     -> State state
---     -> State state
 
 
+validateAll :
+    ((a -> () -> () -> ()) -> context -> form -> state -> state)
+    -> context
+    -> Form form
+    -> State state
+    -> State state
 validateAll size context (Form form_) (State state_) =
     State (size (\_ () () -> ()) context form_ state_)
 
 
-
--- validateSize1 :
---     (rest0 -> rest1 -> rest2)
---     -> ( Field input delta output context element msg, rest0 )
---     -> ( Field.State input output, rest1 )
---     -> ( Field.State input output, rest2 )
-
-
+validateSize1 :
+    (context -> rest0 -> rest1 -> rest2)
+    -> context
+    -> ( Field input delta output context element msg, rest0 )
+    -> ( Field.State input output, rest1 )
+    -> ( Field.State input output, rest2 )
 validateSize1 next context form_ state_ =
     mapBoth2
         (\field fieldState ->
@@ -487,24 +461,21 @@ validateSize1 next context form_ state_ =
 
 
 -- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
--- collectResults :
---     ((a -> a) -> ( Result error (), state ) -> ( b, c ))
---     -> State state
---     -> b
 
 
+collectResults :
+    ((a -> a) -> ( Result error (), state ) -> ( b, c ))
+    -> State state
+    -> b
 collectResults size (State state_) =
     size identity ( Ok (), state_ )
         |> Tuple.first
 
 
-
--- collectResultsSize1 :
---     (( Result (List Field.Feedback) ( output, value ), restFieldStates ) -> a)
---     -> ( Result (List Field.Feedback) value, ( Field.State input output, restFieldStates ) )
---     -> a
-
-
+collectResultsSize1 :
+    (( Result (List Field.Feedback) ( output, value ), restFieldStates ) -> a)
+    -> ( Result (List Field.Feedback) value, ( Field.State input output, restFieldStates ) )
+    -> a
 collectResultsSize1 next ( s, ( fst, rst ) ) =
     case s of
         Ok tuple ->
@@ -532,50 +503,45 @@ collectResultsSize1 next ( s, ( fst, rst ) ) =
 
 
 -- REVERSING TUPLES
--- reverseTuple :
---     ((a -> a) -> ( (), b ) -> ( c, d ))
---     -> b
---     -> c
 
 
+reverseTuple :
+    ((a -> a) -> ( (), b ) -> ( c, d ))
+    -> b
+    -> c
 reverseTuple size results =
     size identity ( (), results )
         |> Tuple.first
 
 
-
--- reverseSize1 :
---     (( ( a, b ), c ) -> d)
---     -> ( b, ( a, c ) )
---     -> d
-
-
+reverseSize1 :
+    (( ( a, b ), c ) -> d)
+    -> ( b, ( a, c ) )
+    -> d
 reverseSize1 next ( s, ( fst, rest ) ) =
     next ( ( fst, s ), rest )
 
 
-
--- anotherReverseSize1 :
---     (( ( a, b ), c ) -> d)
---     -> ( b, ( a, c ) )
---     -> d
-
-
+anotherReverseSize1 :
+    (( ( a, b ), c ) -> d)
+    -> ( b, ( a, c ) )
+    -> d
 anotherReverseSize1 next ( s, ( fst, rest ) ) =
     next ( ( fst, s ), rest )
 
 
 
 -- SUBMITTING A FORM
--- submit :
---     ((() -> () -> ()) -> form -> state -> state)
---     -> ((a -> a) -> ( Result error (), state ) -> ( Result c d, e ))
---     -> ((f -> f) -> ( (), d ) -> ( g, h ))
---     -> Form form
---     -> State state
---     -> Result (State state) g
 
 
+submit :
+    ((context -> () -> () -> ()) -> context -> form -> state -> state)
+    -> ((a -> a) -> ( Result error (), state ) -> ( Result c d, e ))
+    -> ((f -> f) -> ( (), d ) -> ( g, h ))
+    -> Form form
+    -> context
+    -> State state
+    -> Result (State state) g
 submit validateSize collectResultsSize reverseSize form_ context state_ =
     let
         newState =
@@ -600,14 +566,11 @@ renderAll size (Form form_) (State state_) =
     size (\_ () () -> ()) form_ state_
 
 
-
--- renderSize1 :
---     (rest0 -> rest1 -> rest2)
---     -> ( Field input delta output context element msg, rest0 )
---     -> ( Field.State input output, rest1 )
---     -> ( element, rest2 )
-
-
+renderSize1 :
+    (rest0 -> rest1 -> rest2)
+    -> ( Field input delta output context element msg, rest0 )
+    -> ( Field.State input output, rest1 )
+    -> ( element, rest2 )
 renderSize1 next form_ state_ =
     mapBoth2
         Field.view
@@ -616,56 +579,44 @@ renderSize1 next form_ state_ =
         state_
 
 
-
--- collectElements :
---     ((a -> a) -> ( List element, restElements ) -> ( d, e ))
---     -> restElements
---     -> d
-
-
+collectElements :
+    ((a -> a) -> ( List element, restElements ) -> ( d, e ))
+    -> restElements
+    -> d
 collectElements size elements =
     size identity ( [], elements )
         |> Tuple.first
 
 
-
--- collectElementsSize1 :
---     (( List element, restElements ) -> next)
---     -> ( List element, ( element, restElements ) )
---     -> next
-
-
+collectElementsSize1 :
+    (( List element, restElements ) -> next)
+    -> ( List element, ( element, restElements ) )
+    -> next
 collectElementsSize1 next ( s, ( fst, rst ) ) =
     next ( fst :: s, rst )
 
 
-
--- view :
---     ((b -> () -> () -> ())
---      -> form
---      -> state
---      -> restElements
---     )
---     -> ((h -> h) -> ( List element, restElements ) -> ( List element, restElements2 ))
---     -> Form form
---     -> State state
---     -> List element
-
-
+view :
+    ((b -> () -> () -> ())
+     -> form
+     -> state
+     -> restElements
+    )
+    -> ((h -> h) -> ( List element, restElements ) -> ( List element, restElements2 ))
+    -> Form form
+    -> State state
+    -> List element
 view renderSize collectElementsSize form_ state_ =
     renderAll renderSize form_ state_
         |> collectElements collectElementsSize
         |> List.reverse
 
 
-
--- mapBoth2 :
---     (this0 -> this1 -> this2)
---     -> (rest0 -> rest1 -> rest2)
---     -> ( this0, rest0 )
---     -> ( this1, rest1 )
---     -> ( this2, rest2 )
-
-
+mapBoth2 :
+    (this0 -> this1 -> this2)
+    -> (rest0 -> rest1 -> rest2)
+    -> ( this0, rest0 )
+    -> ( this1, rest1 )
+    -> ( this2, rest2 )
 mapBoth2 mapThis mapRest ( this0, rest0 ) ( this1, rest1 ) =
     ( mapThis this0 this1, mapRest rest0 rest1 )
