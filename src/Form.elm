@@ -1,6 +1,7 @@
 module Form exposing
     ( Form
     , State
+    , build
     , buildWithContext
     , form
     , i0
@@ -14,7 +15,7 @@ module Form exposing
     , i7
     , i8
     , i9
-    , withField, build
+    , withField
     )
 
 import Field exposing (Field(..))
