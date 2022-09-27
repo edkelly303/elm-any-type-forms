@@ -3,6 +3,7 @@ module POC exposing (main)
 import Browser
 import Html exposing (Html, button, div, input, text)
 import Html.Events exposing (onClick, onInput)
+import Time
 
 
 
@@ -98,6 +99,17 @@ type alias State this rest =
     ( this, rest )
 
 
+type Field state delta output
+    = Field { state : state, delta : D delta, output : Result (List String) output }
+
+
+type D delta
+    = Update delta
+    | StartDebouncing delta Time.Posix
+    | CheckDebouncingTimeout delta Time.Posix
+    | ExecuteParsing
+
+
 f0 =
     identity
 
@@ -130,23 +142,28 @@ set x =
 -- STEP FUNCTIONS
 
 
-combine1 next msg ( setter, setters ) =
-    ( \x -> setter (set x) msg, next msg setters )
-
-
-update1 next ( updater, updaters ) ( delta, deltas ) ( state, states ) =
-    ( case delta of
-        Just d ->
-            updater d state
-
-        Nothing ->
-            state
-    , next updaters deltas states
+combine1 next msg ( field_, fields ) =
+    ( { update = field_.update
+      , view = field_.view
+      , toDelta = \x -> field_.setter (set x) msg
+      }
+    , next msg fields
     )
 
 
-view1 next toMsg ( fieldView, fieldViews ) ( toDelta, toDeltas ) ( state, states ) =
-    ( fieldView (\x -> toMsg (toDelta x)) state, next toMsg fieldViews toDeltas states )
+update1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
+    ( case delta of
+        Just d ->
+            field_.update d state
+
+        Nothing ->
+            state
+    , next fields deltas states
+    )
+
+
+view1 next toMsg ( field_, fields ) ( state, states ) =
+    ( field_.view (\x -> toMsg (field_.toDelta x)) state, next toMsg fields states )
 
 
 toList1 next ( list, ( item, items ) ) =
@@ -168,15 +185,11 @@ new output toMsg =
     , viewX = identity
     , toListX = identity
     , reverseStateX = identity
-    , reverseDeltaX = identity
-    , reverseUpdateX = identity
-    , reverseViewX = identity
+    , reverseFieldX = identity
     , fieldStates = End
-    , fieldUpdates = End
-    , fieldSetters = End
-    , fieldViews = End
-    , toMsg = toMsg
+    , fields = End
     , emptyMsg = End
+    , toMsg = toMsg
     , output = output
     }
 
@@ -188,43 +201,37 @@ field fieldSetter fieldState fieldUpdate fieldView f =
     , viewX = f.viewX >> view1
     , toListX = f.toListX >> toList1
     , reverseStateX = f.reverseStateX >> reverse1
-    , reverseDeltaX = f.reverseDeltaX >> reverse1
-    , reverseUpdateX = f.reverseUpdateX >> reverse1
-    , reverseViewX = f.reverseViewX >> reverse1
+    , reverseFieldX = f.reverseFieldX >> reverse1
     , fieldStates = ( fieldState, f.fieldStates )
-    , fieldUpdates = ( fieldUpdate, f.fieldUpdates )
-    , fieldViews = ( fieldView, f.fieldViews )
-    , fieldSetters = ( fieldSetter, f.fieldSetters )
-    , toMsg = f.toMsg
+    , fields =
+        ( { update = fieldUpdate
+          , view = fieldView
+          , setter = fieldSetter
+          }
+        , f.fields
+        )
     , emptyMsg = ( Nothing, f.emptyMsg )
+    , toMsg = f.toMsg
     , output = f.output
     }
 
 
 end f =
     let
-        reversedToDeltas =
-            f.combineX (\_ End -> End) f.emptyMsg f.fieldSetters
-
-        fieldToDeltas =
-            f.reverseDeltaX identity ( End, reversedToDeltas ) |> Tuple.first
-
         fieldStates =
             f.reverseStateX identity ( End, f.fieldStates ) |> Tuple.first
 
-        fieldUpdates =
-            f.reverseUpdateX identity ( End, f.fieldUpdates ) |> Tuple.first
-
-        fieldViews =
-            f.reverseViewX identity ( End, f.fieldViews ) |> Tuple.first
+        fields =
+            f.combineX (\_ End -> End) f.emptyMsg f.fields
+                |> (\x -> f.reverseFieldX Tuple.first ( End, x ))
     in
     { init = fieldStates
     , update =
         \ds ss ->
-            f.updateX (\End End End -> End) fieldUpdates ds ss
+            f.updateX (\End End End -> End) fields ds ss
     , view =
         \ss ->
-            f.viewX (\_ End End End -> End) f.toMsg fieldViews fieldToDeltas ss
+            f.viewX (\_ End End -> End) f.toMsg fields ss
                 |> Tuple.pair []
                 |> f.toListX identity
                 |> Tuple.first
