@@ -31,24 +31,24 @@ form =
         |> end
 
 
-intView toMsg toDelta state =
-    button [ onClick (toMsg (toDelta 2)) ] [ text (String.fromInt state) ]
+intView toMsg  state =
+    button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
 
 
 intUpdate delta state =
     state // delta
 
 
-floatView toMsg toDelta state =
-    button [ onClick (toMsg (toDelta 2.1)) ] [ text (String.fromFloat state) ]
+floatView toMsg  state =
+    button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
 
 
 floatUpdate delta state =
     state + delta
 
 
-stringView toMsg toDelta state =
-    input [ onInput (toMsg << toDelta) ] [ text state ]
+stringView toMsg  state =
+    input [ onInput toMsg ] [ text state ]
 
 
 stringUpdate delta state =
@@ -126,7 +126,7 @@ update1 next ( updater, updaters ) ( delta, deltas ) ( state, states ) =
 
 
 view1 next toMsg ( fieldView, fieldViews ) ( toDelta, toDeltas ) ( state, states ) =
-    ( fieldView toMsg toDelta state, next toMsg fieldViews toDeltas states )
+    ( fieldView (\x -> toMsg (toDelta x)) state, next toMsg fieldViews toDeltas states )
 
 
 toList1 next ( list, ( item, items ) ) =
