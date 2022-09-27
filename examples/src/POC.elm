@@ -166,12 +166,12 @@ view1 next toMsg ( field_, fields ) ( state, states ) =
     ( field_.view (\x -> toMsg (field_.toDelta x)) state, next toMsg fields states )
 
 
-toList1 next ( list, ( item, items ) ) =
-    next ( item :: list, items )
+toList1 ( list, ( item, items ) ) =
+    ( item :: list, items )
 
 
-reverse1 next ( s, ( fst, rest ) ) =
-    next ( ( fst, s ), rest )
+reverse1 ( s, ( fst, rest ) ) =
+    ( ( fst, s ), rest )
 
 
 unfurl1 ( toX, ( a, b ) ) =
@@ -219,11 +219,16 @@ field fieldSetter fieldState fieldUpdate fieldView f =
 end f =
     let
         fieldStates =
-            f.reverseStateX identity ( End, f.fieldStates ) |> Tuple.first
+            f.fieldStates
+                |> Tuple.pair End
+                |> f.reverseStateX
+                |> Tuple.first
 
         fields =
             f.combineX (\_ End -> End) f.emptyMsg f.fields
-                |> (\x -> f.reverseFieldX Tuple.first ( End, x ))
+                |> Tuple.pair End
+                |> f.reverseFieldX
+                |> Tuple.first
     in
     { init = fieldStates
     , update =
@@ -233,10 +238,13 @@ end f =
         \ss ->
             f.viewX (\_ End End -> End) f.toMsg fields ss
                 |> Tuple.pair []
-                |> f.toListX identity
+                |> f.toListX
                 |> Tuple.first
                 |> List.reverse
     , submit =
         \ss ->
-            f.unfurlX ( f.output, ss ) |> Tuple.first
+            ss
+                |> Tuple.pair f.output
+                |> f.unfurlX
+                |> Tuple.first
     }
