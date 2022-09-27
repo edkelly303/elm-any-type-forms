@@ -10,13 +10,14 @@ import Html.Events exposing (onClick, onInput)
 
 
 type alias Model =
-    State Int (State Float (State String End))
     --( Int, ( Float, ( String, End ) ) )
+    State Int (State Float (State String End))
 
 
-type Msg
-    = FormMsg (Delta Int (Delta Float (Delta String End)))
+type
+    Msg
     --= FormMsg ( Maybe Int, ( Maybe Float, ( Maybe String, End ) ) )
+    = FormMsg (Delta Int (Delta Float (Delta String End)))
 
 
 type alias User =
@@ -25,13 +26,13 @@ type alias User =
 
 form =
     new User FormMsg
-        |> add f0 100 intUpdate intView
-        |> add f1 0.1 floatUpdate floatView
-        |> add f2 "hey" stringUpdate stringView
+        |> field0 100 intUpdate intView
+        |> field1 0.1 floatUpdate floatView
+        |> field2 "hey" stringUpdate stringView
         |> end
 
 
-intView toMsg  state =
+intView toMsg state =
     button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
 
 
@@ -39,7 +40,7 @@ intUpdate delta state =
     state // delta
 
 
-floatView toMsg  state =
+floatView toMsg state =
     button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
 
 
@@ -47,7 +48,7 @@ floatUpdate delta state =
     state + delta
 
 
-stringView toMsg  state =
+stringView toMsg state =
     input [ onInput toMsg ] [ text state ]
 
 
@@ -84,11 +85,18 @@ main =
 
 -- LIBRARY CODE
 
-type End = End
 
-type alias Delta this rest = (Maybe this, rest)
+type End
+    = End
 
-type alias State this rest = (this, rest)
+
+type alias Delta this rest =
+    ( Maybe this, rest )
+
+
+type alias State this rest =
+    ( this, rest )
+
 
 f0 =
     identity
@@ -100,6 +108,18 @@ f1 =
 
 f2 =
     f1 >> f1
+
+
+field0 =
+    field f0
+
+
+field1 =
+    field f1
+
+
+field2 =
+    field f2
 
 
 set x =
@@ -161,7 +181,7 @@ new output toMsg =
     }
 
 
-add fieldSetter fieldState fieldUpdate fieldView f =
+field fieldSetter fieldState fieldUpdate fieldView f =
     { unfurlX = f.unfurlX >> unfurl1
     , combineX = f.combineX >> combine1
     , updateX = f.updateX >> update1
