@@ -1,7 +1,7 @@
 module Form exposing
     ( Form
     , State
-    , done
+    , buildWithContext
     , form
     , i0
     , i1
@@ -14,7 +14,7 @@ module Form exposing
     , i7
     , i8
     , i9
-    , withField
+    , withField, build
     )
 
 import Field exposing (Field(..))
@@ -126,7 +126,7 @@ withField (Field fld) (Builder bdr) =
         }
 
 
-done :
+buildWithContext :
     Builder
         ((a -> a) -> ( (), fields ) -> ( form, c ))
         ((d -> d)
@@ -191,7 +191,7 @@ done :
         , view : State state -> u
         , viewList : State state -> List element
         }
-done (Builder bdr) =
+buildWithContext (Builder bdr) =
     let
         reversedFields =
             reverseTuple bdr.reverseSize bdr.fields
@@ -206,6 +206,89 @@ done (Builder bdr) =
     , setAt = initializeField form_
     , updateAt = updateField bdr.fieldStateUnfocuser form_
     , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
+    , view = renderAll bdr.renderSize form_
+    , viewList = view bdr.renderSize bdr.collectElementsSize form_
+    }
+
+
+build :
+    Builder
+        ((a -> a) -> ( (), fields ) -> ( form, c ))
+        ((d -> d)
+         -> ( (), e )
+         -> ( f, g )
+        )
+        ((() -> ()) -> form -> state)
+        ((() -> () -> () -> ()) -> () -> form -> state -> state)
+        ((n -> n) -> ( Result error (), state ) -> ( Result error e, q ))
+        ((r -> () -> () -> ()) -> form -> state -> u)
+        ((v -> v) -> ( List element, u ) -> ( List element, y ))
+        ((() -> ()) -> state -> state)
+        fields
+        ()
+        element
+        msg
+    ->
+        { init : State state
+        , setAt :
+            (( c1 -> c1, d1 -> d1 )
+             ->
+                ( (( Field.State input output, f1 )
+                   -> ( Field.State input output, f1 )
+                  )
+                  -> state
+                  -> state
+                , (( Field input delta1 output () element2 msg1, l1 )
+                   -> ( Field.State input output, n1 )
+                   -> ( Field input delta1 output () element2 msg1, Field.State input output )
+                  )
+                  -> form
+                  -> state
+                  -> ( Field input delta1 output () element2 msg1, Field.State input output )
+                )
+            )
+            -> input
+            -> State state
+            -> State state
+        , updateAt :
+            (( t1 -> t1, u1 -> u1 )
+             ->
+                ( (( Field.State input output, w1 )
+                   -> ( Field.State input output, w1 )
+                  )
+                  -> state
+                  -> state
+                , (( Field input delta output () element1 msg, b2 )
+                   -> ( Field.State input output, w1 )
+                   -> ( Field input delta output () element1 msg, Field.State input output )
+                  )
+                  -> form
+                  -> state
+                  -> ( Field input delta output () element1 msg, Field.State input output )
+                )
+            )
+            -> Field.Delta delta
+            -> State state
+            -> ( State state, Cmd msg )
+        , submit : State state -> Result (State state) f
+        , view : State state -> u
+        , viewList : State state -> List element
+        }
+build (Builder bdr) =
+    let
+        reversedFields =
+            reverseTuple bdr.reverseSize bdr.fields
+
+        form_ =
+            Form reversedFields
+
+        fieldStates =
+            bdr.stateSize (\() -> ()) reversedFields
+    in
+    { init = State fieldStates
+    , setAt = initializeField form_
+    , updateAt = updateField bdr.fieldStateUnfocuser form_ ()
+    , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_ ()
     , view = renderAll bdr.renderSize form_
     , viewList = view bdr.renderSize bdr.collectElementsSize form_
     }

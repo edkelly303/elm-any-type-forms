@@ -27,6 +27,7 @@ import Element.Keyed
 import FeatherIcons as FI
 import Field exposing (Field, ViewConfig)
 import Html.Attributes
+import Simple
 import Time
 
 
@@ -41,13 +42,13 @@ import Time
 -- https://www.coolgenerator.com/ascii-text-generator / font = Basic
 
 
-string : String -> (Field.Delta String -> msg) -> Field String String String context (Element msg) msg
+string : String -> (Field.Delta String -> msg) -> Field String String String () (Element msg) msg
 string label msg =
-    Field.custom
+    Simple.new
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
-        , parser = \_ input -> Ok input
+        , parser = Ok
         , renderer = renderTextField
         , label = label
         }
@@ -55,7 +56,7 @@ string label msg =
 
 float : String -> (Field.Delta String -> msg) -> Field String String Float context (Element msg) msg
 float label msg =
-    Field.custom
+    Field.new
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
@@ -71,7 +72,7 @@ float label msg =
 
 int : String -> (Field.Delta String -> msg) -> Field String String Int context (Element msg) msg
 int label msg =
-    Field.custom
+    Field.new
         { init = ""
         , deltaMsg = msg
         , updater = \delta _ -> ( delta, Cmd.none, [ Field.debounce 500 ] )
@@ -160,7 +161,7 @@ type CalendarBlock
 
 date : String -> (Field.Delta DateDelta -> msg) -> Field DateState DateDelta Date.Date context (Element msg) msg
 date label deltaMsg =
-    Field.custom
+    Field.new
         { init = { page = CalendarPage, viewing = Date.fromCalendarDate 2021 Time.Nov 1, selected = Nothing }
         , deltaMsg = deltaMsg
         , updater =
@@ -557,7 +558,7 @@ buttonSpacing =
 
 radioRow : String -> (Field.Delta delta -> msg) -> List ( delta, Element msg ) -> Field (Maybe delta) delta delta context (Element msg) msg
 radioRow label deltaMsg options =
-    Field.custom
+    Field.new
         { init = Nothing
         , deltaMsg = deltaMsg
         , label = label
@@ -671,7 +672,7 @@ type TimeDelta
 
 time : String -> (Field.Delta TimeDelta -> msg) -> Field TimeState TimeDelta TimeState context (Element msg) msg
 time label deltaMsg =
-    Field.custom
+    Field.new
         { init = { hours = 12, minutes = 0 }
         , deltaMsg = deltaMsg
         , updater =
@@ -807,7 +808,7 @@ search :
     -> (SearchState a -> Cmd (Result (List a) (List a)))
     -> Field (SearchState a) (SearchDelta a) a context (Element msg) msg
 search label msg toString loadItemsCmd =
-    Field.custom
+    Field.new
         { init = { search = "", options = NotAsked, selected = Nothing, error = "" }
         , deltaMsg = msg
         , updater =
@@ -969,7 +970,7 @@ renderSearchField toString { label, input, delta, focusMsg, focused, parsed, sta
 
 fibonacci : (Field.Delta String -> msg) -> Field String String Int context (Element msg) msg
 fibonacci deltaMsg =
-    Field.custom
+    Field.new
         { init = ""
         , deltaMsg = deltaMsg
         , updater =

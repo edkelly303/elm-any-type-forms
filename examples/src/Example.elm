@@ -11,6 +11,7 @@ import Form
 import Html
 import Http
 import Json.Decode as JSD
+import Simple
 import Widgets
 
 
@@ -83,29 +84,21 @@ myForm =
     Form.form
         |> Form.withField
             (Widgets.string "What is your name?" Field0Changed
-                |> Field.failIf (\_ x -> String.length x < 1) "Must be at least 1 character"
-                |> Field.warnIf
-                    (\_ x ->
+                |> Simple.failIf (\x -> String.length x < 1) "Must be at least 1 character"
+                |> Simple.warnIf
+                    (\x ->
                         String.uncons x
                             |> Maybe.map Tuple.first
                             |> Maybe.map Char.isLower
                             |> Maybe.withDefault True
                     )
                     "Names usually start with a capital letter"
-                |> Field.infoIf (\_ x -> String.length x > 20) "Hey, that's a pretty long name you have there!"
-                |> Field.infoIf (\_ x -> String.toLower x == "rebecca") "Let me guess, last night you dreamt you went to Manderley again?"
-                |> Field.withValidator
-                    (\{ ctx } _ ->
-                        if ctx >= 1 then
-                            Field.info ("Context is " ++ String.fromInt ctx ++ "!")
-
-                        else
-                            Field.none
-                    )
+                |> Simple.infoIf (\x -> String.length x > 20) "Hey, that's a pretty long name you have there!"
+                |> Simple.infoIf (\x -> String.toLower x == "rebecca") "Let me guess, last night you dreamt you went to Manderley again?"
             )
         |> Form.withField
             (Widgets.float "What shoe size do you wear?" Field1Changed
-                |> Field.warnIf (\_ x -> x > 15) "Gosh those are big feet!"
+                |> Field.warnIf (\ctx x -> ctx > 15) "Gosh those are big feet!"
                 |> Field.warnIf (\_ x -> x < 4) "Gosh those are tiny feet!"
                 |> Field.failIf (\_ x -> x < 0) "You can't have a negative shoe size."
             )
@@ -131,7 +124,7 @@ myForm =
                 , ( Sharks, text "Sharks" )
                 ]
             )
-        |> Form.done
+        |> Form.build
 
 
 initialModel : Model
@@ -147,7 +140,7 @@ update msg model =
         updateAt fieldIndex delta =
             let
                 ( form, cmd ) =
-                    myForm.updateAt { ctx = 2 } fieldIndex delta model.form
+                    myForm.updateAt fieldIndex delta model.form
             in
             ( { model | form = form }, cmd )
     in
@@ -177,7 +170,7 @@ update msg model =
             updateAt Form.i7 delta
 
         SubmitClicked ->
-            case myForm.submit { ctx = 1 } model.form of
+            case myForm.submit model.form of
                 Ok ( str, ( flt, ( int, ( date, ( time, ( starwars, ( fibonacci, ( _, () ) ) ) ) ) ) ) ) ->
                     ( { model
                         | page =

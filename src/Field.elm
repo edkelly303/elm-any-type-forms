@@ -3,11 +3,11 @@ module Field exposing
     , Feedback(..)
     , Field(..)
     , InternalStatus(..)
+    , Opt
     , State
     , Status(..)
     , ValidationStatus(..)
     , ViewConfig
-    , custom
     , debounce
     , doNotValidate
     , fail
@@ -15,6 +15,7 @@ module Field exposing
     , info
     , infoIf
     , init
+    , new
     , none
     , pass
     , submit
@@ -156,7 +157,7 @@ none =
 -- CREATING FIELDS
 
 
-custom :
+new :
     { init : input
     , deltaMsg : Delta delta -> msg
     , updater : delta -> input -> ( input, Cmd delta, List Opt )
@@ -165,7 +166,7 @@ custom :
     , label : String
     }
     -> Field input delta output context element msg
-custom args =
+new args =
     Field
         { index = 0
         , init = args.init
