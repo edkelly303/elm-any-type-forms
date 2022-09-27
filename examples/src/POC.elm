@@ -10,11 +10,13 @@ import Html.Events exposing (onClick, onInput)
 
 
 type alias Model =
-    ( Int, ( Float, ( String, () ) ) )
+    State Int (State Float (State String End))
+    --( Int, ( Float, ( String, End ) ) )
 
 
 type Msg
-    = FormMsg ( Maybe Int, ( Maybe Float, ( Maybe String, () ) ) )
+    = FormMsg (Delta Int (Delta Float (Delta String End)))
+    --= FormMsg ( Maybe Int, ( Maybe Float, ( Maybe String, End ) ) )
 
 
 type alias User =
@@ -26,7 +28,7 @@ form =
         |> add f0 100 intUpdate intView
         |> add f1 0.1 floatUpdate floatView
         |> add f2 "hey" stringUpdate stringView
-        |> done
+        |> end
 
 
 intView toMsg toDelta state =
@@ -82,6 +84,11 @@ main =
 
 -- LIBRARY CODE
 
+type End = End
+
+type alias Delta this rest = (Maybe this, rest)
+
+type alias State this rest = (this, rest)
 
 f0 =
     identity
@@ -144,12 +151,12 @@ new output toMsg =
     , reverseDeltaX = identity
     , reverseUpdateX = identity
     , reverseViewX = identity
-    , fieldStates = ()
-    , fieldUpdates = ()
-    , fieldSetters = ()
-    , fieldViews = ()
+    , fieldStates = End
+    , fieldUpdates = End
+    , fieldSetters = End
+    , fieldViews = End
     , toMsg = toMsg
-    , emptyMsg = ()
+    , emptyMsg = End
     , output = output
     }
 
@@ -174,30 +181,30 @@ add fieldSetter fieldState fieldUpdate fieldView f =
     }
 
 
-done f =
+end f =
     let
         reversedToDeltas =
-            f.combineX (\_ () -> ()) f.emptyMsg f.fieldSetters
+            f.combineX (\_ End -> End) f.emptyMsg f.fieldSetters
 
         fieldToDeltas =
-            f.reverseDeltaX identity ( (), reversedToDeltas ) |> Tuple.first
+            f.reverseDeltaX identity ( End, reversedToDeltas ) |> Tuple.first
 
         fieldStates =
-            f.reverseStateX identity ( (), f.fieldStates ) |> Tuple.first
+            f.reverseStateX identity ( End, f.fieldStates ) |> Tuple.first
 
         fieldUpdates =
-            f.reverseUpdateX identity ( (), f.fieldUpdates ) |> Tuple.first
+            f.reverseUpdateX identity ( End, f.fieldUpdates ) |> Tuple.first
 
         fieldViews =
-            f.reverseViewX identity ( (), f.fieldViews ) |> Tuple.first
+            f.reverseViewX identity ( End, f.fieldViews ) |> Tuple.first
     in
     { init = fieldStates
     , update =
         \ds ss ->
-            f.updateX (\() () () -> ()) fieldUpdates ds ss
+            f.updateX (\End End End -> End) fieldUpdates ds ss
     , view =
         \ss ->
-            f.viewX (\_ () () () -> ()) f.toMsg fieldViews fieldToDeltas ss
+            f.viewX (\_ End End End -> End) f.toMsg fieldViews fieldToDeltas ss
                 |> Tuple.pair []
                 |> f.toListX identity
                 |> Tuple.first
