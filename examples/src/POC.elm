@@ -12,15 +12,16 @@ import Time
 -- Userland type definitions
 
 
+type alias Form =
+    ( Field Int Int Int, ( Field Float Float Float, ( Field String String String, End ) ) )
+
+
 type alias Model =
-    --( Int, ( Float, ( String, End ) ) )
-    State Int (State Float (State String End))
+    Form
 
 
-type
-    Msg
-    --= FormMsg ( Maybe Int, ( Maybe Float, ( Maybe String, End ) ) )
-    = FormMsg (Delta Int (Delta Float (Delta String End)))
+type Msg
+    = FormMsg Form
 
 
 type alias User =
@@ -102,23 +103,19 @@ type End
     = End
 
 
-type alias Delta this rest =
-    ( Maybe this, rest )
+type alias Field state delta output =
+    { state : state
+    , delta : Delta delta
+    , output : Result (List String) output
+    }
 
 
-type alias State this rest =
-    ( this, rest )
-
-
-type Field state delta output
-    = Field { state : state, delta : D delta, output : Result (List String) output }
-
-
-type D delta
+type Delta delta
     = Update delta
     | StartDebouncing delta Time.Posix
     | CheckDebouncingTimeout delta Time.Posix
     | ExecuteParsing
+    | Noop
 
 
 type alias FieldBuilder state delta element msg =
@@ -148,35 +145,52 @@ f2 =
 -- Step functions
 
 
-updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
-    ( case delta of
-        Just d ->
-            field_.update d state
+update_ updater fields deltas states =
+    updater (\End End End -> End) fields deltas states
 
-        Nothing ->
+
+updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
+    ( case delta.delta of
+        Update d ->
+            { state | state = field_.update d state.state }
+
+        StartDebouncing _ _ ->
+            Debug.todo "StartDebouncing"
+
+        CheckDebouncingTimeout _ _ ->
+            Debug.todo "CheckDebouncingTimeout"
+
+        ExecuteParsing ->
+            Debug.todo "ExecuteParsing"
+
+        Noop ->
             state
     , next fields deltas states
     )
 
 
+view_ viewer toMsg fields states =
+    viewer (\_ End End -> End) toMsg fields states
+
+
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
-    ( field_.view (\x -> toMsg (field_.toDelta x)) state, next toMsg fields states )
+    ( field_.view (\x -> toMsg (field_.toDelta x)) state.state, next toMsg fields states )
 
 
-combine combiner msg fields =
-    combiner (\_ End -> End) msg fields
+combine combiner inits fields =
+    combiner (\_ End -> End) inits fields
 
 
-combiner1 next msg ( field_, fields ) =
+combiner1 next inits ( field_, fields ) =
     let
         set x =
-            Tuple.mapFirst (always (Just x))
+            Tuple.mapFirst (\s -> { s | delta = Update x })
     in
     ( { update = field_.update
       , view = field_.view
-      , toDelta = \x -> field_.setter (set x) msg
+      , toDelta = \x -> field_.setter (set x) inits
       }
-    , next msg fields
+    , next inits fields
     )
 
 
@@ -204,8 +218,8 @@ unfurl unfurler toOutput states =
         |> Tuple.first
 
 
-unfurler1 ( toX, ( a, b ) ) =
-    ( toX a, b )
+unfurler1 ( toOutput, ( state, states ) ) =
+    ( toOutput state.state, states )
 
 
 
@@ -220,7 +234,7 @@ new output toMsg =
     , toLister = identity
     , stateReverser = identity
     , fieldReverser = identity
-    , fieldStates = End
+    , inits = End
     , fields = End
     , emptyMsg = End
     , toMsg = toMsg
@@ -236,7 +250,13 @@ field fieldSetter fb f =
     , toLister = f.toLister >> toLister1
     , stateReverser = f.stateReverser >> reverser1
     , fieldReverser = f.fieldReverser >> reverser1
-    , fieldStates = ( fb.init, f.fieldStates )
+    , inits =
+        ( { state = fb.init
+          , delta = Noop
+          , output = Err []
+          }
+        , f.inits
+        )
     , fields =
         ( { update = fb.update
           , view = fb.view
@@ -244,7 +264,6 @@ field fieldSetter fb f =
           }
         , f.fields
         )
-    , emptyMsg = ( Nothing, f.emptyMsg )
     , toMsg = f.toMsg
     , output = f.output
     }
@@ -253,19 +272,19 @@ field fieldSetter fb f =
 end f =
     let
         inits =
-            reverse f.stateReverser f.fieldStates
+            reverse f.stateReverser f.inits
 
         fields =
-            combine f.combiner f.emptyMsg f.fields
+            combine f.combiner inits f.fields
                 |> reverse f.fieldReverser
     in
     { init = inits
     , update =
         \deltas states ->
-            f.updater (\End End End -> End) fields deltas states
+            update_ f.updater fields deltas states
     , view =
         \states ->
-            f.viewer (\_ End End -> End) f.toMsg fields states
+            view_ f.viewer f.toMsg fields states
                 |> toList f.toLister
     , submit =
         \states ->
