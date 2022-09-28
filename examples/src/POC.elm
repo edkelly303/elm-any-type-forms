@@ -148,7 +148,26 @@ f2 =
 -- Step functions
 
 
-combine1 next msg ( field_, fields ) =
+updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
+    ( case delta of
+        Just d ->
+            field_.update d state
+
+        Nothing ->
+            state
+    , next fields deltas states
+    )
+
+
+viewer1 next toMsg ( field_, fields ) ( state, states ) =
+    ( field_.view (\x -> toMsg (field_.toDelta x)) state, next toMsg fields states )
+
+
+combine combiner msg fields =
+    combiner (\_ End -> End) msg fields
+
+
+combiner1 next msg ( field_, fields ) =
     let
         set x =
             Tuple.mapFirst (always (Just x))
@@ -161,30 +180,31 @@ combine1 next msg ( field_, fields ) =
     )
 
 
-update1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
-    ( case delta of
-        Just d ->
-            field_.update d state
-
-        Nothing ->
-            state
-    , next fields deltas states
-    )
+toList toLister tuple =
+    toLister ( [], tuple )
+        |> Tuple.first
+        |> List.reverse
 
 
-view1 next toMsg ( field_, fields ) ( state, states ) =
-    ( field_.view (\x -> toMsg (field_.toDelta x)) state, next toMsg fields states )
-
-
-toList1 ( list, ( item, items ) ) =
+toLister1 ( list, ( item, items ) ) =
     ( item :: list, items )
 
 
-reverse1 ( s, ( fst, rest ) ) =
+reverse reverser tuple =
+    reverser ( End, tuple )
+        |> Tuple.first
+
+
+reverser1 ( s, ( fst, rest ) ) =
     ( ( fst, s ), rest )
 
 
-unfurl1 ( toX, ( a, b ) ) =
+unfurl unfurler toOutput states =
+    unfurler ( toOutput, states )
+        |> Tuple.first
+
+
+unfurler1 ( toX, ( a, b ) ) =
     ( toX a, b )
 
 
@@ -193,13 +213,13 @@ unfurl1 ( toX, ( a, b ) ) =
 
 
 new output toMsg =
-    { unfurlX = identity
-    , combineX = identity
-    , updateX = identity
-    , viewX = identity
-    , toListX = identity
-    , reverseStateX = identity
-    , reverseFieldX = identity
+    { unfurler = identity
+    , combiner = identity
+    , updater = identity
+    , viewer = identity
+    , toLister = identity
+    , stateReverser = identity
+    , fieldReverser = identity
     , fieldStates = End
     , fields = End
     , emptyMsg = End
@@ -209,13 +229,13 @@ new output toMsg =
 
 
 field fieldSetter fb f =
-    { unfurlX = f.unfurlX >> unfurl1
-    , combineX = f.combineX >> combine1
-    , updateX = f.updateX >> update1
-    , viewX = f.viewX >> view1
-    , toListX = f.toListX >> toList1
-    , reverseStateX = f.reverseStateX >> reverse1
-    , reverseFieldX = f.reverseFieldX >> reverse1
+    { unfurler = f.unfurler >> unfurler1
+    , combiner = f.combiner >> combiner1
+    , updater = f.updater >> updater1
+    , viewer = f.viewer >> viewer1
+    , toLister = f.toLister >> toLister1
+    , stateReverser = f.stateReverser >> reverser1
+    , fieldReverser = f.fieldReverser >> reverser1
     , fieldStates = ( fb.init, f.fieldStates )
     , fields =
         ( { update = fb.update
@@ -233,30 +253,21 @@ field fieldSetter fb f =
 end f =
     let
         inits =
-            (End, f.fieldStates)
-                |> f.reverseStateX
-                |> Tuple.first
+            reverse f.stateReverser f.fieldStates
 
         fields =
-            f.combineX (\_ End -> End) f.emptyMsg f.fields
-                |> Tuple.pair End
-                |> f.reverseFieldX
-                |> Tuple.first
+            combine f.combiner f.emptyMsg f.fields
+                |> reverse f.fieldReverser
     in
     { init = inits
     , update =
         \deltas states ->
-            f.updateX (\End End End -> End) fields deltas states
+            f.updater (\End End End -> End) fields deltas states
     , view =
         \states ->
-            f.viewX (\_ End End -> End) f.toMsg fields states
-                |> Tuple.pair []
-                |> f.toListX
-                |> Tuple.first
-                |> List.reverse
+            f.viewer (\_ End End -> End) f.toMsg fields states
+                |> toList f.toLister
     , submit =
         \states ->
-            (f.output, states)
-                |> f.unfurlX
-                |> Tuple.first
+            unfurl f.unfurler f.output states
     }
