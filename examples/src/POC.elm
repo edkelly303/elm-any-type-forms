@@ -2,12 +2,14 @@ module POC exposing (main)
 
 import Browser
 import Html exposing (Html, button, div, input, text)
+import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
 import Time
 
 
 
 -- USERLAND CODE
+-- Userland type definitions
 
 
 type alias Model =
@@ -25,36 +27,45 @@ type alias User =
     { age : Int, height : Float, name : String }
 
 
+
+-- Userland form definitions
+
+
 form =
     new User FormMsg
-        |> field0 100 intUpdate intView
-        |> field1 0.1 floatUpdate floatView
-        |> field2 "hey" stringUpdate stringView
+        |> field f0 int
+        |> field f1 float
+        |> field f2 string
         |> end
 
 
-intView toMsg state =
-    button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
+
+-- Userland widget definitions
 
 
-intUpdate delta state =
-    state // delta
+int =
+    { init = 100
+    , update = \delta state -> state // delta
+    , view = \toMsg state -> button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
+    }
 
 
-floatView toMsg state =
-    button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
+float =
+    { init = 0.1
+    , update = \delta state -> state + delta
+    , view = \toMsg state -> button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
+    }
 
 
-floatUpdate delta state =
-    state + delta
+string =
+    { init = ""
+    , update = \delta state -> delta
+    , view = \toMsg state -> input [ onInput toMsg, HA.value state ] [ text state ]
+    }
 
 
-stringView toMsg state =
-    input [ onInput toMsg ] [ text state ]
 
-
-stringUpdate delta state =
-    delta
+-- Userland program plumbing
 
 
 update : Msg -> Model -> Model
@@ -70,8 +81,7 @@ view model =
         _ =
             Debug.log "User" (form.submit model)
     in
-    div []
-        (form.view model)
+    div [] (form.view model)
 
 
 main : Program () Model Msg
@@ -85,6 +95,7 @@ main =
 
 
 -- LIBRARY CODE
+--Types
 
 
 type End
@@ -110,6 +121,17 @@ type D delta
     | ExecuteParsing
 
 
+type alias FieldBuilder state delta element msg =
+    { init : state
+    , update : delta -> state -> state
+    , view : (delta -> msg) -> state -> element
+    }
+
+
+
+-- Field setters
+
+
 f0 =
     identity
 
@@ -122,27 +144,15 @@ f2 =
     f1 >> f1
 
 
-field0 =
-    field f0
 
-
-field1 =
-    field f1
-
-
-field2 =
-    field f2
-
-
-set x =
-    Tuple.mapFirst (always (Just x))
-
-
-
--- STEP FUNCTIONS
+-- Step functions
 
 
 combine1 next msg ( field_, fields ) =
+    let
+        set x =
+            Tuple.mapFirst (always (Just x))
+    in
     ( { update = field_.update
       , view = field_.view
       , toDelta = \x -> field_.setter (set x) msg
@@ -178,6 +188,10 @@ unfurl1 ( toX, ( a, b ) ) =
     ( toX a, b )
 
 
+
+-- Form builder functions
+
+
 new output toMsg =
     { unfurlX = identity
     , combineX = identity
@@ -194,7 +208,7 @@ new output toMsg =
     }
 
 
-field fieldSetter fieldState fieldUpdate fieldView f =
+field fieldSetter fb f =
     { unfurlX = f.unfurlX >> unfurl1
     , combineX = f.combineX >> combine1
     , updateX = f.updateX >> update1
@@ -202,10 +216,10 @@ field fieldSetter fieldState fieldUpdate fieldView f =
     , toListX = f.toListX >> toList1
     , reverseStateX = f.reverseStateX >> reverse1
     , reverseFieldX = f.reverseFieldX >> reverse1
-    , fieldStates = ( fieldState, f.fieldStates )
+    , fieldStates = ( fb.init, f.fieldStates )
     , fields =
-        ( { update = fieldUpdate
-          , view = fieldView
+        ( { update = fb.update
+          , view = fb.view
           , setter = fieldSetter
           }
         , f.fields
@@ -218,9 +232,8 @@ field fieldSetter fieldState fieldUpdate fieldView f =
 
 end f =
     let
-        fieldStates =
-            f.fieldStates
-                |> Tuple.pair End
+        inits =
+            (End, f.fieldStates)
                 |> f.reverseStateX
                 |> Tuple.first
 
@@ -230,21 +243,20 @@ end f =
                 |> f.reverseFieldX
                 |> Tuple.first
     in
-    { init = fieldStates
+    { init = inits
     , update =
-        \ds ss ->
-            f.updateX (\End End End -> End) fields ds ss
+        \deltas states ->
+            f.updateX (\End End End -> End) fields deltas states
     , view =
-        \ss ->
-            f.viewX (\_ End End -> End) f.toMsg fields ss
+        \states ->
+            f.viewX (\_ End End -> End) f.toMsg fields states
                 |> Tuple.pair []
                 |> f.toListX
                 |> Tuple.first
                 |> List.reverse
     , submit =
-        \ss ->
-            ss
-                |> Tuple.pair f.output
+        \states ->
+            (f.output, states)
                 |> f.unfurlX
                 |> Tuple.first
     }
