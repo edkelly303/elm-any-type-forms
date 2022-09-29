@@ -1,5 +1,6 @@
 module POC exposing (main)
 
+
 import Browser
 import Html exposing (Html, button, div, input, text)
 import Html.Attributes as HA
@@ -69,7 +70,7 @@ string =
 -- Userland program plumbing
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         FormMsg payload ->
@@ -87,10 +88,11 @@ view model =
 
 main : Program () Model Msg
 main =
-    Browser.sandbox
-        { init = form.init
+    Browser.element
+        { init = \() -> form.init
         , view = view
         , update = update
+        , subscriptions = \_ -> Sub.none
         }
 
 
@@ -152,7 +154,7 @@ update_ updater fields deltas states =
 updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     ( case delta.delta of
         Update d ->
-            { state | state = field_.update d state.state }
+            ( { state | state = field_.update d state.state }, Cmd.none )
 
         StartDebouncing _ _ ->
             Debug.todo "StartDebouncing"
@@ -164,9 +166,19 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
             Debug.todo "ExecuteParsing"
 
         Noop ->
-            state
+            ( state, Cmd.none )
     , next fields deltas states
     )
+
+
+cmdStrip cmdStripper states =
+    cmdStripper ( ( End, [] ), states )
+        |> Tuple.first
+        |> Tuple.mapSecond Cmd.batch
+
+
+cmdStripper1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
+    ( ( ( state, outState ), cmd :: outCmd ), statesAndCmds )
 
 
 view_ viewer toMsg fields states =
@@ -230,6 +242,7 @@ new output toMsg =
     { unfurler = identity
     , combiner = identity
     , updater = identity
+    , cmdStripper = identity
     , viewer = identity
     , toLister = identity
     , stateReverser = identity
@@ -246,6 +259,7 @@ field fieldSetter fb f =
     { unfurler = f.unfurler >> unfurler1
     , combiner = f.combiner >> combiner1
     , updater = f.updater >> updater1
+    , cmdStripper = f.cmdStripper >> cmdStripper1
     , viewer = f.viewer >> viewer1
     , toLister = f.toLister >> toLister1
     , stateReverser = f.stateReverser >> reverser1
@@ -278,10 +292,12 @@ end f =
             combine f.combiner inits f.fields
                 |> reverse f.fieldReverser
     in
-    { init = inits
+    { init = ( inits, Cmd.none )
     , update =
         \deltas states ->
             update_ f.updater fields deltas states
+                |> cmdStrip f.cmdStripper
+                |> Tuple.mapFirst (reverse f.stateReverser)
     , view =
         \states ->
             view_ f.viewer f.toMsg fields states
