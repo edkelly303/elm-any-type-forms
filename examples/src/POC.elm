@@ -48,21 +48,21 @@ form =
 int =
     { init = 100
     , update = \delta state -> state // delta
-    , view = \toMsg state -> button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
+    , view = \{ toMsg, state } -> button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
     }
 
 
 float =
     { init = 0.1
     , update = \delta state -> state + delta
-    , view = \toMsg state -> button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
+    , view = \{ toMsg, state } -> button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
     }
 
 
 string =
     { init = ""
     , update = \delta state -> delta
-    , view = \toMsg state -> input [ onInput toMsg, HA.value state ] [ text state ]
+    , view = \{ toMsg, state } -> input [ onInput toMsg, HA.value state ] [ text state ]
     }
 
 
@@ -123,7 +123,7 @@ type Delta delta
 type alias FieldBuilder state delta element msg =
     { init : state
     , update : delta -> state -> state
-    , view : (delta -> msg) -> state -> element
+    , view : { state : state, toMsg : delta -> msg } -> element
     }
 
 
@@ -171,10 +171,12 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     )
 
 
-cmdStrip cmdStripper states =
-    cmdStripper ( ( End, [] ), states )
-        |> Tuple.first
-        |> Tuple.mapSecond Cmd.batch
+cmdStrip cmdStripper states0 =
+    let
+        ( ( states1, cmds ), _ ) =
+            cmdStripper ( ( End, [] ), states0 )
+    in
+    ( states1, Cmd.batch cmds )
 
 
 cmdStripper1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
@@ -186,7 +188,12 @@ view_ viewer toMsg fields states =
 
 
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
-    ( field_.view (\x -> toMsg (field_.toDelta x)) state.state, next toMsg fields states )
+    ( field_.view
+        { toMsg = \x -> toMsg (field_.toDelta x)
+        , state = state.state
+        }
+    , next toMsg fields states
+    )
 
 
 combine combiner inits fields =
