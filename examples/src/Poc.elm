@@ -18,8 +18,6 @@ type alias Form =
     ( Field Int Int Int, ( Field Float Float Float, ( Field String String Int, End ) ) )
 
 
-
-
 type Msg
     = FormMsg Form
 
@@ -56,7 +54,7 @@ float =
     { init = 0.1
     , update = \delta state -> state + delta
     , view = \{ toMsg, state } -> button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
-    , parse = Ok
+    , parse = \_ -> Err ["uh oh"]
     }
 
 
@@ -64,11 +62,14 @@ string =
     { init = ""
     , update = \delta state -> delta
     , view = \{ toMsg, state } -> input [ onInput toMsg, HA.value state ] [ text state ]
-    , parse = 
-        \state -> 
+    , parse =
+        \state ->
             case String.toInt state of
-                Just i -> Ok i
-                Nothing -> Err ["not an int"]
+                Just i ->
+                    Ok i
+
+                Nothing ->
+                    Err [ "not an int" ]
     }
 
 
@@ -104,7 +105,7 @@ main =
 
 
 -- LIBRARY CODE
---Types
+-- Types
 
 
 type End
@@ -122,7 +123,7 @@ type alias Field state delta output =
 type Delta delta
     = Update delta
     | StartDebouncing Time.Posix
-    | CheckDebouncingTimeout Time.Posix
+    | ParseIfDebounced Time.Posix
     | Noop
 
 
@@ -167,12 +168,16 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
 
         StartDebouncing now ->
             ( { state | lastTouched = Just now }
-            , Task.perform (\() -> field_.toDelta (CheckDebouncingTimeout now)) (Process.sleep 1000)
+            , Task.perform (\() -> field_.toDelta (ParseIfDebounced now)) (Process.sleep 1000)
             )
 
-        CheckDebouncingTimeout now ->
-            ( if state.lastTouched == Just now then {state | output = field_.parse state.state } else state
-            , Cmd.none 
+        ParseIfDebounced now ->
+            ( if state.lastTouched == Just now then
+                { state | output = field_.parse state.state }
+
+              else
+                state
+            , Cmd.none
             )
 
         Noop ->
@@ -251,16 +256,19 @@ unfurl unfurler toOutput states =
 
 
 unfurler1 ( toOutput, ( state, states ) ) =
-    ( case (toOutput, state.output) of
-        (Ok fn, Ok val) -> 
+    ( case ( toOutput, state.output ) of
+        ( Ok fn, Ok val ) ->
             Ok (fn val)
-        (Ok fn, Err errs) ->
+
+        ( Ok fn, Err errs ) ->
             Err errs
-        (Err errs, Ok val) ->
+
+        ( Err errs, Ok val ) ->
             Err errs
-        (Err errs1, Err errs2) ->
+
+        ( Err errs1, Err errs2 ) ->
             Err (errs1 ++ errs2)
-    , states 
+    , states
     )
 
 
