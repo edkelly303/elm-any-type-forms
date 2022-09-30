@@ -15,11 +15,9 @@ import Time
 
 
 type alias Form =
-    ( Field Int Int Int, ( Field Float Float Float, ( Field String String String, End ) ) )
+    ( Field Int Int Int, ( Field Float Float Float, ( Field String String Int, End ) ) )
 
 
-type alias Model =
-    Form
 
 
 type Msg
@@ -27,7 +25,7 @@ type Msg
 
 
 type alias User =
-    { age : Int, height : Float, name : String }
+    { age : Int, height : Float, weight : Int }
 
 
 
@@ -50,6 +48,7 @@ int =
     { init = 100
     , update = \delta state -> state // delta
     , view = \{ toMsg, state } -> button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
+    , parse = Ok
     }
 
 
@@ -57,6 +56,7 @@ float =
     { init = 0.1
     , update = \delta state -> state + delta
     , view = \{ toMsg, state } -> button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
+    , parse = Ok
     }
 
 
@@ -64,6 +64,11 @@ string =
     { init = ""
     , update = \delta state -> delta
     , view = \{ toMsg, state } -> input [ onInput toMsg, HA.value state ] [ text state ]
+    , parse = 
+        \state -> 
+            case String.toInt state of
+                Just i -> Ok i
+                Nothing -> Err ["not an int"]
     }
 
 
@@ -71,14 +76,14 @@ string =
 -- Userland program plumbing
 
 
-update : Msg -> Model -> ( Model, Cmd Msg )
+update : Msg -> Form -> ( Form, Cmd Msg )
 update msg model =
     case msg of
         FormMsg payload ->
             form.update payload model
 
 
-view : Model -> Html Msg
+view : Form -> Html Msg
 view model =
     let
         _ =
@@ -87,7 +92,7 @@ view model =
     div [] (form.view model)
 
 
-main : Program () Model Msg
+main : Program () Form Msg
 main =
     Browser.element
         { init = \() -> form.init
@@ -110,6 +115,7 @@ type alias Field state delta output =
     { state : state
     , delta : Delta delta
     , output : Result (List String) output
+    , lastTouched : Maybe Time.Posix
     }
 
 
@@ -117,14 +123,14 @@ type Delta delta
     = Update delta
     | StartDebouncing Time.Posix
     | CheckDebouncingTimeout Time.Posix
-    | ExecuteParsing
     | Noop
 
 
-type alias FieldBuilder state delta element msg =
+type alias FieldBuilder state delta output element msg =
     { init : state
     , update : delta -> state -> state
     , view : { state : state, toMsg : delta -> msg } -> element
+    , parse : state -> Result (List String) output
     }
 
 
@@ -160,25 +166,14 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
             )
 
         StartDebouncing now ->
-            let
-                _ =
-                    Debug.log "StartDebouncing reached!" ()
-            in
-            ( state, Cmd.none )
+            ( { state | lastTouched = Just now }
+            , Task.perform (\() -> field_.toDelta (CheckDebouncingTimeout now)) (Process.sleep 1000)
+            )
 
         CheckDebouncingTimeout now ->
-            let
-                _ =
-                    Debug.log "CheckDebouncingTimeout reached!" ()
-            in
-            ( state, Cmd.none )
-
-        ExecuteParsing ->
-            let
-                _ =
-                    Debug.log "ExecuteParsing reached!" ()
-            in
-            ( state, Cmd.none )
+            ( if state.lastTouched == Just now then {state | output = field_.parse state.state } else state
+            , Cmd.none 
+            )
 
         Noop ->
             ( state
@@ -224,6 +219,7 @@ combiner1 next inits ( field_, fields ) =
     in
     ( { update = field_.update
       , view = field_.view
+      , parse = field_.parse
       , toDelta = \x -> field_.setter (set x) inits
       }
     , next inits fields
@@ -250,12 +246,22 @@ reverser1 ( s, ( fst, rest ) ) =
 
 
 unfurl unfurler toOutput states =
-    unfurler ( toOutput, states )
+    unfurler ( Ok toOutput, states )
         |> Tuple.first
 
 
 unfurler1 ( toOutput, ( state, states ) ) =
-    ( toOutput state.state, states )
+    ( case (toOutput, state.output) of
+        (Ok fn, Ok val) -> 
+            Ok (fn val)
+        (Ok fn, Err errs) ->
+            Err errs
+        (Err errs, Ok val) ->
+            Err errs
+        (Err errs1, Err errs2) ->
+            Err (errs1 ++ errs2)
+    , states 
+    )
 
 
 
@@ -291,13 +297,15 @@ field fieldSetter fb f =
     , inits =
         ( { state = fb.init
           , delta = Noop
-          , output = Err []
+          , output = fb.parse fb.init
+          , lastTouched = Nothing
           }
         , f.inits
         )
     , fields =
         ( { update = fb.update
           , view = fb.view
+          , parse = fb.parse
           , setter = fieldSetter
           }
         , f.fields
