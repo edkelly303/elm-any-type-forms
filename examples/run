@@ -1,0 +1,3 @@
+#! sh
+
+npx run-pty % npx elm-watch hot % npx httpserver --port 8000
