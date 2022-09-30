@@ -1,10 +1,11 @@
-module POC exposing (main)
-
+module Poc exposing (main)
 
 import Browser
 import Html exposing (Html, button, div, input, text)
 import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
+import Process
+import Task
 import Time
 
 
@@ -114,8 +115,8 @@ type alias Field state delta output =
 
 type Delta delta
     = Update delta
-    | StartDebouncing delta Time.Posix
-    | CheckDebouncingTimeout delta Time.Posix
+    | StartDebouncing Time.Posix
+    | CheckDebouncingTimeout Time.Posix
     | ExecuteParsing
     | Noop
 
@@ -154,19 +155,35 @@ update_ updater fields deltas states =
 updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     ( case delta.delta of
         Update d ->
-            ( { state | state = field_.update d state.state }, Cmd.none )
+            ( { state | state = field_.update d state.state }
+            , Task.perform (field_.toDelta << StartDebouncing) Time.now
+            )
 
-        StartDebouncing _ _ ->
-            Debug.todo "StartDebouncing"
+        StartDebouncing now ->
+            let
+                _ =
+                    Debug.log "StartDebouncing reached!" ()
+            in
+            ( state, Cmd.none )
 
-        CheckDebouncingTimeout _ _ ->
-            Debug.todo "CheckDebouncingTimeout"
+        CheckDebouncingTimeout now ->
+            let
+                _ =
+                    Debug.log "CheckDebouncingTimeout reached!" ()
+            in
+            ( state, Cmd.none )
 
         ExecuteParsing ->
-            Debug.todo "ExecuteParsing"
+            let
+                _ =
+                    Debug.log "ExecuteParsing reached!" ()
+            in
+            ( state, Cmd.none )
 
         Noop ->
-            ( state, Cmd.none )
+            ( state
+            , Cmd.none
+            )
     , next fields deltas states
     )
 
@@ -189,7 +206,7 @@ view_ viewer toMsg fields states =
 
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
     ( field_.view
-        { toMsg = \x -> toMsg (field_.toDelta x)
+        { toMsg = \x -> toMsg (field_.toDelta (Update x))
         , state = state.state
         }
     , next toMsg fields states
@@ -203,7 +220,7 @@ combine combiner inits fields =
 combiner1 next inits ( field_, fields ) =
     let
         set x =
-            Tuple.mapFirst (\s -> { s | delta = Update x })
+            Tuple.mapFirst (\s -> { s | delta = x })
     in
     ( { update = field_.update
       , view = field_.view
@@ -305,6 +322,7 @@ end f =
             update_ f.updater fields deltas states
                 |> cmdStrip f.cmdStripper
                 |> Tuple.mapFirst (reverse f.stateReverser)
+                |> Tuple.mapSecond (Cmd.map f.toMsg)
     , view =
         \states ->
             view_ f.viewer f.toMsg fields states
