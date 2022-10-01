@@ -1,7 +1,7 @@
 module Poc exposing (main)
 
 import Browser
-import Html exposing (Html, button, div, input, text)
+import Html exposing (..)
 import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
 import Process
@@ -45,7 +45,7 @@ form =
 int =
     { init = 100
     , update = \delta state -> state // delta
-    , view = \{ toMsg, state } -> button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]
+    , view = \{ toMsg, state } -> div [] [button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]]
     , parse = Ok
     }
 
@@ -53,7 +53,7 @@ int =
 float =
     { init = 0.1
     , update = \delta state -> state + delta
-    , view = \{ toMsg, state } -> button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]
+    , view = \{ toMsg, state } -> div [] [button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]]
     , parse = \_ -> Err ["uh oh"]
     }
 
@@ -61,7 +61,22 @@ float =
 string =
     { init = ""
     , update = \delta state -> delta
-    , view = \{ toMsg, state } -> input [ onInput toMsg, HA.value state ] [ text state ]
+    , view = \{ toMsg, state, output } -> 
+        div [] 
+            [ input 
+                [ onInput toMsg
+                , HA.value state 
+                , HA.style "background-color" (case output of 
+                    Ok _ -> "paleGreen"
+                    Err _ -> "pink")
+                ] 
+                [ text state ]
+            , case output of
+                Ok _ -> 
+                    text ""
+                Err errs -> 
+                    div [] (List.map text errs)
+            ]
     , parse =
         \state ->
             case String.toInt state of
@@ -208,6 +223,7 @@ viewer1 next toMsg ( field_, fields ) ( state, states ) =
     ( field_.view
         { toMsg = \x -> toMsg (field_.toDelta (Update x))
         , state = state.state
+        , output = state.output
         }
     , next toMsg fields states
     )
