@@ -45,46 +45,59 @@ form =
 int =
     { init = 100
     , update = \delta state -> state // delta
-    , view = \{ toMsg, state } -> div [] [button [ onClick (toMsg 2) ] [ text (String.fromInt state) ]]
+    , view = \{ toMsg, state } -> div [] [ button [ onClick (toMsg 2) ] [ text (String.fromInt state) ] ]
     , parse = Ok
+    , validators = []
     }
 
 
 float =
     { init = 0.1
     , update = \delta state -> state + delta
-    , view = \{ toMsg, state } -> div [] [button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ]]
-    , parse = \_ -> Err ["uh oh"]
+    , view = \{ toMsg, state } -> div [] [ button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ] ]
+    , parse = \_ -> Err [ "uh oh" ]
+    , validators = []
     }
 
 
 string =
     { init = ""
     , update = \delta state -> delta
-    , view = \{ toMsg, state, output } -> 
-        div [] 
-            [ input 
-                [ onInput toMsg
-                , HA.value state 
-                , HA.style "background-color" (case output of 
-                    Ok _ -> "paleGreen"
-                    Err _ -> "pink")
-                ] 
-                [ text state ]
-            , case output of
-                Ok _ -> 
-                    text ""
-                Err errs -> 
-                    div [] (List.map text errs)
-            ]
+    , view =
+        \{ toMsg, state, output, feedback } ->
+            div []
+                [ input
+                    [ onInput toMsg
+                    , HA.value state
+                    , HA.style "background-color"
+                        (case output of
+                            Just _ ->
+                                "paleGreen"
+
+                            Nothing ->
+                                "pink"
+                        )
+                    ]
+                    [ text state ]
+                , case feedback of
+                    [] ->
+                        text ""
+
+                    _ ->
+                        div [] (List.map text feedback)
+                ]
     , parse =
         \state ->
             case String.toInt state of
                 Just i ->
                     Ok i
-
+                    
                 Nothing ->
                     Err [ "not an int" ]
+    , validators =
+        [ { check = (\output -> output < 2), feedback = "must be greater than 1", fails = True }
+        , { check = (\output -> output == 7), feedback = "that's my lucky number", fails = False }
+        ]
     }
 
 
@@ -130,8 +143,9 @@ type End
 type alias Field state delta output =
     { state : state
     , delta : Delta delta
-    , output : Result (List String) output
+    , output : Maybe output
     , lastTouched : Maybe Time.Posix
+    , feedback : List String
     }
 
 
@@ -147,6 +161,7 @@ type alias FieldBuilder state delta output element msg =
     , update : delta -> state -> state
     , view : { state : state, toMsg : delta -> msg } -> element
     , parse : state -> Result (List String) output
+    , validators : List ({check : output -> Bool, feedback : String, fails:  Bool })
     }
 
 
@@ -188,7 +203,22 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
 
         ParseIfDebounced now ->
             ( if state.lastTouched == Just now then
-                { state | output = field_.parse state.state }
+                let
+                    parsed =
+                        field_.parse state.state
+
+                    ( output, feedback ) =
+                        case parsed of
+                            Err f ->
+                                ( Nothing, f )
+
+                            Ok val ->
+                                validate field_.validators val
+                in
+                { state
+                    | output = output
+                    , feedback = feedback
+                }
 
               else
                 state
@@ -201,6 +231,21 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
             )
     , next fields deltas states
     )
+
+
+validate : List {check : val -> Bool, feedback : String, fails : Bool} -> val -> (Maybe val, List String)
+validate validators val =
+    List.foldl
+        (\{check, feedback, fails} ( maybeVal, feedbacks ) ->
+            if check val && fails then 
+                ( Nothing, feedback :: feedbacks )
+            else if check val then 
+                ( maybeVal, feedback :: feedbacks )
+            else
+                ( maybeVal, feedbacks )
+        )
+        ( Just val, [] )
+        validators
 
 
 cmdStrip cmdStripper states0 =
@@ -224,6 +269,7 @@ viewer1 next toMsg ( field_, fields ) ( state, states ) =
         { toMsg = \x -> toMsg (field_.toDelta (Update x))
         , state = state.state
         , output = state.output
+        , feedback = state.feedback
         }
     , next toMsg fields states
     )
@@ -241,6 +287,7 @@ combiner1 next inits ( field_, fields ) =
     ( { update = field_.update
       , view = field_.view
       , parse = field_.parse
+      , validators = field_.validators
       , toDelta = \x -> field_.setter (set x) inits
       }
     , next inits fields
@@ -273,17 +320,17 @@ unfurl unfurler toOutput states =
 
 unfurler1 ( toOutput, ( state, states ) ) =
     ( case ( toOutput, state.output ) of
-        ( Ok fn, Ok val ) ->
+        ( Ok fn, Just val ) ->
             Ok (fn val)
 
-        ( Ok fn, Err errs ) ->
+        ( Ok fn, Nothing ) ->
+            Err state.feedback
+
+        ( Err errs, Just val ) ->
             Err errs
 
-        ( Err errs, Ok val ) ->
-            Err errs
-
-        ( Err errs1, Err errs2 ) ->
-            Err (errs1 ++ errs2)
+        ( Err errs, Nothing ) ->
+            Err (errs ++ state.feedback)
     , states
     )
 
@@ -321,8 +368,9 @@ field fieldSetter fb f =
     , inits =
         ( { state = fb.init
           , delta = Noop
-          , output = fb.parse fb.init
+          , output = Nothing --fb.parse fb.init |> validate fb.validators
           , lastTouched = Nothing
+          , feedback = []
           }
         , f.inits
         )
@@ -330,6 +378,7 @@ field fieldSetter fb f =
         ( { update = fb.update
           , view = fb.view
           , parse = fb.parse
+          , validators = fb.validators
           , setter = fieldSetter
           }
         , f.fields
