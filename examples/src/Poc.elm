@@ -30,6 +30,12 @@ type alias User =
 -- Userland form definitions
 
 
+form :
+    { init : ( Form, Cmd Msg )
+    , update : Form -> Form -> ( Form, Cmd Msg )
+    , view : Form -> List (Html Msg)
+    , submit : Form -> Result (List String) User
+    }
 form =
     new User FormMsg
         |> field f0 int
@@ -42,6 +48,7 @@ form =
 -- Userland widget definitions
 
 
+int : FieldBuilder Int Int Int (Html msg) msg
 int =
     { init = 100
     , update = \delta state -> state // delta
@@ -51,6 +58,7 @@ int =
     }
 
 
+float : FieldBuilder Float Float Float (Html msg) msg
 float =
     { init = 0.1
     , update = \delta state -> state + delta
@@ -60,9 +68,10 @@ float =
     }
 
 
+string : FieldBuilder String String Int (Html msg) msg
 string =
     { init = ""
-    , update = \delta state -> delta
+    , update = \delta _ -> delta
     , view =
         \{ toMsg, state, output, feedback } ->
             div []
@@ -91,12 +100,12 @@ string =
             case String.toInt state of
                 Just i ->
                     Ok i
-                    
+
                 Nothing ->
                     Err [ "not an int" ]
     , validators =
-        [ { check = (\output -> output < 2), feedback = "must be greater than 1", fails = True }
-        , { check = (\output -> output == 7), feedback = "that's my lucky number", fails = False }
+        [ { check = \output -> output < 2, feedback = "must be greater than 1", fails = True }
+        , { check = \output -> output == 7, feedback = "that's my lucky number", fails = False }
         ]
     }
 
@@ -159,9 +168,15 @@ type Delta delta
 type alias FieldBuilder state delta output element msg =
     { init : state
     , update : delta -> state -> state
-    , view : { state : state, toMsg : delta -> msg } -> element
+    , view :
+        { state : state
+        , toMsg : delta -> msg
+        , feedback : List String
+        , output : Maybe output
+        }
+        -> element
     , parse : state -> Result (List String) output
-    , validators : List ({check : output -> Bool, feedback : String, fails:  Bool })
+    , validators : List { check : output -> Bool, feedback : String, fails : Bool }
     }
 
 
@@ -185,6 +200,7 @@ f2 =
 -- Step functions
 
 
+update_ : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
 update_ updater fields deltas states =
     updater (\End End End -> End) fields deltas states
 
@@ -233,14 +249,16 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     )
 
 
-validate : List {check : val -> Bool, feedback : String, fails : Bool} -> val -> (Maybe val, List String)
+validate : List { check : val -> Bool, feedback : String, fails : Bool } -> val -> ( Maybe val, List String )
 validate validators val =
     List.foldl
-        (\{check, feedback, fails} ( maybeVal, feedbacks ) ->
-            if check val && fails then 
+        (\{ check, feedback, fails } ( maybeVal, feedbacks ) ->
+            if check val && fails then
                 ( Nothing, feedback :: feedbacks )
-            else if check val then 
+
+            else if check val then
                 ( maybeVal, feedback :: feedbacks )
+
             else
                 ( maybeVal, feedbacks )
         )
@@ -323,10 +341,10 @@ unfurler1 ( toOutput, ( state, states ) ) =
         ( Ok fn, Just val ) ->
             Ok (fn val)
 
-        ( Ok fn, Nothing ) ->
+        ( Ok _, Nothing ) ->
             Err state.feedback
 
-        ( Err errs, Just val ) ->
+        ( Err errs, Just _ ) ->
             Err errs
 
         ( Err errs, Nothing ) ->
