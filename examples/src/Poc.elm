@@ -86,7 +86,7 @@ string =
                                 "white"
 
                             Debouncing ->
-                                "white"
+                                "lightYellow"
 
                             Passed _ ->
                                 "paleGreen"
