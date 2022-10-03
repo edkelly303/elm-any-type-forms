@@ -13,6 +13,7 @@ import Time
 -- USERLAND CODE
 -- Userland type definitions
 
+
 type Msg
     = UserFormUpdated UserFormFields
 
@@ -54,6 +55,7 @@ int =
     , view = \{ toMsg, state } -> div [] [ button [ onClick (toMsg 2) ] [ text (String.fromInt state) ] ]
     , parse = Ok
     , validators = []
+    , debounce = 0
     }
 
 
@@ -62,8 +64,9 @@ float =
     { init = 0.1
     , update = \delta state -> state + delta
     , view = \{ toMsg, state } -> div [] [ button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ] ]
-    , parse = \_ -> Err [ "uh oh" ]
+    , parse = \_ -> Err "uh oh"
     , validators = []
+    , debounce = 0
     }
 
 
@@ -79,10 +82,16 @@ string =
                     , HA.value state
                     , HA.style "background-color"
                         (case output of
-                            Just _ ->
+                            Intact ->
+                                "white"
+
+                            Debouncing ->
+                                "white"
+
+                            Passed _ ->
                                 "paleGreen"
 
-                            Nothing ->
+                            Failed ->
                                 "pink"
                         )
                     ]
@@ -101,11 +110,12 @@ string =
                     Ok i
 
                 Nothing ->
-                    Err [ "not an int" ]
+                    Err "not an int"
     , validators =
         [ { check = \output -> output < 2, feedback = "must be greater than 1", fails = True }
         , { check = \output -> output == 7, feedback = "that's my lucky number", fails = False }
         ]
+    , debounce = 500
     }
 
 
@@ -151,7 +161,7 @@ type End
 type alias Field state delta output =
     { state : state
     , delta : Delta delta
-    , output : Maybe output
+    , output : Output output
     , lastTouched : Maybe Time.Posix
     , feedback : List String
     }
@@ -171,12 +181,20 @@ type alias FieldBuilder state delta output element msg =
         { state : state
         , toMsg : delta -> msg
         , feedback : List String
-        , output : Maybe output
+        , output : Output output
         }
         -> element
-    , parse : state -> Result (List String) output
+    , parse : state -> Result String output
     , validators : List { check : output -> Bool, feedback : String, fails : Bool }
+    , debounce : Float
     }
+
+
+type Output output
+    = Intact
+    | Debouncing
+    | Passed output
+    | Failed
 
 
 
@@ -207,33 +225,31 @@ update_ updater fields deltas states =
 updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     ( case delta.delta of
         StateUpdateRequested d ->
-            ( { state | state = field_.update d state.state }
-            , Task.perform (field_.toDelta << DebouncingStarted) Time.now
-            )
+            let
+                newState =
+                    field_.update d state.state
+            in
+            if field_.debounce > 0 then
+                ( { state | state = newState }
+                , Task.perform (field_.toDelta << DebouncingStarted) Time.now
+                )
+
+            else
+                ( parseAndValidate field_ state
+                , Cmd.none
+                )
 
         DebouncingStarted now ->
-            ( { state | lastTouched = Just now }
-            , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep 1000)
+            ( { state
+                | lastTouched = Just now
+                , output = Debouncing
+              }
+            , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep field_.debounce)
             )
 
         DebouncingChecked now ->
             ( if state.lastTouched == Just now then
-                let
-                    parsed =
-                        field_.parse state.state
-
-                    ( output, feedback ) =
-                        case parsed of
-                            Err f ->
-                                ( Nothing, f )
-
-                            Ok val ->
-                                validate field_.validators val
-                in
-                { state
-                    | output = output
-                    , feedback = feedback
-                }
+                parseAndValidate field_ state
 
               else
                 state
@@ -248,20 +264,40 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     )
 
 
-validate : List { check : val -> Bool, feedback : String, fails : Bool } -> val -> ( Maybe val, List String )
+parseAndValidate :
+    { a | parse : state -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }
+    -> Field state delta output
+    -> Field state delta output
+parseAndValidate field_ state =
+    let
+        ( output, feedback ) =
+            case field_.parse state.state of
+                Err f ->
+                    ( Failed, [ f ] )
+
+                Ok val ->
+                    validate field_.validators val
+    in
+    { state
+        | output = output
+        , feedback = feedback
+    }
+
+
+validate : List { check : val -> Bool, feedback : String, fails : Bool } -> val -> ( Output val, List String )
 validate validators val =
     List.foldl
-        (\{ check, feedback, fails } ( maybeVal, feedbacks ) ->
+        (\{ check, feedback, fails } ( outputVal, feedbacks ) ->
             if check val && fails then
-                ( Nothing, feedback :: feedbacks )
+                ( Failed, feedback :: feedbacks )
 
             else if check val then
-                ( maybeVal, feedback :: feedbacks )
+                ( outputVal, feedback :: feedbacks )
 
             else
-                ( maybeVal, feedbacks )
+                ( outputVal, feedbacks )
         )
-        ( Just val, [] )
+        ( Passed val, [] )
         validators
 
 
@@ -305,6 +341,7 @@ combiner1 next inits ( field_, fields ) =
       , view = field_.view
       , parse = field_.parse
       , validators = field_.validators
+      , debounce = field_.debounce
       , toDelta = \x -> field_.setter (set x) inits
       }
     , next inits fields
@@ -336,17 +373,20 @@ unfurl unfurler toOutput states =
 
 
 unfurler1 ( toOutput, ( state, states ) ) =
+    -- this may need a rethink to handle the Intact and Debouncing states explicitly...
+    -- or more likely, to validate all fields before unfurling, so that no fields will be 
+    -- intact or debouncing by the time this function is called...
     ( case ( toOutput, state.output ) of
-        ( Ok fn, Just val ) ->
+        ( Ok fn, Passed val ) ->
             Ok (fn val)
 
-        ( Ok _, Nothing ) ->
+        ( Ok _, _ ) ->
             Err state.feedback
 
-        ( Err errs, Just _ ) ->
+        ( Err errs, Passed _ ) ->
             Err errs
 
-        ( Err errs, Nothing ) ->
+        ( Err errs, _ ) ->
             Err (errs ++ state.feedback)
     , states
     )
@@ -385,7 +425,7 @@ field fieldSetter fb f =
     , inits =
         ( { state = fb.init
           , delta = Noop
-          , output = Nothing --fb.parse fb.init |> validate fb.validators
+          , output = Intact
           , lastTouched = Nothing
           , feedback = []
           }
@@ -396,6 +436,7 @@ field fieldSetter fb f =
           , view = fb.view
           , parse = fb.parse
           , validators = fb.validators
+          , debounce = fb.debounce
           , setter = fieldSetter
           }
         , f.fields
