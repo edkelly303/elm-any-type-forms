@@ -13,13 +13,12 @@ import Time
 -- USERLAND CODE
 -- Userland type definitions
 
-
-type alias Form =
-    ( Field Int Int Int, ( Field Float Float Float, ( Field String String Int, End ) ) )
-
-
 type Msg
-    = FormMsg Form
+    = UserFormUpdated UserFormFields
+
+
+type alias UserFormFields =
+    ( Field Int Int Int, ( Field Float Float Float, ( Field String String Int, End ) ) )
 
 
 type alias User =
@@ -31,13 +30,13 @@ type alias User =
 
 
 form :
-    { init : ( Form, Cmd Msg )
-    , update : Form -> Form -> ( Form, Cmd Msg )
-    , view : Form -> List (Html Msg)
-    , submit : Form -> Result (List String) User
+    { init : ( UserFormFields, Cmd Msg )
+    , update : UserFormFields -> UserFormFields -> ( UserFormFields, Cmd Msg )
+    , view : UserFormFields -> List (Html Msg)
+    , submit : UserFormFields -> Result (List String) User
     }
 form =
-    new User FormMsg
+    new User UserFormUpdated
         |> field f0 int
         |> field f1 float
         |> field f2 string
@@ -114,14 +113,14 @@ string =
 -- Userland program plumbing
 
 
-update : Msg -> Form -> ( Form, Cmd Msg )
+update : Msg -> UserFormFields -> ( UserFormFields, Cmd Msg )
 update msg model =
     case msg of
-        FormMsg payload ->
+        UserFormUpdated payload ->
             form.update payload model
 
 
-view : Form -> Html Msg
+view : UserFormFields -> Html Msg
 view model =
     let
         _ =
@@ -130,7 +129,7 @@ view model =
     div [] (form.view model)
 
 
-main : Program () Form Msg
+main : Program () UserFormFields Msg
 main =
     Browser.element
         { init = \() -> form.init
