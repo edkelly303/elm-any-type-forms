@@ -158,9 +158,9 @@ type alias Field state delta output =
 
 
 type Delta delta
-    = Update delta
-    | StartDebouncing Time.Posix
-    | ParseIfDebounced Time.Posix
+    = StateUpdateRequested delta
+    | DebouncingStarted Time.Posix
+    | DebouncingChecked Time.Posix
     | Noop
 
 
@@ -206,17 +206,17 @@ update_ updater fields deltas states =
 
 updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     ( case delta.delta of
-        Update d ->
+        StateUpdateRequested d ->
             ( { state | state = field_.update d state.state }
-            , Task.perform (field_.toDelta << StartDebouncing) Time.now
+            , Task.perform (field_.toDelta << DebouncingStarted) Time.now
             )
 
-        StartDebouncing now ->
+        DebouncingStarted now ->
             ( { state | lastTouched = Just now }
-            , Task.perform (\() -> field_.toDelta (ParseIfDebounced now)) (Process.sleep 1000)
+            , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep 1000)
             )
 
-        ParseIfDebounced now ->
+        DebouncingChecked now ->
             ( if state.lastTouched == Just now then
                 let
                     parsed =
@@ -283,7 +283,7 @@ view_ viewer toMsg fields states =
 
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
     ( field_.view
-        { toMsg = \x -> toMsg (field_.toDelta (Update x))
+        { toMsg = \x -> toMsg (field_.toDelta (StateUpdateRequested x))
         , state = state.state
         , output = state.output
         , feedback = state.feedback
