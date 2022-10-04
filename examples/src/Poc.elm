@@ -525,14 +525,9 @@ multivalidate :
     -> (Validator checker formData -> Validator Bool formData)
     -> Result (List String) (List String)
 multivalidate formData checkers fieldGetters =
-    lift checkers formData
+    Validator (Ok checkers) formData
         |> fieldGetters
         |> done
-
-
-lift : List (Checker checker) -> formData -> Validator checker formData
-lift checkers formData =
-    Validator (Ok checkers) formData
 
 
 get :
