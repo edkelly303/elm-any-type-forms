@@ -154,9 +154,10 @@ update msg model =
 
                 Completed _ ->
                     ( model, Cmd.none )
-        Back -> 
-            form.init 
-            |> Tuple.mapFirst Editing
+
+        Back ->
+            form.init
+                |> Tuple.mapFirst Editing
 
 
 view : Model -> Html Msg
@@ -174,7 +175,7 @@ view model =
                 , div [] [ text ("Age: " ++ String.fromInt user.age) ]
                 , div [] [ text ("Height: " ++ String.fromFloat user.height) ]
                 , div [] [ text ("Weight: " ++ String.fromInt user.weight) ]
-                , button [ onClick Back ] [text "go back"] 
+                , button [ onClick Back ] [ text "go back" ]
                 ]
 
 
@@ -240,16 +241,50 @@ type Output output
 -- Field setters
 
 
-f0 =
-    identity
-
-
-f1 =
+set1 : (b -> y) -> ( a, b ) -> ( a, y )
+set1 =
     Tuple.mapSecond
 
 
+get1 : ( a, b ) -> b
+get1 =
+    Tuple.second
+
+
+f0 :
+    { get : b -> c, set : d -> e }
+    -> { get : b -> c, set : d -> e }
+f0 =
+    composeIndices { get = identity, set = identity }
+
+
+f1 :
+    { get : b -> c, set : (( d, e ) -> ( d, y )) -> f }
+    -> { get : ( g, b ) -> c, set : (e -> y) -> f }
+f1 =
+    composeIndices { get = get1, set = set1 }
+
+
+f2 :
+    { get : b -> c, set : (( d, ( e, f ) ) -> ( d, ( e, y ) )) -> g }
+    -> { get : ( h, ( i, b ) ) -> c, set : (f -> y) -> g }
 f2 =
     f1 >> f1
+
+
+composeIndices :
+    { get : b -> c, set : d -> e }
+    -> { get : c -> g, set : e -> h }
+    -> { get : b -> g, set : d -> h }
+composeIndices idx1 idx2 =
+    { get = idx1.get >> idx2.get
+    , set = idx1.set >> idx2.set
+    }
+
+
+instantiateIndex : ({ get : a -> a, set : b -> b } -> index) -> index
+instantiateIndex idx =
+    idx { get = identity, set = identity }
 
 
 
@@ -455,7 +490,7 @@ new output toMsg =
     }
 
 
-field fieldSetter fb f =
+field idx fb f =
     { unfurler = f.unfurler >> unfurler1
     , combiner = f.combiner >> combiner1
     , updater = f.updater >> updater1
@@ -480,7 +515,7 @@ field fieldSetter fb f =
           , parse = fb.parse
           , validators = fb.validators
           , debounce = fb.debounce
-          , setter = fieldSetter
+          , setter = instantiateIndex idx |> .set
           }
         , f.fields
         )
@@ -547,17 +582,7 @@ test =
         , showIf (\f1_ f2_ -> True) "this always gets shown if validation passes"
         , showIf (\f1_ f2_ -> f1_ == 2) "this gets shown if f1 == 2"
         ]
-        (get v1 >> get v2)
-
-
-v1 : ( a, b ) -> b
-v1 =
-    Tuple.second
-
-
-v2 : ( a, ( b, c ) ) -> c
-v2 =
-    v1 >> v1
+        (get f1 >> get f2)
 
 
 type Validator checker formData
@@ -583,11 +608,14 @@ multivalidate formData checkers fieldGetters =
 
 
 get :
-    (formData -> ( Result String fieldData, restFields ))
-    -> Validator (fieldData -> next) formData
-    -> Validator next formData
-get fieldGetter (Validator resultCheckers formData) =
+    ({ get : a -> a, set : b -> b } -> { c | get : formData -> ( Result String d, e ) })
+    -> Validator (d -> f) formData
+    -> Validator f formData
+get idx (Validator resultCheckers formData) =
     let
+        fieldGetter =
+            instantiateIndex idx |> .get
+
         resultFieldData =
             fieldGetter formData |> Tuple.first
 
