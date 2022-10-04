@@ -475,10 +475,6 @@ end f =
 -- A SKETCH OF MULTI-FIELD VALIDATION
 
 
-type Validator a b
-    = Validator a b
-
-
 type End
     = End
 
@@ -502,6 +498,22 @@ test =
         (get f1 >> get f2)
 
 
+type Validator checker formData
+    = Validator (Result (List String) (List (Checker checker))) formData
+
+
+type alias Checker checker =
+    { check : checker
+    , fails : Bool
+    , feedback : String
+    }
+
+
+validate :
+    formData
+    -> List (Checker checker)
+    -> (Validator checker formData -> Validator Bool formData)
+    -> Result (List String) (List String)
 validate formData checkers fieldGetters =
     Validator (Ok checkers) formData
         |> fieldGetters
