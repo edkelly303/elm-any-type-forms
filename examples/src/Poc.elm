@@ -475,7 +475,6 @@ end f =
 -- A SKETCH OF MULTI-FIELD VALIDATION
 
 
-
 type Validator a b
     = Validator a b
 
@@ -484,74 +483,91 @@ type End
     = End
 
 
+showIf check feedback =
+    { check = check, feedback = feedback, fails = False }
+
+
+failIf check feedback =
+    { check = check, feedback = feedback, fails = True }
+
+
 test =
     validate
-        ( "hello", ( "beautiful", ( "world", End ) ) )
-        { check = \fst thd -> fst == thd, feedback = "not equal", fails = False }
-        (\data ->
-            data
-                |> get f1
-                |> get f2
-        )
+        ( Err "f0 did not parse", ( Ok 1, ( Ok 1, End ) ) )
+        [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!" 
+        , failIf (\f1_ f2_ -> f1_ <= f2_) "failed because f1 <= f2!"
+        , showIf (\f1_ f2_ -> True) "this always gets shown if validation passes"
+        , showIf (\f1_ f2_ -> f1_ == 2) "this gets shown if f1 == 2"
+        ]
+        (get f1 >> get f2)
 
 
-validate formData check fieldGetters =
-    lift
-        formData
-        check
+validate formData checkers fieldGetters =
+    Validator (Ok checkers) formData
         |> fieldGetters
         |> done
 
 
-lift formData validator =
-    Validator validator formData
-
-
-get fieldGetter (Validator validator formData) =
+get fieldGetter (Validator resultCheckers formData) =
     let
-        fieldData =
+        resultFieldData =
             fieldGetter formData |> Tuple.first
 
-        newValidator =
-            { check = validator.check fieldData
-            , feedback = validator.feedback
-            , fails = validator.fails
-            }
+        appliedCheckers =
+            case ( resultCheckers, resultFieldData ) of
+                ( Ok checkers, Ok fieldData ) ->
+                    Ok
+                        (List.map
+                            (\checker ->
+                                { check = checker.check fieldData
+                                , feedback = checker.feedback
+                                , fails = checker.fails
+                                }
+                            )
+                            checkers
+                        )
+
+                ( Err previousErrs, Ok _ ) ->
+                    Err previousErrs
+
+                ( Ok _, Err parsingErr ) ->
+                    Err [ parsingErr ]
+
+                ( Err previousErrs, Err parsingErr ) ->
+                    Err (parsingErr :: previousErrs)
     in
-    Validator newValidator formData
+    Validator appliedCheckers formData
 
 
-done (Validator validator _) =
-    if not validator.check then
-        if validator.fails then
-            Err validator.feedback
+done (Validator resultCheckers _) =
+    case resultCheckers of
+        Err e ->
+            Err e
 
-        else
-            Ok validator.feedback
+        Ok [] ->
+            Ok []
 
-    else
-        Ok ""
+        Ok checkers ->
+            List.foldl
+                (\{ check, feedback, fails } resultFeedbacks ->
+                    case resultFeedbacks of
+                        Err feedbacks ->
+                            if check && fails then
+                                Err (feedback :: feedbacks)
 
-get fieldGetter (Validator validator formData) =
-    let
-        fieldData =
-            fieldGetter formData |> Tuple.first
+                            else
+                                Err feedbacks
 
-        newValidator =
-            { check = validator.check fieldData
-            , feedback = validator.feedback
-            , fails = validator.fails
-            }
-    in
-    Validator newValidator formData
+                        Ok feedbacks ->
+                            if check then
+                                if fails then
+                                    Err [ feedback ]
 
+                                else
+                                    Ok (feedback :: feedbacks)
 
-done (Validator validator _) =
-    if not validator.check then 
-        if validator.fails then
-            Err validator.feedback
-        else 
-            Ok validator.feedback
-
-    else
-        Ok ""
+                            else
+                                Ok feedbacks
+                )
+                (Ok [])
+                checkers
