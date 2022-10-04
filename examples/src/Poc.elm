@@ -374,7 +374,7 @@ unfurl unfurler toOutput states =
 
 unfurler1 ( toOutput, ( state, states ) ) =
     -- this may need a rethink to handle the Intact and Debouncing states explicitly...
-    -- or more likely, to validate all fields before unfurling, so that no fields will be 
+    -- or more likely, to validate all fields before unfurling, so that no fields will be
     -- intact or debouncing by the time this function is called...
     ( case ( toOutput, state.output ) of
         ( Ok fn, Passed val ) ->
@@ -472,30 +472,40 @@ end f =
     }
 
 
+
 -- A SKETCH OF MULTI-FIELD VALIDATION
 
 
-type End
-    = End
+showIf : checker -> String -> Checker checker
+showIf checker feedback =
+    { check = checker, feedback = feedback, fails = False }
 
 
-showIf check feedback =
-    { check = check, feedback = feedback, fails = False }
+failIf : checker -> String -> Checker checker
+failIf checker feedback =
+    { check = checker, feedback = feedback, fails = True }
 
 
-failIf check feedback =
-    { check = check, feedback = feedback, fails = True }
-
-
+test : Result (List String) (List String)
 test =
-    validate
+    multivalidate
         ( Err "f0 did not parse", ( Ok 1, ( Ok 1, End ) ) )
-        [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!" 
+        [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!"
         , failIf (\f1_ f2_ -> f1_ <= f2_) "failed because f1 <= f2!"
         , showIf (\f1_ f2_ -> True) "this always gets shown if validation passes"
         , showIf (\f1_ f2_ -> f1_ == 2) "this gets shown if f1 == 2"
         ]
-        (get f1 >> get f2)
+        (get v1 >> get v2)
+
+
+v1 : ( a, b ) -> b
+v1 =
+    Tuple.second
+
+
+v2 : ( a, ( b, c ) ) -> c
+v2 =
+    v1 >> v1
 
 
 type Validator checker formData
@@ -509,17 +519,26 @@ type alias Checker checker =
     }
 
 
-validate :
+multivalidate :
     formData
     -> List (Checker checker)
     -> (Validator checker formData -> Validator Bool formData)
     -> Result (List String) (List String)
-validate formData checkers fieldGetters =
-    Validator (Ok checkers) formData
+multivalidate formData checkers fieldGetters =
+    lift checkers formData
         |> fieldGetters
         |> done
 
 
+lift : List (Checker checker) -> formData -> Validator checker formData
+lift checkers formData =
+    Validator (Ok checkers) formData
+
+
+get :
+    (formData -> ( Result String fieldData, restFields ))
+    -> Validator (fieldData -> next) formData
+    -> Validator next formData
 get fieldGetter (Validator resultCheckers formData) =
     let
         resultFieldData =
@@ -551,6 +570,7 @@ get fieldGetter (Validator resultCheckers formData) =
     Validator appliedCheckers formData
 
 
+done : Validator Bool formData -> Result (List String) (List String)
 done (Validator resultCheckers _) =
     case resultCheckers of
         Err e ->
