@@ -26,11 +26,11 @@ type Msg
 
 
 type alias UserFormFields =
-    ( Field Int Int Int, ( Field Float Float Float, ( Field String String Int, End ) ) )
+    ( Field Int Int Int, ( Field Float Float Float, ( Field String String Int, ( Field String String Int, End ) ) ) )
 
 
 type alias User =
-    { age : Int, height : Float, weight : Int }
+    { age : Int, height : Float, weight : Int, x : Int }
 
 
 
@@ -48,6 +48,7 @@ form =
         |> field f0 int
         |> field f1 float
         |> field f2 string
+        |> field (f2 >> f1) string
         |> end
 
 
@@ -455,9 +456,6 @@ unfurl unfurler toOutput states =
 
 
 unfurler1 ( toOutput, ( state, states ) ) =
-    -- this may need a rethink to handle the Intact and Debouncing states explicitly...
-    -- or more likely, to validate all fields before unfurling, so that no fields will be
-    -- intact or debouncing by the time this function is called...
     ( case ( toOutput, state.output ) of
         ( Ok fn, Passed val ) ->
             Ok (fn val)
@@ -579,8 +577,8 @@ test =
         ( Err "f0 did not parse", ( Ok 1, ( Ok 1, End ) ) )
         [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!"
         , failIf (\f1_ f2_ -> f1_ <= f2_) "failed because f1 <= f2!"
-        , showIf (\f1_ f2_ -> True) "this always gets shown if validation passes"
-        , showIf (\f1_ f2_ -> f1_ == 2) "this gets shown if f1 == 2"
+        , showIf (\_ _ -> True) "this always gets shown if validation passes"
+        , showIf (\f1_ _ -> f1_ == 2) "this gets shown if f1 == 2"
         ]
         (get f1 >> get f2)
 
