@@ -14,8 +14,14 @@ import Time
 -- Userland type definitions
 
 
+type Model
+    = Editing UserFormFields
+    | Completed User
+
+
 type Msg
     = UserFormUpdated UserFormFields
+    | Submitted
 
 
 type alias UserFormFields =
@@ -34,7 +40,7 @@ form :
     { init : ( UserFormFields, Cmd Msg )
     , update : UserFormFields -> UserFormFields -> ( UserFormFields, Cmd Msg )
     , view : UserFormFields -> List (Html Msg)
-    , submit : UserFormFields -> Result (List String) User
+    , submit : UserFormFields -> Result UserFormFields User
     }
 form =
     new User UserFormUpdated
@@ -64,7 +70,7 @@ float =
     { init = 0.1
     , update = \delta state -> state + delta
     , view = \{ toMsg, state } -> div [] [ button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ] ]
-    , parse = \_ -> Err "uh oh"
+    , parse = Ok
     , validators = []
     , debounce = 0
     }
@@ -123,26 +129,49 @@ string =
 -- Userland program plumbing
 
 
-update : Msg -> UserFormFields -> ( UserFormFields, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        UserFormUpdated payload ->
-            form.update payload model
+        UserFormUpdated delta ->
+            case model of
+                Editing form_ ->
+                    form.update delta form_
+                        |> Tuple.mapFirst Editing
+
+                Completed _ ->
+                    ( model, Cmd.none )
+
+        Submitted ->
+            case model of
+                Editing form0 ->
+                    case form.submit form0 of
+                        Ok user ->
+                            ( Completed user, Cmd.none )
+
+                        Err form1 ->
+                            ( Editing form1, Cmd.none )
+
+                Completed _ ->
+                    ( model, Cmd.none )
 
 
-view : UserFormFields -> Html Msg
+view : Model -> Html Msg
 view model =
-    let
-        _ =
-            Debug.log "User" (form.submit model)
-    in
-    div [] (form.view model)
+    case model of
+        Editing form_ ->
+            div []
+                [ div [] (form.view form_)
+                , button [ onClick Submitted ] [ text "submit" ]
+                ]
+
+        Completed user ->
+            text "Completed!"
 
 
-main : Program () UserFormFields Msg
+main : Program () Model Msg
 main =
     Browser.element
-        { init = \() -> form.init
+        { init = \() -> form.init |> Tuple.mapFirst Editing
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
@@ -264,6 +293,14 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     )
 
 
+validateAll validateAller fields states =
+    validateAller (\End End -> End) fields states
+
+
+validateAller1 next ( field_, fields ) ( state, states ) =
+    ( parseAndValidate field_ state, next fields states )
+
+
 parseAndValidate :
     { a | parse : state -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }
     -> Field state delta output
@@ -380,14 +417,8 @@ unfurler1 ( toOutput, ( state, states ) ) =
         ( Ok fn, Passed val ) ->
             Ok (fn val)
 
-        ( Ok _, _ ) ->
-            Err state.feedback
-
-        ( Err errs, Passed _ ) ->
-            Err errs
-
-        ( Err errs, _ ) ->
-            Err (errs ++ state.feedback)
+        _ ->
+            Err ()
     , states
     )
 
@@ -401,6 +432,7 @@ new output toMsg =
     , combiner = identity
     , updater = identity
     , cmdStripper = identity
+    , validateAller = identity
     , viewer = identity
     , toLister = identity
     , stateReverser = identity
@@ -418,6 +450,7 @@ field fieldSetter fb f =
     , combiner = f.combiner >> combiner1
     , updater = f.updater >> updater1
     , cmdStripper = f.cmdStripper >> cmdStripper1
+    , validateAller = f.validateAller >> validateAller1
     , viewer = f.viewer >> viewer1
     , toLister = f.toLister >> toLister1
     , stateReverser = f.stateReverser >> reverser1
@@ -468,7 +501,16 @@ end f =
                 |> toList f.toLister
     , submit =
         \states ->
-            unfurl f.unfurler f.output states
+            let
+                validatedStates =
+                    validateAll f.validateAller fields states
+            in
+            case unfurl f.unfurler f.output validatedStates of
+                Ok output ->
+                    Ok output
+
+                Err () ->
+                    Err validatedStates
     }
 
 
