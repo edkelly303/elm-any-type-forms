@@ -22,6 +22,7 @@ type Model
 type Msg
     = UserFormUpdated UserFormFields
     | Submitted
+    | Back
 
 
 type alias UserFormFields =
@@ -153,6 +154,9 @@ update msg model =
 
                 Completed _ ->
                     ( model, Cmd.none )
+        Back -> 
+            form.init 
+            |> Tuple.mapFirst Editing
 
 
 view : Model -> Html Msg
@@ -165,7 +169,13 @@ view model =
                 ]
 
         Completed user ->
-            text "Completed!"
+            div []
+                [ div [] [ text "Your user's data:" ]
+                , div [] [ text ("Age: " ++ String.fromInt user.age) ]
+                , div [] [ text ("Height: " ++ String.fromFloat user.height) ]
+                , div [] [ text ("Weight: " ++ String.fromInt user.weight) ]
+                , button [ onClick Back ] [text "go back"] 
+                ]
 
 
 main : Program () Model Msg
