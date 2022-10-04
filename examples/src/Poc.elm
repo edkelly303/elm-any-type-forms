@@ -470,3 +470,88 @@ end f =
         \states ->
             unfurl f.unfurler f.output states
     }
+
+
+-- A SKETCH OF MULTI-FIELD VALIDATION
+
+
+
+type Validator a b
+    = Validator a b
+
+
+type End
+    = End
+
+
+test =
+    validate
+        ( "hello", ( "beautiful", ( "world", End ) ) )
+        { check = \fst thd -> fst == thd, feedback = "not equal", fails = False }
+        (\data ->
+            data
+                |> get f1
+                |> get f2
+        )
+
+
+validate formData check fieldGetters =
+    lift
+        formData
+        check
+        |> fieldGetters
+        |> done
+
+
+lift formData validator =
+    Validator validator formData
+
+
+get fieldGetter (Validator validator formData) =
+    let
+        fieldData =
+            fieldGetter formData |> Tuple.first
+
+        newValidator =
+            { check = validator.check fieldData
+            , feedback = validator.feedback
+            , fails = validator.fails
+            }
+    in
+    Validator newValidator formData
+
+
+done (Validator validator _) =
+    if not validator.check then
+        if validator.fails then
+            Err validator.feedback
+
+        else
+            Ok validator.feedback
+
+    else
+        Ok ""
+
+get fieldGetter (Validator validator formData) =
+    let
+        fieldData =
+            fieldGetter formData |> Tuple.first
+
+        newValidator =
+            { check = validator.check fieldData
+            , feedback = validator.feedback
+            , fails = validator.fails
+            }
+    in
+    Validator newValidator formData
+
+
+done (Validator validator _) =
+    if not validator.check then 
+        if validator.fails then
+            Err validator.feedback
+        else 
+            Ok validator.feedback
+
+    else
+        Ok ""
