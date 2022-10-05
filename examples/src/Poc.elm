@@ -676,3 +676,38 @@ done (Validator resultCheckers _) =
                 )
                 (Ok [])
                 checkers
+
+
+-- ANOTHER API SKETCH FOR MULTIVALIDATION
+--
+-- We would have failIf2, failIf3 etc., as well as showIf2, showIf3 and so on.
+-- Perhaps these could actually be implemented using the more complex applicative 
+-- API above, and then we could also offer failIfN and showIfN to support
+-- checkers with arbitrary numbers of arguments 
+
+form_failIf2 check feedback idx1 idx2 fb =
+    let
+        get1 = 
+            instantiateIndex idx1 |> .get
+        
+        get2 = 
+            instantiateIndex idx2 |> .get
+
+        v = \state -> 
+            case ( get1 state, get2 state ) of
+                ( Ok arg1, Ok arg2 ) ->
+                    if check arg1 arg2 then 
+                        Err [ feedback ]
+                    else 
+                        Ok []
+                
+                ( Err f1, Err f2 ) ->
+                    Err (f1 ++ f2)
+                
+                ( Err f, _ ) -? 
+                    Err f
+                
+                ( _, Err f ) -> 
+                    Err f
+    in
+    { fb | validators = v :: fb.validators }
