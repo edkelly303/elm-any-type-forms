@@ -302,15 +302,15 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
         StateUpdateRequested d ->
             let
                 newState =
-                    field_.update d state.state
+                    { state | state = field_.update d state.state }
             in
             if field_.debounce > 0 then
-                ( { state | state = newState }
+                ( newState
                 , Task.perform (field_.toDelta << DebouncingStarted) Time.now
                 )
 
             else
-                ( parseAndValidate field_ state
+                ( parseAndValidate field_ newState
                 , Cmd.none
                 )
 
