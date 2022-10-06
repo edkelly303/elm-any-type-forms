@@ -717,22 +717,22 @@ done (Validator resultCheckers _) =
 
 form_failIf2 check feedback idx1 idx2 fb =
     let
-        get1 = 
-            instantiateIndex idx1 |> .get
+        getField1 = 
+            (instantiateIndex idx1 |> .get)
         
-        get2 = 
-            instantiateIndex idx2 |> .get
+        getField2 = 
+            (instantiateIndex idx2 |> .get)
 
         v = \state -> 
-            case ( get1 state, get2 state ) of
+            case ( getField1 state, getField2 state ) of
                 ( Ok arg1, Ok arg2 ) ->
                     if check arg1 arg2 then 
                         Err [ feedback ]
                     else 
                         Ok []
                 
-                ( Err f1, Err f2 ) ->
-                    Err (f1 ++ f2)
+                ( Err f1_, Err f2_ ) ->
+                    Err (f1_ ++ f2_)
                 
                 ( Err f, _ ) -> 
                     Err f
