@@ -326,7 +326,7 @@ instantiateIndex idx =
    1. Iterate through fields, deltas and states0, updating state.input for the updated field, and returning states1
    2. Debounce if needed
    3. Parse the updated field, returning states2
-   2. Perform form-level multi-field validation on states2, and put any feedback in a 
+   2. Perform form-level multi-field validation on states2, and put any feedback in a
       `List (FieldIndex, Result Feedback Feedback)`
    3. Validate the updated field
       a. Perform field-level validation, returning field-level feedback as `Result Feedback Feedback`
