@@ -704,7 +704,7 @@ form_failIf2 check feedback idx1 idx2 fb =
                 ( Err f1, Err f2 ) ->
                     Err (f1 ++ f2)
                 
-                ( Err f, _ ) -? 
+                ( Err f, _ ) -> 
                     Err f
                 
                 ( _, Err f ) -> 
