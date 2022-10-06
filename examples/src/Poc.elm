@@ -1,7 +1,7 @@
 module Poc exposing (main)
 
 import Browser
-import Html exposing (..)
+import Html as H exposing (..)
 import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
 import Process
@@ -89,8 +89,8 @@ form =
 int : FieldBuilder Int Int Int (Html msg) msg
 int =
     { init = 100
-    , update = \delta state -> state // delta
-    , view = \{ toMsg, state } -> div [] [ button [ onClick (toMsg 2) ] [ text (String.fromInt state) ] ]
+    , update = \delta input-> input // delta
+    , view = \{ toMsg, input } -> div [] [ button [ onClick (toMsg 2) ] [ text (String.fromInt input) ] ]
     , parse = Ok
     , validators = []
     , debounce = 0
@@ -100,8 +100,8 @@ int =
 float : FieldBuilder Float Float Float (Html msg) msg
 float =
     { init = 0.1
-    , update = \delta state -> state + delta
-    , view = \{ toMsg, state } -> div [] [ button [ onClick (toMsg 2.1) ] [ text (String.fromFloat state) ] ]
+    , update = \delta input -> input + delta
+    , view = \{ toMsg, input } -> div [] [ button [ onClick (toMsg 2.1) ] [ text (String.fromFloat input) ] ]
     , parse = Ok
     , validators = []
     , debounce = 0
@@ -113,13 +113,13 @@ string =
     { init = ""
     , update = \delta _ -> delta
     , view =
-        \{ toMsg, state, output, feedback } ->
+        \state ->
             div []
-                [ input
-                    [ onInput toMsg
-                    , HA.value state
+                [ H.input
+                    [ onInput state.toMsg
+                    , HA.value state.input
                     , HA.style "background-color"
-                        (case output of
+                        (case state.output of
                             Intact ->
                                 "white"
 
@@ -133,17 +133,17 @@ string =
                                 "pink"
                         )
                     ]
-                    [ text state ]
-                , case feedback of
+                    [ text state.input ]
+                , case state.feedback of
                     [] ->
                         text ""
 
                     _ ->
-                        div [] (List.map text feedback)
+                        div [] (List.map text state.feedback)
                 ]
     , parse =
-        \state ->
-            case String.toInt state of
+        \input ->
+            case String.toInt input of
                 Just i ->
                     Ok i
 
@@ -229,8 +229,8 @@ type End
     = End
 
 
-type alias Field state delta output =
-    { state : state
+type alias Field input delta output =
+    { input : input
     , delta : Delta delta
     , output : Output output
     , lastTouched : Maybe Time.Posix
@@ -245,17 +245,17 @@ type Delta delta
     | Noop
 
 
-type alias FieldBuilder state delta output element msg =
-    { init : state
-    , update : delta -> state -> state
+type alias FieldBuilder input delta output element msg =
+    { init : input
+    , update : delta -> input -> input
     , view :
-        { state : state
+        { input : input
         , toMsg : delta -> msg
         , feedback : List String
         , output : Output output
         }
         -> element
-    , parse : state -> Result String output
+    , parse : input -> Result String output
     , validators : List { check : output -> Bool, feedback : String, fails : Bool }
     , debounce : Float
     }
@@ -332,7 +332,7 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
         StateUpdateRequested d ->
             let
                 newState =
-                    { state | state = field_.update d state.state }
+                    { state | input = field_.update d state.input }
             in
             if field_.debounce > 0 then
                 ( newState
@@ -378,13 +378,13 @@ validateAller1 next ( field_, fields ) ( state, states ) =
 
 
 parseAndValidate :
-    { a | parse : state -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }
-    -> Field state delta output
-    -> Field state delta output
+    { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }
+    -> Field input delta output
+    -> Field input delta output
 parseAndValidate field_ state =
     let
         ( output, feedback ) =
-            case field_.parse state.state of
+            case field_.parse state.input of
                 Err f ->
                     ( Failed, [ f ] )
 
@@ -433,7 +433,7 @@ view_ viewer toMsg fields states =
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
     ( field_.view
         { toMsg = \x -> toMsg (field_.toDelta (StateUpdateRequested x))
-        , state = state.state
+        , input = state.input
         , output = state.output
         , feedback = state.feedback
         }
@@ -529,7 +529,7 @@ field idx fb f =
     , stateReverser = f.stateReverser >> reverser1
     , fieldReverser = f.fieldReverser >> reverser1
     , inits =
-        ( { state = fb.init
+        ( { input = fb.init
           , delta = Noop
           , output = Intact
           , lastTouched = Nothing
