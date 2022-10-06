@@ -51,45 +51,46 @@ form =
         |> field (f2 >> f1) string
         |> end
 
+
+
 {-
-SKETCH OF FINAL API
+   SKETCH OF FINAL API
 
-form =
-    Form.new User UserFormUpdated
-        |> Form.field f0 
-            (Field.string "name"
-                |> Field.debounce 500 
-                |> Field.failIf String.isEmpty "Name cannot be blank"
-            )
-        |> Form.field f1
-            (Field.password "password"
-                |> Field.debounce 500 
-                |> Field.failIf (\x -> String.length x < 12) "Password must be at least 12 characters"
-            )
-        |> Form.field f2
-            (Field.password "confirmation"
-                |> Field.debounce 500 
-            )
-        |> Form.failIf2 
-            (\name password -> String.contains name password) 
-            "Password shouldn't contain name" 
-            (Form.hide f0)
-            (Form.show f1)
-        |> Form.failIf2 
-            (\password confirmation -> password /= confirmation) 
-            "Password and confirmation must match" 
-            (Form.show f1)
-            (Form.show f2)
-        |> Form.end
+   form =
+       Form.new User UserFormUpdated
+           |> Form.field f0
+               (Field.string "name"
+                   |> Field.debounce 500
+                   |> Field.failIf String.isEmpty "Name cannot be blank"
+               )
+           |> Form.field f1
+               (Field.password "password"
+                   |> Field.debounce 500
+                   |> Field.failIf (\x -> String.length x < 12) "Password must be at least 12 characters"
+               )
+           |> Form.field f2
+               (Field.password "confirmation"
+                   |> Field.debounce 500
+               )
+           |> Form.failIf2
+               (\name password -> String.contains name password)
+               "Password shouldn't contain name"
+               (Form.hide f0)
+               (Form.show f1)
+           |> Form.failIf2
+               (\password confirmation -> password /= confirmation)
+               "Password and confirmation must match"
+               (Form.show f1)
+               (Form.show f2)
+           |> Form.end
 -}
-
 -- Userland widget definitions
 
 
 int : FieldBuilder Int Int Int (Html msg) msg
 int =
     { init = 100
-    , update = \delta input-> input // delta
+    , update = \delta input -> input // delta
     , view = \{ toMsg, input } -> div [] [ button [ onClick (toMsg 2) ] [ text (String.fromInt input) ] ]
     , parse = Ok
     , validators = []
@@ -320,6 +321,18 @@ instantiateIndex idx =
 
 
 -- Step functions
+{-
+   TODO - split update_ into multiple phases:
+   1. Iterate through fields, deltas and states0, updating state.input for the updated field, and returning states1
+   2. Debounce if needed
+   3. Parse the updated field, returning states2
+   2. Perform form-level multi-field validation on states2, and put any feedback in a 
+      `List (FieldIndex, Result Feedback Feedback)`
+   3. Validate the updated field
+      a. Perform field-level validation, returning field-level feedback as `Result Feedback Feedback`
+      b. Look through the form-level feedback, returning any feedback that matches the current field's index
+      c. Concatenate the results of (a) and (b) and store in state.feedback, returning states3
+-}
 
 
 update_ : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
@@ -708,36 +721,40 @@ done (Validator resultCheckers _) =
                 checkers
 
 
+
 -- ANOTHER API SKETCH FOR MULTIVALIDATION
 --
 -- We would have failIf2, failIf3 etc., as well as showIf2, showIf3 and so on.
--- Perhaps these could actually be implemented using the more complex applicative 
+-- Perhaps these could actually be implemented using the more complex applicative
 -- API above, and then we could also offer failIfN and showIfN to support
--- checkers with arbitrary numbers of arguments 
+-- checkers with arbitrary numbers of arguments
+
 
 form_failIf2 check feedback idx1 idx2 fb =
     let
-        getField1 = 
-            (instantiateIndex idx1 |> .get)
-        
-        getField2 = 
-            (instantiateIndex idx2 |> .get)
+        getField1 =
+            instantiateIndex idx1 |> .get
 
-        v = \state -> 
-            case ( getField1 state, getField2 state ) of
-                ( Ok arg1, Ok arg2 ) ->
-                    if check arg1 arg2 then 
-                        Err [ feedback ]
-                    else 
-                        Ok []
-                
-                ( Err f1_, Err f2_ ) ->
-                    Err (f1_ ++ f2_)
-                
-                ( Err f, _ ) -> 
-                    Err f
-                
-                ( _, Err f ) -> 
-                    Err f
+        getField2 =
+            instantiateIndex idx2 |> .get
+
+        v =
+            \state ->
+                case ( getField1 state, getField2 state ) of
+                    ( Ok arg1, Ok arg2 ) ->
+                        if check arg1 arg2 then
+                            Err [ feedback ]
+
+                        else
+                            Ok []
+
+                    ( Err f1_, Err f2_ ) ->
+                        Err (f1_ ++ f2_)
+
+                    ( Err f, _ ) ->
+                        Err f
+
+                    ( _, Err f ) ->
+                        Err f
     in
     { fb | validators = v :: fb.validators }
