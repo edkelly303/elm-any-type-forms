@@ -51,7 +51,37 @@ form =
         |> field (f2 >> f1) string
         |> end
 
+{-
+SKETCH OF FINAL API
 
+form =
+    Form.new User UserFormUpdated
+        |> Form.field f0 
+            (Field.string "name"
+                |> Field.debounce 500 
+                |> Field.failIf String.isEmpty "Name cannot be blank"
+            )
+        |> Form.field f1
+            (Field.password "password"
+                |> Field.debounce 500 
+                |> Field.failIf (\x -> String.length x < 12) "Password must be at least 12 characters"
+            )
+        |> Form.field f2
+            (Field.password "confirmation"
+                |> Field.debounce 500 
+            )
+        |> Form.failIf2 
+            (\name password -> String.contains name password) 
+            "Password shouldn't contain name" 
+            (Form.hide f0)
+            (Form.show f1)
+        |> Form.failIf2 
+            (\password confirmation -> password /= confirmation) 
+            "Password and confirmation must match" 
+            (Form.show f1)
+            (Form.show f2)
+        |> Form.end
+-}
 
 -- Userland widget definitions
 
