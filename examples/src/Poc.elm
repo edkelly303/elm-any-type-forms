@@ -49,6 +49,7 @@ form =
         |> field f1 float
         |> field f2 string
         |> field (f2 >> f1) string
+        |> form_failIf2 (\age weight -> age > weight) "field 2 can't be greater than field 3" f2 (f2 >> f1)
         |> end
 
 
@@ -325,59 +326,61 @@ instantiateIndex idx =
    TODO - split update_ into multiple phases:
    1. Iterate through fields, deltas and states0, updating state.input for the updated field, and returning states1
    2. Debounce if needed
-   3. Parse the updated field, returning states2
-   2. Perform form-level multi-field validation on states2, and put any feedback in a
+   3. Parse the updated field & perform field-level validation, returning states2
+   4. Perform form-level multi-field validation on states2, and put any feedback in a
       `List (FieldIndex, Result Feedback Feedback)`
-   3. Validate the updated field
-      a. Perform field-level validation, returning field-level feedback as `Result Feedback Feedback`
-      b. Look through the form-level feedback, returning any feedback that matches the current field's index
-      c. Concatenate the results of (a) and (b) and store in state.feedback, returning states3
+   5. Iterate through fields; for each field, check whether the list contains any feedback that matches the current
+      field's index, and mash that feedback together with any existing feedback, returning states3
 -}
 
 
-update_ : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
-update_ updater fields deltas states =
+updateFieldStates : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
+updateFieldStates updater fields deltas states =
     updater (\End End End -> End) fields deltas states
 
 
 updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
-    ( case delta.delta of
-        StateUpdateRequested d ->
-            let
-                newState =
-                    { state | input = field_.update d state.input }
-            in
-            if field_.debounce > 0 then
-                ( newState
-                , Task.perform (field_.toDelta << DebouncingStarted) Time.now
-                )
+    let
+        stateAndCmd =
+            case delta.delta of
+                StateUpdateRequested d ->
+                    let
+                        newState =
+                            { state | input = field_.update d state.input }
+                    in
+                    if field_.debounce > 0 then
+                        ( newState
+                        , Task.perform (field_.toDelta << DebouncingStarted) Time.now
+                        )
 
-            else
-                ( parseAndValidate field_ newState
-                , Cmd.none
-                )
+                    else
+                        ( parseAndValidateField field_ newState
+                        , Cmd.none
+                        )
 
-        DebouncingStarted now ->
-            ( { state
-                | lastTouched = Just now
-                , output = Debouncing
-              }
-            , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep field_.debounce)
-            )
+                DebouncingStarted now ->
+                    ( { state
+                        | lastTouched = Just now
+                        , output = Debouncing
+                      }
+                    , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep field_.debounce)
+                    )
 
-        DebouncingChecked now ->
-            ( if state.lastTouched == Just now then
-                parseAndValidate field_ state
+                DebouncingChecked now ->
+                    ( if state.lastTouched == Just now then
+                        parseAndValidateField field_ state
 
-              else
-                state
-            , Cmd.none
-            )
+                      else
+                        state
+                    , Cmd.none
+                    )
 
-        Noop ->
-            ( state
-            , Cmd.none
-            )
+                Noop ->
+                    ( state
+                    , Cmd.none
+                    )
+    in
+    ( stateAndCmd
     , next fields deltas states
     )
 
@@ -387,14 +390,14 @@ validateAll validateAller fields states =
 
 
 validateAller1 next ( field_, fields ) ( state, states ) =
-    ( parseAndValidate field_ state, next fields states )
+    ( parseAndValidateField field_ state, next fields states )
 
 
-parseAndValidate :
+parseAndValidateField :
     { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }
     -> Field input delta output
     -> Field input delta output
-parseAndValidate field_ state =
+parseAndValidateField field_ state =
     let
         ( output, feedback ) =
             case field_.parse state.input of
@@ -402,7 +405,7 @@ parseAndValidate field_ state =
                     ( Failed, [ f ] )
 
                 Ok val ->
-                    validate field_.validators val
+                    validateField field_.validators val
     in
     { state
         | output = output
@@ -410,8 +413,8 @@ parseAndValidate field_ state =
     }
 
 
-validate : List { check : val -> Bool, feedback : String, fails : Bool } -> val -> ( Output val, List String )
-validate validators val =
+validateField : List { check : val -> Bool, feedback : String, fails : Bool } -> val -> ( Output val, List String )
+validateField validators val =
     List.foldl
         (\{ check, feedback, fails } ( outputVal, feedbacks ) ->
             if check val && fails then
@@ -427,12 +430,12 @@ validate validators val =
         validators
 
 
-cmdStrip cmdStripper states0 =
+cmdStrip cmdStripper statesAndCmds =
     let
-        ( ( states1, cmds ), _ ) =
-            cmdStripper ( ( End, [] ), states0 )
+        ( ( states, cmdsList ), _ ) =
+            cmdStripper ( ( End, [] ), statesAndCmds )
     in
-    ( states1, Cmd.batch cmds )
+    ( states, Cmd.batch cmdsList )
 
 
 cmdStripper1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
@@ -526,12 +529,13 @@ new output toMsg =
     , inits = End
     , fields = End
     , emptyMsg = End
+    , validators = []
     , toMsg = toMsg
     , output = output
     }
 
 
-field idx fb f =
+field idx fieldBuilder f =
     { unfurler = f.unfurler >> unfurler1
     , combiner = f.combiner >> combiner1
     , updater = f.updater >> updater1
@@ -542,7 +546,7 @@ field idx fb f =
     , stateReverser = f.stateReverser >> reverser1
     , fieldReverser = f.fieldReverser >> reverser1
     , inits =
-        ( { input = fb.init
+        ( { input = fieldBuilder.init
           , delta = Noop
           , output = Intact
           , lastTouched = Nothing
@@ -551,15 +555,16 @@ field idx fb f =
         , f.inits
         )
     , fields =
-        ( { update = fb.update
-          , view = fb.view
-          , parse = fb.parse
-          , validators = fb.validators
-          , debounce = fb.debounce
+        ( { update = fieldBuilder.update
+          , view = fieldBuilder.view
+          , parse = fieldBuilder.parse
+          , validators = fieldBuilder.validators
+          , debounce = fieldBuilder.debounce
           , setter = instantiateIndex idx |> .set
           }
         , f.fields
         )
+    , validators = f.validators
     , toMsg = f.toMsg
     , output = f.output
     }
@@ -576,11 +581,22 @@ end f =
     in
     { init = ( inits, Cmd.none )
     , update =
-        \deltas states ->
-            update_ f.updater fields deltas states
-                |> cmdStrip f.cmdStripper
-                |> Tuple.mapFirst (reverse f.stateReverser)
-                |> Tuple.mapSecond (Cmd.map f.toMsg)
+        \deltas states0 ->
+            let
+                ( reversedStates1, cmd ) =
+                    updateFieldStates f.updater fields deltas states0
+                        |> cmdStrip f.cmdStripper
+
+                states1 =
+                    reversedStates1
+                        |> reverse f.stateReverser
+
+                states2 =
+                    formValidate f.validators states1
+            in
+            ( states2
+            , Cmd.map f.toMsg cmd
+            )
     , view =
         \states ->
             view_ f.viewer f.toMsg fields states
@@ -590,6 +606,7 @@ end f =
             let
                 validatedStates =
                     validateAll f.validateAller fields states
+                        |> formValidate f.validators
             in
             case unfurl f.unfurler f.output validatedStates of
                 Ok output ->
@@ -598,6 +615,11 @@ end f =
                 Err () ->
                     Err validatedStates
     }
+
+
+formValidate : List (states -> states) -> states -> states
+formValidate validators states =
+    List.foldl (\v previousStates -> v previousStates) states validators
 
 
 
@@ -730,31 +752,34 @@ done (Validator resultCheckers _) =
 -- checkers with arbitrary numbers of arguments
 
 
-form_failIf2 check feedback idx1 idx2 fb =
+form_failIf2 check feedback indexer1 indexer2 formBuilder =
     let
-        getField1 =
-            instantiateIndex idx1 |> .get
+        idx1 =
+            instantiateIndex indexer1
 
-        getField2 =
-            instantiateIndex idx2 |> .get
+        idx2 =
+            instantiateIndex indexer2
 
         v =
             \state ->
-                case ( getField1 state, getField2 state ) of
-                    ( Ok arg1, Ok arg2 ) ->
-                        if check arg1 arg2 then
-                            Err [ feedback ]
+                let
+                    field1 =
+                        (idx1.get >> Tuple.first) state
+
+                    field2 =
+                        (idx2.get >> Tuple.first) state
+                in
+                case ( field1.output, field2.output ) of
+                    ( Passed output1, Passed output2 ) ->
+                        if check output1 output2 then
+                            state
+                                |> idx1.set (Tuple.mapFirst (\field1_ -> { field1_ | output = Failed, feedback = [ feedback ] }))
+                                |> idx2.set (Tuple.mapFirst (\field2_ -> { field2_ | output = Failed, feedback = [ feedback ] }))
 
                         else
-                            Ok []
+                            state
 
-                    ( Err f1_, Err f2_ ) ->
-                        Err (f1_ ++ f2_)
-
-                    ( Err f, _ ) ->
-                        Err f
-
-                    ( _, Err f ) ->
-                        Err f
+                    _ ->
+                        state
     in
-    { fb | validators = v :: fb.validators }
+    { formBuilder | validators = v :: formBuilder.validators }
