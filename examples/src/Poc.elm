@@ -26,11 +26,21 @@ type Msg
 
 
 type alias UserFormFields =
-    ( Field Int Int Int, ( Field Float Float Float, ( Field String String Int, ( Field String String Int, End ) ) ) )
+    ( Field String String Int
+    , ( Field String String Float
+      , ( Field String String String
+        , ( Field String String String, End )
+        )
+      )
+    )
 
 
 type alias User =
-    { age : Int, height : Float, weight : Int, x : Int }
+    { age : Int
+    , height : Float
+    , weight : String
+    , x : String
+    }
 
 
 
@@ -44,108 +54,32 @@ form :
     , submit : UserFormFields -> Result UserFormFields User
     }
 form =
-    new User UserFormUpdated
-        |> field f0 int
-        |> field f1 float
-        |> field f2 string
-        |> field (f2 >> f1) string
-        |> form_failIf2 (\age weight -> age > weight) "field 2 can't be greater than field 3" f2 (f2 >> f1)
-        |> end
+    form_new User UserFormUpdated
+        |> form_field f0 field_int
+        |> form_field f1 field_float
+        |> form_field f2
+            (field_string
+                |> field_debounce 500
+                |> field_failIf (\name -> String.length name < 2) "name must be at least 2 characters"
+            )
+        |> form_field f3 field_string
+        |> form_failIf2
+            (\int flt -> int > round flt)
+            "second field must be greater than first field"
+            f0
+            f1
+        |> form_end
 
 
 
-{-
-   SKETCH OF FINAL API
-
-   form =
-       Form.new User UserFormUpdated
-           |> Form.field f0
-               (Field.string "name"
-                   |> Field.debounce 500
-                   |> Field.failIf String.isEmpty "Name cannot be blank"
-               )
-           |> Form.field f1
-               (Field.password "password"
-                   |> Field.debounce 500
-                   |> Field.failIf (\x -> String.length x < 12) "Password must be at least 12 characters"
-               )
-           |> Form.field f2
-               (Field.password "confirmation"
-                   |> Field.debounce 500
-               )
-           |> Form.failIf2
-               (\name password -> String.contains name password)
-               "Password shouldn't contain name"
-               (Form.hide f0)
-               (Form.show f1)
-           |> Form.failIf2
-               (\password confirmation -> password /= confirmation)
-               "Password and confirmation must match"
-               (Form.show f1)
-               (Form.show f2)
-           |> Form.end
--}
 -- Userland widget definitions
 
 
-int : FieldBuilder Int Int Int (Html msg) msg
-int =
-    { init = 100
-    , update = \delta input -> input // delta
-    , view = \{ toMsg, input } -> div [] [ button [ onClick (toMsg 2) ] [ text (String.fromInt input) ] ]
-    , parse = Ok
-    , validators = []
-    , debounce = 0
-    }
-
-
-float : FieldBuilder Float Float Float (Html msg) msg
-float =
-    { init = 0.1
-    , update = \delta input -> input + delta
-    , view = \{ toMsg, input } -> div [] [ button [ onClick (toMsg 2.1) ] [ text (String.fromFloat input) ] ]
-    , parse = Ok
-    , validators = []
-    , debounce = 0
-    }
-
-
-string : FieldBuilder String String Int (Html msg) msg
-string =
+field_int : FieldBuilder String String Int (Html msg) msg
+field_int =
     { init = ""
     , update = \delta _ -> delta
-    , view =
-        \state ->
-            div []
-                [ H.input
-                    [ onInput state.toMsg
-                    , HA.value state.input
-                    , HA.style "background-color"
-                        (case state.output of
-                            Intact ->
-                                "white"
-
-                            Debouncing ->
-                                "lightYellow"
-
-                            FailedToParse ->
-                                "pink"
-
-                            Parsed _ Failed ->
-                                "pink"
-
-                            Parsed _ Passed ->
-                                "paleGreen"
-                        )
-                    ]
-                    [ text state.input ]
-                , case state.feedback of
-                    [] ->
-                        text ""
-
-                    _ ->
-                        div [] (List.map text state.feedback)
-                ]
+    , view = field_string_view
     , parse =
         \input ->
             case String.toInt input of
@@ -154,12 +88,83 @@ string =
 
                 Nothing ->
                     Err "not an int"
-    , validators =
-        [ { check = \output -> output < 2, feedback = "must be greater than 1", fails = True }
-        , { check = \output -> output == 7, feedback = "that's my lucky number", fails = False }
+    , validators = []
+    , debounce = 0
+    }
+
+
+field_float : FieldBuilder String String Float (Html msg) msg
+field_float =
+    { init = ""
+    , update = \delta _ -> delta
+    , view = field_string_view
+    , parse =
+        \input ->
+            case String.toFloat input of
+                Just f ->
+                    Ok f
+
+                Nothing ->
+                    Err "not an int"
+    , validators = []
+    , debounce = 0
+    }
+
+
+field_string_view state =
+    div []
+        [ H.input
+            [ onInput state.toMsg
+            , HA.value state.input
+            , HA.style "background-color"
+                (case state.output of
+                    Intact ->
+                        "white"
+
+                    Debouncing ->
+                        "lightYellow"
+
+                    FailedToParse ->
+                        "pink"
+
+                    Parsed _ Failed ->
+                        "pink"
+
+                    Parsed _ Passed ->
+                        "paleGreen"
+                )
+            ]
+            [ text state.input ]
+        , case state.feedback of
+            [] ->
+                text ""
+
+            _ ->
+                div [] (List.map text state.feedback)
         ]
+
+
+field_string : FieldBuilder String String String (Html msg) msg
+field_string =
+    { init = ""
+    , update = \delta _ -> delta
+    , view = field_string_view
+    , parse = Ok
+    , validators = []
     , debounce = 500
     }
+
+
+field_debounce millis fb =
+    { fb | debounce = millis }
+
+
+field_failIf check feedback fb =
+    { fb | validators = { check = check, feedback = feedback, fails = True } :: fb.validators }
+
+
+field_showIf check feedback fb =
+    { fb | validators = { check = check, feedback = feedback, fails = False } :: fb.validators }
 
 
 
@@ -210,7 +215,7 @@ view model =
                 [ div [] [ text "Your user's data:" ]
                 , div [] [ text ("Age: " ++ String.fromInt user.age) ]
                 , div [] [ text ("Height: " ++ String.fromFloat user.height) ]
-                , div [] [ text ("Weight: " ++ String.fromInt user.weight) ]
+                , div [] [ text ("Weight: " ++ user.weight) ]
                 , button [ onClick Back ] [ text "go back" ]
                 ]
 
@@ -348,6 +353,21 @@ updateFieldStates updater fields deltas states =
     updater (\End End End -> End) fields deltas states
 
 
+updater1 :
+    (b -> a -> c -> d)
+    ->
+        ( { e
+            | update : delta -> f -> f
+            , debounce : Float
+            , toDelta : Delta g -> msg
+            , parse : f -> Result String output
+            , validators : List { check : output -> Bool, feedback : String, fails : Bool }
+          }
+        , b
+        )
+    -> ( { h | delta : Delta delta }, a )
+    -> ( { input : f, delta : Delta delta, output : Output output, lastTouched : Maybe Time.Posix, feedback : List String }, c )
+    -> ( ( { input : f, delta : Delta delta, output : Output output, lastTouched : Maybe Time.Posix, feedback : List String }, Cmd msg ), d )
 updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
         stateAndCmd =
@@ -394,10 +414,16 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     )
 
 
+validateAll : ((End -> End -> End) -> b -> c -> a) -> b -> c -> a
 validateAll validateAller fields states =
     validateAller (\End End -> End) fields states
 
 
+validateAller1 :
+    (b -> a -> c)
+    -> ( { d | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }, b )
+    -> ( Field input delta output, a )
+    -> ( Field input delta output, c )
 validateAller1 next ( field_, fields ) ( state, states ) =
     ( parseAndValidateField field_ state, next fields states )
 
@@ -488,30 +514,36 @@ combiner1 next inits ( field_, fields ) =
     )
 
 
+toList : (( List a, b ) -> ( List c, d )) -> b -> List c
 toList toLister tuple =
     toLister ( [], tuple )
         |> Tuple.first
         |> List.reverse
 
 
+toLister1 : ( List a, ( a, b ) ) -> ( List a, b )
 toLister1 ( list, ( item, items ) ) =
     ( item :: list, items )
 
 
+reverse : (( End, b ) -> ( a, c )) -> b -> a
 reverse reverser tuple =
     reverser ( End, tuple )
         |> Tuple.first
 
 
+reverser1 : ( a, ( b, c ) ) -> ( ( b, a ), c )
 reverser1 ( s, ( fst, rest ) ) =
     ( ( fst, s ), rest )
 
 
+unfurl : (( Result error b, c ) -> ( a, d )) -> b -> c -> a
 unfurl unfurler toOutput states =
     unfurler ( Ok toOutput, states )
         |> Tuple.first
 
 
+unfurler1 : ( Result error (output -> a), ( { b | output : Output output }, c ) ) -> ( Result () a, c )
 unfurler1 ( toOutput, ( state, states ) ) =
     ( case ( toOutput, state.output ) of
         ( Ok fn, Parsed val Passed ) ->
@@ -527,7 +559,7 @@ unfurler1 ( toOutput, ( state, states ) ) =
 -- Form builder functions
 
 
-new output toMsg =
+form_new output toMsg =
     { unfurler = identity
     , combiner = identity
     , updater = identity
@@ -546,7 +578,7 @@ new output toMsg =
     }
 
 
-field idx fieldBuilder f =
+form_field idx fieldBuilder f =
     { unfurler = f.unfurler >> unfurler1
     , combiner = f.combiner >> combiner1
     , updater = f.updater >> updater1
@@ -581,7 +613,7 @@ field idx fieldBuilder f =
     }
 
 
-end f =
+form_end f =
     let
         inits =
             reverse f.stateReverser f.inits
@@ -628,139 +660,13 @@ end f =
     }
 
 
+
+-- FORM-LEVEL VALIDATION (OF MULTIPLE FIELDS)
+
+
 formValidate : List (states -> states) -> states -> states
 formValidate validators states =
     List.foldl (\v previousStates -> v previousStates) states validators
-
-
-
--- A SKETCH OF MULTI-FIELD VALIDATION
-
-
-showIf : checker -> String -> Checker checker
-showIf checker feedback =
-    { check = checker, feedback = feedback, fails = False }
-
-
-failIf : checker -> String -> Checker checker
-failIf checker feedback =
-    { check = checker, feedback = feedback, fails = True }
-
-
-test : Result (List String) (List String)
-test =
-    multivalidate
-        ( Err "f0 did not parse", ( Ok 1, ( Ok 1, End ) ) )
-        [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!"
-        , failIf (\f1_ f2_ -> f1_ <= f2_) "failed because f1 <= f2!"
-        , showIf (\_ _ -> True) "this always gets shown if validation passes"
-        , showIf (\f1_ _ -> f1_ == 2) "this gets shown if f1 == 2"
-        ]
-        (fld f1 >> fld f2)
-
-
-type Validator checker formData
-    = Validator (Result (List String) (List (Checker checker))) formData
-
-
-type alias Checker checker =
-    { check : checker
-    , fails : Bool
-    , feedback : String
-    }
-
-
-multivalidate :
-    formData
-    -> List (Checker checker)
-    -> (Validator checker formData -> Validator Bool formData)
-    -> Result (List String) (List String)
-multivalidate formData checkers fieldGetters =
-    Validator (Ok checkers) formData
-        |> fieldGetters
-        |> done
-
-
-fld :
-    ({ get : a -> a, set : b -> b } -> { c | get : formData -> ( Result String d, e ) })
-    -> Validator (d -> f) formData
-    -> Validator f formData
-fld idx (Validator resultCheckers formData) =
-    let
-        fieldGetter =
-            instantiateIndex idx |> .get
-
-        resultFieldData =
-            fieldGetter formData |> Tuple.first
-
-        appliedCheckers =
-            case ( resultCheckers, resultFieldData ) of
-                ( Ok checkers, Ok fieldData ) ->
-                    Ok
-                        (List.map
-                            (\checker ->
-                                { check = checker.check fieldData
-                                , feedback = checker.feedback
-                                , fails = checker.fails
-                                }
-                            )
-                            checkers
-                        )
-
-                ( Err previousErrs, Ok _ ) ->
-                    Err previousErrs
-
-                ( Ok _, Err parsingErr ) ->
-                    Err [ parsingErr ]
-
-                ( Err previousErrs, Err parsingErr ) ->
-                    Err (parsingErr :: previousErrs)
-    in
-    Validator appliedCheckers formData
-
-
-done : Validator Bool formData -> Result (List String) (List String)
-done (Validator resultCheckers _) =
-    case resultCheckers of
-        Err e ->
-            Err e
-
-        Ok [] ->
-            Ok []
-
-        Ok checkers ->
-            List.foldl
-                (\{ check, feedback, fails } resultFeedbacks ->
-                    case resultFeedbacks of
-                        Err feedbacks ->
-                            if check && fails then
-                                Err (feedback :: feedbacks)
-
-                            else
-                                Err feedbacks
-
-                        Ok feedbacks ->
-                            if check then
-                                if fails then
-                                    Err [ feedback ]
-
-                                else
-                                    Ok (feedback :: feedbacks)
-
-                            else
-                                Ok feedbacks
-                )
-                (Ok [])
-                checkers
-
-
-
--- ANOTHER API SKETCH FOR MULTIVALIDATION
---
--- We would have failIf2, failIf3 etc., as well as showIf2, showIf3 and so on.
--- Perhaps these could actually be implemented using the more complex applicative
--- API above, and then we could also offer failIfN and showIfN to support
--- checkers with arbitrary numbers of arguments
 
 
 form_failIf2 check feedback indexer1 indexer2 formBuilder =
@@ -804,7 +710,7 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                                     (Tuple.mapFirst
                                         (\field2_ ->
                                             { field2_
-                                                | output = Parsed output1 Failed
+                                                | output = Parsed output2 Failed
                                                 , feedback = feedback :: field2_.feedback
                                             }
                                         )
@@ -817,3 +723,98 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                         state
     in
     { formBuilder | validators = v :: formBuilder.validators }
+
+
+
+-- A SKETCH OF MULTI-FIELD VALIDATION WITH APPLICATIVES
+--
+-- showIf : checker -> String -> Checker checker
+-- showIf checker feedback =
+--     { check = checker, feedback = feedback, fails = False }
+-- failIf : checker -> String -> Checker checker
+-- failIf checker feedback =
+--     { check = checker, feedback = feedback, fails = True }
+-- test : Result (List String) (List String)
+-- test =
+--     multivalidate
+--         ( Err "f0 did not parse", ( Ok 1, ( Ok 1, End ) ) )
+--         [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!"
+--         , failIf (\f1_ f2_ -> f1_ <= f2_) "failed because f1 <= f2!"
+--         , showIf (\_ _ -> True) "this always gets shown if validation passes"
+--         , showIf (\f1_ _ -> f1_ == 2) "this gets shown if f1 == 2"
+--         ]
+--         (fld f1 >> fld f2)
+-- type Validator checker formData
+--     = Validator (Result (List String) (List (Checker checker))) formData
+-- type alias Checker checker =
+--     { check : checker
+--     , fails : Bool
+--     , feedback : String
+--     }
+-- multivalidate :
+--     formData
+--     -> List (Checker checker)
+--     -> (Validator checker formData -> Validator Bool formData)
+--     -> Result (List String) (List String)
+-- multivalidate formData checkers fieldGetters =
+--     Validator (Ok checkers) formData
+--         |> fieldGetters
+--         |> done
+-- fld :
+--     ({ get : a -> a, set : b -> b } -> { c | get : formData -> ( Result String d, e ) })
+--     -> Validator (d -> f) formData
+--     -> Validator f formData
+-- fld idx (Validator resultCheckers formData) =
+--     let
+--         fieldGetter =
+--             instantiateIndex idx |> .get
+--         resultFieldData =
+--             fieldGetter formData |> Tuple.first
+--         appliedCheckers =
+--             case ( resultCheckers, resultFieldData ) of
+--                 ( Ok checkers, Ok fieldData ) ->
+--                     Ok
+--                         (List.map
+--                             (\checker ->
+--                                 { check = checker.check fieldData
+--                                 , feedback = checker.feedback
+--                                 , fails = checker.fails
+--                                 }
+--                             )
+--                             checkers
+--                         )
+--                 ( Err previousErrs, Ok _ ) ->
+--                     Err previousErrs
+--                 ( Ok _, Err parsingErr ) ->
+--                     Err [ parsingErr ]
+--                 ( Err previousErrs, Err parsingErr ) ->
+--                     Err (parsingErr :: previousErrs)
+--     in
+--     Validator appliedCheckers formData
+-- done : Validator Bool formData -> Result (List String) (List String)
+-- done (Validator resultCheckers _) =
+--     case resultCheckers of
+--         Err e ->
+--             Err e
+--         Ok [] ->
+--             Ok []
+--         Ok checkers ->
+--             List.foldl
+--                 (\{ check, feedback, fails } resultFeedbacks ->
+--                     case resultFeedbacks of
+--                         Err feedbacks ->
+--                             if check && fails then
+--                                 Err (feedback :: feedbacks)
+--                             else
+--                                 Err feedbacks
+--                         Ok feedbacks ->
+--                             if check then
+--                                 if fails then
+--                                     Err [ feedback ]
+--                                 else
+--                                     Ok (feedback :: feedbacks)
+--                             else
+--                                 Ok feedbacks
+--                 )
+--                 (Ok [])
+--                 checkers
