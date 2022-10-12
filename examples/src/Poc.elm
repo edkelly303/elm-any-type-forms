@@ -128,11 +128,14 @@ string =
                             Debouncing ->
                                 "lightYellow"
 
-                            Passed _ ->
-                                "paleGreen"
-
-                            Failed ->
+                            FailedToParse ->
                                 "pink"
+
+                            Parsed _ Failed ->
+                                "pink"
+
+                            Parsed _ Passed ->
+                                "paleGreen"
                         )
                     ]
                     [ text state.input ]
@@ -266,12 +269,25 @@ type alias FieldBuilder input delta output element msg =
 type Output output
     = Intact
     | Debouncing
-    | Passed output
+    | FailedToParse
+    | Parsed output ValidationOutcome
+
+
+type ValidationOutcome
+    = Passed
     | Failed
 
 
 
 -- Field setters
+-- get indexer state =
+--     (instantiateIndex indexer |> .get |> Tuple.first) state
+-- set indexer mapper state =
+--     let
+--         setFn =
+--             instantiateIndex indexer |> .set
+--     in
+--     setFn (Tuple.mapFirst mapper) state
 
 
 set1 : (b -> y) -> ( a, b ) -> ( a, y )
@@ -305,6 +321,13 @@ f2 =
     f1 >> f1
 
 
+f3 :
+    { get : b -> c, set : (( d, ( e, ( a, f ) ) ) -> ( d, ( e, ( a, y ) ) )) -> g }
+    -> { get : ( h, ( i, ( j, b ) ) ) -> c, set : (f -> y) -> g }
+f3 =
+    f2 >> f1
+
+
 composeIndices :
     { get : b -> c, set : d -> e }
     -> { get : c -> g, set : e -> h }
@@ -318,20 +341,6 @@ composeIndices idx1 idx2 =
 instantiateIndex : ({ get : a -> a, set : b -> b } -> index) -> index
 instantiateIndex idx =
     idx { get = identity, set = identity }
-
-
-
--- Step functions
-{-
-   TODO - split update_ into multiple phases:
-   1. Iterate through fields, deltas and states0, updating state.input for the updated field, and returning states1
-   2. Debounce if needed
-   3. Parse the updated field & perform field-level validation, returning states2
-   4. Perform form-level multi-field validation on states2, and put any feedback in a
-      `List (FieldIndex, Result Feedback Feedback)`
-   5. Iterate through fields; for each field, check whether the list contains any feedback that matches the current
-      field's index, and mash that feedback together with any existing feedback, returning states3
--}
 
 
 updateFieldStates : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
@@ -402,7 +411,7 @@ parseAndValidateField field_ state =
         ( output, feedback ) =
             case field_.parse state.input of
                 Err f ->
-                    ( Failed, [ f ] )
+                    ( FailedToParse, [ f ] )
 
                 Ok val ->
                     validateField field_.validators val
@@ -418,7 +427,7 @@ validateField validators val =
     List.foldl
         (\{ check, feedback, fails } ( outputVal, feedbacks ) ->
             if check val && fails then
-                ( Failed, feedback :: feedbacks )
+                ( Parsed val Failed, feedback :: feedbacks )
 
             else if check val then
                 ( outputVal, feedback :: feedbacks )
@@ -426,7 +435,7 @@ validateField validators val =
             else
                 ( outputVal, feedbacks )
         )
-        ( Passed val, [] )
+        ( Parsed val Passed, [] )
         validators
 
 
@@ -472,6 +481,8 @@ combiner1 next inits ( field_, fields ) =
       , validators = field_.validators
       , debounce = field_.debounce
       , toDelta = \x -> field_.setter (set x) inits
+
+      --   , toDelta = \x -> set field_.setter (\s -> { s | delta = x }) inits
       }
     , next inits fields
     )
@@ -503,7 +514,7 @@ unfurl unfurler toOutput states =
 
 unfurler1 ( toOutput, ( state, states ) ) =
     ( case ( toOutput, state.output ) of
-        ( Ok fn, Passed val ) ->
+        ( Ok fn, Parsed val Passed ) ->
             Ok (fn val)
 
         _ ->
@@ -645,7 +656,7 @@ test =
         , showIf (\_ _ -> True) "this always gets shown if validation passes"
         , showIf (\f1_ _ -> f1_ == 2) "this gets shown if f1 == 2"
         ]
-        (get f1 >> get f2)
+        (fld f1 >> fld f2)
 
 
 type Validator checker formData
@@ -670,11 +681,11 @@ multivalidate formData checkers fieldGetters =
         |> done
 
 
-get :
+fld :
     ({ get : a -> a, set : b -> b } -> { c | get : formData -> ( Result String d, e ) })
     -> Validator (d -> f) formData
     -> Validator f formData
-get idx (Validator resultCheckers formData) =
+fld idx (Validator resultCheckers formData) =
     let
         fieldGetter =
             instantiateIndex idx |> .get
@@ -770,11 +781,34 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                         (idx2.get >> Tuple.first) state
                 in
                 case ( field1.output, field2.output ) of
-                    ( Passed output1, Passed output2 ) ->
+                    ( Parsed output1 Passed, Parsed output2 Passed ) ->
                         if check output1 output2 then
                             state
-                                |> idx1.set (Tuple.mapFirst (\field1_ -> { field1_ | output = Failed, feedback = [ feedback ] }))
-                                |> idx2.set (Tuple.mapFirst (\field2_ -> { field2_ | output = Failed, feedback = [ feedback ] }))
+                                -- |> set idx1
+                                --     (\fld1 ->
+                                --         { fld1
+                                --             | output = Parsed output1 Failed
+                                --             , feedback = feedback :: fld1.feedback
+                                --         }
+                                --     )
+                                |> idx1.set
+                                    (Tuple.mapFirst
+                                        (\field1_ ->
+                                            { field1_
+                                                | output = Parsed output1 Failed
+                                                , feedback = feedback :: field1_.feedback
+                                            }
+                                        )
+                                    )
+                                |> idx2.set
+                                    (Tuple.mapFirst
+                                        (\field2_ ->
+                                            { field2_
+                                                | output = Parsed output1 Failed
+                                                , feedback = feedback :: field2_.feedback
+                                            }
+                                        )
+                                    )
 
                         else
                             state
