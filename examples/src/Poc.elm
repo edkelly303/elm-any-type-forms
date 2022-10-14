@@ -55,19 +55,24 @@ form :
     }
 form =
     form_new User UserFormUpdated
-        |> form_field f0 field_int
-        |> form_field f1 field_float
+        |> form_field f0 (field_int "Age")
+        |> form_field f1 (field_float "Height")
         |> form_field f2
-            (field_string
+            (field_string "Name"
                 |> field_debounce 500
                 |> field_failIf (\name -> String.length name < 2) "name must be at least 2 characters"
             )
-        |> form_field f3 field_string
+        |> form_field f3 (field_string "Pet's name")
         |> form_failIf2
             (\int flt -> int > round flt)
-            "second field must be greater than first field"
+            "height must be greater than age"
             f0
             f1
+        |> form_failIf2
+            (\int name -> String.length name < int)
+            "name must be at least as long as age"
+            f0
+            f2
         |> form_end
 
 
@@ -75,9 +80,10 @@ form =
 -- Userland widget definitions
 
 
-field_int : FieldBuilder String String Int (Html msg) msg
-field_int =
-    { init = ""
+field_int : String -> FieldBuilder String String Int (Html msg) msg
+field_int id =
+    { id = id
+    , init = ""
     , update = \delta _ -> delta
     , view = field_string_view
     , parse =
@@ -93,9 +99,10 @@ field_int =
     }
 
 
-field_float : FieldBuilder String String Float (Html msg) msg
-field_float =
-    { init = ""
+field_float : String -> FieldBuilder String String Float (Html msg) msg
+field_float id =
+    { id = id
+    , init = ""
     , update = \delta _ -> delta
     , view = field_string_view
     , parse =
@@ -112,8 +119,9 @@ field_float =
 
 
 field_string_view state =
-    div []
-        [ H.input
+    div [ HA.style "margin-bottom" "30px" ]
+        [ div [ HA.style "margin-bottom" "10px" ] [ text state.id ]
+        , H.input
             [ onInput state.toMsg
             , HA.value state.input
             , HA.style "background-color"
@@ -140,13 +148,22 @@ field_string_view state =
                 text ""
 
             _ ->
-                div [] (List.map text state.feedback)
+                div []
+                    (List.map
+                        (\f ->
+                            div
+                                [ HA.style "margin-top" "5px" ]
+                                [ text ("🚫 " ++ f) ]
+                        )
+                        state.feedback
+                    )
         ]
 
 
-field_string : FieldBuilder String String String (Html msg) msg
-field_string =
-    { init = ""
+field_string : String -> FieldBuilder String String String (Html msg) msg
+field_string id =
+    { id = id
+    , init = ""
     , update = \delta _ -> delta
     , view = field_string_view
     , parse = Ok
@@ -245,6 +262,7 @@ type alias Field input delta output =
     , output : Output output
     , lastTouched : Maybe Time.Posix
     , feedback : List String
+    , multifeedback : List String
     }
 
 
@@ -256,10 +274,12 @@ type Delta delta
 
 
 type alias FieldBuilder input delta output element msg =
-    { init : input
+    { id : String
+    , init : input
     , update : delta -> input -> input
     , view :
-        { input : input
+        { id : String
+        , input : input
         , toMsg : delta -> msg
         , feedback : List String
         , output : Output output
@@ -357,25 +377,29 @@ updater1 :
     (b -> a -> c -> d)
     ->
         ( { e
-            | update : delta -> f -> f
+            | update : delta -> input -> input
             , debounce : Float
             , toDelta : Delta g -> msg
-            , parse : f -> Result String output
+            , parse : input -> Result String output
             , validators : List { check : output -> Bool, feedback : String, fails : Bool }
           }
         , b
         )
     -> ( { h | delta : Delta delta }, a )
-    -> ( { input : f, delta : Delta delta, output : Output output, lastTouched : Maybe Time.Posix, feedback : List String }, c )
-    -> ( ( { input : f, delta : Delta delta, output : Output output, lastTouched : Maybe Time.Posix, feedback : List String }, Cmd msg ), d )
-updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
+    -> ( Field input delta output, c )
+    -> ( ( Field input delta output, Cmd msg ), d )
+updater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
     let
+        state1 =
+            -- we're going to run multivalidate on all fields later in the update process, so we want to clear any existing multifeedback first.
+            { state0 | multifeedback = [] }
+
         stateAndCmd =
             case delta.delta of
                 StateUpdateRequested d ->
                     let
                         newState =
-                            { state | input = field_.update d state.input }
+                            { state1 | input = field_.update d state1.input }
                     in
                     if field_.debounce > 0 then
                         ( newState
@@ -388,7 +412,7 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
                         )
 
                 DebouncingStarted now ->
-                    ( { state
+                    ( { state1
                         | lastTouched = Just now
                         , output = Debouncing
                       }
@@ -396,16 +420,16 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
                     )
 
                 DebouncingChecked now ->
-                    ( if state.lastTouched == Just now then
-                        parseAndValidateField field_ state
+                    ( if state1.lastTouched == Just now then
+                        parseAndValidateField field_ state1
 
                       else
-                        state
+                        state1
                     , Cmd.none
                     )
 
                 Noop ->
-                    ( state
+                    ( state1
                     , Cmd.none
                     )
     in
@@ -483,10 +507,11 @@ view_ viewer toMsg fields states =
 
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
     ( field_.view
-        { toMsg = \x -> toMsg (field_.toDelta (StateUpdateRequested x))
+        { id = field_.id
+        , toMsg = \x -> toMsg (field_.toDelta (StateUpdateRequested x))
         , input = state.input
         , output = state.output
-        , feedback = state.feedback
+        , feedback = state.feedback ++ state.multifeedback
         }
     , next toMsg fields states
     )
@@ -501,14 +526,13 @@ combiner1 next inits ( field_, fields ) =
         set x =
             Tuple.mapFirst (\s -> { s | delta = x })
     in
-    ( { update = field_.update
+    ( { id = field_.id
+      , update = field_.update
       , view = field_.view
       , parse = field_.parse
       , validators = field_.validators
       , debounce = field_.debounce
       , toDelta = \x -> field_.setter (set x) inits
-
-      --   , toDelta = \x -> set field_.setter (\s -> { s | delta = x }) inits
       }
     , next inits fields
     )
@@ -594,11 +618,13 @@ form_field idx fieldBuilder f =
           , output = Intact
           , lastTouched = Nothing
           , feedback = []
+          , multifeedback = []
           }
         , f.inits
         )
     , fields =
-        ( { update = fieldBuilder.update
+        ( { id = fieldBuilder.id
+          , update = fieldBuilder.update
           , view = fieldBuilder.view
           , parse = fieldBuilder.parse
           , validators = fieldBuilder.validators
@@ -627,6 +653,9 @@ form_end f =
         \deltas states0 ->
             let
                 ( reversedStates1, cmd ) =
+                    -- in this step we don't just update the field that the
+                    -- delta is targetting, we also clear multivalidation for
+                    -- all fields
                     updateFieldStates f.updater fields deltas states0
                         |> cmdStrip f.cmdStripper
 
@@ -635,6 +664,8 @@ form_end f =
                         |> reverse f.stateReverser
 
                 states2 =
+                    -- and now we update form level multivalidation for all
+                    -- fields
                     formValidate f.validators states1
             in
             ( states2
@@ -687,22 +718,15 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                         (idx2.get >> Tuple.first) state
                 in
                 case ( field1.output, field2.output ) of
-                    ( Parsed output1 Passed, Parsed output2 Passed ) ->
+                    ( Parsed output1 _, Parsed output2 _ ) ->
                         if check output1 output2 then
                             state
-                                -- |> set idx1
-                                --     (\fld1 ->
-                                --         { fld1
-                                --             | output = Parsed output1 Failed
-                                --             , feedback = feedback :: fld1.feedback
-                                --         }
-                                --     )
                                 |> idx1.set
                                     (Tuple.mapFirst
                                         (\field1_ ->
                                             { field1_
                                                 | output = Parsed output1 Failed
-                                                , feedback = feedback :: field1_.feedback
+                                                , multifeedback = feedback :: field1_.multifeedback
                                             }
                                         )
                                     )
@@ -711,7 +735,7 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                                         (\field2_ ->
                                             { field2_
                                                 | output = Parsed output2 Failed
-                                                , feedback = feedback :: field2_.feedback
+                                                , multifeedback = feedback :: field2_.multifeedback
                                             }
                                         )
                                     )
