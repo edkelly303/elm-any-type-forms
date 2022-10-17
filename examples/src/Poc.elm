@@ -526,7 +526,8 @@ combiner1 next inits ( field_, fields ) =
         set x =
             Tuple.mapFirst (\s -> { s | delta = x })
     in
-    ( { id = field_.id
+    ( { index = field_.index 
+      , id = field_.id
       , update = field_.update
       , view = field_.view
       , parse = field_.parse
@@ -593,6 +594,7 @@ form_new output toMsg =
     , toLister = identity
     , stateReverser = identity
     , fieldReverser = identity
+    , index = 0
     , inits = End
     , fields = End
     , emptyMsg = End
@@ -612,6 +614,7 @@ form_field idx fieldBuilder f =
     , toLister = f.toLister >> toLister1
     , stateReverser = f.stateReverser >> reverser1
     , fieldReverser = f.fieldReverser >> reverser1
+    , index = f.index + 1
     , inits =
         ( { input = fieldBuilder.init
           , delta = Noop
@@ -623,7 +626,8 @@ form_field idx fieldBuilder f =
         , f.inits
         )
     , fields =
-        ( { id = fieldBuilder.id
+        ( { index = f.index
+          , id = fieldBuilder.id
           , update = fieldBuilder.update
           , view = fieldBuilder.view
           , parse = fieldBuilder.parse
