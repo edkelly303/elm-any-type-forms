@@ -305,14 +305,6 @@ type ValidationOutcome
 
 
 -- State setters
--- get indexer state =
---     (instantiateIndex indexer |> .get |> Tuple.first) state
--- set indexer mapper state =
---     let
---         setFn =
---             instantiateIndex indexer |> .set
---     in
---     setFn (Tuple.mapFirst mapper) state
 
 
 set1 : (b -> y) -> ( a, b ) -> ( a, y )
@@ -526,7 +518,7 @@ combiner1 next inits ( field_, fields ) =
         set x =
             Tuple.mapFirst (\s -> { s | delta = x })
     in
-    ( { index = field_.index 
+    ( { index = field_.index
       , id = field_.id
       , update = field_.update
       , view = field_.view
