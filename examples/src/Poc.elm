@@ -26,10 +26,10 @@ type Msg
 
 
 type alias UserFormFields =
-    ( Field String String Int
-    , ( Field String String Float
-      , ( Field String String String
-        , ( Field String String String, End )
+    ( State String String Int
+    , ( State String String Float
+      , ( State String String String
+        , ( State String String String, End )
         )
       )
     )
@@ -256,7 +256,7 @@ type End
     = End
 
 
-type alias Field input delta output =
+type alias State input delta output =
     { input : input
     , delta : Delta delta
     , output : Output output
@@ -267,7 +267,7 @@ type alias Field input delta output =
 
 
 type Delta delta
-    = StateUpdateRequested delta
+    = UpdateRequested delta
     | DebouncingStarted Time.Posix
     | DebouncingChecked Time.Posix
     | Noop
@@ -304,7 +304,7 @@ type ValidationOutcome
 
 
 
--- Field setters
+-- State setters
 -- get indexer state =
 --     (instantiateIndex indexer |> .get |> Tuple.first) state
 -- set indexer mapper state =
@@ -386,8 +386,8 @@ updater1 :
         , b
         )
     -> ( { h | delta : Delta delta }, a )
-    -> ( Field input delta output, c )
-    -> ( ( Field input delta output, Cmd msg ), d )
+    -> ( State input delta output, c )
+    -> ( ( State input delta output, Cmd msg ), d )
 updater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
     let
         state1 =
@@ -396,7 +396,7 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
 
         stateAndCmd =
             case delta.delta of
-                StateUpdateRequested d ->
+                UpdateRequested d ->
                     let
                         newState =
                             { state1 | input = field_.update d state1.input }
@@ -446,16 +446,16 @@ validateAll validateAller fields states =
 validateAller1 :
     (b -> a -> c)
     -> ( { d | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }, b )
-    -> ( Field input delta output, a )
-    -> ( Field input delta output, c )
+    -> ( State input delta output, a )
+    -> ( State input delta output, c )
 validateAller1 next ( field_, fields ) ( state, states ) =
     ( parseAndValidateField field_ state, next fields states )
 
 
 parseAndValidateField :
     { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }
-    -> Field input delta output
-    -> Field input delta output
+    -> State input delta output
+    -> State input delta output
 parseAndValidateField field_ state =
     let
         ( output, feedback ) =
@@ -508,7 +508,7 @@ view_ viewer toMsg fields states =
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
     ( field_.view
         { id = field_.id
-        , toMsg = \x -> toMsg (field_.toDelta (StateUpdateRequested x))
+        , toMsg = \x -> toMsg (field_.toDelta (UpdateRequested x))
         , input = state.input
         , output = state.output
         , feedback = state.feedback ++ state.multifeedback
