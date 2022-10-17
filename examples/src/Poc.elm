@@ -329,14 +329,14 @@ f0 :
     { get : b -> c, set : d -> e }
     -> { get : b -> c, set : d -> e }
 f0 =
-    composeIndices { get = identity, set = identity }
+    composeSelectors { get = identity, set = identity }
 
 
 f1 :
     { get : b -> c, set : (( d, e ) -> ( d, y )) -> f }
     -> { get : ( g, b ) -> c, set : (e -> y) -> f }
 f1 =
-    composeIndices { get = get1, set = set1 }
+    composeSelectors { get = get1, set = set1 }
 
 
 f2 :
@@ -353,18 +353,18 @@ f3 =
     f2 >> f1
 
 
-composeIndices :
+composeSelectors :
     { get : b -> c, set : d -> e }
     -> { get : c -> g, set : e -> h }
     -> { get : b -> g, set : d -> h }
-composeIndices idx1 idx2 =
+composeSelectors idx1 idx2 =
     { get = idx1.get >> idx2.get
     , set = idx1.set >> idx2.set
     }
 
 
-instantiateIndex : ({ get : a -> a, set : b -> b } -> index) -> index
-instantiateIndex idx =
+instantiateSelector : ({ get : a -> a, set : b -> b } -> index) -> index
+instantiateSelector idx =
     idx { get = identity, set = identity }
 
 
@@ -633,7 +633,7 @@ form_field idx fieldBuilder f =
           , parse = fieldBuilder.parse
           , validators = fieldBuilder.validators
           , debounce = fieldBuilder.debounce
-          , setter = instantiateIndex idx |> .set
+          , setter = instantiateSelector idx |> .set
           }
         , f.fields
         )
@@ -707,10 +707,10 @@ formValidate validators states =
 form_failIf2 check feedback indexer1 indexer2 formBuilder =
     let
         idx1 =
-            instantiateIndex indexer1
+            instantiateSelector indexer1
 
         idx2 =
-            instantiateIndex indexer2
+            instantiateSelector indexer2
 
         v =
             \state ->
