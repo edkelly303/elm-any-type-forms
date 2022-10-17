@@ -493,6 +493,16 @@ cmdStripper1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
     ( ( ( state, outState ), cmd :: outCmd ), statesAndCmds )
 
 
+collectValidators validationCollector fields =
+    -- POC
+    validationCollector (\validations _ -> validations) [] fields
+
+
+validationCollector1 next output ( field_, fields ) =
+    -- POC
+    next (field_.validators2 :: output) fields
+
+
 view_ viewer toMsg fields states =
     viewer (\_ End End -> End) toMsg fields states
 
@@ -515,8 +525,26 @@ combine combiner inits fields =
 
 combiner1 next inits ( field_, fields ) =
     let
-        set x =
+        setDelta x =
             Tuple.mapFirst (\s -> { s | delta = x })
+
+        convertValidators =
+            -- POC - proving that we can convert validations into functions that
+            -- take a field state and return a list of strings (so that all
+            -- validation functions for all fields have the same type signature
+            -- and can be stored in a list or dictionary)
+            \state ->
+                let
+                    f =
+                        (field_.getter >> Tuple.first) state
+                in
+                case f.output of
+                    Parsed o _ ->
+                        validateField field_.validators o
+                            |> Tuple.second
+
+                    _ ->
+                        []
     in
     ( { index = field_.index
       , id = field_.id
@@ -524,8 +552,11 @@ combiner1 next inits ( field_, fields ) =
       , view = field_.view
       , parse = field_.parse
       , validators = field_.validators
+
+      -- POC
+      , validators2 = convertValidators
       , debounce = field_.debounce
-      , toDelta = \x -> field_.setter (set x) inits
+      , toDelta = \x -> field_.setter (setDelta x) inits
       }
     , next inits fields
     )
@@ -581,6 +612,9 @@ form_new output toMsg =
     , combiner = identity
     , updater = identity
     , cmdStripper = identity
+
+    -- POC - proving that we can collect validations from fields
+    , validationCollector = identity
     , validateAller = identity
     , viewer = identity
     , toLister = identity
@@ -601,6 +635,9 @@ form_field idx fieldBuilder f =
     , combiner = f.combiner >> combiner1
     , updater = f.updater >> updater1
     , cmdStripper = f.cmdStripper >> cmdStripper1
+
+    -- POC - proving that we can collect validations from fields
+    , validationCollector = f.validationCollector >> validationCollector1
     , validateAller = f.validateAller >> validateAller1
     , viewer = f.viewer >> viewer1
     , toLister = f.toLister >> toLister1
@@ -626,6 +663,7 @@ form_field idx fieldBuilder f =
           , validators = fieldBuilder.validators
           , debounce = fieldBuilder.debounce
           , setter = instantiateSelector idx |> .set
+          , getter = instantiateSelector idx |> .get
           }
         , f.fields
         )
@@ -643,6 +681,10 @@ form_end f =
         fields =
             combine f.combiner inits f.fields
                 |> reverse f.fieldReverser
+
+        -- POC - proving that we can collect validators from fields
+        fieldValidators =
+            collectValidators f.validationCollector fields
     in
     { init = ( inits, Cmd.none )
     , update =
@@ -663,6 +705,11 @@ form_end f =
                     -- and now we update form level multivalidation for all
                     -- fields
                     formValidate f.validators states1
+
+                -- POC - proving that we can run collected validations against updated states
+                _ =
+                    List.concatMap (\validator -> validator states2) fieldValidators
+                        |> Debug.log "validations"
             in
             ( states2
             , Cmd.map f.toMsg cmd
