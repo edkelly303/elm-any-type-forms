@@ -156,9 +156,18 @@ field_string_view state =
                 div []
                     (List.map
                         (\f ->
+                            let
+                                ( icon, txt ) =
+                                    case f of
+                                        Ok t ->
+                                            ( "✅", t )
+
+                                        Err t ->
+                                            ( "❌", t )
+                            in
                             div
                                 [ HA.style "margin-top" "5px" ]
-                                [ text ("🚫 " ++ f) ]
+                                [ text (icon ++ " " ++ txt) ]
                         )
                         state.feedback
                     )
@@ -182,11 +191,11 @@ field_debounce millis fb =
 
 
 field_failIf check feedback fb =
-    { fb | validators = { check = check, feedback = feedback, fails = True } :: fb.validators }
+    { fb | validators = { check = check, feedback = Err feedback } :: fb.validators }
 
 
 field_showIf check feedback fb =
-    { fb | validators = { check = check, feedback = feedback, fails = False } :: fb.validators }
+    { fb | validators = { check = check, feedback = Ok feedback } :: fb.validators }
 
 
 
@@ -266,8 +275,8 @@ type alias State input delta output =
     , delta : Delta delta
     , output : Output output
     , lastTouched : Maybe Time.Posix
-    , feedback : List String
-    , multifeedback : List String
+    , feedback : List (Result String String)
+    , multifeedback : List (Result String String)
     }
 
 
@@ -286,12 +295,12 @@ type alias FieldBuilder input delta output element msg =
         { id : String
         , input : input
         , toMsg : delta -> msg
-        , feedback : List String
+        , feedback : List (Result String String)
         , output : Output output
         }
         -> element
     , parse : input -> Result String output
-    , validators : List { check : output -> Bool, feedback : String, fails : Bool }
+    , validators : List { check : output -> Bool, feedback : Result String String }
     , debounce : Float
     }
 
@@ -382,7 +391,7 @@ fieldStateUpdater1 :
             , debounce : Float
             , toDelta : Delta g -> msg
             , parse : input -> Result String output
-            , validators : List { check : output -> Bool, feedback : String, fails : Bool }
+            , validators : List { check : output -> Bool, feedback : Result String String }
           }
         , b
         )
@@ -474,7 +483,7 @@ validateAll validateAller fields states =
 
 validateAller1 :
     (b -> a -> c)
-    -> ( { d | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }, b )
+    -> ( { d | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : Result String String } }, b )
     -> ( State input delta output, a )
     -> ( State input delta output, c )
 validateAller1 next ( field_, fields ) ( state, states ) =
@@ -482,7 +491,7 @@ validateAller1 next ( field_, fields ) ( state, states ) =
 
 
 parseAndValidateField :
-    { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : String, fails : Bool } }
+    { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : Result String String } }
     -> State input delta output
     -> State input delta output
 parseAndValidateField field_ state =
@@ -490,10 +499,10 @@ parseAndValidateField field_ state =
         ( output, feedback ) =
             case field_.parse state.input of
                 Err f ->
-                    ( FailedToParse, [ f ] )
+                    ( FailedToParse, [ Err f ] )
 
                 Ok val ->
-                    validateField field_.validators val
+                    ( Parsed val Passed, validateField field_.validators val )
     in
     { state
         | output = output
@@ -501,20 +510,17 @@ parseAndValidateField field_ state =
     }
 
 
-validateField : List { check : val -> Bool, feedback : String, fails : Bool } -> val -> ( Output val, List String )
+validateField : List { check : val -> Bool, feedback : Result String String } -> val -> List (Result String String)
 validateField validators val =
     List.foldl
-        (\{ check, feedback, fails } ( outputVal, feedbacks ) ->
-            if check val && fails then
-                ( Parsed val Failed, feedback :: feedbacks )
-
-            else if check val then
-                ( outputVal, feedback :: feedbacks )
+        (\{ check, feedback } feedbacks ->
+            if check val then
+                feedback :: feedbacks
 
             else
-                ( outputVal, feedbacks )
+                feedbacks
         )
-        ( Parsed val Passed, [] )
+        []
         validators
 
 
@@ -583,7 +589,6 @@ combiner1 next inits ( field_, fields ) =
                         let
                             feedback =
                                 validateField field_.validators o
-                                    |> Tuple.second
                         in
                         field_.setter (set feedback) state
 
@@ -754,9 +759,8 @@ form_end f =
                 states2 =
                     -- and now we update form level multivalidation for all
                     -- fields
-                    --formValidate f.validators states1 
+                    --formValidate f.validators states1
                     states1
-                    
 
                 -- POC - proving that we can run collected validations against updated states
                 validationsDict =
@@ -834,7 +838,7 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                                         (\field1_ ->
                                             { field1_
                                                 | output = Parsed output1 Failed
-                                                , multifeedback = feedback :: field1_.multifeedback
+                                                , multifeedback = Err feedback :: field1_.multifeedback
                                             }
                                         )
                                     )
@@ -843,7 +847,7 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                                         (\field2_ ->
                                             { field2_
                                                 | output = Parsed output2 Failed
-                                                , multifeedback = feedback :: field2_.multifeedback
+                                                , multifeedback = Err feedback :: field2_.multifeedback
                                             }
                                         )
                                     )
