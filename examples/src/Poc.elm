@@ -6,6 +6,7 @@ import Html as H exposing (..)
 import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
 import Process
+import Result.Extra
 import Task
 import Time
 
@@ -137,14 +138,12 @@ field_string_view state =
                     Debouncing ->
                         "lightYellow"
 
-                    FailedToParse ->
-                        "pink"
+                    _ ->
+                        if List.any Result.Extra.isErr state.feedback then
+                            "pink"
 
-                    Parsed _ Failed ->
-                        "pink"
-
-                    Parsed _ Passed ->
-                        "paleGreen"
+                        else
+                            "paleGreen"
                 )
             ]
             [ text state.input ]
@@ -309,12 +308,7 @@ type Output output
     = Intact
     | Debouncing
     | FailedToParse
-    | Parsed output ValidationOutcome
-
-
-type ValidationOutcome
-    = Passed
-    | Failed
+    | Parsed output
 
 
 
@@ -502,7 +496,7 @@ parseAndValidateField field_ state =
                     ( FailedToParse, [ Err f ] )
 
                 Ok val ->
-                    ( Parsed val Passed, validateField field_.validators val )
+                    ( Parsed val, validateField field_.validators val )
     in
     { state
         | output = output
@@ -585,7 +579,7 @@ combiner1 next inits ( field_, fields ) =
                         Tuple.mapFirst (\s -> { s | feedback = fdbk })
                 in
                 case f.output of
-                    Parsed o _ ->
+                    Parsed o ->
                         let
                             feedback =
                                 validateField field_.validators o
@@ -643,7 +637,7 @@ unfurl unfurler toOutput states =
 unfurler1 : ( Result error (output -> a), ( { b | output : Output output }, c ) ) -> ( Result () a, c )
 unfurler1 ( toOutput, ( state, states ) ) =
     ( case ( toOutput, state.output ) of
-        ( Ok fn, Parsed val Passed ) ->
+        ( Ok fn, Parsed val ) ->
             Ok (fn val)
 
         _ ->
@@ -830,14 +824,14 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                         (idx2.get >> Tuple.first) state
                 in
                 case ( field1.output, field2.output ) of
-                    ( Parsed output1 _, Parsed output2 _ ) ->
+                    ( Parsed output1, Parsed output2 ) ->
                         if check output1 output2 then
                             state
                                 |> idx1.set
                                     (Tuple.mapFirst
                                         (\field1_ ->
                                             { field1_
-                                                | output = Parsed output1 Failed
+                                                | output = Parsed output1
                                                 , multifeedback = Err feedback :: field1_.multifeedback
                                             }
                                         )
@@ -846,7 +840,7 @@ form_failIf2 check feedback indexer1 indexer2 formBuilder =
                                     (Tuple.mapFirst
                                         (\field2_ ->
                                             { field2_
-                                                | output = Parsed output2 Failed
+                                                | output = Parsed output2
                                                 , multifeedback = Err feedback :: field2_.multifeedback
                                             }
                                         )
