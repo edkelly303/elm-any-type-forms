@@ -567,21 +567,28 @@ combiner1 next inits ( field_, fields ) =
 
         convertValidators =
             -- POC - proving that we can convert validations into functions that
-            -- take a field state and return a list of strings (so that all
+            -- take a field state and return a field state (so that all
             -- validation functions for all fields have the same type signature
             -- and can be stored in a list or dictionary)
             \state ->
                 let
                     f =
                         (field_.getter >> Tuple.first) state
+
+                    set fdbk =
+                        Tuple.mapFirst (\s -> { s | feedback = fdbk })
                 in
                 case f.output of
                     Parsed o _ ->
-                        validateField field_.validators o
-                            |> Tuple.second
+                        let
+                            feedback =
+                                validateField field_.validators o
+                                    |> Tuple.second
+                        in
+                        field_.setter (set feedback) state
 
                     _ ->
-                        []
+                        state
     in
     ( { index = field_.index
       , id = field_.id
@@ -747,7 +754,9 @@ form_end f =
                 states2 =
                     -- and now we update form level multivalidation for all
                     -- fields
-                    formValidate f.validators states1
+                    --formValidate f.validators states1 
+                    states1
+                    
 
                 -- POC - proving that we can run collected validations against updated states
                 validationsDict =
@@ -764,6 +773,7 @@ form_end f =
                     maybeParsedIndex
                         |> Maybe.andThen (\i -> Dict.get i validationsDict)
                         |> Maybe.map (\v -> v states2)
+                        |> Maybe.withDefault states2
                         |> Debug.log "validation feedback"
             in
             ( states2
