@@ -409,14 +409,14 @@ fieldStateUpdater1 :
     -> ( { h | delta : Delta delta }, a )
     -> ( State input delta output, c )
     -> ( ( State input delta output, Cmd msg ), d )
-fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
+fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
         stateAndCmd =
             case delta.delta of
                 UpdateRequested d ->
                     let
                         newState =
-                            { state0 | input = field_.update d state0.input }
+                            { state | input = field_.update d state.input }
                     in
                     if field_.debounce > 0 then
                         ( newState
@@ -424,12 +424,12 @@ fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) 
                         )
 
                     else
-                        ( parseField field_ { newState | feedback = [] }
+                        ( parseField field_ newState
                         , Cmd.none
                         )
 
                 DebouncingStarted now ->
-                    ( { state0
+                    ( { state
                         | lastTouched = Just now
                         , output = Debouncing_
                       }
@@ -437,16 +437,16 @@ fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) 
                     )
 
                 DebouncingChecked now ->
-                    ( if state0.lastTouched == Just now then
-                        parseField field_ { state0 | feedback = [] }
+                    ( if state.lastTouched == Just now then
+                        parseField field_ state
 
                       else
-                        state0
+                        state
                     , Cmd.none
                     )
 
                 Noop ->
-                    ( state0
+                    ( state
                     , Cmd.none
                     )
     in
@@ -655,11 +655,19 @@ unfurl unfurler toOutput states =
         |> Tuple.first
 
 
-unfurler1 : ( Result error (output -> a), ( { b | output : Output output }, c ) ) -> ( Result () a, c )
+unfurler1 :
+    ( Result error (output -> a)
+    , ( { b | output : Output output, feedback : List (Result String String) }, c )
+    )
+    -> ( Result () a, c )
 unfurler1 ( toOutput, ( state, states ) ) =
     ( case ( toOutput, state.output ) of
         ( Ok fn, Parsed val ) ->
-            Ok (fn val)
+            if List.any Result.Extra.isErr state.feedback then
+                Err ()
+
+            else
+                Ok (fn val)
 
         _ ->
             Err ()
@@ -813,17 +821,24 @@ form_end f =
             view_ f.viewer f.toMsg fields states
                 |> toList f.toLister
     , submit =
-        \states ->
+        \states0 ->
             let
-                validatedStates =
-                    validateAll f.validateAller fields states
+                states1 =
+                    validateAll f.validateAller fields states0
+
+                allFormValidators =
+                    Dict.values formValidators
+                        |> List.concat
+
+                states2 =
+                    List.foldl (\v s -> v s) states1 allFormValidators
             in
-            case unfurl f.unfurler f.output validatedStates of
+            case unfurl f.unfurler f.output states2 of
                 Ok output ->
                     Ok output
 
                 Err () ->
-                    Err validatedStates
+                    Err states2
     }
 
 
