@@ -1,6 +1,7 @@
 module Poc exposing (main)
 
 import Browser
+import Dict
 import Html as H exposing (..)
 import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
@@ -62,7 +63,11 @@ form =
                 |> field_debounce 500
                 |> field_failIf (\name -> String.length name < 2) "name must be at least 2 characters"
             )
-        |> form_field f3 (field_string "Pet's name")
+        |> form_field f3
+            (field_string "Pet's name"
+                |> field_debounce 500
+                |> field_failIf (\name -> String.length name < 2) "pet's name must be at least 2 characters"
+            )
         |> form_failIf2
             (\int flt -> int > round flt)
             "height must be greater than age"
@@ -360,12 +365,16 @@ instantiateSelector idx =
     idx { get = identity, set = identity }
 
 
+
+-- Tuple walkers
+
+
 updateFieldStates : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
-updateFieldStates updater fields deltas states =
-    updater (\End End End -> End) fields deltas states
+updateFieldStates fieldStateUpdater fields deltas states =
+    fieldStateUpdater (\End End End -> End) fields deltas states
 
 
-updater1 :
+fieldStateUpdater1 :
     (b -> a -> c -> d)
     ->
         ( { e
@@ -380,7 +389,7 @@ updater1 :
     -> ( { h | delta : Delta delta }, a )
     -> ( State input delta output, c )
     -> ( ( State input delta output, Cmd msg ), d )
-updater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
+fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
     let
         state1 =
             -- we're going to run multivalidate on all fields later in the update process, so we want to clear any existing multifeedback first.
@@ -428,6 +437,34 @@ updater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
     ( stateAndCmd
     , next fields deltas states
     )
+
+
+checkFieldParsed fieldParsedChecker fields deltas states =
+    fieldParsedChecker (\maybeIndex _ _ _ -> maybeIndex) Nothing fields deltas states
+
+
+fieldParsedChecker1 next maybeIndex ( field_, fields ) ( delta, deltas ) ( state, states ) =
+    let
+        newMaybeIndex =
+            case delta.delta of
+                UpdateRequested _ ->
+                    if field_.debounce <= 0 then
+                        Just field_.index
+
+                    else
+                        maybeIndex
+
+                DebouncingChecked now ->
+                    if state.lastTouched == Just now then
+                        Just field_.index
+
+                    else
+                        maybeIndex
+
+                _ ->
+                    maybeIndex
+    in
+    next newMaybeIndex fields deltas states
 
 
 validateAll : ((End -> End -> End) -> b -> c -> a) -> b -> c -> a
@@ -500,7 +537,7 @@ collectValidators validationCollector fields =
 
 validationCollector1 next output ( field_, fields ) =
     -- POC
-    next (field_.validators2 :: output) fields
+    next (( field_.index, field_.validators2 ) :: output) fields
 
 
 view_ viewer toMsg fields states =
@@ -615,6 +652,9 @@ form_new output toMsg =
 
     -- POC - proving that we can collect validations from fields
     , validationCollector = identity
+
+    -- POC - proving that we can check which field's input has been parsed (if any)
+    , fieldParsedChecker = identity
     , validateAller = identity
     , viewer = identity
     , toLister = identity
@@ -633,11 +673,14 @@ form_new output toMsg =
 form_field idx fieldBuilder f =
     { unfurler = f.unfurler >> unfurler1
     , combiner = f.combiner >> combiner1
-    , updater = f.updater >> updater1
+    , updater = f.updater >> fieldStateUpdater1
     , cmdStripper = f.cmdStripper >> cmdStripper1
 
     -- POC - proving that we can collect validations from fields
     , validationCollector = f.validationCollector >> validationCollector1
+
+    -- POC - proving that we can check which field's input has been parsed (if any)
+    , fieldParsedChecker = f.fieldParsedChecker >> fieldParsedChecker1
     , validateAller = f.validateAller >> validateAller1
     , viewer = f.viewer >> viewer1
     , toLister = f.toLister >> toLister1
@@ -707,9 +750,21 @@ form_end f =
                     formValidate f.validators states1
 
                 -- POC - proving that we can run collected validations against updated states
-                _ =
-                    List.concatMap (\validator -> validator states2) fieldValidators
+                validationsDict =
+                    Dict.fromList fieldValidators
                         |> Debug.log "validations"
+
+                -- POC - proving that we can check which field's input has been parsed (if any)
+                maybeParsedIndex =
+                    checkFieldParsed f.fieldParsedChecker fields deltas states2
+                        |> Debug.log "updated field"
+
+                -- POC - proving that we can validate only fields that have been detected as parsed
+                _ =
+                    maybeParsedIndex
+                        |> Maybe.andThen (\i -> Dict.get i validationsDict)
+                        |> Maybe.map (\v -> v states2)
+                        |> Debug.log "validation feedback"
             in
             ( states2
             , Cmd.map f.toMsg cmd
