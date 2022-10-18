@@ -3,7 +3,7 @@
     "targets": {
         "elm-forms": {
             "inputs": [
-                "src/Poc.elm"
+                "src/Example.elm"
             ],
             "output": "main.js"
         }

@@ -1,706 +1,748 @@
 module Form exposing
-    ( Form
-    , State
-    , build
-    , buildWithContext
-    , form
-    , i0
-    , i1
-    , i10
-    , i2
-    , i3
-    , i4
-    , i5
-    , i6
-    , i7
-    , i8
-    , i9
-    , withField
+    ( End
+    , end
+    , f0
+    , f1
+    , f10
+    , f2
+    , f3
+    , f4
+    , f5
+    , f6
+    , f7
+    , f8
+    , f9
+    , failIf2
+    , field
+    , new
     )
 
-import Field exposing (Field(..))
+import Dict
+import Dict.Extra
+import Field
+import List.Extra
+import Process
+import Result.Extra
+import Task
+import Time
 
 
 
--- TYPES
+-- LIBRARY CODE
+-- Types
 
 
-type Form form
-    = Form form
-
-
-type State state
-    = State state
+type End
+    = End
 
 
 
--- FORM CONFIG
-
-
-type Builder a b c d e f g h fields context element msg
-    = Builder
-        { reverseSize : a
-        , anotherReverseSize : b
-        , stateSize : c
-        , validateSize : d
-        , collectResultsSize : e
-        , renderSize : f
-        , collectElementsSize : g
-        , fieldStateUnfocuser : h
-        , fields : fields
-        }
 
 
 
--- CREATING FORMS
+-- State setters
 
 
-form :
-    Builder
-        (b -> b)
-        (c -> c)
-        (d -> d)
-        (e -> e)
-        (f -> f)
-        (g -> g)
-        (h -> h)
-        (i -> i)
-        ()
-        context
-        element
-        msg
-form =
-    Builder
-        { reverseSize = identity
-        , anotherReverseSize = identity
-        , stateSize = identity
-        , validateSize = identity
-        , collectResultsSize = identity
-        , collectElementsSize = identity
-        , renderSize = identity
-        , fieldStateUnfocuser = identity
-        , fields = ()
-        }
+set1 : (b -> y) -> ( a, b ) -> ( a, y )
+set1 =
+    Tuple.mapSecond
 
 
-withField :
-    Field input2 delta2 output2 context2 element2 msg2
+get1 : ( a, b ) -> b
+get1 =
+    Tuple.second
+
+
+f0 =
+    composeSelectors { getFieldState = identity, getField = identity, set = identity }
+
+
+f1 =
+    composeSelectors { getFieldState = get1, getField = get1, set = set1 }
+
+
+f2 =
+    f1 >> f1
+
+
+f3 =
+    f2 >> f1
+
+
+f4 =
+    f3 >> f1
+
+
+f5 =
+    f4 >> f1
+
+
+f6 =
+    f5 >> f1
+
+
+f7 =
+    f6 >> f1
+
+
+f8 =
+    f7 >> f1
+
+
+f9 =
+    f8 >> f1
+
+
+f10 =
+    f9 >> f1
+
+
+composeSelectors selector1 selector2 =
+    { getFieldState = selector1.getFieldState >> selector2.getFieldState
+    , getField = selector1.getField >> selector2.getField
+    , set = selector1.set >> selector2.set
+    }
+
+
+instantiateSelector selector =
+    selector { getFieldState = identity, getField = identity, set = identity }
+
+
+
+-- Tuple walkers
+
+
+updateFieldStates : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
+updateFieldStates fieldStateUpdater fields deltas states =
+    fieldStateUpdater (\End End End -> End) fields deltas states
+
+
+fieldStateUpdater1 :
+    (b -> a -> c -> d)
     ->
-        Builder
-            (a -> ( ( b, c ), d ) -> e)
-            (f -> ( ( g, h ), i ) -> j)
-            (k -> l -> y)
-            (m -> n -> o -> p -> q)
-            (r -> ( Result (List Field.Feedback) ( s, value ), t ) -> u)
-            (v -> w -> x -> z)
-            (a1 -> ( List b1, c1 ) -> d1)
-            (e1 -> f1 -> f1)
-            fields
-            h1
-            i1
-            j1
-    ->
-        Builder
-            (a -> ( c, ( b, d ) ) -> e)
-            (f -> ( h, ( g, i ) ) -> j)
-            (k -> ( Field input delta output context element msg, l ) -> ( Field.State input output, y ))
-            (m -> n -> ( Field q1 r1 s1 n t1 u1, o ) -> ( Field.State q1 s1, p ) -> ( Field.State q1 s1, q ))
-            (r -> ( Result (List Field.Feedback) value, ( Field.State v1 s, t ) ) -> u)
-            (v -> ( Field w1 x1 y1 z1 a2 b2, w ) -> ( Field.State w1 y1, x ) -> ( a2, z ))
-            (a1 -> ( List b1, ( b1, c1 ) ) -> d1)
-            (e1 -> ( Field.State input output, f1 ) -> ( Field.State input output, f1 ))
-            ( Field input2 delta2 output2 context2 element2 msg2, fields )
-            d2
-            e2
-            f2
-withField (Field fld) (Builder bdr) =
-    Builder
-        { reverseSize = bdr.reverseSize >> reverseSize1
-        , anotherReverseSize = bdr.anotherReverseSize >> anotherReverseSize1
-        , stateSize = bdr.stateSize >> stateSize1
-        , validateSize = bdr.validateSize >> validateSize1
-        , collectResultsSize = bdr.collectResultsSize >> collectResultsSize1
-        , collectElementsSize = bdr.collectElementsSize >> collectElementsSize1
-        , renderSize = bdr.renderSize >> renderSize1
-        , fieldStateUnfocuser = bdr.fieldStateUnfocuser >> fieldStateUnfocuser1
-        , fields = ( Field fld, bdr.fields )
-        }
-
-
-buildWithContext :
-    Builder
-        ((a -> a) -> ( (), fields ) -> ( form, c ))
-        ((d -> d)
-         -> ( (), e )
-         -> ( f, g )
+        ( { e
+            | update : delta -> input -> input
+            , debounce : Float
+            , toDelta : Field.Delta g -> msg
+            , parse : input -> Result String output
+            , validators : List { check : output -> Bool, feedback : Result String String }
+          }
+        , b
         )
-        ((() -> ()) -> form -> state)
-        ((context -> () -> () -> ()) -> context -> form -> state -> state)
-        ((n -> n) -> ( Result error (), state ) -> ( Result error e, q ))
-        ((r -> () -> () -> ()) -> form -> state -> u)
-        ((v -> v) -> ( List element, u ) -> ( List element, y ))
-        ((() -> ()) -> state -> state)
-        fields
-        context
-        element
-        msg
-    ->
-        { init : State state
-        , setAt :
-            (( c1 -> c1, d1 -> d1 )
-             ->
-                ( (( Field.State input output, f1 )
-                   -> ( Field.State input output, f1 )
-                  )
-                  -> state
-                  -> state
-                , (( Field input delta1 output context1 element2 msg1, l1 )
-                   -> ( Field.State input output, n1 )
-                   -> ( Field input delta1 output context1 element2 msg1, Field.State input output )
-                  )
-                  -> form
-                  -> state
-                  -> ( Field input delta1 output context1 element2 msg1, Field.State input output )
-                )
-            )
-            -> input
-            -> State state
-            -> State state
-        , updateAt :
-            context
-            ->
-                (( t1 -> t1, u1 -> u1 )
-                 ->
-                    ( (( Field.State input output, w1 )
-                       -> ( Field.State input output, w1 )
-                      )
-                      -> state
-                      -> state
-                    , (( Field input delta output context element1 msg, b2 )
-                       -> ( Field.State input output, w1 )
-                       -> ( Field input delta output context element1 msg, Field.State input output )
-                      )
-                      -> form
-                      -> state
-                      -> ( Field input delta output context element1 msg, Field.State input output )
+    -> ( { h | delta : Field.Delta delta }, a )
+    -> ( Field.State input delta output, c )
+    -> ( ( Field.State input delta output, Cmd msg ), d )
+fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
+    let
+        stateAndCmd =
+            case delta.delta of
+                Field.UpdateRequested d ->
+                    let
+                        newState =
+                            { state | input = field_.update d state.input }
+                    in
+                    if field_.debounce > 0 then
+                        ( newState
+                        , Task.perform (field_.toDelta << Field.DebouncingStarted) Time.now
+                        )
+
+                    else
+                        ( parseField field_ newState
+                        , Cmd.none
+                        )
+
+                Field.DebouncingStarted now ->
+                    ( { state
+                        | lastTouched = Just now
+                        , output = Field.Debouncing_
+                      }
+                    , Task.perform (\() -> field_.toDelta (Field.DebouncingChecked now)) (Process.sleep field_.debounce)
                     )
-                )
-            -> Field.Delta delta
-            -> State state
-            -> ( State state, Cmd msg )
-        , submit : context -> State state -> Result (State state) f
-        , view : State state -> u
-        , viewList : State state -> List element
-        }
-buildWithContext (Builder bdr) =
-    let
-        reversedFields =
-            reverseTuple bdr.reverseSize bdr.fields
 
-        form_ =
-            Form reversedFields
+                Field.DebouncingChecked now ->
+                    ( if state.lastTouched == Just now then
+                        parseField field_ state
 
-        fieldStates =
-            bdr.stateSize (\() -> ()) reversedFields
+                      else
+                        state
+                    , Cmd.none
+                    )
+
+                Field.Noop ->
+                    ( state
+                    , Cmd.none
+                    )
     in
-    { init = State fieldStates
-    , setAt = initializeField form_
-    , updateAt = updateField bdr.fieldStateUnfocuser form_
-    , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_
-    , view = renderAll bdr.renderSize form_
-    , viewList = view bdr.renderSize bdr.collectElementsSize form_
-    }
-
-
-build :
-    Builder
-        ((a -> a) -> ( (), fields ) -> ( form, c ))
-        ((d -> d)
-         -> ( (), e )
-         -> ( f, g )
-        )
-        ((() -> ()) -> form -> state)
-        ((() -> () -> () -> ()) -> () -> form -> state -> state)
-        ((n -> n) -> ( Result error (), state ) -> ( Result error e, q ))
-        ((r -> () -> () -> ()) -> form -> state -> u)
-        ((v -> v) -> ( List element, u ) -> ( List element, y ))
-        ((() -> ()) -> state -> state)
-        fields
-        ()
-        element
-        msg
-    ->
-        { init : State state
-        , setAt :
-            (( c1 -> c1, d1 -> d1 )
-             ->
-                ( (( Field.State input output, f1 )
-                   -> ( Field.State input output, f1 )
-                  )
-                  -> state
-                  -> state
-                , (( Field input delta1 output () element2 msg1, l1 )
-                   -> ( Field.State input output, n1 )
-                   -> ( Field input delta1 output () element2 msg1, Field.State input output )
-                  )
-                  -> form
-                  -> state
-                  -> ( Field input delta1 output () element2 msg1, Field.State input output )
-                )
-            )
-            -> input
-            -> State state
-            -> State state
-        , updateAt :
-            (( t1 -> t1, u1 -> u1 )
-             ->
-                ( (( Field.State input output, w1 )
-                   -> ( Field.State input output, w1 )
-                  )
-                  -> state
-                  -> state
-                , (( Field input delta output () element1 msg, b2 )
-                   -> ( Field.State input output, w1 )
-                   -> ( Field input delta output () element1 msg, Field.State input output )
-                  )
-                  -> form
-                  -> state
-                  -> ( Field input delta output () element1 msg, Field.State input output )
-                )
-            )
-            -> Field.Delta delta
-            -> State state
-            -> ( State state, Cmd msg )
-        , submit : State state -> Result (State state) f
-        , view : State state -> u
-        , viewList : State state -> List element
-        }
-build (Builder bdr) =
-    let
-        reversedFields =
-            reverseTuple bdr.reverseSize bdr.fields
-
-        form_ =
-            Form reversedFields
-
-        fieldStates =
-            bdr.stateSize (\() -> ()) reversedFields
-    in
-    { init = State fieldStates
-    , setAt = initializeField form_
-    , updateAt = updateField bdr.fieldStateUnfocuser form_ ()
-    , submit = submit bdr.validateSize bdr.collectResultsSize bdr.anotherReverseSize form_ ()
-    , view = renderAll bdr.renderSize form_
-    , viewList = view bdr.renderSize bdr.collectElementsSize form_
-    }
-
-
-
--- INDEXES FOR SETTING FIELDS
-
-
-fieldStateUnfocuser1 :
-    (rest -> rest)
-    -> ( Field.State input output, rest )
-    -> ( Field.State input output, rest )
-fieldStateUnfocuser1 =
-    Tuple.mapBoth (\fs -> { fs | focused = False })
-
-
-fieldAndFieldStateGetter0 : rest -> rest
-fieldAndFieldStateGetter0 =
-    identity
-
-
-fieldAndFieldStateGetter1 :
-    (restFields -> restFieldStates -> ( Field.Field input2 delta2 output2 context2 element2 msg2, Field.State input2 output2 ))
-    -> ( Field.Field input delta output context element msg, restFields )
-    -> ( Field.State input output, restFieldStates )
-    -> ( Field.Field input2 delta2 output2 context2 element2 msg2, Field.State input2 output2 )
-fieldAndFieldStateGetter1 next ( _, restFields ) ( _, restFieldStates ) =
-    next restFields restFieldStates
-
-
-getFieldAndFieldState :
-    ((( Field.Field input delta output context element msg, restFields )
-      -> ( Field.State input output, restFieldStates )
-      -> ( Field.Field input delta output context element msg, Field.State input output )
-     )
-     -> form
-     -> state
-     -> ( Field.Field input delta output context element msg, Field.State input output )
+    ( stateAndCmd
+    , next fields deltas states
     )
-    -> form
-    -> state
-    -> ( Field.Field input delta output context element msg, Field.State input output )
-getFieldAndFieldState getter form_ state_ =
-    getter
-        (\( field_, _ ) ( fieldState, _ ) -> ( field_, fieldState ))
-        form_
-        state_
 
 
-fieldStateSetter0 : rest -> rest
-fieldStateSetter0 =
-    identity
+checkFieldParsed fieldParsedChecker fields deltas states =
+    fieldParsedChecker (\maybeIndex _ _ _ -> maybeIndex) Nothing fields deltas states
 
 
-fieldStateSetter1 :
-    (rest -> rest)
-    -> ( Field.State input output, rest )
-    -> ( Field.State input output, rest )
-fieldStateSetter1 mapRest ( this, rest ) =
-    Tuple.mapBoth identity mapRest ( this, rest )
-
-
-i0 : a -> a
-i0 =
-    identity
-
-
-i1 =
-    compose ( fieldStateSetter1, fieldAndFieldStateGetter1 )
-
-
-i2 =
-    i1 >> i1
-
-
-i3 =
-    i2 >> i1
-
-
-i4 =
-    i3 >> i1
-
-
-i5 =
-    i4 >> i1
-
-
-i6 =
-    i5 >> i1
-
-
-i7 =
-    i6 >> i1
-
-
-i8 =
-    i7 >> i1
-
-
-i9 =
-    i8 >> i1
-
-
-i10 =
-    i9 >> i1
-
-
-compose :
-    ( fst -> fst2, snd -> snd2 )
-    -> ( fst2 -> fst3, snd2 -> snd3 )
-    -> ( fst -> fst3, snd -> snd3 )
-compose ( fst1To2, snd1To2 ) ( fst2To3, snd2To3 ) =
-    ( fst1To2 >> fst2To3, snd1To2 >> snd2To3 )
-
-
-
--- SETTING FIELDS
-
-
-initializeField :
-    Form form
-    ->
-        (( a -> a, b -> b )
-         ->
-            ( (( Field.State input output, rest ) -> ( Field.State input output, rest )) -> state -> state
-            , (( Field input delta output context element msg, restFields )
-               -> ( Field.State input output, restFieldStates )
-               -> ( Field input delta output context element msg, Field.State input output )
-              )
-              -> form
-              -> state
-              -> ( Field input delta output context element msg, Field.State input output )
-            )
-        )
-    -> input
-    -> State state
-    -> State state
-initializeField (Form form_) index input (State fieldStates) =
+fieldParsedChecker1 next maybeIndex ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
-        ( fieldStateSetter, fieldAndFieldStateGetter ) =
-            index ( fieldStateSetter0, fieldAndFieldStateGetter0 )
+        newMaybeIndex =
+            case delta.delta of
+                Field.UpdateRequested _ ->
+                    if field_.debounce <= 0 then
+                        Just field_.index
 
-        ( _, fieldState ) =
-            getFieldAndFieldState fieldAndFieldStateGetter form_ fieldStates
+                    else
+                        maybeIndex
 
-        newFieldState =
-            { fieldState | input = input }
-    in
-    State
-        (fieldStateSetter
-            (Tuple.mapBoth (\_ -> newFieldState) identity)
-            fieldStates
-        )
+                Field.DebouncingChecked now ->
+                    if state.lastTouched == Just now then
+                        Just field_.index
 
-
-updateField :
-    ((() -> ()) -> fieldStates -> fieldStates)
-    -> Form form
-    -> context
-    ->
-        (( a -> a, b -> b )
-         ->
-            ( (( Field.State input output, restFieldStates ) -> ( Field.State input output, restFieldStates )) -> fieldStates -> fieldStates
-            , (( Field input delta output context element msg, restFields )
-               -> ( Field.State input output, restFieldStates )
-               -> ( Field input delta output context element msg, Field.State input output )
-              )
-              -> form
-              -> fieldStates
-              -> ( Field input delta output context element msg, Field.State input output )
-            )
-        )
-    -> Field.Delta delta
-    -> State fieldStates
-    -> ( State fieldStates, Cmd msg )
-updateField fieldStateUnfocuser (Form form_) context index wrappedDelta (State fieldStates) =
-    let
-        ( fieldStateSetter, fieldAndFieldStateGetter ) =
-            index ( fieldStateSetter0, fieldAndFieldStateGetter0 )
-
-        ( field_, fieldState ) =
-            getFieldAndFieldState fieldAndFieldStateGetter form_ fieldStates
-
-        updateState fs fss =
-            State
-                (fieldStateSetter
-                    (Tuple.mapBoth (\_ -> fs) identity)
-                    fss
-                )
-
-        ( newFieldState, cmd ) =
-            Field.update field_ wrappedDelta context fieldState
-    in
-    case wrappedDelta of
-        Field.Focused ->
-            let
-                unfocusedFieldStates =
-                    fieldStateUnfocuser (\() -> ()) fieldStates
-            in
-            ( updateState newFieldState unfocusedFieldStates, cmd )
-
-        _ ->
-            ( updateState newFieldState fieldStates, cmd )
-
-
-
--- EXTRACTING STATE
-
-
-stateSize1 :
-    (restFields -> restFieldStates)
-    -> ( Field input delta output context element msg, restFields )
-    -> ( Field.State input output, restFieldStates )
-stateSize1 next form_ =
-    Tuple.mapBoth Field.init next form_
-
-
-
--- VALIDATING ALL FIELDS
-
-
-validateAll :
-    ((a -> () -> () -> ()) -> context -> form -> state -> state)
-    -> context
-    -> Form form
-    -> State state
-    -> State state
-validateAll size context (Form form_) (State state_) =
-    State (size (\_ () () -> ()) context form_ state_)
-
-
-validateSize1 :
-    (context -> rest0 -> rest1 -> rest2)
-    -> context
-    -> ( Field input delta output context element msg, rest0 )
-    -> ( Field.State input output, rest1 )
-    -> ( Field.State input output, rest2 )
-validateSize1 next context form_ state_ =
-    mapBoth2
-        (\field fieldState ->
-            case fieldState.validated of
-                Field.Intact ->
-                    Field.validate field context fieldState
+                    else
+                        maybeIndex
 
                 _ ->
-                    fieldState
-        )
-        (next context)
-        form_
-        state_
-
-
-
--- COLLECTING THE RESULTS FROM ALL VALIDATED FIELDS INTO ONE RESULT
-
-
-collectResults :
-    ((a -> a) -> ( Result error (), state ) -> ( b, c ))
-    -> State state
-    -> b
-collectResults size (State state_) =
-    size identity ( Ok (), state_ )
-        |> Tuple.first
-
-
-collectResultsSize1 :
-    (( Result (List Field.Feedback) ( output, value ), restFieldStates ) -> a)
-    -> ( Result (List Field.Feedback) value, ( Field.State input output, restFieldStates ) )
-    -> a
-collectResultsSize1 next ( s, ( fst, rst ) ) =
-    case s of
-        Ok tuple ->
-            case fst.validated of
-                Field.Passed okF _ ->
-                    next ( Ok ( okF, tuple ), rst )
-
-                Field.Failed e ->
-                    next ( Err e, rst )
-
-                Field.Intact ->
-                    next ( Err [], rst )
-
-        Err es ->
-            case fst.validated of
-                Field.Passed _ _ ->
-                    next ( Err es, rst )
-
-                Field.Failed e ->
-                    next ( Err (List.concat [ e, es ]), rst )
-
-                Field.Intact ->
-                    next ( Err es, rst )
-
-
-
--- REVERSING TUPLES
-
-
-reverseTuple :
-    ((a -> a) -> ( (), b ) -> ( c, d ))
-    -> b
-    -> c
-reverseTuple size results =
-    size identity ( (), results )
-        |> Tuple.first
-
-
-reverseSize1 :
-    (( ( a, b ), c ) -> d)
-    -> ( b, ( a, c ) )
-    -> d
-reverseSize1 next ( s, ( fst, rest ) ) =
-    next ( ( fst, s ), rest )
-
-
-anotherReverseSize1 :
-    (( ( a, b ), c ) -> d)
-    -> ( b, ( a, c ) )
-    -> d
-anotherReverseSize1 next ( s, ( fst, rest ) ) =
-    next ( ( fst, s ), rest )
-
-
-
--- SUBMITTING A FORM
-
-
-submit :
-    ((context -> () -> () -> ()) -> context -> form -> state -> state)
-    -> ((a -> a) -> ( Result error (), state ) -> ( Result c d, e ))
-    -> ((f -> f) -> ( (), d ) -> ( g, h ))
-    -> Form form
-    -> context
-    -> State state
-    -> Result (State state) g
-submit validateSize collectResultsSize reverseSize form_ context state_ =
-    let
-        newState =
-            validateAll validateSize context form_ state_
+                    maybeIndex
     in
-    newState
-        |> collectResults collectResultsSize
-        |> Result.map (reverseTuple reverseSize)
-        |> Result.mapError (\_ -> newState)
+    next newMaybeIndex fields deltas states
 
 
-
--- CONVERTING TO ELEMENTS
-
-
-renderAll :
-    ((b -> () -> () -> ()) -> form -> state -> element)
-    -> Form form
-    -> State state
-    -> element
-renderAll size (Form form_) (State state_) =
-    size (\_ () () -> ()) form_ state_
+validateAll : ((End -> End -> End) -> b -> c -> a) -> b -> c -> a
+validateAll validateAller fields states =
+    validateAller (\End End -> End) fields states
 
 
-renderSize1 :
-    (rest0 -> rest1 -> rest2)
-    -> ( Field input delta output context element msg, rest0 )
-    -> ( Field.State input output, rest1 )
-    -> ( element, rest2 )
-renderSize1 next form_ state_ =
-    mapBoth2
-        Field.view
-        next
-        form_
-        state_
+validateAller1 :
+    (b -> a -> c)
+    -> ( { d | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : Result String String } }, b )
+    -> ( Field.State input delta output, a )
+    -> ( Field.State input delta output, c )
+validateAller1 next ( field_, fields ) ( state, states ) =
+    ( parseField field_ state, next fields states )
 
 
-collectElements :
-    ((a -> a) -> ( List element, restElements ) -> ( d, e ))
-    -> restElements
-    -> d
-collectElements size elements =
-    size identity ( [], elements )
-        |> Tuple.first
+parseField :
+    { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : Result String String } }
+    -> Field.State input delta output
+    -> Field.State input delta output
+parseField field_ state =
+    let
+        output =
+            case field_.parse state.input of
+                Err f ->
+                    Field.FailedToParse f
+
+                Ok val ->
+                    Field.Parsed val
+    in
+    { state | output = output }
 
 
-collectElementsSize1 :
-    (( List element, restElements ) -> next)
-    -> ( List element, ( element, restElements ) )
-    -> next
-collectElementsSize1 next ( s, ( fst, rst ) ) =
-    next ( fst :: s, rst )
+validateField : List { check : val -> Bool, feedback : Result String String } -> val -> List (Result String String)
+validateField validators val =
+    List.foldl
+        (\{ check, feedback } feedbacks ->
+            if check val then
+                feedback :: feedbacks
+
+            else
+                feedbacks
+        )
+        []
+        validators
 
 
-view :
-    ((b -> () -> () -> ())
-     -> form
-     -> state
-     -> restElements
+cmdStrip cmdStripper statesAndCmds =
+    let
+        ( ( states, cmdsList ), _ ) =
+            cmdStripper ( ( End, [] ), statesAndCmds )
+    in
+    ( states, Cmd.batch cmdsList )
+
+
+cmdStripper1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
+    ( ( ( state, outState ), cmd :: outCmd ), statesAndCmds )
+
+
+collectValidators validationCollector fields =
+    -- POC
+    validationCollector (\validations _ -> validations) [] fields
+
+
+validationCollector1 next output ( field_, fields ) =
+    -- POC
+    next (( field_.index, field_.validators2 ) :: output) fields
+
+
+view_ viewer toMsg fields states =
+    viewer (\_ End End -> End) toMsg fields states
+
+
+viewer1 next toMsg ( field_, fields ) ( state, states ) =
+    ( field_.view
+        { id = field_.id
+        , toMsg = \x -> toMsg (field_.toDelta (Field.UpdateRequested x))
+        , input = state.input
+        , status =
+            case state.output of
+                Field.Intact_ ->
+                    Field.Intact
+
+                Field.Debouncing_ ->
+                    Field.Debouncing
+
+                Field.FailedToParse feedback ->
+                    Field.Idle [ Err feedback ]
+
+                Field.Parsed _ ->
+                    Field.Idle state.feedback
+        }
+    , next toMsg fields states
     )
-    -> ((h -> h) -> ( List element, restElements ) -> ( List element, restElements2 ))
-    -> Form form
-    -> State state
-    -> List element
-view renderSize collectElementsSize form_ state_ =
-    renderAll renderSize form_ state_
-        |> collectElements collectElementsSize
+
+
+combine combiner inits fields =
+    combiner (\_ End -> End) inits fields
+
+
+combiner1 next inits ( field_, fields ) =
+    let
+        setDelta x =
+            Tuple.mapFirst (\s -> { s | delta = x })
+
+        convertValidators =
+            -- POC - proving that we can convert validations into functions that
+            -- take a field state and return a field state (so that all
+            -- validation functions for all fields have the same type signature
+            -- and can be stored in a list or dictionary)
+            \state ->
+                let
+                    f =
+                        (field_.getter >> Tuple.first) state
+
+                    set fdbk =
+                        Tuple.mapFirst (\s -> { s | feedback = fdbk })
+                in
+                case f.output of
+                    Field.Parsed o ->
+                        let
+                            feedback =
+                                validateField field_.validators o
+                        in
+                        field_.setter (set feedback) state
+
+                    _ ->
+                        state
+    in
+    ( { index = field_.index
+      , id = field_.id
+      , update = field_.update
+      , view = field_.view
+      , parse = field_.parse
+      , validators = field_.validators
+
+      -- POC
+      , validators2 = convertValidators
+      , debounce = field_.debounce
+      , toDelta = \x -> field_.setter (setDelta x) inits
+      }
+    , next inits fields
+    )
+
+
+toList : (( List a, b ) -> ( List c, d )) -> b -> List c
+toList toLister tuple =
+    toLister ( [], tuple )
+        |> Tuple.first
         |> List.reverse
 
 
-mapBoth2 :
-    (this0 -> this1 -> this2)
-    -> (rest0 -> rest1 -> rest2)
-    -> ( this0, rest0 )
-    -> ( this1, rest1 )
-    -> ( this2, rest2 )
-mapBoth2 mapThis mapRest ( this0, rest0 ) ( this1, rest1 ) =
-    ( mapThis this0 this1, mapRest rest0 rest1 )
+toLister1 : ( List a, ( a, b ) ) -> ( List a, b )
+toLister1 ( list, ( item, items ) ) =
+    ( item :: list, items )
+
+
+reverse : (( End, b ) -> ( a, c )) -> b -> a
+reverse reverser tuple =
+    reverser ( End, tuple )
+        |> Tuple.first
+
+
+reverser1 : ( a, ( b, c ) ) -> ( ( b, a ), c )
+reverser1 ( s, ( fst, rest ) ) =
+    ( ( fst, s ), rest )
+
+
+unfurl : (( Result error b, c ) -> ( a, d )) -> b -> c -> a
+unfurl unfurler toOutput states =
+    unfurler ( Ok toOutput, states )
+        |> Tuple.first
+
+
+unfurler1 :
+    ( Result error (output -> a)
+    , ( { b | output : Field.Output output, feedback : List (Result String String) }, c )
+    )
+    -> ( Result () a, c )
+unfurler1 ( toOutput, ( state, states ) ) =
+    ( case ( toOutput, state.output ) of
+        ( Ok fn, Field.Parsed val ) ->
+            if List.any Result.Extra.isErr state.feedback then
+                Err ()
+
+            else
+                Ok (fn val)
+
+        _ ->
+            Err ()
+    , states
+    )
+
+
+
+-- Form builder functions
+
+
+new output toMsg =
+    { unfurler = identity
+    , combiner = identity
+    , updater = identity
+    , cmdStripper = identity
+
+    -- POC - proving that we can collect validations from fields
+    , validationCollector = identity
+
+    -- POC - proving that we can check which field's input has been parsed (if any)
+    , fieldParsedChecker = identity
+    , validateAller = identity
+    , viewer = identity
+    , toLister = identity
+    , stateReverser = identity
+    , fieldReverser = identity
+    , index = 0
+    , inits = End
+    , fields = End
+    , emptyMsg = End
+    , validators = Dict.empty
+    , toMsg = toMsg
+    , output = output
+    }
+
+
+field idx fieldBuilder f =
+    { unfurler = f.unfurler >> unfurler1
+    , combiner = f.combiner >> combiner1
+    , updater = f.updater >> fieldStateUpdater1
+    , cmdStripper = f.cmdStripper >> cmdStripper1
+
+    -- POC - proving that we can collect validations from fields
+    , validationCollector = f.validationCollector >> validationCollector1
+
+    -- POC - proving that we can check which field's input has been parsed (if any)
+    , fieldParsedChecker = f.fieldParsedChecker >> fieldParsedChecker1
+    , validateAller = f.validateAller >> validateAller1
+    , viewer = f.viewer >> viewer1
+    , toLister = f.toLister >> toLister1
+    , stateReverser = f.stateReverser >> reverser1
+    , fieldReverser = f.fieldReverser >> reverser1
+    , index = f.index + 1
+    , inits =
+        ( { input = fieldBuilder.init
+          , delta = Field.Noop
+          , output = Field.Intact_
+          , lastTouched = Nothing
+          , feedback = []
+          }
+        , f.inits
+        )
+    , fields =
+        ( { index = f.index
+          , id = fieldBuilder.id
+          , update = fieldBuilder.update
+          , view = fieldBuilder.view
+          , parse = fieldBuilder.parse
+          , validators = fieldBuilder.validators
+          , debounce = fieldBuilder.debounce
+          , setter = instantiateSelector idx |> .set
+          , getter = instantiateSelector idx |> .getFieldState
+          }
+        , f.fields
+        )
+    , validators = f.validators
+    , toMsg = f.toMsg
+    , output = f.output
+    }
+
+
+end f =
+    let
+        inits =
+            reverse f.stateReverser f.inits
+
+        fields =
+            combine f.combiner inits f.fields
+                |> reverse f.fieldReverser
+
+        -- POC - proving that we can collect validators from fields
+        fieldValidators =
+            fields
+                |> collectValidators f.validationCollector
+                |> Dict.fromList
+                |> Debug.log "field validators"
+
+        formValidators =
+            f.validators
+                |> Dict.Extra.mapKeys (\i -> f.index - i - 1)
+                |> Debug.log "form validators"
+    in
+    { init = ( inits, Cmd.none )
+    , update =
+        \deltas states0 ->
+            let
+                ( reversedStates1, cmd ) =
+                    -- in this step we don't just update the field that the
+                    -- delta is targetting, we also clear multivalidation for
+                    -- all fields
+                    updateFieldStates f.updater fields deltas states0
+                        |> cmdStrip f.cmdStripper
+
+                states1 =
+                    reversedStates1
+                        |> reverse f.stateReverser
+
+                -- POC - proving that we can check which field's input has been parsed (if any)
+                maybeParsedIndex =
+                    checkFieldParsed f.fieldParsedChecker fields deltas states0
+                        |> Debug.log "updated field"
+
+                -- POC - proving that we can validate only fields that have been detected as parsed
+                states2 =
+                    case maybeParsedIndex of
+                        Nothing ->
+                            states1
+
+                        Just index ->
+                            let
+                                relevantFieldValidators =
+                                    fieldValidators
+                                        |> Dict.get index
+                                        |> Maybe.map List.singleton
+                                        |> Maybe.withDefault []
+
+                                relevantFormValidators =
+                                    formValidators
+                                        |> Dict.get index
+                                        |> Maybe.withDefault []
+                            in
+                            List.foldl (\v s -> v s) states1 (relevantFieldValidators ++ relevantFormValidators)
+                                |> Debug.log "states"
+            in
+            ( states2
+            , Cmd.map f.toMsg cmd
+            )
+    , view =
+        \states ->
+            view_ f.viewer f.toMsg fields states
+                |> toList f.toLister
+    , submit =
+        \states0 ->
+            let
+                states1 =
+                    validateAll f.validateAller fields states0
+
+                allFormValidators =
+                    Dict.values formValidators
+                        |> List.concat
+
+                states2 =
+                    List.foldl (\v s -> v s) states1 allFormValidators
+            in
+            case unfurl f.unfurler f.output states2 of
+                Ok output ->
+                    Ok output
+
+                Err () ->
+                    Err states2
+    }
+
+
+
+-- FORM-LEVEL VALIDATION (OF MULTIPLE FIELDS)
+
+
+failIf2 check feedback selector1 selector2 formBuilder =
+    let
+        sel1 =
+            instantiateSelector selector1
+
+        sel2 =
+            instantiateSelector selector2
+
+        index1 =
+            (sel1.getField >> Tuple.first) formBuilder.fields
+                |> .index
+
+        index2 =
+            (sel2.getField >> Tuple.first) formBuilder.fields
+                |> .index
+
+        v =
+            \state ->
+                let
+                    fieldState1 =
+                        (sel1.getFieldState >> Tuple.first) state
+
+                    fieldState2 =
+                        (sel2.getFieldState >> Tuple.first) state
+                in
+                case ( fieldState1.output, fieldState2.output ) of
+                    ( Field.Parsed output1, Field.Parsed output2 ) ->
+                        if check output1 output2 then
+                            state
+                                |> sel1.set
+                                    (Tuple.mapFirst
+                                        (\field1_ -> { field1_ | feedback = List.Extra.unique (Err feedback :: field1_.feedback) })
+                                    )
+                                |> sel2.set
+                                    (Tuple.mapFirst
+                                        (\field2_ -> { field2_ | feedback = List.Extra.unique (Err feedback :: field2_.feedback) })
+                                    )
+
+                        else
+                            state
+                                |> sel1.set
+                                    (Tuple.mapFirst
+                                        (\field1_ -> { field1_ | feedback = List.Extra.remove (Err feedback) field1_.feedback })
+                                    )
+                                |> sel2.set
+                                    (Tuple.mapFirst
+                                        (\field2_ -> { field2_ | feedback = List.Extra.remove (Err feedback) field2_.feedback })
+                                    )
+
+                    _ ->
+                        state
+                            |> sel1.set
+                                (Tuple.mapFirst
+                                    (\field1_ -> { field1_ | feedback = List.Extra.remove (Err feedback) field1_.feedback })
+                                )
+                            |> sel2.set
+                                (Tuple.mapFirst
+                                    (\field2_ -> { field2_ | feedback = List.Extra.remove (Err feedback) field2_.feedback })
+                                )
+    in
+    { formBuilder
+        | validators =
+            formBuilder.validators
+                |> Dict.update index1
+                    (\maybeExistingValidators ->
+                        case maybeExistingValidators of
+                            Nothing ->
+                                Just [ v ]
+
+                            Just existingValidators ->
+                                Just (v :: existingValidators)
+                    )
+                |> Dict.update index2
+                    (\maybeExistingValidators ->
+                        case maybeExistingValidators of
+                            Nothing ->
+                                Just [ v ]
+
+                            Just existingValidators ->
+                                Just (v :: existingValidators)
+                    )
+    }
+
+
+
+-- A SKETCH OF MULTI-FIELD VALIDATION WITH APPLICATIVES
+--
+-- showIf : checker -> String -> Checker checker
+-- showIf checker feedback =
+--     { check = checker, feedback = feedback, fails = False }
+-- failIf : checker -> String -> Checker checker
+-- failIf checker feedback =
+--     { check = checker, feedback = feedback, fails = True }
+-- test : Result (List String) (List String)
+-- test =
+--     multivalidate
+--         ( Err "f0 did not parse", ( Ok 1, ( Ok 1, End ) ) )
+--         [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!"
+--         , failIf (\f1_ f2_ -> f1_ <= f2_) "failed because f1 <= f2!"
+--         , showIf (\_ _ -> True) "this always gets shown if validation passes"
+--         , showIf (\f1_ _ -> f1_ == 2) "this gets shown if f1 == 2"
+--         ]
+--         (fld f1 >> fld f2)
+-- type Validator checker formData
+--     = Validator (Result (List String) (List (Checker checker))) formData
+-- type alias Checker checker =
+--     { check : checker
+--     , fails : Bool
+--     , feedback : String
+--     }
+-- multivalidate :
+--     formData
+--     -> List (Checker checker)
+--     -> (Validator checker formData -> Validator Bool formData)
+--     -> Result (List String) (List String)
+-- multivalidate formData checkers fieldGetters =
+--     Validator (Ok checkers) formData
+--         |> fieldGetters
+--         |> done
+-- fld :
+--     ({ get : a -> a, set : b -> b } -> { c | get : formData -> ( Result String d, e ) })
+--     -> Validator (d -> f) formData
+--     -> Validator f formData
+-- fld idx (Validator resultCheckers formData) =
+--     let
+--         fieldGetter =
+--             instantiateIndex idx |> .get
+--         resultFieldData =
+--             fieldGetter formData |> Tuple.first
+--         appliedCheckers =
+--             case ( resultCheckers, resultFieldData ) of
+--                 ( Ok checkers, Ok fieldData ) ->
+--                     Ok
+--                         (List.map
+--                             (\checker ->
+--                                 { check = checker.check fieldData
+--                                 , feedback = checker.feedback
+--                                 , fails = checker.fails
+--                                 }
+--                             )
+--                             checkers
+--                         )
+--                 ( Err previousErrs, Ok _ ) ->
+--                     Err previousErrs
+--                 ( Ok _, Err parsingErr ) ->
+--                     Err [ parsingErr ]
+--                 ( Err previousErrs, Err parsingErr ) ->
+--                     Err (parsingErr :: previousErrs)
+--     in
+--     Validator appliedCheckers formData
+-- done : Validator Bool formData -> Result (List String) (List String)
+-- done (Validator resultCheckers _) =
+--     case resultCheckers of
+--         Err e ->
+--             Err e
+--         Ok [] ->
+--             Ok []
+--         Ok checkers ->
+--             List.foldl
+--                 (\{ check, feedback, fails } resultFeedbacks ->
+--                     case resultFeedbacks of
+--                         Err feedbacks ->
+--                             if check && fails then
+--                                 Err (feedback :: feedbacks)
+--                             else
+--                                 Err feedbacks
+--                         Ok feedbacks ->
+--                             if check then
+--                                 if fails then
+--                                     Err [ feedback ]
+--                                 else
+--                                     Ok (feedback :: feedbacks)
+--                             else
+--                                 Ok feedbacks
+--                 )
+--                 (Ok [])
+--                 checkers

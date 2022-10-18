@@ -1,485 +1,205 @@
 module Field exposing
     ( Delta(..)
-    , Feedback(..)
-    , Field(..)
-    , InternalStatus(..)
-    , Opt
+    , FieldBuilder
+    , Output(..)
     , State
     , Status(..)
-    , ValidationStatus(..)
     , ViewConfig
     , debounce
-    , doNotValidate
-    , fail
     , failIf
-    , info
+    , float
     , infoIf
-    , init
-    , new
-    , none
-    , pass
-    , submit
-    , update
-    , validate
-    , view
-    , warn
-    , warnIf
-    , withInitialState
-    , withValidator
-    , withView
+    , int
+    , string
     )
 
-import Process
-import Task
+import Html as H exposing (Html)
+import Html.Attributes as HA
+import Html.Events as HE
+import Result.Extra
 import Time
 
 
-type Delta delta
-    = UpdateInput delta
-    | StartDebouncing (DeltaContext delta) Time.Posix
-    | CheckDebouncingTimeout (DeltaContext delta) Time.Posix
-    | ExecuteLoading (DeltaContext delta) delta
-    | ExecuteParsing
-    | Focused
-
-
-type alias DeltaContext delta =
-    { shouldSendCmd : Bool
+type alias FieldBuilder input delta output element msg =
+    { id : String
+    , init : input
+    , update : delta -> input -> input
+    , view : ViewConfig msg -> element
+    , parse : input -> Result String output
+    , validators : List { check : output -> Bool, feedback : Result String String }
     , debounce : Float
-    , shouldValidate : Bool
-    , delta : delta
     }
 
 
-type InternalStatus
-    = Debouncing_ Time.Posix
-    | Loading_
-    | Parsing_
-    | Idle_
+type alias State input delta output =
+    { input : input
+    , delta : Delta delta
+    , output : Output output
+    , lastTouched : Maybe Time.Posix
+    , feedback : List (Result String String)
+    }
 
 
 type Status
-    = Debouncing
-    | Loading
-    | Parsing
-    | Idle
-
-
-type Opt
-    = DontValidate
-    | Debounce Float
-
-
-debounce : Float -> Opt
-debounce millis =
-    Debounce millis
-
-
-doNotValidate : Opt
-doNotValidate =
-    DontValidate
-
-
-type Field input delta output context element msg
-    = Field
-        { index : Int
-        , init : input
-        , deltaMsg : Delta delta -> msg
-        , updater : delta -> input -> ( input, Cmd delta, List Opt )
-        , parser : context -> input -> Result Feedback output
-        , validators : List (context -> output -> Feedback)
-        , view : ViewConfig input delta output msg -> element
-        , id : String
-        , label : String
-        }
-
-
-type alias ViewConfig input delta output msg =
-    { input : input
-    , status : Status
-    , parsed : ValidationStatus output
-    , delta : delta -> msg
-    , focusMsg : msg
-    , focused : Bool
-    , label : String
-    , id : String
-    }
-
-
-type alias State input output =
-    { input : input
-    , validated : ValidationStatus output
-    , status : InternalStatus
-    , focused : Bool
-    }
-
-
-type ValidationStatus output
     = Intact
-    | Passed output (List Feedback)
-    | Failed (List Feedback)
+    | Debouncing
+    | Idle (List (Result String String))
 
 
-type Feedback
-    = Info String
-    | Pass String
-    | Fail String
-    | Warn String
-    | None
+type Delta delta
+    = UpdateRequested delta
+    | DebouncingStarted Time.Posix
+    | DebouncingChecked Time.Posix
+    | Noop
 
 
-info : String -> Feedback
-info str =
-    Info str
+type Output output
+    = Intact_
+    | Debouncing_
+    | FailedToParse String
+    | Parsed output
 
 
-pass : String -> Feedback
-pass str =
-    Pass str
-
-
-fail : String -> Feedback
-fail str =
-    Fail str
-
-
-warn : String -> Feedback
-warn str =
-    Warn str
-
-
-none : Feedback
-none =
-    None
-
-
-
--- CREATING FIELDS
-
-
-new :
-    { init : input
-    , deltaMsg : Delta delta -> msg
-    , updater : delta -> input -> ( input, Cmd delta, List Opt )
-    , parser : context -> input -> Result Feedback output
-    , renderer : ViewConfig input delta output msg -> element
-    , label : String
-    }
-    -> Field input delta output context element msg
-new args =
-    Field
-        { index = 0
-        , init = args.init
-        , deltaMsg = args.deltaMsg
-        , updater = args.updater
-        , parser = args.parser
-        , validators = []
-        , view = args.renderer
-        , id = ""
-        , label = args.label
-        }
-
-
-
--- EXTRACTING STATE FROM FIELDS
-
-
-init : Field input delta output context element msg -> State input output
-init (Field f) =
-    { input = f.init
-    , validated = Intact
-    , status = Idle_
-    , focused = False
+type alias ViewConfig msg =
+    { id : String
+    , toMsg : String -> msg
+    , input : String
+    , status : Status
     }
 
 
-update : Field input delta output context element msg -> Delta delta -> context -> State input output -> ( State input output, Cmd msg )
-update (Field field_) wrappedDelta context fieldState =
-    case wrappedDelta of
-        Focused ->
-            ( { fieldState | focused = True }
-            , Cmd.none
-            )
 
-        UpdateInput delta ->
-            let
-                ( newInput, cmd, opts ) =
-                    field_.updater delta fieldState.input
+-- Field widgets and functions
 
-                ( debounce_, shouldValidate ) =
-                    List.foldl
-                        (\opt ( d, sv ) ->
-                            case opt of
-                                Debounce millis ->
-                                    ( millis, sv )
 
-                                DontValidate ->
-                                    ( d, False )
-                        )
-                        ( 0, True )
-                        opts
+int : String -> FieldBuilder String String Int (Html msg) msg
+int id =
+    { id = id
+    , init = ""
+    , update = \delta _ -> delta
+    , view = field_string_view
+    , parse =
+        \input ->
+            case String.toInt input of
+                Just i ->
+                    Ok i
 
-                newFieldState =
-                    { fieldState | input = newInput }
+                Nothing ->
+                    Err "not an int"
+    , validators = []
+    , debounce = 0
+    }
 
-                shouldSendCmd =
-                    cmd /= Cmd.none
 
-                ctx =
-                    { debounce = debounce_
-                    , shouldSendCmd = shouldSendCmd
-                    , shouldValidate = shouldValidate
-                    , delta = delta
-                    }
-            in
-            if debounce_ /= 0 then
-                --transition to debouncing
-                ( newFieldState
-                , Task.perform (\time -> field_.deltaMsg (StartDebouncing ctx time)) Time.now
-                )
+float : String -> FieldBuilder String String Float (Html msg) msg
+float id =
+    { id = id
+    , init = ""
+    , update = \delta _ -> delta
+    , view = field_string_view
+    , parse =
+        \input ->
+            case String.toFloat input of
+                Just f ->
+                    Ok f
 
-            else if shouldSendCmd then
-                -- send the Cmd!
-                ( { newFieldState | status = Loading_ }
-                , Cmd.map (field_.deltaMsg << ExecuteLoading ctx) cmd
-                )
+                Nothing ->
+                    Err "not an int"
+    , validators = []
+    , debounce = 0
+    }
 
-            else if shouldValidate then
-                -- transition to parsing
-                ( { newFieldState | status = Parsing_ }
-                , Task.perform (\() -> field_.deltaMsg ExecuteParsing) (Process.sleep 20)
-                )
 
-            else
-                -- transition to idle
-                ( { newFieldState | status = Idle_ }
-                , Cmd.none
-                )
+field_string_view : ViewConfig msg -> Html msg
+field_string_view fieldState =
+    H.div [ HA.style "margin-bottom" "30px" ]
+        [ H.div
+            [ HA.style "margin-bottom" "10px" ]
+            [ H.text fieldState.id ]
+        , H.input
+            [ HE.onInput fieldState.toMsg
+            , HA.value fieldState.input
+            , HA.style "background-color"
+                (case fieldState.status of
+                    Intact ->
+                        "white"
 
-        StartDebouncing ctx time ->
-            ( { fieldState | status = Debouncing_ time }
-            , Task.perform
-                (\() -> field_.deltaMsg <| CheckDebouncingTimeout ctx time)
-                (Process.sleep ctx.debounce)
-            )
+                    Debouncing ->
+                        "lightYellow"
 
-        CheckDebouncingTimeout ctx time ->
-            case fieldState.status of
-                Debouncing_ lastTouched ->
-                    if time == lastTouched then
-                        if ctx.shouldSendCmd then
-                            let
-                                ( _, cmd, _ ) =
-                                    field_.updater ctx.delta fieldState.input
-                            in
-                            -- send the Cmd!
-                            ( { fieldState | status = Loading_ }
-                            , Cmd.map (field_.deltaMsg << ExecuteLoading ctx) cmd
-                            )
-
-                        else if ctx.shouldValidate then
-                            -- transition to parsing
-                            ( { fieldState | status = Parsing_ }
-                            , Task.perform (\() -> field_.deltaMsg ExecuteParsing) (Process.sleep 20)
-                            )
+                    Idle feedback ->
+                        if List.any Result.Extra.isErr feedback then
+                            "pink"
 
                         else
-                            -- transition to idle
-                            ( { fieldState | status = Idle_ }
-                            , Cmd.none
-                            )
-
-                    else
-                        ( fieldState, Cmd.none )
-
-                _ ->
-                    ( fieldState, Cmd.none )
-
-        ExecuteLoading ctx newDelta ->
-            let
-                ( newInput, newCmd, _ ) =
-                    field_.updater newDelta fieldState.input
-
-                newFieldState =
-                    { fieldState | input = newInput }
-            in
-            if newCmd /= Cmd.none then
-                -- send the next Cmd!
-                ( { newFieldState | status = Loading_ }
-                , Cmd.map (field_.deltaMsg << ExecuteLoading ctx) newCmd
+                            "paleGreen"
                 )
+            ]
+            [ H.text fieldState.input ]
+        , case fieldState.status of
+            Idle [] ->
+                H.div
+                    [ HA.style "margin-top" "5px" ]
+                    [ H.text "✅ Looking good!" ]
 
-            else if ctx.shouldValidate then
-                -- transition to parsing
-                ( { newFieldState | status = Parsing_ }
-                , Task.perform (\() -> field_.deltaMsg ExecuteParsing) (Process.sleep 20)
-                )
+            Idle feedback ->
+                H.div []
+                    (List.map
+                        (\f ->
+                            let
+                                ( icon, txt ) =
+                                    case f of
+                                        Ok t ->
+                                            ( "💬", t )
 
-            else
-                -- transition to idle
-                ( { newFieldState | status = Idle_ }
-                , Cmd.none
-                )
-
-        ExecuteParsing ->
-            ( { fieldState | status = Idle_ }
-                |> validate (Field field_) context
-            , Cmd.none
-            )
-
-
-submit : Field input delta output context element msg -> context -> State input output -> Result (State input output) output
-submit field context fieldState =
-    case fieldState.validated of
-        Passed output _ ->
-            Ok output
-
-        Failed _ ->
-            Err fieldState
-
-        Intact ->
-            validate field context fieldState
-                |> submit field context
-
-
-validate : Field input delta output context element msg -> context -> State input output -> State input output
-validate (Field { parser, validators }) context fieldState =
-    { fieldState
-        | status = Idle_
-        , validated =
-            case
-                fieldState.input
-                    |> parser context
-                    |> Result.mapError List.singleton
-                    |> Result.andThen
-                        (\parsed ->
-                            validators
-                                |> List.map (\v -> v context parsed)
-                                |> accumulateErrors parsed
+                                        Err t ->
+                                            ( "❌", t )
+                            in
+                            H.div
+                                [ HA.style "margin-top" "5px" ]
+                                [ H.text (icon ++ " " ++ txt) ]
                         )
-            of
-                Ok ( output, feedback ) ->
-                    Passed output feedback
+                        feedback
+                    )
 
-                Err feedback ->
-                    Failed feedback
+            _ ->
+                H.text ""
+        ]
+
+
+string : String -> FieldBuilder String String String (Html msg) msg
+string id =
+    { id = id
+    , init = ""
+    , update = \delta _ -> delta
+    , view = field_string_view
+    , parse = Ok
+    , validators = []
+    , debounce = 500
     }
 
 
-accumulateErrors : a -> List Feedback -> Result (List Feedback) ( a, List Feedback )
-accumulateErrors a list =
-    case
-        list
-            |> List.filter (\tag -> tag /= None)
-            |> List.partition
-                (\tag ->
-                    case tag of
-                        Fail _ ->
-                            True
-
-                        _ ->
-                            False
-                )
-    of
-        ( [], others ) ->
-            Ok ( a, others )
-
-        ( errors, _ ) ->
-            Err errors
+debounce :
+    Float
+    -> FieldBuilder input delta output element msg
+    -> FieldBuilder input delta output element msg
+debounce millis fb =
+    { fb | debounce = millis }
 
 
-view : Field input delta output context element msg -> State input output -> element
-view (Field f) s =
-    f.view
-        { input = s.input
-        , status =
-            case s.status of
-                Debouncing_ _ ->
-                    Debouncing
-
-                Idle_ ->
-                    Idle
-
-                Loading_ ->
-                    Loading
-
-                Parsing_ ->
-                    Parsing
-        , parsed = s.validated
-        , delta = f.deltaMsg << UpdateInput
-        , focusMsg = f.deltaMsg Focused
-        , focused = s.focused
-        , id = f.id
-        , label = f.label
-        }
+failIf :
+    (output -> Bool)
+    -> String
+    -> FieldBuilder input delta output element msg
+    -> FieldBuilder input delta output element msg
+failIf check feedback fb =
+    { fb | validators = { check = check, feedback = Err feedback } :: fb.validators }
 
 
-
--- BUILDING FIELDS
-
-
-withInitialState : input -> Field input delta output context element msg -> Field input delta output context element msg
-withInitialState input (Field f) =
-    Field { f | init = input }
-
-
-withValidator : (context -> output -> Feedback) -> Field input delta output context element msg -> Field input delta output context element msg
-withValidator v (Field f) =
-    Field { f | validators = v :: f.validators }
-
-
-failIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
-failIf test message field =
-    field
-        |> withValidator
-            (\context input ->
-                if test context input then
-                    fail message
-
-                else
-                    none
-            )
-
-
-warnIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
-warnIf test message field =
-    field
-        |> withValidator
-            (\context input ->
-                if test context input then
-                    warn message
-
-                else
-                    none
-            )
-
-
-infoIf : (context -> output -> Bool) -> String -> Field input delta output context element msg -> Field input delta output context element msg
-infoIf test message field =
-    field
-        |> withValidator
-            (\context input ->
-                if test context input then
-                    info message
-
-                else
-                    none
-            )
-
-
-withView :
-    (ViewConfig input delta output msg -> element2)
-    -> Field input delta output context element msg
-    -> Field input delta output context element2 msg
-withView r (Field f) =
-    Field
-        { index = f.index
-        , init = f.init
-        , deltaMsg = f.deltaMsg
-        , updater = f.updater
-        , parser = f.parser
-        , validators = f.validators
-        , view = r
-        , id = f.id
-        , label = f.label
-        }
+infoIf :
+    (output -> Bool)
+    -> String
+    -> FieldBuilder input delta output element msg
+    -> FieldBuilder input delta output element msg
+infoIf check feedback fb =
+    { fb | validators = { check = check, feedback = Ok feedback } :: fb.validators }
