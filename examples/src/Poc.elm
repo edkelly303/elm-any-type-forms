@@ -2,9 +2,12 @@ module Poc exposing (main)
 
 import Browser
 import Dict
+import Dict.Extra
+import Field exposing (Feedback(..))
 import Html as H exposing (..)
 import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
+import List.Extra
 import Process
 import Result.Extra
 import Task
@@ -128,7 +131,9 @@ field_float id =
 field_string_view : ViewConfig msg -> Html msg
 field_string_view fieldState =
     div [ HA.style "margin-bottom" "30px" ]
-        [ div [ HA.style "margin-bottom" "10px" ] [ text fieldState.id ]
+        [ div
+            [ HA.style "margin-bottom" "10px" ]
+            [ text fieldState.id ]
         , H.input
             [ onInput fieldState.toMsg
             , HA.value fieldState.input
@@ -187,14 +192,28 @@ field_string id =
     }
 
 
+field_debounce :
+    Float
+    -> FieldBuilder input delta output element msg
+    -> FieldBuilder input delta output element msg
 field_debounce millis fb =
     { fb | debounce = millis }
 
 
+field_failIf :
+    (output -> Bool)
+    -> String
+    -> FieldBuilder input delta output element msg
+    -> FieldBuilder input delta output element msg
 field_failIf check feedback fb =
     { fb | validators = { check = check, feedback = Err feedback } :: fb.validators }
 
 
+field_showIf :
+    (output -> Bool)
+    -> String
+    -> FieldBuilder input delta output element msg
+    -> FieldBuilder input delta output element msg
 field_showIf check feedback fb =
     { fb | validators = { check = check, feedback = Ok feedback } :: fb.validators }
 
@@ -277,7 +296,6 @@ type alias State input delta output =
     , output : Output output
     , lastTouched : Maybe Time.Posix
     , feedback : List (Result String String)
-    , multifeedback : List (Result String String)
     }
 
 
@@ -302,7 +320,7 @@ type alias FieldBuilder input delta output element msg =
 type Output output
     = Intact_
     | Debouncing_
-    | FailedToParse
+    | FailedToParse String
     | Parsed output
 
 
@@ -334,47 +352,31 @@ get1 =
     Tuple.second
 
 
-f0 :
-    { get : b -> c, set : d -> e }
-    -> { get : b -> c, set : d -> e }
 f0 =
-    composeSelectors { get = identity, set = identity }
+    composeSelectors { getFieldState = identity, getField = identity, set = identity }
 
 
-f1 :
-    { get : b -> c, set : (( d, e ) -> ( d, y )) -> f }
-    -> { get : ( g, b ) -> c, set : (e -> y) -> f }
 f1 =
-    composeSelectors { get = get1, set = set1 }
+    composeSelectors { getFieldState = get1, getField = get1, set = set1 }
 
 
-f2 :
-    { get : b -> c, set : (( d, ( e, f ) ) -> ( d, ( e, y ) )) -> g }
-    -> { get : ( h, ( i, b ) ) -> c, set : (f -> y) -> g }
 f2 =
     f1 >> f1
 
 
-f3 :
-    { get : b -> c, set : (( d, ( e, ( a, f ) ) ) -> ( d, ( e, ( a, y ) ) )) -> g }
-    -> { get : ( h, ( i, ( j, b ) ) ) -> c, set : (f -> y) -> g }
 f3 =
     f2 >> f1
 
 
-composeSelectors :
-    { get : b -> c, set : d -> e }
-    -> { get : c -> g, set : e -> h }
-    -> { get : b -> g, set : d -> h }
-composeSelectors idx1 idx2 =
-    { get = idx1.get >> idx2.get
-    , set = idx1.set >> idx2.set
+composeSelectors selector1 selector2 =
+    { getFieldState = selector1.getFieldState >> selector2.getFieldState
+    , getField = selector1.getField >> selector2.getField
+    , set = selector1.set >> selector2.set
     }
 
 
-instantiateSelector : ({ get : a -> a, set : b -> b } -> index) -> index
-instantiateSelector idx =
-    idx { get = identity, set = identity }
+instantiateSelector selector =
+    selector { getFieldState = identity, getField = identity, set = identity }
 
 
 
@@ -403,16 +405,12 @@ fieldStateUpdater1 :
     -> ( ( State input delta output, Cmd msg ), d )
 fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) =
     let
-        state1 =
-            -- we're going to run multivalidate on all fields later in the update process, so we want to clear any existing multifeedback first.
-            { state0 | multifeedback = [] }
-
         stateAndCmd =
             case delta.delta of
                 UpdateRequested d ->
                     let
                         newState =
-                            { state1 | input = field_.update d state1.input }
+                            { state0 | input = field_.update d state0.input }
                     in
                     if field_.debounce > 0 then
                         ( newState
@@ -420,12 +418,12 @@ fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) 
                         )
 
                     else
-                        ( parseAndValidateField field_ newState
+                        ( parseField field_ { newState | feedback = [] }
                         , Cmd.none
                         )
 
                 DebouncingStarted now ->
-                    ( { state1
+                    ( { state0
                         | lastTouched = Just now
                         , output = Debouncing_
                       }
@@ -433,16 +431,16 @@ fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) 
                     )
 
                 DebouncingChecked now ->
-                    ( if state1.lastTouched == Just now then
-                        parseAndValidateField field_ state1
+                    ( if state0.lastTouched == Just now then
+                        parseField field_ { state0 | feedback = [] }
 
                       else
-                        state1
+                        state0
                     , Cmd.none
                     )
 
                 Noop ->
-                    ( state1
+                    ( state0
                     , Cmd.none
                     )
     in
@@ -490,27 +488,24 @@ validateAller1 :
     -> ( State input delta output, a )
     -> ( State input delta output, c )
 validateAller1 next ( field_, fields ) ( state, states ) =
-    ( parseAndValidateField field_ state, next fields states )
+    ( parseField field_ state, next fields states )
 
 
-parseAndValidateField :
+parseField :
     { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : Result String String } }
     -> State input delta output
     -> State input delta output
-parseAndValidateField field_ state =
+parseField field_ state =
     let
-        ( output, feedback ) =
+        output =
             case field_.parse state.input of
                 Err f ->
-                    ( FailedToParse, [ Err f ] )
+                    FailedToParse f
 
                 Ok val ->
-                    ( Parsed val, validateField field_.validators val )
+                    Parsed val
     in
-    { state
-        | output = output
-        , feedback = feedback
-    }
+    { state | output = output }
 
 
 validateField : List { check : val -> Bool, feedback : Result String String } -> val -> List (Result String String)
@@ -566,8 +561,11 @@ viewer1 next toMsg ( field_, fields ) ( state, states ) =
                 Debouncing_ ->
                     Debouncing
 
-                _ ->
-                    Idle (state.feedback ++ state.multifeedback)
+                FailedToParse feedback ->
+                    Idle [ Err feedback ]
+
+                Parsed _ ->
+                    Idle state.feedback
         }
     , next toMsg fields states
     )
@@ -687,7 +685,7 @@ form_new output toMsg =
     , inits = End
     , fields = End
     , emptyMsg = End
-    , validators = []
+    , validators = Dict.empty
     , toMsg = toMsg
     , output = output
     }
@@ -716,7 +714,6 @@ form_field idx fieldBuilder f =
           , output = Intact_
           , lastTouched = Nothing
           , feedback = []
-          , multifeedback = []
           }
         , f.inits
         )
@@ -729,7 +726,7 @@ form_field idx fieldBuilder f =
           , validators = fieldBuilder.validators
           , debounce = fieldBuilder.debounce
           , setter = instantiateSelector idx |> .set
-          , getter = instantiateSelector idx |> .get
+          , getter = instantiateSelector idx |> .getFieldState
           }
         , f.fields
         )
@@ -750,7 +747,15 @@ form_end f =
 
         -- POC - proving that we can collect validators from fields
         fieldValidators =
-            collectValidators f.validationCollector fields
+            fields
+                |> collectValidators f.validationCollector
+                |> Dict.fromList
+                |> Debug.log "field validators"
+
+        formValidators =
+            f.validators
+                |> Dict.Extra.mapKeys (\i -> f.index - i - 1)
+                |> Debug.log "form validators"
     in
     { init = ( inits, Cmd.none )
     , update =
@@ -767,29 +772,32 @@ form_end f =
                     reversedStates1
                         |> reverse f.stateReverser
 
-                states2 =
-                    -- and now we update form level multivalidation for all
-                    -- fields
-                    --formValidate f.validators states1
-                    states1
-
-                -- POC - proving that we can run collected validations against updated states
-                validationsDict =
-                    Dict.fromList fieldValidators
-                        |> Debug.log "validations"
-
                 -- POC - proving that we can check which field's input has been parsed (if any)
                 maybeParsedIndex =
-                    checkFieldParsed f.fieldParsedChecker fields deltas states2
+                    checkFieldParsed f.fieldParsedChecker fields deltas states0
                         |> Debug.log "updated field"
 
                 -- POC - proving that we can validate only fields that have been detected as parsed
-                _ =
-                    maybeParsedIndex
-                        |> Maybe.andThen (\i -> Dict.get i validationsDict)
-                        |> Maybe.map (\v -> v states2)
-                        |> Maybe.withDefault states2
-                        |> Debug.log "validation feedback"
+                states2 =
+                    case maybeParsedIndex of
+                        Nothing ->
+                            states1
+
+                        Just index ->
+                            let
+                                relevantFieldValidators =
+                                    fieldValidators
+                                        |> Dict.get index
+                                        |> Maybe.map List.singleton
+                                        |> Maybe.withDefault []
+
+                                relevantFormValidators =
+                                    formValidators
+                                        |> Dict.get index
+                                        |> Maybe.withDefault []
+                            in
+                            List.foldl (\v s -> v s) states1 (relevantFieldValidators ++ relevantFormValidators)
+                                |> Debug.log "states"
             in
             ( states2
             , Cmd.map f.toMsg cmd
@@ -803,7 +811,6 @@ form_end f =
             let
                 validatedStates =
                     validateAll f.validateAller fields states
-                        |> formValidate f.validators
             in
             case unfurl f.unfurler f.output validatedStates of
                 Ok output ->
@@ -818,58 +825,88 @@ form_end f =
 -- FORM-LEVEL VALIDATION (OF MULTIPLE FIELDS)
 
 
-formValidate : List (states -> states) -> states -> states
-formValidate validators states =
-    List.foldl (\v previousStates -> v previousStates) states validators
-
-
-form_failIf2 check feedback indexer1 indexer2 formBuilder =
+form_failIf2 check feedback selector1 selector2 formBuilder =
     let
-        idx1 =
-            instantiateSelector indexer1
+        sel1 =
+            instantiateSelector selector1
 
-        idx2 =
-            instantiateSelector indexer2
+        sel2 =
+            instantiateSelector selector2
+
+        index1 =
+            (sel1.getField >> Tuple.first) formBuilder.fields
+                |> .index
+
+        index2 =
+            (sel2.getField >> Tuple.first) formBuilder.fields
+                |> .index
 
         v =
             \state ->
                 let
-                    field1 =
-                        (idx1.get >> Tuple.first) state
+                    fieldState1 =
+                        (sel1.getFieldState >> Tuple.first) state
 
-                    field2 =
-                        (idx2.get >> Tuple.first) state
+                    fieldState2 =
+                        (sel2.getFieldState >> Tuple.first) state
                 in
-                case ( field1.output, field2.output ) of
+                case ( fieldState1.output, fieldState2.output ) of
                     ( Parsed output1, Parsed output2 ) ->
                         if check output1 output2 then
                             state
-                                |> idx1.set
+                                |> sel1.set
                                     (Tuple.mapFirst
-                                        (\field1_ ->
-                                            { field1_
-                                                | output = Parsed output1
-                                                , multifeedback = Err feedback :: field1_.multifeedback
-                                            }
-                                        )
+                                        (\field1_ -> { field1_ | feedback = List.Extra.unique (Err feedback :: field1_.feedback) })
                                     )
-                                |> idx2.set
+                                |> sel2.set
                                     (Tuple.mapFirst
-                                        (\field2_ ->
-                                            { field2_
-                                                | output = Parsed output2
-                                                , multifeedback = Err feedback :: field2_.multifeedback
-                                            }
-                                        )
+                                        (\field2_ -> { field2_ | feedback = List.Extra.unique (Err feedback :: field2_.feedback) })
                                     )
 
                         else
                             state
+                                |> sel1.set
+                                    (Tuple.mapFirst
+                                        (\field1_ -> { field1_ | feedback = List.Extra.remove (Err feedback) field1_.feedback })
+                                    )
+                                |> sel2.set
+                                    (Tuple.mapFirst
+                                        (\field2_ -> { field2_ | feedback = List.Extra.remove (Err feedback) field2_.feedback })
+                                    )
 
                     _ ->
                         state
+                            |> sel1.set
+                                (Tuple.mapFirst
+                                    (\field1_ -> { field1_ | feedback = List.Extra.remove (Err feedback) field1_.feedback })
+                                )
+                            |> sel2.set
+                                (Tuple.mapFirst
+                                    (\field2_ -> { field2_ | feedback = List.Extra.remove (Err feedback) field2_.feedback })
+                                )
     in
-    { formBuilder | validators = v :: formBuilder.validators }
+    { formBuilder
+        | validators =
+            formBuilder.validators
+                |> Dict.update index1
+                    (\maybeExistingValidators ->
+                        case maybeExistingValidators of
+                            Nothing ->
+                                Just [ v ]
+
+                            Just existingValidators ->
+                                Just (v :: existingValidators)
+                    )
+                |> Dict.update index2
+                    (\maybeExistingValidators ->
+                        case maybeExistingValidators of
+                            Nothing ->
+                                Just [ v ]
+
+                            Just existingValidators ->
+                                Just (v :: existingValidators)
+                    )
+    }
 
 
 
