@@ -33,7 +33,9 @@ type alias UserFormFields =
     ( State String String Int
     , ( State String String Float
       , ( State String String String
-        , ( State String String String, End )
+        , ( State String String String
+          , End
+          )
         )
       )
     )
@@ -65,7 +67,7 @@ form =
             (field_string "Name"
                 |> field_debounce 500
                 |> field_failIf (\name -> String.length name < 2) "name must be at least 2 characters"
-                |> field_showIf (\name -> name == "e") "that's a good start"
+                |> field_showIf (\name -> name == "e") "'E' is my favourite letter!"
             )
         |> form_field f3
             (field_string "Pet's name"
@@ -154,6 +156,11 @@ field_string_view fieldState =
             ]
             [ text fieldState.input ]
         , case fieldState.status of
+            Idle [] ->
+                div
+                    [ HA.style "margin-top" "5px" ]
+                    [ text "✅ Looking good!" ]
+
             Idle feedback ->
                 div []
                     (List.map
@@ -162,7 +169,7 @@ field_string_view fieldState =
                                 ( icon, txt ) =
                                     case f of
                                         Ok t ->
-                                            ( "✅", t )
+                                            ( "💬", t )
 
                                         Err t ->
                                             ( "❌", t )
