@@ -3,7 +3,6 @@ module Poc exposing (main)
 import Browser
 import Dict
 import Dict.Extra
-import Field exposing (Feedback(..))
 import Html as H exposing (..)
 import Html.Attributes as HA
 import Html.Events exposing (onClick, onInput)
