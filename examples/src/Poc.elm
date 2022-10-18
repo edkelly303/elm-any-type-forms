@@ -63,6 +63,7 @@ form =
             (field_string "Name"
                 |> field_debounce 500
                 |> field_failIf (\name -> String.length name < 2) "name must be at least 2 characters"
+                |> field_showIf (\name -> name == "e") "that's a good start"
             )
         |> form_field f3
             (field_string "Pet's name"
@@ -124,34 +125,32 @@ field_float id =
     }
 
 
-field_string_view state =
+field_string_view : ViewConfig msg -> Html msg
+field_string_view fieldState =
     div [ HA.style "margin-bottom" "30px" ]
-        [ div [ HA.style "margin-bottom" "10px" ] [ text state.id ]
+        [ div [ HA.style "margin-bottom" "10px" ] [ text fieldState.id ]
         , H.input
-            [ onInput state.toMsg
-            , HA.value state.input
+            [ onInput fieldState.toMsg
+            , HA.value fieldState.input
             , HA.style "background-color"
-                (case state.output of
+                (case fieldState.status of
                     Intact ->
                         "white"
 
                     Debouncing ->
                         "lightYellow"
 
-                    _ ->
-                        if List.any Result.Extra.isErr state.feedback then
+                    Idle feedback ->
+                        if List.any Result.Extra.isErr feedback then
                             "pink"
 
                         else
                             "paleGreen"
                 )
             ]
-            [ text state.input ]
-        , case state.feedback of
-            [] ->
-                text ""
-
-            _ ->
+            [ text fieldState.input ]
+        , case fieldState.status of
+            Idle feedback ->
                 div []
                     (List.map
                         (\f ->
@@ -168,8 +167,11 @@ field_string_view state =
                                 [ HA.style "margin-top" "5px" ]
                                 [ text (icon ++ " " ++ txt) ]
                         )
-                        state.feedback
+                        feedback
                     )
+
+            _ ->
+                text ""
         ]
 
 
@@ -290,14 +292,7 @@ type alias FieldBuilder input delta output element msg =
     { id : String
     , init : input
     , update : delta -> input -> input
-    , view :
-        { id : String
-        , input : input
-        , toMsg : delta -> msg
-        , feedback : List (Result String String)
-        , output : Output output
-        }
-        -> element
+    , view : ViewConfig msg -> element
     , parse : input -> Result String output
     , validators : List { check : output -> Bool, feedback : Result String String }
     , debounce : Float
@@ -305,10 +300,24 @@ type alias FieldBuilder input delta output element msg =
 
 
 type Output output
-    = Intact
-    | Debouncing
+    = Intact_
+    | Debouncing_
     | FailedToParse
     | Parsed output
+
+
+type alias ViewConfig msg =
+    { id : String
+    , toMsg : String -> msg
+    , input : String
+    , status : Status
+    }
+
+
+type Status
+    = Intact
+    | Debouncing
+    | Idle (List (Result String String))
 
 
 
@@ -418,7 +427,7 @@ fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state0, states ) 
                 DebouncingStarted now ->
                     ( { state1
                         | lastTouched = Just now
-                        , output = Debouncing
+                        , output = Debouncing_
                       }
                     , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep field_.debounce)
                     )
@@ -549,8 +558,16 @@ viewer1 next toMsg ( field_, fields ) ( state, states ) =
         { id = field_.id
         , toMsg = \x -> toMsg (field_.toDelta (UpdateRequested x))
         , input = state.input
-        , output = state.output
-        , feedback = state.feedback ++ state.multifeedback
+        , status =
+            case state.output of
+                Intact_ ->
+                    Intact
+
+                Debouncing_ ->
+                    Debouncing
+
+                _ ->
+                    Idle (state.feedback ++ state.multifeedback)
         }
     , next toMsg fields states
     )
@@ -696,7 +713,7 @@ form_field idx fieldBuilder f =
     , inits =
         ( { input = fieldBuilder.init
           , delta = Noop
-          , output = Intact
+          , output = Intact_
           , lastTouched = Nothing
           , feedback = []
           , multifeedback = []
