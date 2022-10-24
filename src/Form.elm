@@ -128,7 +128,7 @@ checkFieldParsed fieldParsedChecker fields deltas states =
 fieldParsedChecker1 next maybeIndex ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
         newMaybeIndex =
-            case Field.indexIfParsed field_ delta  state of
+            case Field.indexIfParsed field_ delta state of
                 Just index ->
                     Just index
 
@@ -195,39 +195,39 @@ combine combiner inits fields =
     combiner (\_ End -> End) inits fields
 
 
-combiner1 next inits ( field_, fields ) =
+combiner1 next inits ( fieldBuilder, fields ) =
     let
         setDelta x =
             Tuple.mapFirst (\s -> { s | delta = x })
 
         convertValidators =
-            \state ->
+            \fieldStates ->
                 let
-                    f =
-                        (field_.getter >> Tuple.first) state
-
-                    set fdbk =
-                        Tuple.mapFirst (\s -> { s | feedback = fdbk })
+                    fieldState =
+                        (fieldBuilder.getter >> Tuple.first) fieldStates
                 in
-                case f.output of
-                    Field.Parsed o ->
+                case fieldState.output of
+                    Field.Parsed output ->
                         let
+                            set fdbk =
+                                Tuple.mapFirst (\s -> { s | feedback = fdbk })
+
                             feedback =
-                                validateField field_.validators o
+                                validateField fieldBuilder.validators output
                         in
-                        field_.setter (set feedback) state
+                        fieldBuilder.setter (set feedback) fieldStates
 
                     _ ->
-                        state
+                        fieldStates
     in
-    ( { index = field_.index
-      , id = field_.id
-      , update = field_.update
-      , view = field_.view
-      , parse = field_.parse
+    ( { index = fieldBuilder.index
+      , id = fieldBuilder.id
+      , update = fieldBuilder.update
+      , view = fieldBuilder.view
+      , parse = fieldBuilder.parse
       , validators = convertValidators
-      , debounce = field_.debounce
-      , toDelta = \x -> field_.setter (setDelta x) inits
+      , debounce = fieldBuilder.debounce
+      , toDelta = \x -> fieldBuilder.setter (setDelta x) inits
       }
     , next inits fields
     )
