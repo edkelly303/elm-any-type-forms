@@ -21,10 +21,7 @@ import Dict
 import Dict.Extra
 import Field
 import List.Extra
-import Process
 import Result.Extra
-import Task
-import Time
 
 
 
@@ -114,64 +111,10 @@ updateFieldStates fieldStateUpdater fields deltas states =
     fieldStateUpdater (\End End End -> End) fields deltas states
 
 
-
--- fieldStateUpdater1 :
---     (b -> a -> c -> d)
---     ->
---         ( { e
---             | update : delta -> input -> input
---             , debounce : Float
---             , toDelta : Field.Delta g -> msg
---             , parse : input -> Result String output
---             , validators : List { check : output -> Bool, feedback : Result String String }
---           }
---         , b
---         )
---     -> ( { h | delta : Field.Delta delta }, a )
---     -> ( Field.State input delta output, c )
---     -> ( ( Field.State input delta output, Cmd msg ), d )
-
-
 fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
         stateAndCmd =
-            case delta.delta of
-                Field.UpdateRequested d ->
-                    let
-                        newState =
-                            { state | input = field_.update d state.input }
-                    in
-                    if field_.debounce > 0 then
-                        ( newState
-                        , Task.perform (field_.toDelta << Field.DebouncingStarted) Time.now
-                        )
-
-                    else
-                        ( parseField field_ newState
-                        , Cmd.none
-                        )
-
-                Field.DebouncingStarted now ->
-                    ( { state
-                        | lastTouched = Just now
-                        , output = Field.Debouncing_
-                      }
-                    , Task.perform (\() -> field_.toDelta (Field.DebouncingChecked now)) (Process.sleep field_.debounce)
-                    )
-
-                Field.DebouncingChecked now ->
-                    ( if state.lastTouched == Just now then
-                        parseField field_ state
-
-                      else
-                        state
-                    , Cmd.none
-                    )
-
-                Field.Noop ->
-                    ( state
-                    , Cmd.none
-                    )
+            Field.update field_ delta state
     in
     ( stateAndCmd
     , next fields deltas states
@@ -185,22 +128,11 @@ checkFieldParsed fieldParsedChecker fields deltas states =
 fieldParsedChecker1 next maybeIndex ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
         newMaybeIndex =
-            case delta.delta of
-                Field.UpdateRequested _ ->
-                    if field_.debounce <= 0 then
-                        Just field_.index
+            case Field.indexIfParsed field_ delta  state of
+                Just index ->
+                    Just index
 
-                    else
-                        maybeIndex
-
-                Field.DebouncingChecked now ->
-                    if state.lastTouched == Just now then
-                        Just field_.index
-
-                    else
-                        maybeIndex
-
-                _ ->
+                Nothing ->
                     maybeIndex
     in
     next newMaybeIndex fields deltas states
@@ -212,20 +144,7 @@ parseAllFields allFieldsParser fields states =
 
 
 allFieldsParser1 next ( field_, fields ) ( state, states ) =
-    ( parseField field_ state, next fields states )
-
-
-parseField field_ state =
-    let
-        output =
-            case field_.parse state.input of
-                Err f ->
-                    Field.FailedToParse f
-
-                Ok val ->
-                    Field.Parsed val
-    in
-    { state | output = output }
+    ( Field.parse field_ state, next fields states )
 
 
 validateField : List { check : val -> Bool, feedback : Result String String } -> val -> List (Result String String)
@@ -267,24 +186,7 @@ view_ viewer toMsg fields states =
 
 
 viewer1 next toMsg ( field_, fields ) ( state, states ) =
-    ( field_.view
-        { id = field_.id
-        , toMsg = \x -> toMsg (field_.toDelta (Field.UpdateRequested x))
-        , input = state.input
-        , status =
-            case state.output of
-                Field.Intact_ ->
-                    Field.Intact
-
-                Field.Debouncing_ ->
-                    Field.Debouncing
-
-                Field.FailedToParse feedback ->
-                    Field.Idle [ Err feedback ]
-
-                Field.Parsed _ ->
-                    Field.Idle state.feedback
-        }
+    ( Field.view toMsg field_ state
     , next toMsg fields states
     )
 
@@ -299,10 +201,6 @@ combiner1 next inits ( field_, fields ) =
             Tuple.mapFirst (\s -> { s | delta = x })
 
         convertValidators =
-            -- POC - proving that we can convert validations into functions that
-            -- take a field state and return a field state (so that all
-            -- validation functions for all fields have the same type signature
-            -- and can be stored in a list or dictionary)
             \state ->
                 let
                     f =

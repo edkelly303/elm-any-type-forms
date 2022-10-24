@@ -1,6 +1,6 @@
 module Field exposing
-    ( Delta(..)
-    , Builder
+    ( Builder
+    , Delta(..)
     , Output(..)
     , State
     , Status(..)
@@ -8,15 +8,21 @@ module Field exposing
     , debounce
     , failIf
     , float
+    , indexIfParsed
     , infoIf
     , int
+    , parse
     , string
+    , update
+    , view
     )
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Process
 import Result.Extra
+import Task
 import Time
 
 
@@ -24,10 +30,22 @@ type alias Builder input delta output element msg =
     { id : String
     , init : input
     , update : delta -> input -> input
-    , view : ViewConfig msg -> element
+    , view : ViewConfig input delta msg -> element
     , parse : input -> Result String output
     , validators : List { check : output -> Bool, feedback : Result String String }
     , debounce : Float
+    }
+
+
+type alias Interface input delta output state element msg =
+    { view : ViewConfig input delta msg -> element
+    , id : String
+    , toDelta : Delta delta -> state
+    , debounce : Float
+    , index : Int
+    , parse : input -> Result String output
+    , update : delta -> input -> input
+    , validators : state -> state
     }
 
 
@@ -60,10 +78,10 @@ type Output output
     | Parsed output
 
 
-type alias ViewConfig msg =
+type alias ViewConfig input delta msg =
     { id : String
-    , toMsg : String -> msg
-    , input : String
+    , toMsg : delta -> msg
+    , input : input
     , status : Status
     }
 
@@ -110,7 +128,7 @@ float id =
     }
 
 
-field_string_view : ViewConfig msg -> Html msg
+field_string_view : ViewConfig String String msg -> Html msg
 field_string_view fieldState =
     H.div [ HA.style "margin-bottom" "30px" ]
         [ H.div
@@ -203,3 +221,121 @@ infoIf :
     -> Builder input delta output element msg
 infoIf check feedback fb =
     { fb | validators = { check = check, feedback = Ok feedback } :: fb.validators }
+
+
+view :
+    (state -> msg)
+    -> Interface input delta output state element msg
+    -> State input delta output
+    -> element
+view toMsg field_ state =
+    field_.view
+        { id = field_.id
+        , toMsg = \x -> toMsg (field_.toDelta (UpdateRequested x))
+        , input = state.input
+        , status =
+            case state.output of
+                Intact_ ->
+                    Intact
+
+                Debouncing_ ->
+                    Debouncing
+
+                FailedToParse feedback ->
+                    Idle [ Err feedback ]
+
+                Parsed _ ->
+                    Idle state.feedback
+        }
+
+
+update :
+    { interface
+        | update : delta -> input -> input
+        , debounce : Float
+        , toDelta : Delta delta -> msg
+        , parse : input -> Result String output
+    }
+    -> State input delta output
+    -> State input delta output
+    -> ( State input delta output, Cmd msg )
+update field_ delta state =
+    case delta.delta of
+        UpdateRequested d ->
+            let
+                newState =
+                    { state | input = field_.update d state.input }
+            in
+            if field_.debounce > 0 then
+                ( newState
+                , Task.perform (field_.toDelta << DebouncingStarted) Time.now
+                )
+
+            else
+                ( parse field_ newState
+                , Cmd.none
+                )
+
+        DebouncingStarted now ->
+            ( { state
+                | lastTouched = Just now
+                , output = Debouncing_
+              }
+            , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep field_.debounce)
+            )
+
+        DebouncingChecked now ->
+            ( if state.lastTouched == Just now then
+                parse field_ state
+
+              else
+                state
+            , Cmd.none
+            )
+
+        Noop ->
+            ( state
+            , Cmd.none
+            )
+
+
+parse :
+    { interface | parse : input -> Result String output }
+    -> State input delta output
+    -> State input delta output
+parse field_ state =
+    let
+        output =
+            case field_.parse state.input of
+                Err f ->
+                    FailedToParse f
+
+                Ok val ->
+                    Parsed val
+    in
+    { state | output = output }
+
+
+indexIfParsed :
+    { interface | debounce : Float, index : Int }
+    -> State input delta output
+    -> State input delta output
+    -> Maybe Int
+indexIfParsed field_ delta state =
+    case delta.delta of
+        UpdateRequested _ ->
+            if field_.debounce <= 0 then
+                Just field_.index
+
+            else
+                Nothing
+
+        DebouncingChecked now ->
+            if state.lastTouched == Just now then
+                Just field_.index
+
+            else
+                Nothing
+
+        _ ->
+            Nothing
