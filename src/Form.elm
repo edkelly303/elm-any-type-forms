@@ -37,9 +37,6 @@ type End
 
 
 
-
-
-
 -- State setters
 
 
@@ -117,21 +114,24 @@ updateFieldStates fieldStateUpdater fields deltas states =
     fieldStateUpdater (\End End End -> End) fields deltas states
 
 
-fieldStateUpdater1 :
-    (b -> a -> c -> d)
-    ->
-        ( { e
-            | update : delta -> input -> input
-            , debounce : Float
-            , toDelta : Field.Delta g -> msg
-            , parse : input -> Result String output
-            , validators : List { check : output -> Bool, feedback : Result String String }
-          }
-        , b
-        )
-    -> ( { h | delta : Field.Delta delta }, a )
-    -> ( Field.State input delta output, c )
-    -> ( ( Field.State input delta output, Cmd msg ), d )
+
+-- fieldStateUpdater1 :
+--     (b -> a -> c -> d)
+--     ->
+--         ( { e
+--             | update : delta -> input -> input
+--             , debounce : Float
+--             , toDelta : Field.Delta g -> msg
+--             , parse : input -> Result String output
+--             , validators : List { check : output -> Bool, feedback : Result String String }
+--           }
+--         , b
+--         )
+--     -> ( { h | delta : Field.Delta delta }, a )
+--     -> ( Field.State input delta output, c )
+--     -> ( ( Field.State input delta output, Cmd msg ), d )
+
+
 fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
         stateAndCmd =
@@ -206,24 +206,15 @@ fieldParsedChecker1 next maybeIndex ( field_, fields ) ( delta, deltas ) ( state
     next newMaybeIndex fields deltas states
 
 
-validateAll : ((End -> End -> End) -> b -> c -> a) -> b -> c -> a
-validateAll validateAller fields states =
-    validateAller (\End End -> End) fields states
+parseAllFields : ((End -> End -> End) -> b -> c -> a) -> b -> c -> a
+parseAllFields allFieldsParser fields states =
+    allFieldsParser (\End End -> End) fields states
 
 
-validateAller1 :
-    (b -> a -> c)
-    -> ( { d | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : Result String String } }, b )
-    -> ( Field.State input delta output, a )
-    -> ( Field.State input delta output, c )
-validateAller1 next ( field_, fields ) ( state, states ) =
+allFieldsParser1 next ( field_, fields ) ( state, states ) =
     ( parseField field_ state, next fields states )
 
 
-parseField :
-    { a | parse : input -> Result String output, validators : List { check : output -> Bool, feedback : Result String String } }
-    -> Field.State input delta output
-    -> Field.State input delta output
 parseField field_ state =
     let
         output =
@@ -251,7 +242,7 @@ validateField validators val =
         validators
 
 
-cmdStrip cmdStripper statesAndCmds =
+extractCmds cmdStripper statesAndCmds =
     let
         ( ( states, cmdsList ), _ ) =
             cmdStripper ( ( End, [] ), statesAndCmds )
@@ -259,18 +250,16 @@ cmdStrip cmdStripper statesAndCmds =
     ( states, Cmd.batch cmdsList )
 
 
-cmdStripper1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
+cmdExtractor1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
     ( ( ( state, outState ), cmd :: outCmd ), statesAndCmds )
 
 
-collectValidators validationCollector fields =
-    -- POC
-    validationCollector (\validations _ -> validations) [] fields
+collectValidators validatorCollector fields =
+    validatorCollector (\validations _ -> validations) [] fields
 
 
-validationCollector1 next output ( field_, fields ) =
-    -- POC
-    next (( field_.index, field_.validators2 ) :: output) fields
+validatorCollector1 next output ( field_, fields ) =
+    next (( field_.index, field_.validators ) :: output) fields
 
 
 view_ viewer toMsg fields states =
@@ -338,10 +327,7 @@ combiner1 next inits ( field_, fields ) =
       , update = field_.update
       , view = field_.view
       , parse = field_.parse
-      , validators = field_.validators
-
-      -- POC
-      , validators2 = convertValidators
+      , validators = convertValidators
       , debounce = field_.debounce
       , toDelta = \x -> field_.setter (setDelta x) inits
       }
@@ -406,14 +392,10 @@ new output toMsg =
     { unfurler = identity
     , combiner = identity
     , updater = identity
-    , cmdStripper = identity
-
-    -- POC - proving that we can collect validations from fields
-    , validationCollector = identity
-
-    -- POC - proving that we can check which field's input has been parsed (if any)
+    , cmdExtractor = identity
+    , validatorCollector = identity
     , fieldParsedChecker = identity
-    , validateAller = identity
+    , allFieldsParser = identity
     , viewer = identity
     , toLister = identity
     , stateReverser = identity
@@ -428,23 +410,19 @@ new output toMsg =
     }
 
 
-field idx fieldBuilder f =
-    { unfurler = f.unfurler >> unfurler1
-    , combiner = f.combiner >> combiner1
-    , updater = f.updater >> fieldStateUpdater1
-    , cmdStripper = f.cmdStripper >> cmdStripper1
-
-    -- POC - proving that we can collect validations from fields
-    , validationCollector = f.validationCollector >> validationCollector1
-
-    -- POC - proving that we can check which field's input has been parsed (if any)
-    , fieldParsedChecker = f.fieldParsedChecker >> fieldParsedChecker1
-    , validateAller = f.validateAller >> validateAller1
-    , viewer = f.viewer >> viewer1
-    , toLister = f.toLister >> toLister1
-    , stateReverser = f.stateReverser >> reverser1
-    , fieldReverser = f.fieldReverser >> reverser1
-    , index = f.index + 1
+field idx fieldBuilder formBuilder =
+    { unfurler = formBuilder.unfurler >> unfurler1
+    , combiner = formBuilder.combiner >> combiner1
+    , updater = formBuilder.updater >> fieldStateUpdater1
+    , cmdExtractor = formBuilder.cmdExtractor >> cmdExtractor1
+    , validatorCollector = formBuilder.validatorCollector >> validatorCollector1
+    , fieldParsedChecker = formBuilder.fieldParsedChecker >> fieldParsedChecker1
+    , allFieldsParser = formBuilder.allFieldsParser >> allFieldsParser1
+    , viewer = formBuilder.viewer >> viewer1
+    , toLister = formBuilder.toLister >> toLister1
+    , stateReverser = formBuilder.stateReverser >> reverser1
+    , fieldReverser = formBuilder.fieldReverser >> reverser1
+    , index = formBuilder.index + 1
     , inits =
         ( { input = fieldBuilder.init
           , delta = Field.Noop
@@ -452,10 +430,10 @@ field idx fieldBuilder f =
           , lastTouched = Nothing
           , feedback = []
           }
-        , f.inits
+        , formBuilder.inits
         )
     , fields =
-        ( { index = f.index
+        ( { index = formBuilder.index
           , id = fieldBuilder.id
           , update = fieldBuilder.update
           , view = fieldBuilder.view
@@ -465,56 +443,47 @@ field idx fieldBuilder f =
           , setter = instantiateSelector idx |> .set
           , getter = instantiateSelector idx |> .getFieldState
           }
-        , f.fields
+        , formBuilder.fields
         )
-    , validators = f.validators
-    , toMsg = f.toMsg
-    , output = f.output
+    , validators = formBuilder.validators
+    , toMsg = formBuilder.toMsg
+    , output = formBuilder.output
     }
 
 
-end f =
+end formBuilder =
     let
         inits =
-            reverse f.stateReverser f.inits
+            reverse formBuilder.stateReverser formBuilder.inits
 
         fields =
-            combine f.combiner inits f.fields
-                |> reverse f.fieldReverser
+            combine formBuilder.combiner inits formBuilder.fields
+                |> reverse formBuilder.fieldReverser
 
-        -- POC - proving that we can collect validators from fields
         fieldValidators =
             fields
-                |> collectValidators f.validationCollector
+                |> collectValidators formBuilder.validatorCollector
                 |> Dict.fromList
-                |> Debug.log "field validators"
 
         formValidators =
-            f.validators
-                |> Dict.Extra.mapKeys (\i -> f.index - i - 1)
-                |> Debug.log "form validators"
+            formBuilder.validators
+                |> Dict.Extra.mapKeys (\i -> formBuilder.index - i - 1)
     in
     { init = ( inits, Cmd.none )
     , update =
         \deltas states0 ->
             let
                 ( reversedStates1, cmd ) =
-                    -- in this step we don't just update the field that the
-                    -- delta is targetting, we also clear multivalidation for
-                    -- all fields
-                    updateFieldStates f.updater fields deltas states0
-                        |> cmdStrip f.cmdStripper
+                    updateFieldStates formBuilder.updater fields deltas states0
+                        |> extractCmds formBuilder.cmdExtractor
 
                 states1 =
                     reversedStates1
-                        |> reverse f.stateReverser
+                        |> reverse formBuilder.stateReverser
 
-                -- POC - proving that we can check which field's input has been parsed (if any)
                 maybeParsedIndex =
-                    checkFieldParsed f.fieldParsedChecker fields deltas states0
-                        |> Debug.log "updated field"
+                    checkFieldParsed formBuilder.fieldParsedChecker fields deltas states0
 
-                -- POC - proving that we can validate only fields that have been detected as parsed
                 states2 =
                     case maybeParsedIndex of
                         Nothing ->
@@ -534,20 +503,19 @@ end f =
                                         |> Maybe.withDefault []
                             in
                             List.foldl (\v s -> v s) states1 (relevantFieldValidators ++ relevantFormValidators)
-                                |> Debug.log "states"
             in
             ( states2
-            , Cmd.map f.toMsg cmd
+            , Cmd.map formBuilder.toMsg cmd
             )
     , view =
         \states ->
-            view_ f.viewer f.toMsg fields states
-                |> toList f.toLister
+            view_ formBuilder.viewer formBuilder.toMsg fields states
+                |> toList formBuilder.toLister
     , submit =
         \states0 ->
             let
                 states1 =
-                    validateAll f.validateAller fields states0
+                    parseAllFields formBuilder.allFieldsParser fields states0
 
                 allFormValidators =
                     Dict.values formValidators
@@ -556,7 +524,7 @@ end f =
                 states2 =
                     List.foldl (\v s -> v s) states1 allFormValidators
             in
-            case unfurl f.unfurler f.output states2 of
+            case unfurl formBuilder.unfurler formBuilder.output states2 of
                 Ok output ->
                     Ok output
 

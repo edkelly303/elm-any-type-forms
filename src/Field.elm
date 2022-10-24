@@ -1,6 +1,6 @@
 module Field exposing
     ( Delta(..)
-    , FieldBuilder
+    , Builder
     , Output(..)
     , State
     , Status(..)
@@ -20,7 +20,7 @@ import Result.Extra
 import Time
 
 
-type alias FieldBuilder input delta output element msg =
+type alias Builder input delta output element msg =
     { id : String
     , init : input
     , update : delta -> input -> input
@@ -72,7 +72,7 @@ type alias ViewConfig msg =
 -- Field widgets and functions
 
 
-int : String -> FieldBuilder String String Int (Html msg) msg
+int : String -> Builder String String Int (Html msg) msg
 int id =
     { id = id
     , init = ""
@@ -91,7 +91,7 @@ int id =
     }
 
 
-float : String -> FieldBuilder String String Float (Html msg) msg
+float : String -> Builder String String Float (Html msg) msg
 float id =
     { id = id
     , init = ""
@@ -167,7 +167,7 @@ field_string_view fieldState =
         ]
 
 
-string : String -> FieldBuilder String String String (Html msg) msg
+string : String -> Builder String String String (Html msg) msg
 string id =
     { id = id
     , init = ""
@@ -181,8 +181,8 @@ string id =
 
 debounce :
     Float
-    -> FieldBuilder input delta output element msg
-    -> FieldBuilder input delta output element msg
+    -> Builder input delta output element msg
+    -> Builder input delta output element msg
 debounce millis fb =
     { fb | debounce = millis }
 
@@ -190,8 +190,8 @@ debounce millis fb =
 failIf :
     (output -> Bool)
     -> String
-    -> FieldBuilder input delta output element msg
-    -> FieldBuilder input delta output element msg
+    -> Builder input delta output element msg
+    -> Builder input delta output element msg
 failIf check feedback fb =
     { fb | validators = { check = check, feedback = Err feedback } :: fb.validators }
 
@@ -199,7 +199,7 @@ failIf check feedback fb =
 infoIf :
     (output -> Bool)
     -> String
-    -> FieldBuilder input delta output element msg
-    -> FieldBuilder input delta output element msg
+    -> Builder input delta output element msg
+    -> Builder input delta output element msg
 infoIf check feedback fb =
     { fb | validators = { check = check, feedback = Ok feedback } :: fb.validators }
