@@ -181,7 +181,7 @@ validatorCollector1 next output ( field_, fields ) =
     next (( field_.index, field_.validators ) :: output) fields
 
 
-view_ viewer toMsg fields states =
+view viewer toMsg fields states =
     viewer (\_ End End -> End) toMsg fields states
 
 
@@ -195,7 +195,7 @@ combine combiner inits fields =
     combiner (\_ End -> End) inits fields
 
 
-combiner1 next inits ( fieldBuilder, fields ) =
+combiner1 next inits ( fieldBuilder, fieldBuilders ) =
     let
         setDelta x =
             Tuple.mapFirst (\s -> { s | delta = x })
@@ -229,7 +229,7 @@ combiner1 next inits ( fieldBuilder, fields ) =
       , debounce = fieldBuilder.debounce
       , toDelta = \x -> fieldBuilder.setter (setDelta x) inits
       }
-    , next inits fields
+    , next inits fieldBuilders
     )
 
 
@@ -407,7 +407,7 @@ end formBuilder =
             )
     , view =
         \states ->
-            view_ formBuilder.viewer formBuilder.toMsg fields states
+            view formBuilder.viewer formBuilder.toMsg fields states
                 |> toList formBuilder.toLister
     , submit =
         \states0 ->
@@ -466,33 +466,33 @@ failIf2 check feedback selector1 selector2 formBuilder =
                             state
                                 |> sel1.set
                                     (Tuple.mapFirst
-                                        (\field1_ -> { field1_ | feedback = List.Extra.unique (Err feedback :: field1_.feedback) })
+                                        (\_ -> { fieldState1 | feedback = List.Extra.unique (Err feedback :: fieldState1.feedback) })
                                     )
                                 |> sel2.set
                                     (Tuple.mapFirst
-                                        (\field2_ -> { field2_ | feedback = List.Extra.unique (Err feedback :: field2_.feedback) })
+                                        (\_ -> { fieldState2 | feedback = List.Extra.unique (Err feedback :: fieldState2.feedback) })
                                     )
 
                         else
                             state
                                 |> sel1.set
                                     (Tuple.mapFirst
-                                        (\field1_ -> { field1_ | feedback = List.Extra.remove (Err feedback) field1_.feedback })
+                                        (\_ -> { fieldState1 | feedback = List.Extra.remove (Err feedback) fieldState1.feedback })
                                     )
                                 |> sel2.set
                                     (Tuple.mapFirst
-                                        (\field2_ -> { field2_ | feedback = List.Extra.remove (Err feedback) field2_.feedback })
+                                        (\_ -> { fieldState2 | feedback = List.Extra.remove (Err feedback) fieldState2.feedback })
                                     )
 
                     _ ->
                         state
                             |> sel1.set
                                 (Tuple.mapFirst
-                                    (\field1_ -> { field1_ | feedback = List.Extra.remove (Err feedback) field1_.feedback })
+                                    (\_ -> { fieldState1 | feedback = List.Extra.remove (Err feedback) fieldState1.feedback })
                                 )
                             |> sel2.set
                                 (Tuple.mapFirst
-                                    (\field2_ -> { field2_ | feedback = List.Extra.remove (Err feedback) field2_.feedback })
+                                    (\_ -> { fieldState2 | feedback = List.Extra.remove (Err feedback) fieldState2.feedback })
                                 )
     in
     { formBuilder
