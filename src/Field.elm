@@ -250,15 +250,10 @@ view toMsg field_ state =
 
 
 update :
-    { interface
-        | update : delta -> input -> input
-        , debounce : Float
-        , toDelta : Delta delta -> msg
-        , parse : input -> Result String output
-    }
+    Interface input delta output state element msg
     -> State input delta output
     -> State input delta output
-    -> ( State input delta output, Cmd msg )
+    -> ( State input delta output, Cmd state )
 update field_ delta state =
     case delta.delta of
         UpdateRequested d ->
@@ -300,7 +295,7 @@ update field_ delta state =
 
 
 parse :
-    { interface | parse : input -> Result String output }
+    Interface input delta output state element msg
     -> State input delta output
     -> State input delta output
 parse field_ state =
@@ -317,7 +312,7 @@ parse field_ state =
 
 
 indexIfParsed :
-    { interface | debounce : Float, index : Int }
+    Interface input delta output state element msg
     -> State input delta output
     -> State input delta output
     -> Maybe Int
