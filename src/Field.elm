@@ -15,6 +15,7 @@ module Field exposing
     , parse
     , string
     , update
+    , validate
     , view
     )
 
@@ -339,3 +340,29 @@ indexIfParsed field_ delta state =
 
         _ ->
             Nothing
+
+
+validate :
+    { a | validators : List { check : output -> Bool, feedback : Result String String } }
+    -> State input delta output
+    -> State input delta output
+validate fieldBuilder fieldState =
+    let
+        newFeedback =
+            case fieldState.output of
+                Parsed output ->
+                    List.foldl
+                        (\{ check, feedback } feedbacks ->
+                            if check output then
+                                feedback :: feedbacks
+
+                            else
+                                feedbacks
+                        )
+                        []
+                        fieldBuilder.validators
+
+                _ ->
+                    []
+    in
+    { fieldState | feedback = newFeedback }

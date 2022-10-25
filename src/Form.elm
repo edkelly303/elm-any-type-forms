@@ -183,28 +183,16 @@ combine combiner inits fields =
 
 combiner1 next inits ( fieldBuilder, fieldBuilders ) =
     let
-        setDelta x =
-            Tuple.mapFirst (\s -> { s | delta = x })
-
         convertValidators =
             \formData ->
                 let
                     fieldState =
                         (fieldBuilder.getter >> Tuple.first) formData
+
+                    newFieldState =
+                        Field.validate fieldBuilder fieldState
                 in
-                case fieldState.output of
-                    Field.Parsed output ->
-                        let
-                            set fdbk =
-                                Tuple.mapFirst (\s -> { s | feedback = fdbk })
-
-                            feedback =
-                                validateField fieldBuilder.validators output
-                        in
-                        fieldBuilder.setter (set feedback) formData
-
-                    _ ->
-                        formData
+                fieldBuilder.setter (Tuple.mapFirst (always newFieldState)) formData
     in
     ( { index = fieldBuilder.index
       , id = fieldBuilder.id
@@ -213,24 +201,10 @@ combiner1 next inits ( fieldBuilder, fieldBuilders ) =
       , parse = fieldBuilder.parse
       , validators = convertValidators
       , debounce = fieldBuilder.debounce
-      , toFormData = \x -> fieldBuilder.setter (setDelta x) inits
+      , toFormData = \delta -> fieldBuilder.setter (Tuple.mapFirst (\s -> { s | delta = delta })) inits
       }
     , next inits fieldBuilders
     )
-
-
-validateField : List { check : val -> Bool, feedback : Result String String } -> val -> List (Result String String)
-validateField validators val =
-    List.foldl
-        (\{ check, feedback } feedbacks ->
-            if check val then
-                feedback :: feedbacks
-
-            else
-                feedbacks
-        )
-        []
-        validators
 
 
 toList : (( List a, b ) -> ( List c, d )) -> b -> List c
