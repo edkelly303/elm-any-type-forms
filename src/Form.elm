@@ -147,20 +147,6 @@ allFieldsParser1 next ( field_, fields ) ( state, states ) =
     ( Field.parse field_ state, next fields states )
 
 
-validateField : List { check : val -> Bool, feedback : Result String String } -> val -> List (Result String String)
-validateField validators val =
-    List.foldl
-        (\{ check, feedback } feedbacks ->
-            if check val then
-                feedback :: feedbacks
-
-            else
-                feedbacks
-        )
-        []
-        validators
-
-
 extractCmds cmdStripper statesAndCmds =
     let
         ( ( states, cmdsList ), _ ) =
@@ -201,10 +187,10 @@ combiner1 next inits ( fieldBuilder, fieldBuilders ) =
             Tuple.mapFirst (\s -> { s | delta = x })
 
         convertValidators =
-            \fieldStates ->
+            \formData ->
                 let
                     fieldState =
-                        (fieldBuilder.getter >> Tuple.first) fieldStates
+                        (fieldBuilder.getter >> Tuple.first) formData
                 in
                 case fieldState.output of
                     Field.Parsed output ->
@@ -215,10 +201,10 @@ combiner1 next inits ( fieldBuilder, fieldBuilders ) =
                             feedback =
                                 validateField fieldBuilder.validators output
                         in
-                        fieldBuilder.setter (set feedback) fieldStates
+                        fieldBuilder.setter (set feedback) formData
 
                     _ ->
-                        fieldStates
+                        formData
     in
     ( { index = fieldBuilder.index
       , id = fieldBuilder.id
@@ -231,6 +217,20 @@ combiner1 next inits ( fieldBuilder, fieldBuilders ) =
       }
     , next inits fieldBuilders
     )
+
+
+validateField : List { check : val -> Bool, feedback : Result String String } -> val -> List (Result String String)
+validateField validators val =
+    List.foldl
+        (\{ check, feedback } feedbacks ->
+            if check val then
+                feedback :: feedbacks
+
+            else
+                feedbacks
+        )
+        []
+        validators
 
 
 toList : (( List a, b ) -> ( List c, d )) -> b -> List c
@@ -264,7 +264,9 @@ unfurl unfurler toOutput states =
 
 unfurler1 :
     ( Result error (output -> a)
-    , ( { b | output : Field.Output output, feedback : List (Result String String) }, c )
+    , ( Field.State input delta output
+      , c
+      )
     )
     -> ( Result () a, c )
 unfurler1 ( toOutput, ( state, states ) ) =
