@@ -227,7 +227,7 @@ combiner1 next inits ( fieldBuilder, fieldBuilders ) =
       , parse = fieldBuilder.parse
       , validators = convertValidators
       , debounce = fieldBuilder.debounce
-      , toDelta = \x -> fieldBuilder.setter (setDelta x) inits
+      , toFormData = \x -> fieldBuilder.setter (setDelta x) inits
       }
     , next inits fieldBuilders
     )
@@ -374,29 +374,29 @@ field idx fieldBuilder formBuilder =
 
 end :
     { a
-        | stateReverser : ( End, reversedStates ) -> ( states, d )
-        , inits : reversedStates
-        , combiner : (e -> End -> End) -> states -> reversedFieldBuilders -> reversedFields
+        | stateReverser : ( End, reversedFormData ) -> ( formData, d )
+        , inits : reversedFormData
+        , combiner : (e -> End -> End) -> formData -> reversedFieldBuilders -> reversedFields
         , fields : reversedFieldBuilders
         , fieldReverser : ( End, reversedFields ) -> ( fields, j )
-        , validatorCollector : (k -> l -> k) -> List m -> fields -> List ( Int, states -> states )
-        , validators : Dict.Dict Int (List (states -> states))
+        , validatorCollector : (k -> l -> k) -> List m -> fields -> List ( Int, formData -> formData )
+        , validators : Dict.Dict Int (List (formData -> formData))
         , index : Int
-        , updater : (End -> End -> End -> End) -> fields -> states -> states -> s
-        , cmdExtractor : ( ( End, List (Cmd states) ), s ) -> ( ( reversedStates, List (Cmd states) ), u )
-        , fieldParsedChecker : (Maybe Int -> x -> y -> z -> Maybe Int) -> Maybe Int -> fields -> states -> states -> Maybe Int
-        , toMsg : states -> msg
-        , viewer : (e1 -> End -> End -> End) -> (states -> msg) -> fields -> states -> h1
+        , updater : (End -> End -> End -> End) -> fields -> formData -> formData -> s
+        , cmdExtractor : ( ( End, List (Cmd formData) ), s ) -> ( ( reversedFormData, List (Cmd formData) ), u )
+        , fieldParsedChecker : (Maybe Int -> x -> y -> z -> Maybe Int) -> Maybe Int -> fields -> formData -> formData -> Maybe Int
+        , toMsg : formData -> msg
+        , viewer : (e1 -> End -> End -> End) -> (formData -> msg) -> fields -> formData -> h1
         , toLister : ( List element, h1 ) -> ( List element, k1 )
-        , allFieldsParser : (End -> End -> End) -> fields -> states -> states
-        , unfurler : ( Result String o1, states ) -> ( Result () value, r1 )
+        , allFieldsParser : (End -> End -> End) -> fields -> formData -> formData
+        , unfurler : ( Result String o1, formData ) -> ( Result () value, r1 )
         , output : o1
     }
     ->
-        { init : ( states, Cmd msg )
-        , update : states -> states -> ( states, Cmd msg )
-        , view : states -> List element
-        , submit : states -> Result states value
+        { init : ( formData, Cmd msg )
+        , update : formData -> formData -> ( formData, Cmd msg )
+        , view : formData -> List element
+        , submit : formData -> Result formData value
         }
 end formBuilder =
     let

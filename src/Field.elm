@@ -1,8 +1,8 @@
 module Field exposing
     ( Builder
     , Delta(..)
-    , Output(..)
     , Interface
+    , Output(..)
     , State
     , Status(..)
     , ViewConfig
@@ -38,15 +38,15 @@ type alias Builder input delta output element msg =
     }
 
 
-type alias Interface input delta output state element msg =
+type alias Interface input delta output formData element msg =
     { view : ViewConfig input delta msg -> element
     , id : String
-    , toDelta : Delta delta -> state
+    , toFormData : Delta delta -> formData
     , debounce : Float
     , index : Int
     , parse : input -> Result String output
     , update : delta -> input -> input
-    , validators : state -> state
+    , validators : formData -> formData
     }
 
 
@@ -225,14 +225,14 @@ infoIf check feedback fb =
 
 
 view :
-    (state -> msg)
-    -> Interface input delta output state element msg
+    (formData -> msg)
+    -> Interface input delta output formData element msg
     -> State input delta output
     -> element
 view toMsg field_ state =
     field_.view
         { id = field_.id
-        , toMsg = \x -> toMsg (field_.toDelta (UpdateRequested x))
+        , toMsg = \x -> toMsg (field_.toFormData (UpdateRequested x))
         , input = state.input
         , status =
             case state.output of
@@ -251,10 +251,10 @@ view toMsg field_ state =
 
 
 update :
-    Interface input delta output state element msg
+    Interface input delta output formData element msg
     -> State input delta output
     -> State input delta output
-    -> ( State input delta output, Cmd state )
+    -> ( State input delta output, Cmd formData )
 update field_ delta state =
     case delta.delta of
         UpdateRequested d ->
@@ -264,7 +264,9 @@ update field_ delta state =
             in
             if field_.debounce > 0 then
                 ( newState
-                , Task.perform (field_.toDelta << DebouncingStarted) Time.now
+                , Task.perform
+                    (field_.toFormData << DebouncingStarted)
+                    Time.now
                 )
 
             else
@@ -277,7 +279,9 @@ update field_ delta state =
                 | lastTouched = Just now
                 , output = Debouncing_
               }
-            , Task.perform (\() -> field_.toDelta (DebouncingChecked now)) (Process.sleep field_.debounce)
+            , Task.perform
+                (\() -> field_.toFormData (DebouncingChecked now))
+                (Process.sleep field_.debounce)
             )
 
         DebouncingChecked now ->
@@ -296,7 +300,7 @@ update field_ delta state =
 
 
 parse :
-    Interface input delta output state element msg
+    Interface input delta output formData element msg
     -> State input delta output
     -> State input delta output
 parse field_ state =
@@ -313,7 +317,7 @@ parse field_ state =
 
 
 indexIfParsed :
-    Interface input delta output state element msg
+    Interface input delta output formData element msg
     -> State input delta output
     -> State input delta output
     -> Maybe Int
