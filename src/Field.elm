@@ -2,6 +2,7 @@ module Field exposing
     ( Builder
     , Delta(..)
     , Output(..)
+    , Interface
     , State
     , Status(..)
     , ViewConfig

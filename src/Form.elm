@@ -286,6 +286,29 @@ unfurler1 ( toOutput, ( state, states ) ) =
 -- Form builder functions
 
 
+new :
+    a
+    -> b
+    ->
+        { unfurler : c -> c
+        , combiner : d -> d
+        , updater : e -> e
+        , cmdExtractor : f -> f
+        , validatorCollector : g -> g
+        , fieldParsedChecker : h -> h
+        , allFieldsParser : i -> i
+        , viewer : j -> j
+        , toLister : k -> k
+        , stateReverser : l -> l
+        , fieldReverser : m -> m
+        , index : number
+        , inits : End
+        , fields : End
+        , emptyMsg : End
+        , validators : Dict.Dict n v
+        , toMsg : b
+        , output : a
+        }
 new output toMsg =
     { unfurler = identity
     , combiner = identity
@@ -349,6 +372,32 @@ field idx fieldBuilder formBuilder =
     }
 
 
+end :
+    { a
+        | stateReverser : ( End, reversedStates ) -> ( states, d )
+        , inits : reversedStates
+        , combiner : (e -> End -> End) -> states -> reversedFieldBuilders -> reversedFields
+        , fields : reversedFieldBuilders
+        , fieldReverser : ( End, reversedFields ) -> ( fields, j )
+        , validatorCollector : (k -> l -> k) -> List m -> fields -> List ( Int, states -> states )
+        , validators : Dict.Dict Int (List (states -> states))
+        , index : Int
+        , updater : (End -> End -> End -> End) -> fields -> states -> states -> s
+        , cmdExtractor : ( ( End, List (Cmd states) ), s ) -> ( ( reversedStates, List (Cmd states) ), u )
+        , fieldParsedChecker : (Maybe Int -> x -> y -> z -> Maybe Int) -> Maybe Int -> fields -> states -> states -> Maybe Int
+        , toMsg : states -> msg
+        , viewer : (e1 -> End -> End -> End) -> (states -> msg) -> fields -> states -> h1
+        , toLister : ( List element, h1 ) -> ( List element, k1 )
+        , allFieldsParser : (End -> End -> End) -> fields -> states -> states
+        , unfurler : ( Result String o1, states ) -> ( Result () value, r1 )
+        , output : o1
+    }
+    ->
+        { init : ( states, Cmd msg )
+        , update : states -> states -> ( states, Cmd msg )
+        , view : states -> List element
+        , submit : states -> Result states value
+        }
 end formBuilder =
     let
         inits =
