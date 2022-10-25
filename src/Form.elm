@@ -170,7 +170,7 @@ cmdExtractor1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
 
 
 collectValidators validatorCollector fields =
-    validatorCollector (\validations _ -> validations) [] fields
+    validatorCollector (\validators _ -> validators) [] fields
 
 
 validatorCollector1 next output ( field_, fields ) =
