@@ -13,7 +13,10 @@ module Form exposing
     , f8
     , f9
     , failIf2
+    , failIf3
     , field
+    , infoIf2
+    , infoIf3
     , new
     )
 
@@ -470,21 +473,24 @@ end formBuilder =
 -- FORM-LEVEL VALIDATION (OF MULTIPLE FIELDS)
 
 
-failIf2 check feedback selector1 selector2 formBuilder =
+failIf2 =
+    check2 Err
+
+
+infoIf2 =
+    check2 Ok
+
+
+check2 toResult check message selector1 selector2 formBuilder =
     let
+        feedback =
+            toResult message
+
         sel1 =
             instantiateSelector selector1
 
         sel2 =
             instantiateSelector selector2
-
-        index1 =
-            get sel1.getField formBuilder.fields
-                |> .index
-
-        index2 =
-            get sel2.getField formBuilder.fields
-                |> .index
 
         v =
             \state ->
@@ -499,46 +505,112 @@ failIf2 check feedback selector1 selector2 formBuilder =
                     ( Field.Parsed output1, Field.Parsed output2 ) ->
                         if check output1 output2 then
                             state
-                                |> set sel1.set
-                                    (\_ -> { fieldState1 | feedback = List.Extra.unique (Err feedback :: fieldState1.feedback) })
-                                |> set sel2.set
-                                    (\_ -> { fieldState2 | feedback = List.Extra.unique (Err feedback :: fieldState2.feedback) })
+                                |> addFeedback sel1 feedback fieldState1
+                                |> addFeedback sel2 feedback fieldState2
 
                         else
                             state
-                                |> set sel1.set
-                                    (\_ -> { fieldState1 | feedback = List.Extra.remove (Err feedback) fieldState1.feedback })
-                                |> set sel2.set
-                                    (\_ -> { fieldState2 | feedback = List.Extra.remove (Err feedback) fieldState2.feedback })
+                                |> removeFeedback sel1 feedback fieldState1
+                                |> removeFeedback sel2 feedback fieldState2
 
                     _ ->
                         state
-                            |> set sel1.set
-                                (\_ -> { fieldState1 | feedback = List.Extra.remove (Err feedback) fieldState1.feedback })
-                            |> set sel2.set
-                                (\_ -> { fieldState2 | feedback = List.Extra.remove (Err feedback) fieldState2.feedback })
+                            |> removeFeedback sel1 feedback fieldState1
+                            |> removeFeedback sel2 feedback fieldState2
     in
     { formBuilder
         | validators =
             formBuilder.validators
-                |> Dict.update index1
-                    (\maybeExistingValidators ->
-                        case maybeExistingValidators of
-                            Nothing ->
-                                Just [ v ]
+                |> updateAtIndex (getIndex sel1 formBuilder) v
+                |> updateAtIndex (getIndex sel2 formBuilder) v
+    }
 
-                            Just existingValidators ->
-                                Just (v :: existingValidators)
-                    )
-                |> Dict.update index2
-                    (\maybeExistingValidators ->
-                        case maybeExistingValidators of
-                            Nothing ->
-                                Just [ v ]
 
-                            Just existingValidators ->
-                                Just (v :: existingValidators)
-                    )
+getIndex sel formBuilder =
+    get sel.getField formBuilder.fields
+        |> .index
+
+
+addFeedback sel feedback fs s =
+    set sel.set (\_ -> { fs | feedback = List.Extra.unique (feedback :: fs.feedback) }) s
+
+
+removeFeedback sel feedback fs s =
+    set sel.set (\_ -> { fs | feedback = List.Extra.remove feedback fs.feedback }) s
+
+
+updateAtIndex idx v =
+    Dict.update idx
+        (\maybeExistingValidators ->
+            case maybeExistingValidators of
+                Nothing ->
+                    Just [ v ]
+
+                Just existingValidators ->
+                    Just (v :: existingValidators)
+        )
+
+
+failIf3 =
+    check3 Err
+
+
+infoIf3 =
+    check3 Ok
+
+
+check3 toResult check message selector1 selector2 selector3 formBuilder =
+    let
+        feedback =
+            toResult message
+
+        sel1 =
+            instantiateSelector selector1
+
+        sel2 =
+            instantiateSelector selector2
+
+        sel3 =
+            instantiateSelector selector3
+
+        v =
+            \state ->
+                let
+                    fieldState1 =
+                        get sel1.getFieldState state
+
+                    fieldState2 =
+                        get sel2.getFieldState state
+
+                    fieldState3 =
+                        get sel3.getFieldState state
+                in
+                case ( fieldState1.output, fieldState2.output ) of
+                    ( Field.Parsed output1, Field.Parsed output2 ) ->
+                        if check output1 output2 then
+                            state
+                                |> addFeedback sel1 feedback fieldState1
+                                |> addFeedback sel2 feedback fieldState2
+                                |> addFeedback sel3 feedback fieldState3
+
+                        else
+                            state
+                                |> removeFeedback sel1 feedback fieldState1
+                                |> removeFeedback sel2 feedback fieldState2
+                                |> removeFeedback sel3 feedback fieldState3
+
+                    _ ->
+                        state
+                            |> removeFeedback sel1 feedback fieldState1
+                            |> removeFeedback sel2 feedback fieldState2
+                            |> removeFeedback sel3 feedback fieldState3
+    in
+    { formBuilder
+        | validators =
+            formBuilder.validators
+                |> updateAtIndex (getIndex sel1 formBuilder) v
+                |> updateAtIndex (getIndex sel2 formBuilder) v
+                |> updateAtIndex (getIndex sel3 formBuilder) v
     }
 
 
