@@ -13,6 +13,7 @@ module Field exposing
     , infoIf
     , int
     , parse
+    , radio
     , string
     , update
     , validate
@@ -92,12 +93,60 @@ type alias ViewConfig input delta msg =
 -- Field widgets and functions
 
 
+radio :
+    String
+    -> List ( String, option )
+    -> Builder (Maybe option) option (Maybe option) (Html msg) msg
+radio id options =
+    { id = id
+    , init = Nothing
+    , update =
+        \delta input ->
+            if Just delta == input then
+                Nothing
+
+            else
+                Just delta
+    , view = radioView options
+    , parse = Ok
+    , validators = []
+    , debounce = 0
+    }
+
+
+radioView : List ( String, option ) -> ViewConfig (Maybe option) option msg -> Html msg
+radioView options { id, toMsg, input } =
+    H.div [ HA.style "margin-bottom" "30px" ]
+        [ H.div
+            [ HA.style "margin-bottom" "10px" ]
+            [ H.text id ]
+        , H.div []
+            (List.map
+                (\( label, opt ) ->
+                    H.button
+                        [ HA.style "border-color"
+                            (if input == Just opt then
+                                "blue"
+
+                             else
+                                "lightGray"
+                            )
+                        , HA.style "margin-right" "5px"
+                        , HE.onClick (toMsg opt)
+                        ]
+                        [ H.text label ]
+                )
+                options
+            )
+        ]
+
+
 int : String -> Builder String String Int (Html msg) msg
 int id =
     { id = id
     , init = ""
     , update = \delta _ -> delta
-    , view = field_string_view
+    , view = stringView
     , parse =
         \input ->
             case String.toInt input of
@@ -116,7 +165,7 @@ float id =
     { id = id
     , init = ""
     , update = \delta _ -> delta
-    , view = field_string_view
+    , view = stringView
     , parse =
         \input ->
             case String.toFloat input of
@@ -130,8 +179,20 @@ float id =
     }
 
 
-field_string_view : ViewConfig String String msg -> Html msg
-field_string_view fieldState =
+string : String -> Builder String String String (Html msg) msg
+string id =
+    { id = id
+    , init = ""
+    , update = \delta _ -> delta
+    , view = stringView
+    , parse = Ok
+    , validators = []
+    , debounce = 500
+    }
+
+
+stringView : ViewConfig String String msg -> Html msg
+stringView fieldState =
     H.div [ HA.style "margin-bottom" "30px" ]
         [ H.div
             [ HA.style "margin-bottom" "10px" ]
@@ -185,18 +246,6 @@ field_string_view fieldState =
             _ ->
                 H.text ""
         ]
-
-
-string : String -> Builder String String String (Html msg) msg
-string id =
-    { id = id
-    , init = ""
-    , update = \delta _ -> delta
-    , view = field_string_view
-    , parse = Ok
-    , validators = []
-    , debounce = 500
-    }
 
 
 debounce :

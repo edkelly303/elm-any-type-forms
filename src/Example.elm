@@ -22,7 +22,7 @@ type alias UserFormFields =
     ( Field.State String String Int
     , ( Field.State String String Float
       , ( Field.State String String String
-        , ( Field.State String String String
+        , ( Field.State (Maybe Pet) Pet (Maybe Pet)
           , Form.End
           )
         )
@@ -30,11 +30,17 @@ type alias UserFormFields =
     )
 
 
+type Pet
+    = Dog
+    | Cat
+    | Goldfish
+
+
 type alias User =
     { age : Int
     , height : Float
-    , weight : String
-    , x : String
+    , name : String
+    , pet : Maybe Pet
     }
 
 
@@ -55,9 +61,11 @@ form =
                 |> Field.infoIf (\name -> name == "e") "'E' is my favourite letter!"
             )
         |> Form.field Form.f3
-            (Field.string "Pet's name"
-                |> Field.debounce 500
-                |> Field.failIf (\name -> String.length name < 2) "pet's name must be at least 2 characters"
+            (Field.radio "Pet"
+                [ ( "dog", Dog )
+                , ( "cat", Cat )
+                , ( "goldfish", Goldfish )
+                ]
             )
         |> Form.failIf2
             (\int flt -> int > round flt)
@@ -120,7 +128,25 @@ view model =
                 [ H.div [] [ H.text "Your user's data:" ]
                 , H.div [] [ H.text ("Age: " ++ String.fromInt user.age) ]
                 , H.div [] [ H.text ("Height: " ++ String.fromFloat user.height) ]
-                , H.div [] [ H.text ("Weight: " ++ user.weight) ]
+                , H.div [] [ H.text ("Name: " ++ user.name) ]
+                , H.div []
+                    [ H.text
+                        ("Pet:"
+                            ++ (case user.pet of
+                                    Nothing ->
+                                        "none"
+
+                                    Just Dog ->
+                                        "dog"
+
+                                    Just Cat ->
+                                        "cat"
+
+                                    Just Goldfish ->
+                                        "goldfish"
+                               )
+                        )
+                    ]
                 , H.button [ HE.onClick Back ] [ H.text "go back" ]
                 ]
 
