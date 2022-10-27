@@ -130,6 +130,7 @@ radioView options { id, toMsg, input } =
                             , HA.id (id ++ label)
                             , HA.value label
                             , HA.checked (input == Just opt)
+                            , HA.style "margin-bottom" "10px"
                             , HE.on "input" 
                                 (HE.targetChecked 
                                     |> JSD.andThen 
