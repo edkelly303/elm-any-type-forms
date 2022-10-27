@@ -23,6 +23,7 @@ module Field exposing
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Json.Decode as JSD
 import Process
 import Result.Extra
 import Task
@@ -123,18 +124,27 @@ radioView options { id, toMsg, input } =
         , H.div []
             (List.map
                 (\( label, opt ) ->
-                    H.button
-                        [ HA.style "border-color"
-                            (if input == Just opt then
-                                "blue"
-
-                             else
-                                "lightGray"
-                            )
-                        , HA.style "margin-right" "5px"
-                        , HE.onClick (toMsg opt)
+                    H.div [] 
+                        [ H.input
+                            [ HA.type_ "radio"
+                            , HA.id (id ++ label)
+                            , HA.value label
+                            , HA.checked (input == Just opt)
+                            , HE.on "input" 
+                                (HE.targetChecked 
+                                    |> JSD.andThen 
+                                        (\checked -> 
+                                            if checked then 
+                                                JSD.succeed (toMsg opt)
+                                            else 
+                                                JSD.fail "")
+                                )
+                            ]
+                            []
+                        , H.label 
+                            [ HA.for (id ++ label) ] 
+                            [ H.text label ]
                         ]
-                        [ H.text label ]
                 )
                 options
             )
