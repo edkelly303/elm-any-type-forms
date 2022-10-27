@@ -128,6 +128,7 @@ radioView options { id, toMsg, input } =
                         [ H.input
                             [ HA.type_ "radio"
                             , HA.id (id ++ label)
+                            , HA.name id
                             , HA.value label
                             , HA.checked (input == Just opt)
                             , HA.style "margin-bottom" "10px"
