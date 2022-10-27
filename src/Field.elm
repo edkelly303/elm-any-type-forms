@@ -92,7 +92,47 @@ type alias ViewConfig input delta msg =
 
 
 -- Field widgets and functions
+type ListDelta itemDelta 
+    = ItemDelta itemDelta
+    | AddItem
+    | DeleteItem Int
 
+list : 
+    String 
+    -> Builder input delta output (Html msg) msg 
+    -> Builder 
+        { list : List output, item : State input delta output } 
+        ListDelta 
+        (List output)
+        (Html msg) 
+        msg
+list id itemBuilder = 
+    { id = id
+    , init = { list = [], item = itemBuilder.init }
+    , update = \delta input -> 
+        case delta of
+            ItemDelta itemDelta -> 
+                { input | item = itemBuilder.update itemDelta input.item }
+            AddItem -> 
+                input
+            DeleteItem idx -> 
+                input
+    , view = 
+        \{input, toMsg} -> 
+            H.div 
+                [] 
+                [ itemBuilder.view     
+                    { id = itemBuilder.id
+                    , toMsg = ItemDelta >> toMsg
+                    , input : input.item.input
+                    , status : Idle
+                    }
+                , H.div [] [H.text "other controls go here"]    
+                ]
+    , parse = \input -> Ok input.list
+    , validators = []
+    , debounce = 0
+    }
 
 radio :
     String
