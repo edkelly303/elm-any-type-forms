@@ -19,7 +19,17 @@ type Msg
 
 
 type alias UserFormFields =
-    ( Field.State String String Int, ( Field.State String String Float, ( Field.State String String String, ( Field.ListField (Maybe Pet) Pet Pet, Form.End ) ) ) )
+    ( Field.State String String Int
+    , ( Field.State String String Float
+      , ( Field.State String String String
+        , ( Field.MaybeField (Maybe Pet) Pet Pet
+          , ( Field.ListField (Maybe Pet) Pet Pet
+            , Form.End
+            )
+          )
+        )
+      )
+    )
 
 
 type Pet
@@ -45,6 +55,7 @@ type alias User =
     { age : Int
     , height : Float
     , name : String
+    , pet : Maybe Pet
     , pets : List Pet
     }
 
@@ -66,9 +77,18 @@ form =
                 |> Field.infoIf (\name -> name == "e") "'E' is my favourite letter!"
             )
         |> Form.field Form.f3
+            (Field.maybe
+                (Field.radio "Favourite pet"
+                    [ ( "dog", Dog )
+                    , ( "cat", Cat )
+                    , ( "goldfish", Goldfish )
+                    ]
+                )
+            )
+        |> Form.field Form.f4
             (Field.list
                 petToString
-                (Field.radio "Pets"
+                (Field.radio "Other pets"
                     [ ( "dog", Dog )
                     , ( "cat", Cat )
                     , ( "goldfish", Goldfish )

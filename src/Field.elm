@@ -14,12 +14,13 @@ module Field exposing
     , infoIf
     , int
     , list
+    , maybe
     , parse
     , radio
     , string
     , update
     , validate
-    , view
+    , view, MaybeField
     )
 
 import Html as H exposing (Html)
@@ -95,6 +96,98 @@ type alias ViewConfig input delta msg =
 
 
 -- Field widgets and functions
+
+
+type alias MaybeField input delta output =
+    State
+        (Maybe input)
+        (MaybeDelta delta)
+        (Maybe output)
+
+
+type MaybeDelta delta
+    = Off
+    | On
+    | InnerDelta delta
+
+
+maybe :
+    Builder input delta output (Html msg) msg
+    -> Builder (Maybe input) (MaybeDelta delta) (Maybe output) (Html msg) msg
+maybe innerBuilder =
+    { id = innerBuilder.id
+    , init = Nothing
+    , update =
+        \delta input ->
+            case ( delta, input ) of
+                ( InnerDelta innerDelta, Just innerInput ) ->
+                    Just (innerBuilder.update innerDelta innerInput)
+
+                ( InnerDelta _, Nothing ) ->
+                    Nothing
+
+                ( Off, _ ) ->
+                    Nothing
+
+                ( On, _ ) ->
+                    Just innerBuilder.init
+    , view =
+        \{ input, toMsg, id } ->
+            H.div []
+                [ H.div []
+                    [ H.input
+                        [ HA.type_ "radio"
+                        , HA.id (id ++ "_yes")
+                        , HA.name (id ++ "_maybe")
+                        , HA.value "yes"
+                        , HA.checked (input /= Nothing)
+                        , onChecked (toMsg On)
+                        ]
+                        []
+                    , H.label
+                        [ HA.for (id ++ "_yes") ]
+                        [ H.text "yes" ]
+                    , H.input
+                        [ HA.type_ "radio"
+                        , HA.id (id ++ "_no")
+                        , HA.name (id ++ "_maybe")
+                        , HA.value "no"
+                        , HA.checked (input == Nothing)
+                        , onChecked (toMsg Off)
+                        ]
+                        []
+                    , H.label
+                        [ HA.for (id ++ "_no") ]
+                        [ H.text "no" ]
+                    ]
+                , case input of
+                    Just innerInput ->
+                        innerBuilder.view
+                            { id = innerBuilder.id
+                            , toMsg = InnerDelta >> toMsg
+                            , input = innerInput
+                            , status = Idle []
+                            }
+
+                    Nothing ->
+                        H.text ""
+                ]
+    , parse =
+        \input ->
+            case input of
+                Just innerInput ->
+                    case innerBuilder.parse innerInput of
+                        Ok output ->
+                            Ok (Just output)
+
+                        Err e ->
+                            Err e
+
+                Nothing ->
+                    Ok Nothing
+    , validators = []
+    , debounce = 0
+    }
 
 
 type ListDelta itemDelta
@@ -211,17 +304,7 @@ radioView options { id, toMsg, input } =
                             , HA.value label
                             , HA.checked (input == Just opt)
                             , HA.style "margin-bottom" "10px"
-                            , HE.on "input"
-                                (HE.targetChecked
-                                    |> JSD.andThen
-                                        (\checked ->
-                                            if checked then
-                                                JSD.succeed (toMsg opt)
-
-                                            else
-                                                JSD.fail ""
-                                        )
-                                )
+                            , onChecked (toMsg opt)
                             ]
                             []
                         , H.label
@@ -232,6 +315,21 @@ radioView options { id, toMsg, input } =
                 options
             )
         ]
+
+
+onChecked : msg -> H.Attribute msg
+onChecked msg =
+    HE.on "input"
+        (HE.targetChecked
+            |> JSD.andThen
+                (\checked ->
+                    if checked then
+                        JSD.succeed msg
+
+                    else
+                        JSD.fail ""
+                )
+        )
 
 
 int : String -> Builder String String Int (Html msg) msg
