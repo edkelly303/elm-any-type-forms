@@ -19,15 +19,7 @@ type Msg
 
 
 type alias UserFormFields =
-    ( Field.State String String Int
-    , ( Field.State String String Float
-      , ( Field.State String String String
-        , ( Field.State (Maybe Pet) Pet (Maybe Pet)
-          , Form.End
-          )
-        )
-      )
-    )
+    ( Field.State String String Int, ( Field.State String String Float, ( Field.State String String String, ( Field.ListField (Maybe Pet) Pet Pet, Form.End ) ) ) )
 
 
 type Pet
@@ -36,11 +28,24 @@ type Pet
     | Goldfish
 
 
+petToString : Pet -> String
+petToString pet =
+    case pet of
+        Dog ->
+            "dog"
+
+        Cat ->
+            "cat"
+
+        Goldfish ->
+            "goldfish"
+
+
 type alias User =
     { age : Int
     , height : Float
     , name : String
-    , pet : Maybe Pet
+    , pets : List Pet
     }
 
 
@@ -61,11 +66,14 @@ form =
                 |> Field.infoIf (\name -> name == "e") "'E' is my favourite letter!"
             )
         |> Form.field Form.f3
-            (Field.radio "Pet"
-                [ ( "dog", Dog )
-                , ( "cat", Cat )
-                , ( "goldfish", Goldfish )
-                ]
+            (Field.list
+                petToString
+                (Field.radio "Pets"
+                    [ ( "dog", Dog )
+                    , ( "cat", Cat )
+                    , ( "goldfish", Goldfish )
+                    ]
+                )
             )
         |> Form.failIf2
             (\int flt -> int > round flt)
@@ -131,19 +139,16 @@ view model =
                 , H.div [] [ H.text ("Name: " ++ user.name) ]
                 , H.div []
                     [ H.text
-                        ("Pet:"
-                            ++ (case user.pet of
-                                    Nothing ->
+                        ("Pets: "
+                            ++ (case user.pets of
+                                    [] ->
                                         "none"
 
-                                    Just Dog ->
-                                        "dog"
+                                    [ pet ] ->
+                                        petToString pet
 
-                                    Just Cat ->
-                                        "cat"
-
-                                    Just Goldfish ->
-                                        "goldfish"
+                                    _ ->
+                                        "several pets"
                                )
                         )
                     ]

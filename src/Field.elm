@@ -2,6 +2,7 @@ module Field exposing
     ( Builder
     , Delta(..)
     , Interface
+    , ListField
     , Output(..)
     , State
     , Status(..)
@@ -12,6 +13,7 @@ module Field exposing
     , indexIfParsed
     , infoIf
     , int
+    , list
     , parse
     , radio
     , string
@@ -24,6 +26,7 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JSD
+import List.Extra
 import Process
 import Result.Extra
 import Task
@@ -92,52 +95,88 @@ type alias ViewConfig input delta msg =
 
 
 -- Field widgets and functions
-type ListDelta itemDelta 
+
+
+type ListDelta itemDelta
     = ItemDelta itemDelta
     | AddItem
     | DeleteItem Int
 
-list : 
-    String 
-    -> Builder input delta output (Html msg) msg 
-    -> Builder 
-        { list : List output, item : State input delta output } 
-        ListDelta 
+
+type alias ListField input delta output =
+    State
+        { list : List output
+        , item : input
+        }
+        (ListDelta delta)
         (List output)
-        (Html msg) 
-        msg
-list id itemBuilder = 
-    { id = id
+
+
+list :
+    (output -> String)
+    -> Builder input delta output (Html msg) msg
+    ->
+        Builder
+            { list : List output
+            , item : input
+            }
+            (ListDelta delta)
+            (List output)
+            (Html msg)
+            msg
+list outputToString itemBuilder =
+    { id = itemBuilder.id
     , init = { list = [], item = itemBuilder.init }
-    , update = \delta input -> 
-        case delta of
-            ItemDelta itemDelta -> 
-                { input | item = itemBuilder.update itemDelta input.item }
-            AddItem -> 
-                input
-            DeleteItem idx -> 
-                input
-    , view = 
-        \{input, toMsg} -> 
-            H.div 
-                [] 
-                [ itemBuilder.view     
+    , update =
+        \delta input ->
+            case delta of
+                ItemDelta itemDelta ->
+                    let
+                        item =
+                            input.item
+                    in
+                    { input | item = itemBuilder.update itemDelta item }
+
+                AddItem ->
+                    case itemBuilder.parse input.item of
+                        Ok output ->
+                            { input | list = output :: input.list }
+
+                        Err _ ->
+                            input
+
+                DeleteItem idx ->
+                    { input | list = List.Extra.removeAt idx input.list }
+    , view =
+        \{ input, toMsg } ->
+            H.div
+                []
+                [ itemBuilder.view
                     { id = itemBuilder.id
                     , toMsg = ItemDelta >> toMsg
-                    , input : input.item.input
-                    , status : Idle
+                    , input = input.item
+                    , status = Idle []
                     }
-                , H.div [] [H.text "other controls go here"]    
+                , H.button [ HE.onClick (toMsg AddItem) ] [ H.text "add" ]
+                , H.div []
+                    (List.indexedMap
+                        (\idx item ->
+                            H.button [ HE.onClick (toMsg (DeleteItem idx)) ]
+                                [ H.text (outputToString item) ]
+                        )
+                        input.list
+                    )
                 ]
     , parse = \input -> Ok input.list
     , validators = []
     , debounce = 0
     }
 
+
 radio :
     String
     -> List ( String, option )
-    -> Builder (Maybe option) option (Maybe option) (Html msg) msg
+    -> Builder (Maybe option) option option (Html msg) msg
 radio id options =
     { id = id
     , init = Nothing
@@ -149,7 +188,7 @@ radio id options =
             else
                 Just delta
     , view = radioView options
-    , parse = Ok
+    , parse = Result.fromMaybe "must select something"
     , validators = []
     , debounce = 0
     }
@@ -164,7 +203,7 @@ radioView options { id, toMsg, input } =
         , H.div []
             (List.map
                 (\( label, opt ) ->
-                    H.div [] 
+                    H.div []
                         [ H.input
                             [ HA.type_ "radio"
                             , HA.id (id ++ label)
@@ -172,19 +211,21 @@ radioView options { id, toMsg, input } =
                             , HA.value label
                             , HA.checked (input == Just opt)
                             , HA.style "margin-bottom" "10px"
-                            , HE.on "input" 
-                                (HE.targetChecked 
-                                    |> JSD.andThen 
-                                        (\checked -> 
-                                            if checked then 
+                            , HE.on "input"
+                                (HE.targetChecked
+                                    |> JSD.andThen
+                                        (\checked ->
+                                            if checked then
                                                 JSD.succeed (toMsg opt)
-                                            else 
-                                                JSD.fail "")
+
+                                            else
+                                                JSD.fail ""
+                                        )
                                 )
                             ]
                             []
-                        , H.label 
-                            [ HA.for (id ++ label) ] 
+                        , H.label
+                            [ HA.for (id ++ label) ]
                             [ H.text label ]
                         ]
                 )
