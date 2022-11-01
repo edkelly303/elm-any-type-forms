@@ -452,14 +452,20 @@ end formBuilder =
                 states1 =
                     parseAllFields formBuilder.allFieldsParser fields states0
 
+                allFieldValidators =
+                    Dict.values fieldValidators
+
+                states2 =
+                    List.foldl (\v s -> v s) states1 allFieldValidators
+
                 allFormValidators =
                     Dict.values formValidators
                         |> List.concat
 
-                states2 =
-                    List.foldl (\v s -> v s) states1 allFormValidators
+                states3 =
+                    List.foldl (\v s -> v s) states2 allFormValidators
             in
-            case unfurl formBuilder.unfurler formBuilder.output states2 of
+            case unfurl formBuilder.unfurler formBuilder.output states3 of
                 Ok output ->
                     Ok output
 
