@@ -4,6 +4,7 @@ import Browser
 import Field
 import Form
 import Html as H exposing (Html)
+import Html.Attributes as HA
 import Html.Events as HE
 
 
@@ -148,7 +149,11 @@ view model =
         Editing form_ ->
             H.div []
                 [ H.div [] (form.view form_)
-                , H.button [ HE.onClick Submitted ] [ H.text "submit" ]
+                , H.button
+                    [ HA.style "margin-top" "30px"
+                    , HE.onClick Submitted
+                    ]
+                    [ H.text "submit" ]
                 ]
 
         Completed user ->
@@ -172,7 +177,11 @@ view model =
                                )
                         )
                     ]
-                , H.button [ HE.onClick Back ] [ H.text "go back" ]
+                , H.button
+                    [ HA.style "margin-top" "30px"
+                    , HE.onClick Back
+                    ]
+                    [ H.text "go back" ]
                 ]
 
 

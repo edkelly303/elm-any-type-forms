@@ -3,6 +3,7 @@ module Field exposing
     , Delta(..)
     , Interface
     , ListField
+    , MaybeField
     , Output(..)
     , State
     , Status(..)
@@ -20,7 +21,7 @@ module Field exposing
     , string
     , update
     , validate
-    , view, MaybeField
+    , view
     )
 
 import Html as H exposing (Html)
@@ -132,7 +133,7 @@ maybe innerBuilder =
                 ( On, _ ) ->
                     Just innerBuilder.init
     , view =
-        \{ input, toMsg, id } ->
+        \{ input, toMsg, id, status } ->
             H.div []
                 [ H.div []
                     [ H.input
@@ -171,6 +172,7 @@ maybe innerBuilder =
 
                     Nothing ->
                         H.text ""
+                , statusView status
                 ]
     , parse =
         \input ->
@@ -185,7 +187,21 @@ maybe innerBuilder =
 
                 Nothing ->
                     Ok Nothing
-    , validators = []
+    , validators =
+        List.map
+            (\{ check, feedback } ->
+                { check =
+                    \maybeOutput ->
+                        case maybeOutput of
+                            Nothing ->
+                                False
+
+                            Just output ->
+                                check output
+                , feedback = feedback
+                }
+            )
+            innerBuilder.validators
     , debounce = 0
     }
 
@@ -241,7 +257,7 @@ list outputToString itemBuilder =
                 DeleteItem idx ->
                     { input | list = List.Extra.removeAt idx input.list }
     , view =
-        \{ input, toMsg } ->
+        \{ input, toMsg, status } ->
             H.div
                 []
                 [ itemBuilder.view
@@ -250,18 +266,35 @@ list outputToString itemBuilder =
                     , input = input.item
                     , status = Idle []
                     }
-                , H.button [ HE.onClick (toMsg AddItem) ] [ H.text "add" ]
-                , H.div []
+                , H.button
+                    [ HA.style "margin-top" "10px"
+                    , HE.onClick (toMsg AddItem)
+                    ]
+                    [ H.text "add" ]
+                , H.div [ HA.style "margin-top" "10px" ]
                     (List.indexedMap
                         (\idx item ->
-                            H.button [ HE.onClick (toMsg (DeleteItem idx)) ]
-                                [ H.text (outputToString item) ]
+                            H.button
+                                [ HA.style "margin-right" "5px"
+                                , HE.onClick (toMsg (DeleteItem idx))
+                                ]
+                                [ H.text (outputToString item)
+                                , H.text " x"
+                                ]
                         )
                         input.list
                     )
+                , statusView status
                 ]
     , parse = \input -> Ok input.list
-    , validators = []
+    , validators =
+        List.map
+            (\{ check, feedback } ->
+                { check = \listOutput -> List.any check listOutput
+                , feedback = feedback
+                }
+            )
+            itemBuilder.validators
     , debounce = 0
     }
 
@@ -289,9 +322,9 @@ radio id options =
 
 radioView : List ( String, option ) -> ViewConfig (Maybe option) option msg -> Html msg
 radioView options { id, toMsg, input } =
-    H.div [ HA.style "margin-bottom" "30px" ]
+    H.div [ HA.style "margin-top" "30px" ]
         [ H.div
-            [ HA.style "margin-bottom" "10px" ]
+            [ HA.style "margin-top" "10px" ]
             [ H.text id ]
         , H.div []
             (List.map
@@ -303,7 +336,7 @@ radioView options { id, toMsg, input } =
                             , HA.name id
                             , HA.value label
                             , HA.checked (input == Just opt)
-                            , HA.style "margin-bottom" "10px"
+                            , HA.style "margin-top" "10px"
                             , onChecked (toMsg opt)
                             ]
                             []
@@ -408,35 +441,40 @@ stringView fieldState =
                 )
             ]
             [ H.text fieldState.input ]
-        , case fieldState.status of
-            Idle [] ->
-                H.div
-                    [ HA.style "margin-top" "5px" ]
-                    [ H.text "✅ Looking good!" ]
-
-            Idle feedback ->
-                H.div []
-                    (List.map
-                        (\f ->
-                            let
-                                ( icon, txt ) =
-                                    case f of
-                                        Ok t ->
-                                            ( "💬", t )
-
-                                        Err t ->
-                                            ( "❌", t )
-                            in
-                            H.div
-                                [ HA.style "margin-top" "5px" ]
-                                [ H.text (icon ++ " " ++ txt) ]
-                        )
-                        feedback
-                    )
-
-            _ ->
-                H.text ""
+        , statusView fieldState.status
         ]
+
+
+statusView : Status -> Html msg
+statusView status =
+    case status of
+        Idle [] ->
+            H.div
+                [ HA.style "margin-top" "10px", HA.style "margin-bottom" "10px" ]
+                [ H.text "✅ Looking good!" ]
+
+        Idle feedback ->
+            H.div [ HA.style "margin-top" "10px" ]
+                (List.map
+                    (\f ->
+                        let
+                            ( icon, txt ) =
+                                case f of
+                                    Ok t ->
+                                        ( "💬", t )
+
+                                    Err t ->
+                                        ( "❌", t )
+                        in
+                        H.div
+                            [ HA.style "margin-bottom" "10px" ]
+                            [ H.text (icon ++ " " ++ txt) ]
+                    )
+                    feedback
+                )
+
+        _ ->
+            H.text ""
 
 
 debounce :
