@@ -20,11 +20,15 @@ type Msg
 
 
 type alias UserFormFields =
-    ( Field.TupleField String String Int String String Float
-    , ( Field.State String String String
-      , ( Field.MaybeField (Maybe Pet) Pet Pet
-        , ( Field.ListField (Maybe Pet) Pet Pet
-          , Form.End
+    ( Field.State String String Int
+    , ( Field.State String String Float
+      , ( Field.State String String String
+        , ( Field.MaybeField (Maybe Pet) Pet Pet
+          , ( Field.ListField (Maybe Pet) Pet Pet
+            , ( Field.ChoiceField String String String String Either
+              , Form.End
+              )
+            )
           )
         )
       )
@@ -50,12 +54,18 @@ petToString pet =
             "goldfish"
 
 
+type Either
+    = Integer Int
+    | Str String
+
+
 type alias User =
     { age : Int
     , height : Float
     , name : String
     , pet : Maybe Pet
     , pets : List Pet
+    , something : Either
     }
 
 
@@ -67,16 +77,17 @@ form :
     }
 form =
     Form.new
-        (\( age, height ) name pet pets -> User age height name pet pets)
+        User
         UserFormUpdated
-        |> Form.field Form.f0 (Field.tuple "Stats" (Field.int "Age") (Field.float "Height"))
-        |> Form.field Form.f1
+        |> Form.field Form.f0 (Field.int "Age")
+        |> Form.field Form.f1 (Field.float "Height")
+        |> Form.field Form.f2
             (Field.string "Name"
                 |> Field.debounce 500
                 |> Field.failIf (\name -> String.length name < 2) "must be at least 2 characters"
                 |> Field.infoIf (\name -> name == "e") "'e' is my favourite letter!"
             )
-        |> Form.field Form.f2
+        |> Form.field Form.f3
             (Field.maybe
                 (Field.radio "Favourite pet"
                     [ ( "dog", Dog )
@@ -85,7 +96,7 @@ form =
                     ]
                 )
             )
-        |> Form.field Form.f3
+        |> Form.field Form.f4
             (Field.list
                 petToString
                 (Field.radio "Other pets"
@@ -95,11 +106,34 @@ form =
                     ]
                 )
             )
+        |> Form.field Form.f5
+            (Field.choice "Choose"
+                ( Integer
+                , \either ->
+                    case either of
+                        Integer i ->
+                            Just i
+
+                        _ ->
+                            Nothing
+                , Field.int "Int"
+                )
+                ( Str
+                , \either ->
+                    case either of
+                        Str s ->
+                            Just s
+
+                        _ ->
+                            Nothing
+                , Field.string "String"
+                )
+            )
         |> Form.failIf2
-            (\( int, _ ) name -> String.length name < int)
+            (\int name -> String.length name < int)
             "name must be at least as long as age"
             Form.f0
-            Form.f1
+            Form.f2
         |> Form.end
 
 

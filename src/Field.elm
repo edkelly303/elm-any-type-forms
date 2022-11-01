@@ -1,5 +1,8 @@
 module Field exposing
     ( Builder
+    , Choice
+    , ChoiceDelta
+    , ChoiceField
     , Delta(..)
     , Interface
     , ListField
@@ -7,9 +10,8 @@ module Field exposing
     , Output(..)
     , State
     , Status(..)
-    , TupleDelta
-    , TupleField
     , ViewConfig
+    , choice
     , debounce
     , failIf
     , float
@@ -21,7 +23,6 @@ module Field exposing
     , parse
     , radio
     , string
-    , tuple
     , update
     , validate
     , view
@@ -102,149 +103,131 @@ type alias ViewConfig input delta msg =
 -- Field widgets and functions
 
 
-type alias TupleField input1 delta1 output1 input2 delta2 output2 =
-    State ( input1, input2 ) (TupleDelta delta1 delta2) ( output1, output2 )
+type alias ChoiceField input1 delta1 input2 delta2 output =
+    State { choice : Choice, one : input1, two : input2 } (ChoiceDelta delta1 delta2) output
 
 
-type TupleDelta delta1 delta2
+type ChoiceDelta delta1 delta2
     = Delta1 delta1
     | Delta2 delta2
+    | Choose Choice
 
 
-tuple :
+type Choice
+    = One
+    | Two
+
+
+choice :
     String
-    -> Builder input1 delta1 output1 (Html msg) msg
-    -> Builder input2 delta2 output2 (Html msg) msg
-    -> Builder ( input1, input2 ) (TupleDelta delta1 delta2) ( output1, output2 ) (Html msg) msg
-tuple id one0 two0 =
+    -> ( output1 -> output, output -> Maybe output1, Builder input1 delta1 output1 (Html msg) msg )
+    -> ( output2 -> output, output -> Maybe output2, Builder input2 delta2 output2 (Html msg) msg )
+    -> Builder { choice : Choice, one : input1, two : input2 } (ChoiceDelta delta1 delta2) output (Html msg) msg
+choice id ( tag1, untag1, b1 ) ( tag2, untag2, b2 ) =
     let
-        one =
-            { one0
-                | validators =
-                    List.map
-                        (\{ check, feedback } ->
-                            { check = check
-                            , feedback =
-                                feedback
-                                    |> Result.map (\f -> "1__" ++ f)
-                                    |> Result.mapError (\f -> "1__" ++ f)
-                            }
-                        )
-                        one0.validators
-            }
+        builder1 =
+            { b1 | validators = [] }
 
-        two =
-            { two0
-                | validators =
-                    List.map
-                        (\{ check, feedback } ->
-                            { check = check
-                            , feedback =
-                                feedback
-                                    |> Result.map (\f -> "2__" ++ f)
-                                    |> Result.mapError (\f -> "2__" ++ f)
-                            }
-                        )
-                        two0.validators
-            }
+        builder2 =
+            { b2 | validators = [] }
     in
     { id = id
-    , init = ( one.init, two.init )
+    , init = { choice = One, one = builder1.init, two = builder2.init }
     , update =
-        \tupleDelta ( input1, input2 ) ->
-            case tupleDelta of
+        \choiceDelta input ->
+            case choiceDelta of
                 Delta1 delta1 ->
-                    ( one.update delta1 input1, input2 )
+                    { input | one = builder1.update delta1 input.one }
 
                 Delta2 delta2 ->
-                    ( input1, two.update delta2 input2 )
+                    { input | two = builder2.update delta2 input.two }
+
+                Choose c ->
+                    { input | choice = c }
     , view =
-        \{ input, toMsg, status } ->
-            let
-                ( input1, input2 ) =
-                    input
-
-                ( status1, status2 ) =
-                    case status of
-                        Idle feedback ->
-                            feedback
-                                |> List.concatMap
-                                    (\f ->
-                                        case f of
-                                            Ok ok ->
-                                                String.split "\n" ok
-                                                    |> List.map Ok
-
-                                            Err err ->
-                                                String.split "\n" err
-                                                    |> List.map Err
-                                    )
-                                |> List.foldl
-                                    (\f ( f1, f2 ) ->
-                                        case f of
-                                            Ok ok ->
-                                                if String.startsWith "1__" ok then
-                                                    ( Ok (String.dropLeft 3 ok) :: f1, f2 )
-
-                                                else if String.startsWith "2__" ok then
-                                                    ( f1, Ok (String.dropLeft 3 ok) :: f2 )
-
-                                                else
-                                                    ( f1, f2 )
-
-                                            Err err ->
-                                                if String.startsWith "1__" err then
-                                                    ( Err (String.dropLeft 3 err) :: f1, f2 )
-
-                                                else if String.startsWith "2__" err then
-                                                    ( f1, Err (String.dropLeft 3 err) :: f2 )
-
-                                                else
-                                                    ( f1, f2 )
-                                    )
-                                    ( [], [] )
-                                |> Tuple.mapBoth Idle Idle
-
-                        Intact ->
-                            ( Intact, Intact )
-
-                        Debouncing ->
-                            ( Debouncing, Debouncing )
-            in
+        \config ->
             H.div []
-                [ one.view
-                    { id = one.id
-                    , toMsg = Delta1 >> toMsg
-                    , input = input1
-                    , status = status1
-                    }
-                , two.view
-                    { id = two.id
-                    , toMsg = Delta2 >> toMsg
-                    , input = input2
-                    , status = status2
-                    }
+                [ H.div []
+                    [ H.input
+                        [ HA.type_ "radio"
+                        , HA.id builder1.id
+                        , HA.name id
+                        , HA.value id
+                        , HA.checked (config.input.choice == One)
+                        , onChecked (config.toMsg (Choose One))
+                        ]
+                        []
+                    , H.label
+                        [ HA.for builder1.id ]
+                        [ H.text builder1.id ]
+                    , H.input
+                        [ HA.type_ "radio"
+                        , HA.id builder2.id
+                        , HA.name id
+                        , HA.value id
+                        , HA.checked (config.input.choice == Two)
+                        , onChecked (config.toMsg (Choose Two))
+                        ]
+                        []
+                    , H.label
+                        [ HA.for builder2.id ]
+                        [ H.text builder2.id ]
+                    ]
+                , case config.input.choice of
+                    One ->
+                        builder1.view
+                            { id = builder1.id
+                            , toMsg = Delta1 >> config.toMsg
+                            , input = config.input.one
+                            , status = config.status
+                            }
+
+                    Two ->
+                        builder2.view
+                            { id = builder2.id
+                            , toMsg = Delta2 >> config.toMsg
+                            , input = config.input.two
+                            , status = config.status
+                            }
                 ]
     , parse =
-        \( input1, input2 ) ->
-            case
-                ( one.parse input1 |> Result.mapError (\f -> "1__" ++ f)
-                , two.parse input2 |> Result.mapError (\f -> "2__" ++ f)
+        \input ->
+            case input.choice of
+                One ->
+                    Result.map tag1 (builder1.parse input.one)
+
+                Two ->
+                    Result.map tag2 (builder2.parse input.two)
+    , validators =
+        List.map
+            (\{ check, feedback } ->
+                { check =
+                    \output ->
+                        case untag1 output of
+                            Just output1 ->
+                                check output1
+
+                            Nothing ->
+                                False
+                , feedback = feedback
+                }
+            )
+            b1.validators
+            ++ List.map
+                (\{ check, feedback } ->
+                    { check =
+                        \output ->
+                            case untag2 output of
+                                Just output2 ->
+                                    check output2
+
+                                Nothing ->
+                                    False
+                    , feedback = feedback
+                    }
                 )
-            of
-                ( Ok o1, Ok o2 ) ->
-                    Ok ( o1, o2 )
-
-                ( Err e1, Err e2 ) ->
-                    Err (e1 ++ "\n" ++ e2)
-
-                ( Ok _, Err e2 ) ->
-                    Err e2
-
-                ( Err e1, _ ) ->
-                    Err e1
-    , validators = []
-    , debounce = 0
+                b2.validators
+    , debounce = 1000
     }
 
 
