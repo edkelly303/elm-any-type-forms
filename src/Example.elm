@@ -127,6 +127,7 @@ form =
                         _ ->
                             Nothing
                 , Field.string "String"
+                    |> Field.failIf String.isEmpty "must not be blank"
                 )
             )
         |> Form.failIf2

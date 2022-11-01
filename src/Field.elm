@@ -227,7 +227,7 @@ choice id ( tag1, untag1, b1 ) ( tag2, untag2, b2 ) =
                     }
                 )
                 b2.validators
-    , debounce = 1000
+    , debounce = 0
     }
 
 
