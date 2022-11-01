@@ -51,12 +51,12 @@ type alias Builder input delta output element msg =
 
 
 type alias Interface input delta output formData element msg =
-    { view : ViewConfig input delta msg -> element
-    , id : String
-    , debounce : Float
+    { id : String
     , index : Int
-    , parse : input -> Result String output
     , update : delta -> input -> input
+    , view : ViewConfig input delta msg -> element
+    , parse : input -> Result String output
+    , debounce : Float
     , toFormData : Delta delta -> formData
     , validators : formData -> formData
     }
