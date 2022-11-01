@@ -20,13 +20,11 @@ type Msg
 
 
 type alias UserFormFields =
-    ( Field.State String String Int
-    , ( Field.State String String Float
-      , ( Field.State String String String
-        , ( Field.MaybeField (Maybe Pet) Pet Pet
-          , ( Field.ListField (Maybe Pet) Pet Pet
-            , Form.End
-            )
+    ( Field.TupleField String String Int String String Float
+    , ( Field.State String String String
+      , ( Field.MaybeField (Maybe Pet) Pet Pet
+        , ( Field.ListField (Maybe Pet) Pet Pet
+          , Form.End
           )
         )
       )
@@ -68,16 +66,17 @@ form :
     , submit : UserFormFields -> Result UserFormFields User
     }
 form =
-    Form.new User UserFormUpdated
-        |> Form.field Form.f0 (Field.int "Age")
-        |> Form.field Form.f1 (Field.float "Height")
-        |> Form.field Form.f2
+    Form.new
+        (\( age, height ) name pet pets -> User age height name pet pets)
+        UserFormUpdated
+        |> Form.field Form.f0 (Field.tuple "Stats" (Field.int "Age") (Field.float "Height"))
+        |> Form.field Form.f1
             (Field.string "Name"
                 |> Field.debounce 500
-                |> Field.failIf (\name -> String.length name < 2) "name must be at least 2 characters"
-                |> Field.infoIf (\name -> name == "e") "'E' is my favourite letter!"
+                |> Field.failIf (\name -> String.length name < 2) "must be at least 2 characters"
+                |> Field.infoIf (\name -> name == "e") "'e' is my favourite letter!"
             )
-        |> Form.field Form.f3
+        |> Form.field Form.f2
             (Field.maybe
                 (Field.radio "Favourite pet"
                     [ ( "dog", Dog )
@@ -86,7 +85,7 @@ form =
                     ]
                 )
             )
-        |> Form.field Form.f4
+        |> Form.field Form.f3
             (Field.list
                 petToString
                 (Field.radio "Other pets"
@@ -97,15 +96,10 @@ form =
                 )
             )
         |> Form.failIf2
-            (\int flt -> int > round flt)
-            "height must be greater than age"
-            Form.f0
-            Form.f1
-        |> Form.failIf2
-            (\int name -> String.length name < int)
+            (\( int, _ ) name -> String.length name < int)
             "name must be at least as long as age"
             Form.f0
-            Form.f2
+            Form.f1
         |> Form.end
 
 

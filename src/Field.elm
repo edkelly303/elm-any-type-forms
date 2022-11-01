@@ -7,6 +7,8 @@ module Field exposing
     , Output(..)
     , State
     , Status(..)
+    , TupleDelta
+    , TupleField
     , ViewConfig
     , debounce
     , failIf
@@ -19,6 +21,7 @@ module Field exposing
     , parse
     , radio
     , string
+    , tuple
     , update
     , validate
     , view
@@ -97,6 +100,152 @@ type alias ViewConfig input delta msg =
 
 
 -- Field widgets and functions
+
+
+type alias TupleField input1 delta1 output1 input2 delta2 output2 =
+    State ( input1, input2 ) (TupleDelta delta1 delta2) ( output1, output2 )
+
+
+type TupleDelta delta1 delta2
+    = Delta1 delta1
+    | Delta2 delta2
+
+
+tuple :
+    String
+    -> Builder input1 delta1 output1 (Html msg) msg
+    -> Builder input2 delta2 output2 (Html msg) msg
+    -> Builder ( input1, input2 ) (TupleDelta delta1 delta2) ( output1, output2 ) (Html msg) msg
+tuple id one0 two0 =
+    let
+        one =
+            { one0
+                | validators =
+                    List.map
+                        (\{ check, feedback } ->
+                            { check = check
+                            , feedback =
+                                feedback
+                                    |> Result.map (\f -> "1__" ++ f)
+                                    |> Result.mapError (\f -> "1__" ++ f)
+                            }
+                        )
+                        one0.validators
+            }
+
+        two =
+            { two0
+                | validators =
+                    List.map
+                        (\{ check, feedback } ->
+                            { check = check
+                            , feedback =
+                                feedback
+                                    |> Result.map (\f -> "2__" ++ f)
+                                    |> Result.mapError (\f -> "2__" ++ f)
+                            }
+                        )
+                        two0.validators
+            }
+    in
+    { id = id
+    , init = ( one.init, two.init )
+    , update =
+        \tupleDelta ( input1, input2 ) ->
+            case tupleDelta of
+                Delta1 delta1 ->
+                    ( one.update delta1 input1, input2 )
+
+                Delta2 delta2 ->
+                    ( input1, two.update delta2 input2 )
+    , view =
+        \{ input, toMsg, status } ->
+            let
+                ( input1, input2 ) =
+                    input
+
+                ( status1, status2 ) =
+                    case status of
+                        Idle feedback ->
+                            feedback
+                                |> List.concatMap
+                                    (\f ->
+                                        case f of
+                                            Ok ok ->
+                                                String.split "\n" ok
+                                                    |> List.map Ok
+
+                                            Err err ->
+                                                String.split "\n" err
+                                                    |> List.map Err
+                                    )
+                                |> List.foldl
+                                    (\f ( f1, f2 ) ->
+                                        case f of
+                                            Ok ok ->
+                                                if String.startsWith "1__" ok then
+                                                    ( Ok (String.dropLeft 3 ok) :: f1, f2 )
+
+                                                else if String.startsWith "2__" ok then
+                                                    ( f1, Ok (String.dropLeft 3 ok) :: f2 )
+
+                                                else
+                                                    ( f1, f2 )
+
+                                            Err err ->
+                                                if String.startsWith "1__" err then
+                                                    ( Err (String.dropLeft 3 err) :: f1, f2 )
+
+                                                else if String.startsWith "2__" err then
+                                                    ( f1, Err (String.dropLeft 3 err) :: f2 )
+
+                                                else
+                                                    ( f1, f2 )
+                                    )
+                                    ( [], [] )
+                                |> Tuple.mapBoth Idle Idle
+
+                        Intact ->
+                            ( Intact, Intact )
+
+                        Debouncing ->
+                            ( Debouncing, Debouncing )
+            in
+            H.div []
+                [ one.view
+                    { id = one.id
+                    , toMsg = Delta1 >> toMsg
+                    , input = input1
+                    , status = status1
+                    }
+                , two.view
+                    { id = two.id
+                    , toMsg = Delta2 >> toMsg
+                    , input = input2
+                    , status = status2
+                    }
+                ]
+    , parse =
+        \( input1, input2 ) ->
+            case
+                ( one.parse input1 |> Result.mapError (\f -> "1__" ++ f)
+                , two.parse input2 |> Result.mapError (\f -> "2__" ++ f)
+                )
+            of
+                ( Ok o1, Ok o2 ) ->
+                    Ok ( o1, o2 )
+
+                ( Err e1, Err e2 ) ->
+                    Err (e1 ++ "\n" ++ e2)
+
+                ( Ok _, Err e2 ) ->
+                    Err e2
+
+                ( Err e1, _ ) ->
+                    Err e1
+    , validators = []
+    , debounce = 0
+    }
 
 
 type alias MaybeField input delta output =
@@ -378,7 +527,7 @@ int id =
                     Ok i
 
                 Nothing ->
-                    Err "not an int"
+                    Err "must be a whole number"
     , validators = []
     , debounce = 0
     }
@@ -397,7 +546,7 @@ float id =
                     Ok f
 
                 Nothing ->
-                    Err "not an int"
+                    Err "must be a decimal number"
     , validators = []
     , debounce = 0
     }
