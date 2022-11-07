@@ -99,7 +99,6 @@ type alias ViewConfig input delta msg =
     }
 
 
-
 -- Field widgets and functions
 
 
