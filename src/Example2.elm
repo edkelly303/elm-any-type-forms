@@ -28,6 +28,17 @@ type Msg
     = FormMsg
 
 
+main =
+    H.div []
+        (example.view
+            { state = example.init
+            , status = Intact
+            , id = ""
+            , toMsg = identity
+            }
+        )
+
+
 example =
     -- form_new FormMsg
     input_record "my-output" MyOutput
@@ -49,6 +60,7 @@ input_record id toOutput =
     , fields = identity
     , states = identity
     , updater = identity
+    , viewer = identity
     }
 
 
@@ -57,7 +69,8 @@ input_field idx f rec =
     , toOutput = rec.toOutput
     , fields = rec.fields >> Tuple.pair { field = f, index = idx }
     , states = rec.states >> Tuple.pair f.init
-    , updater = rec.updater >> updater1
+    , updater = rec.updater >> recordStateUpdater
+    , viewer = rec.viewer >> recordStateViewer
     }
 
 
@@ -71,9 +84,9 @@ input_endRecord rec =
     in
     { id = rec.id
     , init = inits
-    , update = \deltas states -> updateStates rec.updater fields deltas states
-    , view = \viewConfig -> []
-    , parse = \states -> Err ""
+    , update = \delta state -> updateRecordStates rec.updater fields delta state
+    , view = \{ state } -> viewRecordStates rec.viewer fields state
+    , parse = \state -> Err ""
     , validators = []
     , debounce = 0
     }
@@ -83,11 +96,30 @@ type End
     = End
 
 
-updateStates updater fields deltas states =
+viewRecordStates viewer fields states =
+    viewer (\list End End -> list) [] fields states
+        
+
+
+recordStateViewer next list ( { field }, fields ) ( state, states ) =
+    next
+        (field.view
+            { state = state
+            , status = Intact
+            , toMsg = identity
+            , id = field.id
+            }
+            :: list
+        )
+        fields
+        states
+
+
+updateRecordStates updater fields deltas states =
     updater (\End End End -> End) fields deltas states
 
 
-updater1 next ( { field }, fields ) ( delta, deltas ) ( state, states ) =
+recordStateUpdater next ( { field }, fields ) ( delta, deltas ) ( state, states ) =
     ( field.update delta state
     , next fields deltas states
     )
@@ -104,10 +136,10 @@ type alias Input state delta output element msg =
     }
 
 
-type alias ViewConfig input delta msg =
+type alias ViewConfig state delta msg =
     { id : String
     , toMsg : delta -> msg
-    , input : input
+    , state : state
     , status : Status
     }
 
@@ -121,7 +153,7 @@ type Status
 input_int : String -> Input String String Int (Html msg) msg
 input_int id =
     { id = id
-    , init = ""
+    , init = "1"
     , update = \delta _ -> delta
     , view = stringView
     , parse =
@@ -140,7 +172,7 @@ input_int id =
 input_string : String -> Input String String String (Html msg) msg
 input_string id =
     { id = id
-    , init = ""
+    , init = "I'm a string!"
     , update = \delta _ -> delta
     , view = stringView
     , parse = Ok
@@ -212,7 +244,7 @@ stringView fieldState =
             [ H.text fieldState.id ]
         , H.input
             [ HE.onInput fieldState.toMsg
-            , HA.value fieldState.input
+            , HA.value fieldState.state
             , HA.style "background-color"
                 (case fieldState.status of
                     Intact ->
@@ -229,7 +261,7 @@ stringView fieldState =
                             "paleGreen"
                 )
             ]
-            [ H.text fieldState.input ]
+            [ H.text fieldState.state ]
         , statusView fieldState.status
         ]
 
