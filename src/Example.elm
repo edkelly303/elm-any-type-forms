@@ -8,42 +8,6 @@ import Html.Attributes as HA
 import Html.Events as HE
 
 
--- POSSIBLE NEW API
-
-type alias MyOutput = 
-    { custom : MyCustom
-    , record : MyRecord 
-    }
-
-type MyCustom
-    = Red Int
-    | Green String
-    | Blue
-
-type alias MyRecord = 
-    { name : String
-    , age : Int 
-    }
-
-example = 
-    Form.new FormMsg
-        (Input.record MyOutput 
-            |> Input.field f0 
-                (Input.customType
-                    |> Input.tag1 f0 Red Input.int
-                    |> Input.tag1 f1 Green Input.string
-                    |> Input.tag0 f2 Blue
-                    |> Input.endCustomType
-                )
-            |> Input.field f1
-                (Input.record MyRecord
-                    |> Input.field f1 Input.string
-                    |> Input.field f0 Input.int
-                    |> Input.endRecord
-                )
-            |> Input.field f2 Input.string
-            |> Input.endRecord
-        )
 
 
 -- REAL STUFF
