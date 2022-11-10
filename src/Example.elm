@@ -8,11 +8,6 @@ import Html.Attributes as HA
 import Html.Events as HE
 
 
-
-
--- REAL STUFF
-
-
 type Model
     = Editing UserFormFields
     | Completed User

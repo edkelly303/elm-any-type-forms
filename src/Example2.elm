@@ -1,5 +1,6 @@
 module Example2 exposing (..)
 
+import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -28,10 +29,20 @@ type Msg
     = FormMsg
 
 
+main : Program () MyRecordState MyRecordState
 main =
+    Browser.element
+        { init = \() -> ( example.init, Cmd.none )
+        , view = view
+        , update = \msg model -> ( example.update msg model, Cmd.none )
+        , subscriptions = \_ -> Sub.none
+        }
+
+
+view state =
     H.div []
         (example.view
-            { state = example.init
+            { state = state
             , status = Intact
             , id = ""
             , toMsg = identity
@@ -39,12 +50,21 @@ main =
         )
 
 
+example :
+    { id : String
+    , init : MyRecordState
+    , update : MyRecordState -> MyRecordState -> MyRecordState
+    , view : { n | state : MyRecordState } -> List (Html MyRecordState)
+    , parse : t -> Result String value
+    , validators : List u
+    , debounce : number
+    }
 example =
     -- form_new FormMsg
-    input_record "my-output" MyOutput
-        |> input_field f0 (input_int "hello")
-        |> input_field f1 (input_string "world")
-        -- |> input_field f3
+    input_record "my-record" MyRecord
+        |> input_field f0 (input_string "name")
+        |> input_field f1 (input_int "age")
+        -- |> input_field f2
         --    (input_customType
         --        |> input_tag1 f0 Red input_int
         --        |> input_tag1 f1 Green input_string
@@ -64,11 +84,23 @@ input_record id toOutput =
     }
 
 
-input_field idx f rec =
+type alias InputState state delta =
+    { state : state, delta : Maybe delta }
+
+
+type alias MyRecordState =
+    ( InputState String String
+    , ( InputState String String
+      , End
+      )
+    )
+
+
+input_field sel f rec =
     { id = rec.id
     , toOutput = rec.toOutput
-    , fields = rec.fields >> Tuple.pair { field = f, index = idx }
-    , states = rec.states >> Tuple.pair f.init
+    , fields = rec.fields >> Tuple.pair { field = f, selector = sel }
+    , states = rec.states >> Tuple.pair { state = f.init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
     }
@@ -85,7 +117,7 @@ input_endRecord rec =
     { id = rec.id
     , init = inits
     , update = \delta state -> updateRecordStates rec.updater fields delta state
-    , view = \{ state } -> viewRecordStates rec.viewer fields state
+    , view = \{ state } -> viewRecordStates rec.viewer inits fields state
     , parse = \state -> Err ""
     , validators = []
     , debounce = 0
@@ -96,21 +128,27 @@ type End
     = End
 
 
-viewRecordStates viewer fields states =
-    viewer (\list End End -> list) [] fields states
-        
+viewRecordStates viewer inits fields states =
+    viewer (\list _ End End -> list) [] inits fields states
 
 
-recordStateViewer next list ( { field }, fields ) ( state, states ) =
+recordStateViewer next list emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
     next
         (field.view
             { state = state
             , status = Intact
-            , toMsg = identity
+            , toMsg =
+                \delta ->
+                    let
+                        sel =
+                            instantiateSelector selector
+                    in
+                    set sel.set (\data -> { data | delta = Just delta }) emptyDeltas
             , id = field.id
             }
             :: list
         )
+        emptyDeltas
         fields
         states
 
@@ -119,8 +157,13 @@ updateRecordStates updater fields deltas states =
     updater (\End End End -> End) fields deltas states
 
 
-recordStateUpdater next ( { field }, fields ) ( delta, deltas ) ( state, states ) =
-    ( field.update delta state
+recordStateUpdater next ( { field }, fields ) ( { delta }, deltas ) ( state, states ) =
+    ( case delta of
+        Nothing ->
+            state
+
+        Just d ->
+            { delta = Nothing, state = field.update d state.state }
     , next fields deltas states
     )
 
@@ -185,32 +228,12 @@ input_string id =
 -- STUFF
 
 
-get : (b -> ( a, c )) -> b -> a
-get getter data =
-    (getter >> Tuple.first) data
-
-
-set : ((( a, b ) -> ( x, b )) -> c -> d) -> (a -> x) -> c -> d
-set setter updater data =
-    setter (Tuple.mapFirst updater) data
-
-
-setter1 : (b -> y) -> ( a, b ) -> ( a, y )
-setter1 =
-    Tuple.mapSecond
-
-
-getter1 : ( a, b ) -> b
-getter1 =
-    Tuple.second
-
-
 f0 =
     composeSelectors { getFieldState = identity, getField = identity, set = identity }
 
 
 f1 =
-    composeSelectors { getFieldState = getter1, getField = getter1, set = setter1 }
+    composeSelectors { getFieldState = Tuple.second, getField = Tuple.second, set = Tuple.mapSecond }
 
 
 f2 =
@@ -225,6 +248,16 @@ f4 =
     f3 >> f1
 
 
+get : (b -> ( a, c )) -> b -> a
+get getter data =
+    (getter >> Tuple.first) data
+
+
+set : ((( a, b ) -> ( x, b )) -> c -> d) -> (a -> x) -> c -> d
+set setter updater data =
+    setter (Tuple.mapFirst updater) data
+
+
 composeSelectors selector1 selector2 =
     { getFieldState = selector1.getFieldState >> selector2.getFieldState
     , getField = selector1.getField >> selector2.getField
@@ -233,6 +266,7 @@ composeSelectors selector1 selector2 =
 
 
 instantiateSelector selector =
+    -- selector { getFieldState = Tuple.first, getField = Tuple.first, set = Tuple.mapFirst }
     selector { getFieldState = identity, getField = identity, set = identity }
 
 
