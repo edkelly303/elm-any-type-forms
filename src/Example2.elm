@@ -7,71 +7,117 @@ import Html.Events as HE
 import Result.Extra
 
 
-type alias MyOutput =
-    { custom : MyCustom
-    , record : MyRecord
-    }
-
-
 type MyCustom
     = Red Int
     | Green String
     | Blue
 
 
-type alias MyRecord =
+type alias PetOwner =
+    { name : String
+    , age : Int
+    , pet : Pet
+    }
+
+
+type alias Pet =
     { name : String
     , age : Int
     }
 
 
+type alias InputState state delta =
+    { state : state, delta : Maybe delta }
+
+
+type alias PetState =
+    ( InputState String String
+    , ( InputState String String
+      , ( InputState String String
+        , End
+        )
+      )
+    )
+
+
+type alias PetOwnerState =
+    ( InputState String String
+    , ( InputState String String
+      , ( InputState String String
+          --   , ( InputState PetState PetState
+        , End
+        )
+      )
+    )
+
+
 type Msg
-    = FormMsg
+    = FormMsg PetOwnerState
 
 
-main : Program () MyRecordState MyRecordState
+main : Program () PetOwnerState Msg
 main =
     Browser.element
         { init = \() -> ( example.init, Cmd.none )
-        , view = view
+        , view = example.view
         , update = \msg model -> ( example.update msg model, Cmd.none )
         , subscriptions = \_ -> Sub.none
         }
 
 
 view state =
-    H.div []
-        (example.view
-            { state = state
-            , status = Intact
-            , id = ""
-            , toMsg = identity
-            }
-        )
+    H.div [] (example.view state)
 
 
-example :
-    { id : String
-    , init : MyRecordState
-    , update : MyRecordState -> MyRecordState -> MyRecordState
-    , view : { n | state : MyRecordState } -> List (Html MyRecordState)
-    , parse : t -> Result String value
-    , validators : List u
-    , debounce : number
+
+-- form_new :
+--     (PetOwnerState -> Msg)
+--     -> Input PetOwnerState PetOwnerState PetOwner (Html PetOwnerState) PetOwnerState
+--     -> Input2 PetOwnerState PetOwnerState PetOwner (Html Msg) Msg
+
+
+form_new toMsg input =
+    let
+        i =
+            input toMsg
+    in
+    { view =
+        \state ->
+            i.view
+                { state = state
+                , status = Intact
+                , id = ""
+                , toMsg = toMsg
+                }
+    , update = i.update
+    , init = i.init
     }
+
+
 example =
-    -- form_new FormMsg
-    input_record "my-record" MyRecord
-        |> input_field f0 (input_string "name")
-        |> input_field f1 (input_int "age")
-        -- |> input_field f2
-        --    (input_customType
-        --        |> input_tag1 f0 Red input_int
-        --        |> input_tag1 f1 Green input_string
-        --        |> input_tag0 f2 Blue
-        --        |> input_endCustomType
-        --    )
-        |> input_endRecord
+    form_new FormMsg
+        (input_record
+            "pet-owner"
+            PetOwner
+            |> input_field f0 (input_string "name")
+            |> input_field f1 (input_int "age")
+            |> input_field f2
+                (input_int "blah")
+            -- (input_record "pet" Pet
+            --     |> input_field f0 (input_string "pet-name")
+            --     |> input_field f1 (input_int "pet-age")
+            --     |> input_field f2 (input_int "pet-bullshit")
+            --     |> input_endRecord
+            -- )
+            -- |> input_field f2
+            --    (input_customType
+            --        |> input_tag1 f0 Red input_int
+            --        |> input_tag1 f1 Green input_string
+            --        |> input_tag0 f2 Blue
+            --        |> input_endCustomType
+            --    )
+            |> input_endRecord
+        )
 
 
 input_record id toOutput =
@@ -81,28 +127,18 @@ input_record id toOutput =
     , states = identity
     , updater = identity
     , viewer = identity
+    , initializer = identity
     }
-
-
-type alias InputState state delta =
-    { state : state, delta : Maybe delta }
-
-
-type alias MyRecordState =
-    ( InputState String String
-    , ( InputState String String
-      , End
-      )
-    )
 
 
 input_field sel f rec =
     { id = rec.id
     , toOutput = rec.toOutput
-    , fields = rec.fields >> Tuple.pair { field = f, selector = sel }
-    , states = rec.states >> Tuple.pair { state = f.init, delta = Nothing }
+    , fields = rec.fields << Tuple.pair { field = f, selector = instantiateSelector sel }
+    , states = rec.states << Tuple.pair { state = \toMsg -> (f toMsg).init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
+    , initializer = rec.initializer >> recordInitializer
     }
 
 
@@ -114,68 +150,96 @@ input_endRecord rec =
         inits =
             rec.states End
     in
-    { id = rec.id
-    , init = inits
-    , update = \delta state -> updateRecordStates rec.updater fields delta state
-    , view = \{ state } -> viewRecordStates rec.viewer inits fields state
-    , parse = \state -> Err ""
-    , validators = []
-    , debounce = 0
-    }
+    \toMsg ->
+        { id = rec.id
+        , init = initializeRecord rec.initializer toMsg inits
+        , update = \delta state -> updateRecordStates rec.updater toMsg fields delta state
+        , view = \{ state } -> viewRecordStates rec.viewer toMsg inits fields state
+        , parse = \state -> Err ""
+        , validators = []
+        , debounce = 0
+        , toMsg = toMsg
+        }
 
 
 type End
     = End
 
 
-viewRecordStates viewer inits fields states =
-    viewer (\list _ End End -> list) [] inits fields states
+initializeRecord initializer toMsg inits =
+    initializer (\_ End -> End) toMsg inits
 
 
-recordStateViewer next list emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
+recordInitializer next toMsg ( init, inits ) =
+    ( init toMsg, next toMsg inits )
+
+
+viewRecordStates viewer toMsg inits fields states =
+    viewer (\list _ _ End End -> list) [] toMsg inits fields states
+        |> List.reverse
+
+
+recordStateViewer next list toMsg emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
+    let
+        field_ =
+            field toMsg
+    in
     next
-        (field.view
+        (field_.view
             { state = state
             , status = Intact
-            , toMsg =
-                \delta ->
-                    let
-                        sel =
-                            instantiateSelector selector
-                    in
-                    set sel.set (\data -> { data | delta = Just delta }) emptyDeltas
-            , id = field.id
+            , toMsg = \delta -> selector.set (\data -> { data | delta = Just delta }) emptyDeltas |> field_.toMsg
+            , id = field_.id
             }
-            :: list
+            ++ list
         )
         emptyDeltas
         fields
         states
 
 
-updateRecordStates updater fields deltas states =
-    updater (\End End End -> End) fields deltas states
+updateRecordStates updater toMsg fields deltas states =
+    updater (\_ End End End -> End) toMsg fields deltas states
 
 
-recordStateUpdater next ( { field }, fields ) ( { delta }, deltas ) ( state, states ) =
+recordStateUpdater next toMsg ( { field }, fields ) ( { delta }, deltas ) ( state, states ) =
+    let
+        field_ =
+            field toMsg
+    in
     ( case delta of
         Nothing ->
             state
 
         Just d ->
-            { delta = Nothing, state = field.update d state.state }
+            { delta = Nothing, state = field_.update d state.state }
     , next fields deltas states
     )
 
 
 type alias Input state delta output element msg =
+    (delta -> msg)
+    ->
+        { id : String
+        , init : state
+        , update : delta -> state -> state
+        , view : ViewConfig state delta msg -> List element
+        , parse : state -> Result String output
+        , validators : List { check : output -> Bool, feedback : Result String String }
+        , debounce : Float
+        , toMsg : delta -> msg
+        }
+
+
+type alias Input2 state delta output element msg =
     { id : String
     , init : state
     , update : delta -> state -> state
-    , view : ViewConfig state delta msg -> element
+    , view : ViewConfig state delta msg -> List element
     , parse : state -> Result String output
     , validators : List { check : output -> Bool, feedback : Result String String }
     , debounce : Float
+    , toMsg : delta -> msg
     }
 
 
@@ -195,33 +259,37 @@ type Status
 
 input_int : String -> Input String String Int (Html msg) msg
 input_int id =
-    { id = id
-    , init = "1"
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse =
-        \input ->
-            case String.toInt input of
-                Just i ->
-                    Ok i
+    \toMsg ->
+        { id = id
+        , init = "1"
+        , update = \delta _ -> delta
+        , view = \config -> stringView { toMsg = toMsg, id = id, state = config.state, status = config.status }
+        , parse =
+            \input ->
+                case String.toInt input of
+                    Just i ->
+                        Ok i
 
-                Nothing ->
-                    Err "must be a whole number"
-    , validators = []
-    , debounce = 0
-    }
+                    Nothing ->
+                        Err "must be a whole number"
+        , validators = []
+        , debounce = 0
+        , toMsg = toMsg
+        }
 
 
 input_string : String -> Input String String String (Html msg) msg
 input_string id =
-    { id = id
-    , init = "I'm a string!"
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse = Ok
-    , validators = []
-    , debounce = 500
-    }
+    \toMsg ->
+        { id = id
+        , init = "I'm a string!"
+        , update = \delta _ -> delta
+        , view = \config -> stringView { toMsg = toMsg, id = id, state = config.state, status = config.status }
+        , parse = Ok
+        , validators = []
+        , debounce = 500
+        , toMsg = toMsg
+        }
 
 
 
@@ -248,16 +316,6 @@ f4 =
     f3 >> f1
 
 
-get : (b -> ( a, c )) -> b -> a
-get getter data =
-    (getter >> Tuple.first) data
-
-
-set : ((( a, b ) -> ( x, b )) -> c -> d) -> (a -> x) -> c -> d
-set setter updater data =
-    setter (Tuple.mapFirst updater) data
-
-
 composeSelectors selector1 selector2 =
     { getFieldState = selector1.getFieldState >> selector2.getFieldState
     , getField = selector1.getField >> selector2.getField
@@ -266,13 +324,23 @@ composeSelectors selector1 selector2 =
 
 
 instantiateSelector selector =
-    -- selector { getFieldState = Tuple.first, getField = Tuple.first, set = Tuple.mapFirst }
-    selector { getFieldState = identity, getField = identity, set = identity }
+    let
+        s =
+            selector
+                { getFieldState = Tuple.first
+                , getField = Tuple.first
+                , set = identity
+                }
+    in
+    { getFieldState = s.getFieldState
+    , getField = s.getField
+    , set = \item state -> s.set (Tuple.mapFirst item) state
+    }
 
 
-stringView : ViewConfig String String msg -> Html msg
+stringView : ViewConfig String String msg -> List (Html msg)
 stringView fieldState =
-    H.div [ HA.style "margin-bottom" "30px" ]
+    [ H.div [ HA.style "margin-bottom" "30px" ]
         [ H.div
             [ HA.style "margin-bottom" "10px" ]
             [ H.text fieldState.id ]
@@ -298,6 +366,7 @@ stringView fieldState =
             [ H.text fieldState.state ]
         , statusView fieldState.status
         ]
+    ]
 
 
 statusView : Status -> Html msg
