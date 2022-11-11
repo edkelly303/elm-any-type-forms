@@ -40,7 +40,9 @@ type alias PetOwnerState =
     , ( InputState String String
       , ( InputState PetState PetState
         , ( InputState
-                ( InputState String String, End )
+                ( InputState String String
+                , End
+                )
                 ( InputState String String
                 , End
                 )
@@ -64,7 +66,14 @@ main =
             \msg model ->
                 case msg of
                     FormMsg m ->
-                        ( petOwnerForm.update m model, Cmd.none )
+                        let
+                            newModel =
+                                petOwnerForm.update m model
+
+                            _ =
+                                Debug.log "output" (petOwnerForm.submit newModel)
+                        in
+                        ( newModel, Cmd.none )
         , subscriptions = \_ -> Sub.none
         }
 
@@ -97,26 +106,24 @@ petOwnerForm =
                 |> input_field f1 (input_int "pet's age")
                 |> input_endRecord
             )
-        |> input_field f3 (input_tag1 Red (input_int "red number"))
+        |> input_tag1 f3 Red (input_int "red number")
         -- |> input_field f4
         --    (input_customType "customType"
-        --        |> input_field f0 (input_tag1 Red (input_int "red"))
-        --        |> input_field f1 (input_tag1 Green (input_string "green"))
-        --        |> input_field f2 (input_tag0 Blue "blue")
+        --        |> input_tag1 f0 Red (input_int "red")
+        --        |> input_tag1 f1 Green (input_string "green")
+        --        |> input_tag0 f2 Blue "blue"
         --        |> input_endCustomType
         --    )
         |> input_endRecord
         |> toForm FormMsg
 
 
-input_tag1 :
-    (output -> tag)
-    -> Input state delta output
-    -> Input ( { state : state, delta : Maybe delta }, End ) ( { state : state, delta : Maybe delta }, End ) tag
-input_tag1 tag input =
-    input_record input.id tag
-        |> input_field f0 input
-        |> input_endRecord
+input_tag1 sel tag input =
+    input_field sel
+        (input_record input.id tag
+            |> input_field f0 input
+            |> input_endRecord
+        )
 
 
 input_record id toOutput =
