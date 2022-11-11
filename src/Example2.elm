@@ -35,7 +35,7 @@ type alias PetState =
     )
 
 
-type alias MyRecordState =
+type alias PetOwnerState =
     ( InputState String String
     , ( InputState String String
       , ( InputState PetState PetState
@@ -52,15 +52,19 @@ type alias MyRecordState =
 
 
 type Msg
-    = FormMsg
+    = FormMsg PetOwnerState
 
 
-main : Program () MyRecordState MyRecordState
+main : Program () PetOwnerState Msg
 main =
     Browser.element
         { init = \() -> ( example.init, Cmd.none )
-        , view = view
-        , update = \msg model -> ( example.update msg model, Cmd.none )
+        , view = view >> H.map FormMsg
+        , update =
+            \msg model ->
+                case msg of
+                    FormMsg m ->
+                        ( example.update m model, Cmd.none )
         , subscriptions = \_ -> Sub.none
         }
 
@@ -73,7 +77,7 @@ view state =
         }
 
 
-example : Input MyRecordState MyRecordState PetOwner
+example : Input PetOwnerState PetOwnerState PetOwner
 example =
     input_record "my-record" PetOwner
         |> input_field f0 (input_string "name")
