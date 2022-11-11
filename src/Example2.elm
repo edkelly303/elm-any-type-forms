@@ -13,10 +13,17 @@ type MyCustom
     | Blue
 
 
-type alias MyRecord =
+type alias PetOwner =
     { name : String
     , age : Int
-    , pet : { petName : String, petAge : Int }
+    , pet : Pet
+    , redNumber : MyCustom
+    }
+
+
+type alias Pet =
+    { petName : String
+    , petAge : Int
     }
 
 
@@ -32,7 +39,13 @@ type alias MyRecordState =
     ( InputState String String
     , ( InputState String String
       , ( InputState PetState PetState
-        , End
+        , ( InputState
+                ( InputState String String, End )
+                ( InputState String String
+                , End
+                )
+          , End
+          )
         )
       )
     )
@@ -60,17 +73,18 @@ view state =
         }
 
 
-example : Input MyRecordState MyRecordState MyRecord
+example : Input MyRecordState MyRecordState PetOwner
 example =
-    input_record "my-record" MyRecord
+    input_record "my-record" PetOwner
         |> input_field f0 (input_string "name")
         |> input_field f1 (input_int "age")
         |> input_field f2
-            (input_record "my-record" MyRecord
+            (input_record "my-pet" Pet
                 |> input_field f0 (input_string "pet's name")
                 |> input_field f1 (input_int "pet's age")
                 |> input_endRecord
             )
+        |> input_field f3 (input_tag1 Red (input_int "red number"))
         -- |> input_field f2
         --    (input_customType
         --        |> input_tag1 f0 Red input_int
@@ -81,6 +95,16 @@ example =
         |> input_endRecord
 
 
+input_tag1 :
+    (output -> tag)
+    -> Input state delta output
+    -> Input ( { state : state, delta : Maybe delta }, End ) ( { state : state, delta : Maybe delta }, End ) tag
+input_tag1 tag input =
+    input_record input.id tag
+        |> input_field f0 input
+        |> input_endRecord
+
+
 input_record id toOutput =
     { id = id
     , toOutput = toOutput
@@ -88,6 +112,7 @@ input_record id toOutput =
     , states = identity
     , updater = identity
     , viewer = identity
+    , parser = identity
     }
 
 
@@ -102,6 +127,7 @@ input_field sel f rec =
     , states = rec.states << Tuple.pair { state = f.init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
+    , parser = rec.parser >> recordStateParser
     }
 
 
@@ -117,7 +143,7 @@ input_endRecord rec =
     , init = inits
     , update = \delta state -> updateRecordStates rec.updater fields delta state
     , view = \{ state } -> viewRecordStates rec.viewer inits fields state
-    , parse = \state -> Err ""
+    , parse = \state -> parseRecordStates rec.parser rec.toOutput fields state
     , validators = []
     , debounce = 0
     }
@@ -125,6 +151,23 @@ input_endRecord rec =
 
 type End
     = End
+
+
+parseRecordStates parser toOutput fields states =
+    parser (\output End End -> output) (Ok toOutput) fields states
+
+
+recordStateParser next toOutputResult ( { field }, fields ) ( { state }, states ) =
+    next
+        (case ( toOutputResult, field.parse state ) of
+            ( Ok toOutput, Ok parsed ) ->
+                Ok (toOutput parsed)
+
+            _ ->
+                Err ""
+        )
+        fields
+        states
 
 
 viewRecordStates viewer inits fields states =
