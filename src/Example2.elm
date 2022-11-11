@@ -58,27 +58,36 @@ type Msg
 main : Program () PetOwnerState Msg
 main =
     Browser.element
-        { init = \() -> ( example.init, Cmd.none )
-        , view = view >> H.map FormMsg
+        { init = \() -> ( petOwnerForm.init, Cmd.none )
+        , view = petOwnerForm.view
         , update =
             \msg model ->
                 case msg of
                     FormMsg m ->
-                        ( example.update m model, Cmd.none )
+                        ( petOwnerForm.update m model, Cmd.none )
         , subscriptions = \_ -> Sub.none
         }
 
 
-view state =
-    example.view
-        { state = state
-        , status = Intact
-        , id = ""
-        }
+type alias Form state delta output msg =
+    { init : state
+    , update : delta -> state -> state
+    , view : state -> Html msg
+    , submit : state -> Result String output
+    }
 
 
-example : Input PetOwnerState PetOwnerState PetOwner
-example =
+toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
+toForm toMsg input =
+    { init = input.init
+    , update = input.update
+    , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
+    , submit = input.parse
+    }
+
+
+petOwnerForm : Form PetOwnerState PetOwnerState PetOwner Msg
+petOwnerForm =
     input_record "my-record" PetOwner
         |> input_field f0 (input_string "name")
         |> input_field f1 (input_int "age")
@@ -97,6 +106,7 @@ example =
         --        |> input_endCustomType
         --    )
         |> input_endRecord
+        |> toForm FormMsg
 
 
 input_tag1 :
