@@ -98,11 +98,11 @@ petOwnerForm =
                 |> input_endRecord
             )
         |> input_field f3 (input_tag1 Red (input_int "red number"))
-        -- |> input_field f2
-        --    (input_customType
-        --        |> input_tag1 f0 Red input_int
-        --        |> input_tag1 f1 Green input_string
-        --        |> input_tag0 f2 Blue
+        -- |> input_field f4
+        --    (input_customType "customType"
+        --        |> input_field f0 (input_tag1 Red (input_int "red"))
+        --        |> input_field f1 (input_tag1 Green (input_string "green"))
+        --        |> input_field f2 (input_tag0 Blue "blue")
         --        |> input_endCustomType
         --    )
         |> input_endRecord
