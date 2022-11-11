@@ -7,12 +7,6 @@ import Html.Events as HE
 import Result.Extra
 
 
-type alias MyOutput =
-    { custom : MyCustom
-    , record : MyRecord
-    }
-
-
 type MyCustom
     = Red Int
     | Green String
@@ -22,7 +16,26 @@ type MyCustom
 type alias MyRecord =
     { name : String
     , age : Int
+    , pet : { petName : String, petAge : Int }
     }
+
+
+type alias PetState =
+    ( InputState String String
+    , ( InputState String String
+      , End
+      )
+    )
+
+
+type alias MyRecordState =
+    ( InputState String String
+    , ( InputState String String
+      , ( InputState PetState PetState
+        , End
+        )
+      )
+    )
 
 
 type Msg
@@ -40,30 +53,24 @@ main =
 
 
 view state =
-    H.div []
-        (example.view
-            { state = state
-            , status = Intact
-            , id = ""
-            , toMsg = identity
-            }
-        )
+    example.view
+        { state = state
+        , status = Intact
+        , id = ""
+        }
 
 
-example :
-    { id : String
-    , init : MyRecordState
-    , update : MyRecordState -> MyRecordState -> MyRecordState
-    , view : { n | state : MyRecordState } -> List (Html MyRecordState)
-    , parse : t -> Result String value
-    , validators : List u
-    , debounce : number
-    }
+example : Input MyRecordState MyRecordState MyRecord
 example =
-    -- form_new FormMsg
     input_record "my-record" MyRecord
         |> input_field f0 (input_string "name")
         |> input_field f1 (input_int "age")
+        |> input_field f2
+            (input_record "my-record" MyRecord
+                |> input_field f0 (input_string "pet's name")
+                |> input_field f1 (input_int "pet's age")
+                |> input_endRecord
+            )
         -- |> input_field f2
         --    (input_customType
         --        |> input_tag1 f0 Red input_int
@@ -86,14 +93,6 @@ input_record id toOutput =
 
 type alias InputState state delta =
     { state : state, delta : Maybe delta }
-
-
-type alias MyRecordState =
-    ( InputState String String
-    , ( InputState String String
-      , End
-      )
-    )
 
 
 input_field sel f rec =
@@ -131,18 +130,21 @@ type End
 viewRecordStates viewer inits fields states =
     viewer (\list _ End End -> list) [] inits fields states
         |> List.reverse
+        |> H.div []
 
 
 recordStateViewer next list emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
     next
-        (field.view
+        ((field.view
             { state = state
             , status = Intact
-            , toMsg =
-                \delta ->
-                    selector.set (\data -> { data | delta = Just delta }) emptyDeltas
             , id = field.id
             }
+            |> H.map
+                (\delta ->
+                    selector.set (\data -> { data | delta = Just delta }) emptyDeltas
+                )
+         )
             :: list
         )
         emptyDeltas
@@ -165,20 +167,19 @@ recordStateUpdater next ( { field }, fields ) ( { delta }, deltas ) ( state, sta
     )
 
 
-type alias Input state delta output element msg =
+type alias Input state delta output =
     { id : String
     , init : state
     , update : delta -> state -> state
-    , view : ViewConfig state delta msg -> element
+    , view : ViewConfig state -> Html delta
     , parse : state -> Result String output
     , validators : List { check : output -> Bool, feedback : Result String String }
     , debounce : Float
     }
 
 
-type alias ViewConfig state delta msg =
+type alias ViewConfig state =
     { id : String
-    , toMsg : delta -> msg
     , state : state
     , status : Status
     }
@@ -190,7 +191,7 @@ type Status
     | Idle (List (Result String String))
 
 
-input_int : String -> Input String String Int (Html msg) msg
+input_int : String -> Input String String Int
 input_int id =
     { id = id
     , init = "1"
@@ -209,7 +210,7 @@ input_int id =
     }
 
 
-input_string : String -> Input String String String (Html msg) msg
+input_string : String -> Input String String String
 input_string id =
     { id = id
     , init = "I'm a string!"
@@ -273,14 +274,14 @@ instantiateSelector selector =
     }
 
 
-stringView : ViewConfig String String msg -> Html msg
+stringView : ViewConfig String -> Html String
 stringView fieldState =
     H.div [ HA.style "margin-bottom" "30px" ]
         [ H.div
             [ HA.style "margin-bottom" "10px" ]
             [ H.text fieldState.id ]
         , H.input
-            [ HE.onInput fieldState.toMsg
+            [ HE.onInput identity
             , HA.value fieldState.state
             , HA.style "background-color"
                 (case fieldState.status of
