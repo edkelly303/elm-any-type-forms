@@ -97,11 +97,11 @@ toForm toMsg input =
 
 petOwnerForm : Form PetOwnerState PetOwnerState PetOwner Msg
 petOwnerForm =
-    input_record "my-record" PetOwner
+    input_record "pet owner" PetOwner
         |> input_field f0 (input_string "name")
         |> input_field f1 (input_int "age")
         |> input_field f2
-            (input_record "my-pet" Pet
+            (input_record "pet" Pet
                 |> input_field f0 (input_string "pet's name")
                 |> input_field f1 (input_int "pet's age")
                 |> input_endRecord
