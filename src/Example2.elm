@@ -40,12 +40,8 @@ type alias PetOwnerState =
     , ( InputState String String
       , ( InputState PetState PetState
         , ( InputState
-                ( InputState String String
-                , End
-                )
-                ( InputState String String
-                , End
-                )
+                { selectedTag : Int, tagStates : ( InputState String String, ( InputState String String, ( InputState String String, End ) ) ) }
+                (CustomTypeDelta ( InputState String String, ( InputState String String, ( InputState String String, End ) ) ))
           , End
           )
         )
@@ -106,24 +102,15 @@ petOwnerForm =
                 |> input_field f1 (input_int "pet's age")
                 |> input_endRecord
             )
-        |> input_tag1 f3 Red (input_int "red number")
-        -- |> input_field f4
-        --    (input_customType "customType"
-        --        |> input_tag1 f0 Red (input_int "red")
-        --        |> input_tag1 f1 Green (input_string "green")
-        --        |> input_tag0 f2 Blue "blue"
-        --        |> input_endCustomType
-        --    )
+        |> input_field f3
+            (input_customType ""
+                |> input_tag1 f0 Red (input_int "red number")
+                |> input_tag1 f1 Green (input_string "green stringr")
+                |> input_tag1 f2 (always Blue) (input_int "blue nothing")
+                |> input_endCustomType
+            )
         |> input_endRecord
         |> toForm FormMsg
-
-
-input_tag1 sel tag input =
-    input_field sel
-        (input_record input.id tag
-            |> input_field f0 input
-            |> input_endRecord
-        )
 
 
 input_record id toOutput =
@@ -161,6 +148,7 @@ input_endRecord rec =
             rec.states End
     in
     { id = rec.id
+    , index = 0
     , init = inits
     , update = \delta state -> updateRecordStates rec.updater fields delta state
     , view = \{ state } -> viewRecordStates rec.viewer inits fields state
@@ -168,6 +156,65 @@ input_endRecord rec =
     , validators = []
     , debounce = 0
     }
+
+
+input_customType id =
+    { id = id
+    , fields = identity
+    , states = identity
+    , updater = identity
+    , viewer = identity
+    , parser = identity
+    }
+
+
+input_tag1 sel tag input rec =
+    { id = rec.id
+    , fields =
+        rec.fields
+            << Tuple.pair
+                { field =
+                    input_record input.id tag
+                        |> input_field f0 input
+                        |> input_endRecord
+                , selector = instantiateSelector sel
+                }
+    , states = rec.states << Tuple.pair { state = input.init, delta = Nothing }
+    , updater = rec.updater >> recordStateUpdater
+    , viewer = rec.viewer >> selectedTagViewer
+    , parser = rec.parser >> recordStateParser
+    }
+
+
+input_endCustomType rec =
+    let
+        fields =
+            rec.fields End
+
+        inits =
+            rec.states End
+    in
+    { id = rec.id
+    , index = 0
+    , init = { tagStates = inits, selectedTag = 0 }
+    , update =
+        \delta state ->
+            case delta of
+                TagSelected idx ->
+                    { state | selectedTag = idx }
+
+                TagDeltaReceived tagDelta ->
+                    { state | tagStates = updateRecordStates rec.updater fields tagDelta state.tagStates }
+    , view = \{ state } -> viewSelectedTagState rec.viewer inits fields state.tagStates
+    , parse = \state -> Debug.todo "parseSelectedTagState"
+    , validators = []
+    , debounce = 0
+    }
+
+
+type CustomTypeDelta delta
+    = TagSelected Int
+    | TagDeltaReceived delta
 
 
 type End
@@ -187,6 +234,35 @@ recordStateParser next toOutputResult ( { field }, fields ) ( { state }, states 
             _ ->
                 Err ""
         )
+        fields
+        states
+
+
+viewSelectedTagState viewer selectedTag inits fields states =
+    viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag inits fields states
+        |> Maybe.withDefault (H.text "ERROR!")
+
+
+selectedTagViewer next _ selectedTag emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
+    next
+        (if field.index == selectedTag then
+            Just
+                (field.view
+                    { state = state
+                    , status = Intact
+                    , id = field.id
+                    }
+                    |> H.map
+                        (\delta ->
+                            selector.set (\data -> { data | delta = Just delta }) emptyDeltas
+                        )
+                )
+
+         else
+            Nothing
+        )
+        selectedTag
+        emptyDeltas
         fields
         states
 
@@ -233,6 +309,7 @@ recordStateUpdater next ( { field }, fields ) ( { delta }, deltas ) ( state, sta
 
 type alias Input state delta output =
     { id : String
+    , index : Int
     , init : state
     , update : delta -> state -> state
     , view : ViewConfig state -> Html delta
@@ -258,6 +335,7 @@ type Status
 input_int : String -> Input String String Int
 input_int id =
     { id = id
+    , index = 0
     , init = "1"
     , update = \delta _ -> delta
     , view = stringView
@@ -277,6 +355,7 @@ input_int id =
 input_string : String -> Input String String String
 input_string id =
     { id = id
+    , index = 0
     , init = "I'm a string!"
     , update = \delta _ -> delta
     , view = stringView
