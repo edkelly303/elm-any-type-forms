@@ -11,10 +11,8 @@ import Result.Extra
 -- Userland types
 
 
-type MyCustom
-    = Red Int
-    | Green String
-    | Blue
+type Msg
+    = FormMsg PetOwnerInput
 
 
 type alias PetOwner =
@@ -24,14 +22,17 @@ type alias PetOwner =
     }
 
 
+type alias PetOwnerInput =
+    Record3
+        StringInput
+        IntInput
+        (NestedRecord PetInput)
+
+
 type alias Pet =
     { petName : String
     , petAge : Int
     }
-
-
-type Msg
-    = FormMsg PetOwnerInput
 
 
 type alias PetInput =
@@ -40,11 +41,10 @@ type alias PetInput =
         IntInput
 
 
-type alias PetOwnerInput =
-    Record3
-        StringInput
-        IntInput
-        (NestedRecord PetInput)
+type MyCustom
+    = Red Int
+    | Green String
+    | Blue
 
 
 petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
