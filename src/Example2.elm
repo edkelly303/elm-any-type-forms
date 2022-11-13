@@ -7,6 +7,10 @@ import Html.Events as HE
 import Result.Extra
 
 
+
+-- Userland types
+
+
 type MyCustom
     = Red Int
     | Green String
@@ -17,7 +21,8 @@ type alias PetOwner =
     { name : String
     , age : Int
     , pet : Pet
-    , redNumber : MyCustom
+
+    -- , blah : MyCustom
     }
 
 
@@ -27,33 +32,54 @@ type alias Pet =
     }
 
 
-type alias PetState =
-    ( InputState String String
-    , ( InputState String String
-      , End
-      )
-    )
-
-
-type alias PetOwnerState =
-    ( InputState String String
-    , ( InputState String String
-      , ( InputState PetState PetState
-        , ( InputState
-                { selectedTag : Int, tagStates : ( InputState String String, ( InputState String String, ( InputState String String, End ) ) ) }
-                (CustomTypeDelta ( InputState String String, ( InputState String String, ( InputState String String, End ) ) ))
-          , End
-          )
-        )
-      )
-    )
-
-
 type Msg
-    = FormMsg PetOwnerState
+    = FormMsg PetOwnerInput
 
 
-main : Program () PetOwnerState Msg
+type alias PetInput =
+    Record2
+        StringInput
+        IntInput
+
+
+type alias PetOwnerInput =
+    Record3
+        StringInput
+        IntInput
+        (NestedRecord PetInput)
+
+
+toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
+toForm toMsg input =
+    { init = input.init
+    , update = input.update
+    , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
+    , submit = input.parse
+    }
+
+
+petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
+petOwnerForm =
+    input_record "pet owner" PetOwner
+        |> input_field f0 (input_string "name")
+        |> input_field f1 (input_int "age")
+        |> input_field f2
+            (input_record "pet" Pet
+                |> input_field f0 (input_string "pet's name")
+                |> input_field f1 (input_int "pet's age")
+                |> input_endRecord
+            )
+        -- |> input_field f3
+        --     (input_customType ""
+        --         |> input_tag1 f0 Red (input_int "red number")
+        --         |> input_tag1 f1 Green (input_string "green stringr")
+        --         |> input_endCustomType
+        --     )
+        |> input_endRecord
+        |> toForm FormMsg
+
+
+main : Program () PetOwnerInput Msg
 main =
     Browser.element
         { init = \() -> ( petOwnerForm.init, Cmd.none )
@@ -74,43 +100,44 @@ main =
         }
 
 
+
+-- Library types
+
+
+type alias InputState state delta =
+    { state : state, delta : Maybe delta }
+
+
+type alias NestedRecord a =
+    InputState a a
+
+
+type alias Record1 a =
+    ( a, End )
+
+
+type alias Record2 a b =
+    ( a, ( b, End ) )
+
+
+type alias Record3 a b c =
+    ( a, ( b, ( c, End ) ) )
+
+
+type alias Record4 a b c d =
+    ( a, ( b, ( c, ( d, End ) ) ) )
+
+
+type alias Record5 a b c d e =
+    ( a, ( b, ( c, ( d, ( e, End ) ) ) ) )
+
+
 type alias Form state delta output msg =
     { init : state
     , update : delta -> state -> state
     , view : state -> Html msg
     , submit : state -> Result String output
     }
-
-
-toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
-toForm toMsg input =
-    { init = input.init
-    , update = input.update
-    , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
-    , submit = input.parse
-    }
-
-
-petOwnerForm : Form PetOwnerState PetOwnerState PetOwner Msg
-petOwnerForm =
-    input_record "pet owner" PetOwner
-        |> input_field f0 (input_string "name")
-        |> input_field f1 (input_int "age")
-        |> input_field f2
-            (input_record "pet" Pet
-                |> input_field f0 (input_string "pet's name")
-                |> input_field f1 (input_int "pet's age")
-                |> input_endRecord
-            )
-        |> input_field f3
-            (input_customType ""
-                |> input_tag1 f0 Red (input_int "red number")
-                |> input_tag1 f1 Green (input_string "green stringr")
-                |> input_tag1 f2 (always Blue) (input_int "blue nothing")
-                |> input_endCustomType
-            )
-        |> input_endRecord
-        |> toForm FormMsg
 
 
 input_record id toOutput =
@@ -122,10 +149,6 @@ input_record id toOutput =
     , viewer = identity
     , parser = identity
     }
-
-
-type alias InputState state delta =
-    { state : state, delta : Maybe delta }
 
 
 input_field sel f rec =
@@ -169,17 +192,20 @@ input_customType id =
 
 
 input_tag1 sel tag input rec =
+    let
+        f =
+            input_record input.id tag
+                |> input_field f0 input
+                |> input_endRecord
+    in
     { id = rec.id
     , fields =
         rec.fields
             << Tuple.pair
-                { field =
-                    input_record input.id tag
-                        |> input_field f0 input
-                        |> input_endRecord
+                { field = f
                 , selector = instantiateSelector sel
                 }
-    , states = rec.states << Tuple.pair { state = input.init, delta = Nothing }
+    , states = rec.states << Tuple.pair { state = f.init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
     , parser = rec.parser >> recordStateParser
@@ -205,7 +231,7 @@ input_endCustomType rec =
 
                 TagDeltaReceived tagDelta ->
                     { state | tagStates = updateRecordStates rec.updater fields tagDelta state.tagStates }
-    , view = \{ state } -> viewSelectedTagState rec.viewer inits fields state.tagStates
+    , view = Debug.todo "view" --\{ state } -> viewSelectedTagState rec.viewer inits fields state.tagStates
     , parse = \state -> Debug.todo "parseSelectedTagState"
     , validators = []
     , debounce = 0
@@ -332,6 +358,10 @@ type Status
     | Idle (List (Result String String))
 
 
+type alias IntInput =
+    InputState String String
+
+
 input_int : String -> Input String String Int
 input_int id =
     { id = id
@@ -350,6 +380,10 @@ input_int id =
     , validators = []
     , debounce = 0
     }
+
+
+type alias StringInput =
+    InputState String String
 
 
 input_string : String -> Input String String String
