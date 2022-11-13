@@ -28,13 +28,10 @@ type alias PetOwnerInput =
         StringInput
         IntInput
         (NestedRecord PetInput)
-        (CustomType2 IntInput StringInput)
-
-
-type alias CustomType2 a b =
-    InputState
-        { tagStates : Record2 a b, selectedTag : Int }
-        (CustomTypeDelta (Record2 a b))
+        (CustomType2
+            IntInput
+            StringInput
+        )
 
 
 type alias Pet =
@@ -175,6 +172,12 @@ type alias Record4 a b c d =
 
 type alias Record5 a b c d e =
     ( a, ( b, ( c, ( d, ( e, End ) ) ) ) )
+
+
+type alias CustomType2 a b =
+    InputState
+        { tagStates : Record2 a b, selectedTag : Int }
+        (CustomTypeDelta (Record2 a b))
 
 
 toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
