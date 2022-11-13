@@ -21,8 +21,6 @@ type alias PetOwner =
     { name : String
     , age : Int
     , pet : Pet
-
-    -- , blah : MyCustom
     }
 
 
@@ -47,15 +45,6 @@ type alias PetOwnerInput =
         StringInput
         IntInput
         (NestedRecord PetInput)
-
-
-toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
-toForm toMsg input =
-    { init = input.init
-    , update = input.update
-    , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
-    , submit = input.parse
-    }
 
 
 petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
@@ -104,8 +93,53 @@ main =
 -- Library types
 
 
+type End
+    = End
+
+
+type alias Form state delta output msg =
+    { init : state
+    , update : delta -> state -> state
+    , view : state -> Html msg
+    , submit : state -> Result String output
+    }
+
+
+type alias Input state delta output =
+    { id : String
+    , index : Int
+    , init : state
+    , update : delta -> state -> state
+    , view : ViewConfig state -> Html delta
+    , parse : state -> Result String output
+    , validators : List { check : output -> Bool, feedback : Result String String }
+    , debounce : Float
+    }
+
+
+type alias ViewConfig state =
+    { id : String
+    , state : state
+    , status : Status
+    }
+
+
+type Status
+    = Intact
+    | Debouncing
+    | Idle (List (Result String String))
+
+
 type alias InputState state delta =
     { state : state, delta : Maybe delta }
+
+
+type alias IntInput =
+    InputState String String
+
+
+type alias StringInput =
+    InputState String String
 
 
 type alias NestedRecord a =
@@ -132,11 +166,45 @@ type alias Record5 a b c d e =
     ( a, ( b, ( c, ( d, ( e, End ) ) ) ) )
 
 
-type alias Form state delta output msg =
-    { init : state
-    , update : delta -> state -> state
-    , view : state -> Html msg
-    , submit : state -> Result String output
+toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
+toForm toMsg input =
+    { init = input.init
+    , update = input.update
+    , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
+    , submit = input.parse
+    }
+
+
+input_int : String -> Input String String Int
+input_int id =
+    { id = id
+    , index = 0
+    , init = "1"
+    , update = \delta _ -> delta
+    , view = stringView
+    , parse =
+        \input ->
+            case String.toInt input of
+                Just i ->
+                    Ok i
+
+                Nothing ->
+                    Err "must be a whole number"
+    , validators = []
+    , debounce = 0
+    }
+
+
+input_string : String -> Input String String String
+input_string id =
+    { id = id
+    , index = 0
+    , init = "I'm a string!"
+    , update = \delta _ -> delta
+    , view = stringView
+    , parse = Ok
+    , validators = []
+    , debounce = 500
     }
 
 
@@ -179,6 +247,63 @@ input_endRecord rec =
     , validators = []
     , debounce = 0
     }
+
+
+parseRecordStates parser toOutput fields states =
+    parser (\output End End -> output) (Ok toOutput) fields states
+
+
+recordStateParser next toOutputResult ( { field }, fields ) ( { state }, states ) =
+    next
+        (case ( toOutputResult, field.parse state ) of
+            ( Ok toOutput, Ok parsed ) ->
+                Ok (toOutput parsed)
+
+            _ ->
+                Err ""
+        )
+        fields
+        states
+
+
+viewRecordStates viewer inits fields states =
+    viewer (\list _ End End -> list) [] inits fields states
+        |> List.reverse
+        |> H.div []
+
+
+recordStateViewer next list emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
+    next
+        ((field.view
+            { state = state
+            , status = Intact
+            , id = field.id
+            }
+            |> H.map
+                (\delta ->
+                    selector.set (\data -> { data | delta = Just delta }) emptyDeltas
+                )
+         )
+            :: list
+        )
+        emptyDeltas
+        fields
+        states
+
+
+updateRecordStates updater fields deltas states =
+    updater (\End End End -> End) fields deltas states
+
+
+recordStateUpdater next ( { field }, fields ) ( { delta }, deltas ) ( state, states ) =
+    ( case delta of
+        Nothing ->
+            state
+
+        Just d ->
+            { delta = Nothing, state = field.update d state.state }
+    , next fields deltas states
+    )
 
 
 input_customType id =
@@ -243,27 +368,6 @@ type CustomTypeDelta delta
     | TagDeltaReceived delta
 
 
-type End
-    = End
-
-
-parseRecordStates parser toOutput fields states =
-    parser (\output End End -> output) (Ok toOutput) fields states
-
-
-recordStateParser next toOutputResult ( { field }, fields ) ( { state }, states ) =
-    next
-        (case ( toOutputResult, field.parse state ) of
-            ( Ok toOutput, Ok parsed ) ->
-                Ok (toOutput parsed)
-
-            _ ->
-                Err ""
-        )
-        fields
-        states
-
-
 viewSelectedTagState viewer selectedTag inits fields states =
     viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag inits fields states
         |> Maybe.withDefault (H.text "ERROR!")
@@ -291,112 +395,6 @@ selectedTagViewer next _ selectedTag emptyDeltas ( { field, selector }, fields )
         emptyDeltas
         fields
         states
-
-
-viewRecordStates viewer inits fields states =
-    viewer (\list _ End End -> list) [] inits fields states
-        |> List.reverse
-        |> H.div []
-
-
-recordStateViewer next list emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
-    next
-        ((field.view
-            { state = state
-            , status = Intact
-            , id = field.id
-            }
-            |> H.map
-                (\delta ->
-                    selector.set (\data -> { data | delta = Just delta }) emptyDeltas
-                )
-         )
-            :: list
-        )
-        emptyDeltas
-        fields
-        states
-
-
-updateRecordStates updater fields deltas states =
-    updater (\End End End -> End) fields deltas states
-
-
-recordStateUpdater next ( { field }, fields ) ( { delta }, deltas ) ( state, states ) =
-    ( case delta of
-        Nothing ->
-            state
-
-        Just d ->
-            { delta = Nothing, state = field.update d state.state }
-    , next fields deltas states
-    )
-
-
-type alias Input state delta output =
-    { id : String
-    , index : Int
-    , init : state
-    , update : delta -> state -> state
-    , view : ViewConfig state -> Html delta
-    , parse : state -> Result String output
-    , validators : List { check : output -> Bool, feedback : Result String String }
-    , debounce : Float
-    }
-
-
-type alias ViewConfig state =
-    { id : String
-    , state : state
-    , status : Status
-    }
-
-
-type Status
-    = Intact
-    | Debouncing
-    | Idle (List (Result String String))
-
-
-type alias IntInput =
-    InputState String String
-
-
-input_int : String -> Input String String Int
-input_int id =
-    { id = id
-    , index = 0
-    , init = "1"
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse =
-        \input ->
-            case String.toInt input of
-                Just i ->
-                    Ok i
-
-                Nothing ->
-                    Err "must be a whole number"
-    , validators = []
-    , debounce = 0
-    }
-
-
-type alias StringInput =
-    InputState String String
-
-
-input_string : String -> Input String String String
-input_string id =
-    { id = id
-    , index = 0
-    , init = "I'm a string!"
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse = Ok
-    , validators = []
-    , debounce = 500
-    }
 
 
 
