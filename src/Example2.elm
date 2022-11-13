@@ -358,7 +358,7 @@ input_variant sel input rec =
     , states = rec.states << Tuple.pair { state = input.init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
-    , parser = rec.parser >> recordStateParser
+    , parser = rec.parser >> selectedTagParser
     }
 
 
@@ -391,10 +391,27 @@ input_endCustomType rec =
                     )
                 , viewSelectedTagState rec.viewer state.selectedTag inits fields state.tagStates
                 ]
-    , parse = \state -> Err ""
+    , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fields state.tagStates
     , validators = []
     , debounce = 0
     }
+
+
+parseSelectedTagState parser selectedTag fields states =
+    parser (\result _ End End -> result) (Err "") selectedTag fields states
+
+
+selectedTagParser next result selectedTag ( { field }, fields ) ( { state }, states ) =
+    next
+        (if field.index == selectedTag then
+            field.parse state
+
+         else
+            result
+        )
+        selectedTag
+        fields
+        states
 
 
 type CustomTypeDelta delta
