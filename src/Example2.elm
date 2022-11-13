@@ -70,7 +70,7 @@ petOwnerForm =
                 |> input_endCustomType
             )
         |> input_endRecord
-        |> toForm FormMsg
+        |> input_toForm FormMsg
 
 
 main : Program () PetOwnerInput Msg
@@ -177,8 +177,8 @@ type alias CustomType2 a b =
         (CustomTypeDelta (Record2 a b))
 
 
-toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
-toForm toMsg input =
+input_toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
+input_toForm toMsg input =
     { init = input.init
     , update = input.update
     , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
