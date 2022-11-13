@@ -52,10 +52,7 @@ type MyCustom
     | Blue
 
 
-
--- petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
-
-
+petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
 petOwnerForm =
     input_record "pet owner" PetOwner
         |> input_field f0 (input_string "name")
