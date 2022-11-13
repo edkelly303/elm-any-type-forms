@@ -109,7 +109,7 @@ type alias Form state delta output msg =
     { init : state
     , update : delta -> state -> state
     , view : state -> Html msg
-    , submit : state -> Result String output
+    , submit : state -> Result (List String) output
     }
 
 
@@ -119,7 +119,7 @@ type alias Input state delta output =
     , init : state
     , update : delta -> state -> state
     , view : ViewConfig state -> Html delta
-    , parse : state -> Result String output
+    , parse : state -> Result (List String) output
     , validators : List { check : output -> Bool, feedback : Result String String }
     , debounce : Float
     }
@@ -203,7 +203,7 @@ input_int id =
                     Ok i
 
                 Nothing ->
-                    Err "must be a whole number"
+                    Err [ "must be a whole number" ]
     , validators = []
     , debounce = 0
     }
@@ -237,6 +237,7 @@ input_tag tagger input =
 
 input_record id toOutput =
     { id = id
+    , index = 0
     , toOutput = toOutput
     , fields = identity
     , states = identity
@@ -248,8 +249,9 @@ input_record id toOutput =
 
 input_field sel input rec =
     { id = rec.id
+    , index = rec.index + 1
     , toOutput = rec.toOutput
-    , fields = rec.fields << Tuple.pair { field = input, selector = instantiateSelector sel }
+    , fields = rec.fields << Tuple.pair { field = { input | index = rec.index }, selector = instantiateSelector sel }
     , states = rec.states << Tuple.pair { state = input.init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
@@ -286,8 +288,14 @@ recordStateParser next toOutputResult ( { field }, fields ) ( { state }, states 
             ( Ok toOutput, Ok parsed ) ->
                 Ok (toOutput parsed)
 
-            _ ->
-                Err ""
+            ( Ok _, Err es ) ->
+                Err es
+
+            ( Err es, Ok _ ) ->
+                Err es
+
+            ( Err es, Err es2 ) ->
+                Err (es ++ es2)
         )
         fields
         states
@@ -398,7 +406,12 @@ input_endCustomType rec =
 
 
 parseSelectedTagState parser selectedTag fields states =
-    parser (\result _ End End -> result) (Err "") selectedTag fields states
+    parser
+        (\result _ End End -> result)
+        (Err [ "tag index " ++ String.fromInt selectedTag ++ " not found" ])
+        selectedTag
+        fields
+        states
 
 
 selectedTagParser next result selectedTag ( { field }, fields ) ( { state }, states ) =
