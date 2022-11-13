@@ -19,14 +19,22 @@ type alias PetOwner =
     { name : String
     , age : Int
     , pet : Pet
+    , blah : MyCustom
     }
 
 
 type alias PetOwnerInput =
-    Record3
+    Record4
         StringInput
         IntInput
         (NestedRecord PetInput)
+        (CustomType2 IntInput StringInput)
+
+
+type alias CustomType2 a b =
+    InputState
+        { tagStates : Record2 a b, selectedTag : Int }
+        (CustomTypeDelta (Record2 a b))
 
 
 type alias Pet =
@@ -47,7 +55,10 @@ type MyCustom
     | Blue
 
 
-petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
+
+-- petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
+
+
 petOwnerForm =
     input_record "pet owner" PetOwner
         |> input_field f0 (input_string "name")
@@ -58,12 +69,12 @@ petOwnerForm =
                 |> input_field f1 (input_int "pet's age")
                 |> input_endRecord
             )
-        -- |> input_field f3
-        --     (input_customType ""
-        --         |> input_tag1 f0 Red (input_int "red number")
-        --         |> input_tag1 f1 Green (input_string "green stringr")
-        --         |> input_endCustomType
-        --     )
+        |> input_field f3
+            (input_customType ""
+                |> input_variant f0 (input_tag Red (input_int "red number"))
+                |> input_variant f1 (input_tag Green (input_string "green string"))
+                |> input_endCustomType
+            )
         |> input_endRecord
         |> toForm FormMsg
 
@@ -208,6 +219,19 @@ input_string id =
     }
 
 
+input_tag : (a -> b) -> Input String String a -> Input String String b
+input_tag tagger input =
+    { id = input.id
+    , index = 0
+    , init = input.init
+    , update = input.update
+    , view = input.view
+    , parse = input.parse >> Result.map tagger
+    , validators = []
+    , debounce = 0
+    }
+
+
 input_record id toOutput =
     { id = id
     , toOutput = toOutput
@@ -219,11 +243,11 @@ input_record id toOutput =
     }
 
 
-input_field sel f rec =
+input_field sel input rec =
     { id = rec.id
     , toOutput = rec.toOutput
-    , fields = rec.fields << Tuple.pair { field = f, selector = instantiateSelector sel }
-    , states = rec.states << Tuple.pair { state = f.init, delta = Nothing }
+    , fields = rec.fields << Tuple.pair { field = input, selector = instantiateSelector sel }
+    , states = rec.states << Tuple.pair { state = input.init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
     , parser = rec.parser >> recordStateParser
@@ -308,6 +332,8 @@ recordStateUpdater next ( { field }, fields ) ( { delta }, deltas ) ( state, sta
 
 input_customType id =
     { id = id
+    , index = 0
+    , names = []
     , fields = identity
     , states = identity
     , updater = identity
@@ -316,21 +342,17 @@ input_customType id =
     }
 
 
-input_tag1 sel tag input rec =
-    let
-        f =
-            input_record input.id tag
-                |> input_field f0 input
-                |> input_endRecord
-    in
+input_variant sel input rec =
     { id = rec.id
+    , index = rec.index + 1
+    , names = input.id :: rec.names
     , fields =
         rec.fields
             << Tuple.pair
-                { field = f
+                { field = { input | index = rec.index }
                 , selector = instantiateSelector sel
                 }
-    , states = rec.states << Tuple.pair { state = f.init, delta = Nothing }
+    , states = rec.states << Tuple.pair { state = input.init, delta = Nothing }
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
     , parser = rec.parser >> recordStateParser
@@ -356,8 +378,17 @@ input_endCustomType rec =
 
                 TagDeltaReceived tagDelta ->
                     { state | tagStates = updateRecordStates rec.updater fields tagDelta state.tagStates }
-    , view = Debug.todo "view" --\{ state } -> viewSelectedTagState rec.viewer inits fields state.tagStates
-    , parse = \state -> Debug.todo "parseSelectedTagState"
+    , view =
+        \{ state } ->
+            H.div []
+                [ H.div []
+                    (List.indexedMap
+                        (\index name -> H.button [ HE.onClick (TagSelected index) ] [ H.text name ])
+                        (List.reverse rec.names)
+                    )
+                , viewSelectedTagState rec.viewer state.selectedTag inits fields state.tagStates
+                ]
+    , parse = \state -> Err ""
     , validators = []
     , debounce = 0
     }
@@ -370,10 +401,11 @@ type CustomTypeDelta delta
 
 viewSelectedTagState viewer selectedTag inits fields states =
     viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag inits fields states
+        |> Maybe.map (H.map TagDeltaReceived)
         |> Maybe.withDefault (H.text "ERROR!")
 
 
-selectedTagViewer next _ selectedTag emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
+selectedTagViewer next maybeView selectedTag emptyDeltas ( { field, selector }, fields ) ( { state }, states ) =
     next
         (if field.index == selectedTag then
             Just
@@ -389,7 +421,7 @@ selectedTagViewer next _ selectedTag emptyDeltas ( { field, selector }, fields )
                 )
 
          else
-            Nothing
+            maybeView
         )
         selectedTag
         emptyDeltas
