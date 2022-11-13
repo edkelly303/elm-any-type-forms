@@ -64,9 +64,9 @@ petOwnerForm =
                 |> input_endRecord
             )
         |> input_field f3
-            (input_customType ""
-                |> input_variant f0 (input_tag Red (input_int "red number"))
-                |> input_variant f1 (input_tag Green (input_string "green string"))
+            (input_customType "custom type"
+                |> input_variant f0 (input_tag1 Red (input_int "red number"))
+                |> input_variant f1 (input_tag1 Green (input_string "green string"))
                 |> input_endCustomType
             )
         |> input_endRecord
@@ -219,8 +219,8 @@ input_string id =
     }
 
 
-input_tag : (a -> b) -> Input String String a -> Input String String b
-input_tag tagger input =
+input_tag1 : (a -> b) -> Input String String a -> Input String String b
+input_tag1 tagger input =
     { id = input.id
     , index = 0
     , init = input.init
@@ -389,7 +389,8 @@ input_endCustomType rec =
     , view =
         \{ state } ->
             H.div []
-                [ H.div []
+                [ H.text rec.id
+                , H.div []
                     (List.indexedMap
                         (\index name -> H.button [ HE.onClick (TagSelected index) ] [ H.text name ])
                         (List.reverse rec.names)
