@@ -180,12 +180,23 @@ type alias Fields5 a b c d e =
     ( a, ( b, ( c, ( d, ( e, End ) ) ) ) )
 
 
-type alias CustomType fields =
+type alias CustomType variants =
     InputState
-        { tagStates : fields, selectedTag : Int }
-        (CustomTypeDelta fields)
+        (CustomTypeState variants)
+        (CustomTypeDelta variants)
 
 
+type alias CustomTypeState variants = 
+    { tagStates : variants
+    , selectedTag : Int 
+    }
+
+
+type CustomTypeDelta variants
+    = TagSelected Int
+    | TagDeltaReceived variants
+ 
+ 
 input_toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
 input_toForm toMsg input =
     { init = input.init
@@ -434,9 +445,7 @@ selectedTagParser next result selectedTag ( { field }, fields ) ( { state }, sta
         states
 
 
-type CustomTypeDelta delta
-    = TagSelected Int
-    | TagDeltaReceived delta
+
 
 
 viewSelectedTagState viewer selectedTag inits fields states =
