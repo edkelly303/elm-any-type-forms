@@ -12,28 +12,32 @@ import Result.Extra
 
 
 type Msg
-    = FormMsg PetOwnerInput
+    = FormMsg (CustomTypeDelta PetOwnerInput)
 
 
 type alias PetOwner =
-    { name : String
-    , age : Int
-    , pet : Pet
-    , blah : MyCustom
-    }
+    -- { name : String
+    -- , age : Int
+    -- , pet : Pet
+    -- , blah : MyCustom
+    -- }
+    MyCustom
 
 
 type alias PetOwnerInput =
-    Fields4
-        StringInput
+    -- Fields4
+    --     StringInput
+    --     IntInput
+    --     (Record PetInput)
+    -- (CustomType
+    Fields3
         IntInput
+        StringInput
         (Record PetInput)
-        (CustomType 
-            (Fields2
-                IntInput
-                StringInput
-            )
-        )
+
+
+
+-- )
 
 
 type alias Pet =
@@ -51,38 +55,45 @@ type alias PetInput =
 type MyCustom
     = Red Int
     | Green String
-    | Blue
+    | Blue Pet
 
 
-petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
+petOwnerForm : Form (CustomTypeState PetOwnerInput) (CustomTypeDelta PetOwnerInput) PetOwner Msg
 petOwnerForm =
     let
-        fields : Input PetOwnerInput PetOwnerInput PetOwner
-        fields = 
-            input_record "pet owner" PetOwner
-                |> input_field f0 (input_string "name")
-                |> input_field f1 (input_int "age")
-                |> input_field f2
-                    (input_record "pet" Pet
-                        |> input_field f0 (input_string "pet's name")
-                        |> input_field f1 (input_int "pet's age")
-                        |> input_endRecord
+        fields =
+            -- input_record "pet owner" PetOwner
+            --     |> input_field f0 (input_string "name")
+            --     |> input_field f1 (input_int "age")
+            --     |> input_field f2
+            --         (input_record "pet" Pet
+            --             |> input_field f0 (input_string "pet's name")
+            --             |> input_field f1 (input_int "pet's age")
+            --             |> input_endRecord
+            --         )
+            --     |> input_field f3
+            -- |> input_endRecord
+            input_customType "custom type"
+                |> input_variant f0 (input_tag1 Red (input_int "red number"))
+                |> input_variant f1 (input_tag1 Green (input_string "green string"))
+                |> input_variant f2
+                    (input_tag1 Blue
+                        (input_record "pet" Pet
+                            |> input_field f0 (input_string "pet's name")
+                            |> input_field f1 (input_int "pet's age")
+                            |> input_endRecord
+                        )
                     )
-                |> input_field f3
-                    (input_customType "custom type"
-                        |> input_variant f0 (input_tag1 Red (input_int "red number"))
-                        |> input_variant f1 (input_tag1 Green (input_string "green string"))
-                        |> input_endCustomType
-                    )
-                |> input_endRecord
-        
-        init : PetOwnerInput
-        init = fields.init
-    in 
+                |> input_endCustomType
+
+    in
     input_toForm FormMsg fields
 
 
-main : Program () PetOwnerInput Msg
+
+-- main : Program () PetOwnerInput Msg
+
+
 main =
     Browser.element
         { init = \() -> ( petOwnerForm.init, Cmd.none )
@@ -186,17 +197,17 @@ type alias CustomType variants =
         (CustomTypeDelta variants)
 
 
-type alias CustomTypeState variants = 
+type alias CustomTypeState variants =
     { tagStates : variants
-    , selectedTag : Int 
+    , selectedTag : Int
     }
 
 
 type CustomTypeDelta variants
     = TagSelected Int
     | TagDeltaReceived variants
- 
- 
+
+
 input_toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
 input_toForm toMsg input =
     { init = input.init
@@ -239,7 +250,7 @@ input_string id =
     }
 
 
-input_tag1 : (a -> b) -> Input String String a -> Input String String b
+input_tag1 : (a -> b) -> Input state delta a -> Input state delta b
 input_tag1 tagger input =
     { id = input.id
     , index = 0
@@ -443,9 +454,6 @@ selectedTagParser next result selectedTag ( { field }, fields ) ( { state }, sta
         selectedTag
         fields
         states
-
-
-
 
 
 viewSelectedTagState viewer selectedTag inits fields states =
