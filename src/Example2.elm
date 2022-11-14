@@ -24,13 +24,15 @@ type alias PetOwner =
 
 
 type alias PetOwnerInput =
-    Record4
+    Fields4
         StringInput
         IntInput
-        (NestedRecord PetInput)
-        (CustomType2
-            IntInput
-            StringInput
+        (Record PetInput)
+        (CustomType 
+            (Fields2
+                IntInput
+                StringInput
+            )
         )
 
 
@@ -41,7 +43,7 @@ type alias Pet =
 
 
 type alias PetInput =
-    Record2
+    Fields2
         StringInput
         IntInput
 
@@ -54,23 +56,30 @@ type MyCustom
 
 petOwnerForm : Form PetOwnerInput PetOwnerInput PetOwner Msg
 petOwnerForm =
-    input_record "pet owner" PetOwner
-        |> input_field f0 (input_string "name")
-        |> input_field f1 (input_int "age")
-        |> input_field f2
-            (input_record "pet" Pet
-                |> input_field f0 (input_string "pet's name")
-                |> input_field f1 (input_int "pet's age")
+    let
+        fields : Input PetOwnerInput PetOwnerInput PetOwner
+        fields = 
+            input_record "pet owner" PetOwner
+                |> input_field f0 (input_string "name")
+                |> input_field f1 (input_int "age")
+                |> input_field f2
+                    (input_record "pet" Pet
+                        |> input_field f0 (input_string "pet's name")
+                        |> input_field f1 (input_int "pet's age")
+                        |> input_endRecord
+                    )
+                |> input_field f3
+                    (input_customType "custom type"
+                        |> input_variant f0 (input_tag1 Red (input_int "red number"))
+                        |> input_variant f1 (input_tag1 Green (input_string "green string"))
+                        |> input_endCustomType
+                    )
                 |> input_endRecord
-            )
-        |> input_field f3
-            (input_customType "custom type"
-                |> input_variant f0 (input_tag1 Red (input_int "red number"))
-                |> input_variant f1 (input_tag1 Green (input_string "green string"))
-                |> input_endCustomType
-            )
-        |> input_endRecord
-        |> input_toForm FormMsg
+        
+        init : PetOwnerInput
+        init = fields.init
+    in 
+    input_toForm FormMsg fields
 
 
 main : Program () PetOwnerInput Msg
@@ -147,34 +156,34 @@ type alias StringInput =
     InputState String String
 
 
-type alias NestedRecord a =
-    InputState a a
+type alias Record fields =
+    InputState fields fields
 
 
-type alias Record1 a =
+type alias Fields1 a =
     ( a, End )
 
 
-type alias Record2 a b =
+type alias Fields2 a b =
     ( a, ( b, End ) )
 
 
-type alias Record3 a b c =
+type alias Fields3 a b c =
     ( a, ( b, ( c, End ) ) )
 
 
-type alias Record4 a b c d =
+type alias Fields4 a b c d =
     ( a, ( b, ( c, ( d, End ) ) ) )
 
 
-type alias Record5 a b c d e =
+type alias Fields5 a b c d e =
     ( a, ( b, ( c, ( d, ( e, End ) ) ) ) )
 
 
-type alias CustomType2 a b =
+type alias CustomType fields =
     InputState
-        { tagStates : Record2 a b, selectedTag : Int }
-        (CustomTypeDelta (Record2 a b))
+        { tagStates : fields, selectedTag : Int }
+        (CustomTypeDelta fields)
 
 
 input_toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
