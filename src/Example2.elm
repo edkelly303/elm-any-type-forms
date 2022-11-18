@@ -13,8 +13,8 @@ import Result.Extra
 
 type
     Msg
-    -- = FormMsg PetOwnerInputDelta
     -- = FormMsg StringInputDelta
+    -- = FormMsg PetOwnerInputDelta
     = FormMsg (CustomTypeDelta PetOwnerInputDelta)
 
 
