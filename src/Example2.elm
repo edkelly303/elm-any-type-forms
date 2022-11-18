@@ -15,7 +15,7 @@ type
     Msg
     -- = FormMsg StringInputDelta
     -- = FormMsg PetOwnerRecordInputDelta
-    = FormMsg (CustomTypeDelta PetOwnerCustomInputDelta)
+    = FormMsg PetOwnerCustomInputDelta
 
 
 mainForm =
@@ -53,19 +53,23 @@ type alias PetOwnerRecordInputDelta =
 
 
 type alias PetOwnerCustomInputState =
-    States4
-        (States1 StringInputState)
-        (States1 IntInputState)
-        (States1 PetInputState)
-        States0
+    CustomTypeState
+        (States4
+            (States1 StringInputState)
+            (States1 IntInputState)
+            (States1 PetInputState)
+            States0
+        )
 
 
 type alias PetOwnerCustomInputDelta =
-    Deltas4
-        (Deltas1 StringInputDelta)
-        (Deltas1 IntInputDelta)
-        (Deltas1 PetInputDelta)
-        Deltas0
+    CustomTypeDelta
+        (Deltas4
+            (Deltas1 StringInputDelta)
+            (Deltas1 IntInputDelta)
+            (Deltas1 PetInputDelta)
+            Deltas0
+        )
 
 
 type alias Pet =
@@ -111,7 +115,7 @@ recordInput =
         |> input_endRecord
 
 
-customInput : Input (CustomTypeState PetOwnerCustomInputState) (CustomTypeDelta PetOwnerCustomInputDelta) PetOwnerCustom
+customInput : Input PetOwnerCustomInputState PetOwnerCustomInputDelta PetOwnerCustom
 customInput =
     input_customType "custom type"
         |> input_tag1 f0 "name" Name (input_string "name")
