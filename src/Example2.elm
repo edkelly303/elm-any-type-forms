@@ -69,10 +69,12 @@ type alias PetInputDelta =
         IntInputDelta
 
 
+simpleInput : Input String String Int
 simpleInput =
     input_int "hello"
 
 
+recordInput : Input PetOwnerInputState PetOwnerInputDelta PetOwnerRecord
 recordInput =
     input_record "pet owner"
         (\name age pet ->
@@ -92,6 +94,7 @@ recordInput =
         |> input_endRecord
 
 
+customInput : Input (CustomTypeState PetOwnerInputState) (CustomTypeDelta PetOwnerInputDelta) PetOwnerCustom
 customInput =
     input_customType "custom type"
         |> input_variant f0 (input_tag1 Age (input_int "red number"))
