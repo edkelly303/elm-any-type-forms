@@ -13,29 +13,39 @@ import Result.Extra
 
 type
     Msg
-    -- = FormMsg (CustomTypeDelta PetOwnerInputDelta)
-    = FormMsg StringInputDelta
+    -- = FormMsg PetOwnerInputDelta
+    -- = FormMsg StringInputDelta
+    = FormMsg (CustomTypeDelta PetOwnerInputDelta)
 
 
-type MyCustom
-    = Red Int
-    | Green String
-    | Blue Pet
+mainForm =
+    -- input_toForm FormMsg simpleInput
+    -- input_toForm FormMsg recordInput
+    input_toForm FormMsg customInput
 
 
-type alias PetOwner =
-    MyCustom
+type PetOwnerCustom
+    = Age Int
+    | Name String
+    | Pet_ Pet
+
+
+type alias PetOwnerRecord =
+    { name : String
+    , age : Int
+    , pet : Pet
+    }
 
 
 type alias PetOwnerInputState =
-    Fields3
+    States3
         IntInputState
         StringInputState
         PetInputState
 
 
 type alias PetOwnerInputDelta =
-    Fields3
+    Deltas3
         IntInputDelta
         StringInputDelta
         PetInputDelta
@@ -48,13 +58,13 @@ type alias Pet =
 
 
 type alias PetInputState =
-    Fields2
+    States2
         StringInputState
         IntInputState
 
 
 type alias PetInputDelta =
-    Fields2
+    Deltas2
         StringInputDelta
         IntInputDelta
 
@@ -64,7 +74,13 @@ simpleInput =
 
 
 recordInput =
-    input_record "pet owner" (\name age pet -> { name = name, age = age, pet = pet })
+    input_record "pet owner"
+        (\name age pet ->
+            { name = name
+            , age = age
+            , pet = pet
+            }
+        )
         |> input_field f0 (input_string "name")
         |> input_field f1 (input_int "age")
         |> input_field f2
@@ -78,10 +94,10 @@ recordInput =
 
 customInput =
     input_customType "custom type"
-        |> input_variant f0 (input_tag1 Red (input_int "red number"))
-        |> input_variant f1 (input_tag1 Green (input_string "green string"))
+        |> input_variant f0 (input_tag1 Age (input_int "red number"))
+        |> input_variant f1 (input_tag1 Name (input_string "green string"))
         |> input_variant f2
-            (input_tag1 Blue
+            (input_tag1 Pet_
                 (input_record "pet" Pet
                     |> input_field f0 (input_string "pet's name")
                     |> input_field f1 (input_int "pet's age")
@@ -89,10 +105,6 @@ customInput =
                 )
             )
         |> input_endCustomType
-
-
-mainForm =
-    input_toForm FormMsg simpleInput
 
 
 main =
@@ -172,24 +184,44 @@ type alias StringInputDelta =
     String
 
 
-type alias Fields1 a =
+type alias States1 a =
     ( a, End )
 
 
-type alias Fields2 a b =
+type alias Deltas1 a =
+    ( Maybe a, End )
+
+
+type alias States2 a b =
     ( a, ( b, End ) )
 
 
-type alias Fields3 a b c =
+type alias Deltas2 a b =
+    ( Maybe a, ( Maybe b, End ) )
+
+
+type alias States3 a b c =
     ( a, ( b, ( c, End ) ) )
 
 
-type alias Fields4 a b c d =
+type alias Deltas3 a b c =
+    ( Maybe a, ( Maybe b, ( Maybe c, End ) ) )
+
+
+type alias States4 a b c d =
     ( a, ( b, ( c, ( d, End ) ) ) )
 
 
-type alias Fields5 a b c d e =
+type alias Deltas4 a b c d =
+    ( Maybe a, ( Maybe b, ( Maybe c, ( Maybe d, End ) ) ) )
+
+
+type alias States5 a b c d e =
     ( a, ( b, ( c, ( d, ( e, End ) ) ) ) )
+
+
+type alias Deltas5 a b c d e =
+    ( Maybe a, ( Maybe b, ( Maybe c, ( Maybe d, ( Maybe e, End ) ) ) ) )
 
 
 type alias CustomTypeState variants =
