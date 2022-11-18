@@ -117,7 +117,7 @@ customInput =
         |> input_tag1 f0 "name" Name (input_string "name")
         |> input_tag1 f1 "age" Age (input_int "age")
         |> input_tag1 f2
-            "pet"
+            "pet_"
             Pet_
             (input_record "pet" Pet
                 |> input_field f0 (input_string "pet's name")
