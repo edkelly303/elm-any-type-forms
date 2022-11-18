@@ -14,8 +14,8 @@ import Result.Extra
 type
     Msg
     -- = FormMsg StringInputDelta
-    -- = FormMsg PetOwnerInputDelta
-    = FormMsg (CustomTypeDelta PetOwnerInputDelta)
+    -- = FormMsg PetOwnerRecordInputDelta
+    = FormMsg (CustomTypeDelta PetOwnerCustomInputDelta)
 
 
 mainForm =
@@ -28,6 +28,7 @@ type PetOwnerCustom
     = Age Int
     | Name String
     | Pet_ Pet
+    | None
 
 
 type alias PetOwnerRecord =
@@ -37,18 +38,34 @@ type alias PetOwnerRecord =
     }
 
 
-type alias PetOwnerInputState =
+type alias PetOwnerRecordInputState =
     States3
-        IntInputState
         StringInputState
+        IntInputState
         PetInputState
 
 
-type alias PetOwnerInputDelta =
+type alias PetOwnerRecordInputDelta =
     Deltas3
-        IntInputDelta
         StringInputDelta
+        IntInputDelta
         PetInputDelta
+
+
+type alias PetOwnerCustomInputState =
+    States4
+        (States1 StringInputState)
+        (States1 IntInputState)
+        (States1 PetInputState)
+        States0
+
+
+type alias PetOwnerCustomInputDelta =
+    Deltas4
+        (Deltas1 StringInputDelta)
+        (Deltas1 IntInputDelta)
+        (Deltas1 PetInputDelta)
+        Deltas0
 
 
 type alias Pet =
@@ -74,7 +91,7 @@ simpleInput =
     input_int "hello"
 
 
-recordInput : Input PetOwnerInputState PetOwnerInputDelta PetOwnerRecord
+recordInput : Input PetOwnerRecordInputState PetOwnerRecordInputDelta PetOwnerRecord
 recordInput =
     input_record "pet owner"
         (\name age pet ->
@@ -94,19 +111,20 @@ recordInput =
         |> input_endRecord
 
 
-customInput : Input (CustomTypeState PetOwnerInputState) (CustomTypeDelta PetOwnerInputDelta) PetOwnerCustom
+customInput : Input (CustomTypeState PetOwnerCustomInputState) (CustomTypeDelta PetOwnerCustomInputDelta) PetOwnerCustom
 customInput =
     input_customType "custom type"
-        |> input_variant f0 (input_tag1 Age (input_int "red number"))
-        |> input_variant f1 (input_tag1 Name (input_string "green string"))
-        |> input_variant f2
-            (input_tag1 Pet_
-                (input_record "pet" Pet
-                    |> input_field f0 (input_string "pet's name")
-                    |> input_field f1 (input_int "pet's age")
-                    |> input_endRecord
-                )
+        |> input_tag1 f0 "name" Name (input_string "name")
+        |> input_tag1 f1 "age" Age (input_int "age")
+        |> input_tag1 f2
+            "pet"
+            Pet_
+            (input_record "pet" Pet
+                |> input_field f0 (input_string "pet's name")
+                |> input_field f1 (input_int "pet's age")
+                |> input_endRecord
             )
+        |> input_tag0 f3 "none" None
         |> input_endCustomType
 
 
@@ -185,6 +203,14 @@ type alias StringInputState =
 
 type alias StringInputDelta =
     String
+
+
+type States0
+    = States0
+
+
+type Deltas0
+    = Deltas0
 
 
 type alias States1 a =
@@ -280,17 +306,48 @@ input_string id =
     }
 
 
-input_tag1 : (a -> b) -> Input state delta a -> Input state delta b
-input_tag1 tagger input =
-    { id = input.id
+input_always : output -> String -> Input States0 Deltas0 output
+input_always output id =
+    { id = id
     , index = 0
-    , init = input.init
-    , update = input.update
-    , view = input.view
-    , parse = input.parse >> Result.map tagger
+    , init = States0
+    , update = \_ _ -> States0
+    , view = \_ -> H.text ""
+    , parse = \_ -> Ok output
     , validators = []
     , debounce = 0
     }
+
+
+input_tag0 f id tag =
+    input_variant f (input_always tag id)
+
+
+input_tag1 f id tag payload1 =
+    input_variant f
+        (input_record id tag
+            |> input_field f0 payload1
+            |> input_endRecord
+        )
+
+
+input_tag2 f id tag payload1 payload2 =
+    input_variant f
+        (input_record id tag
+            |> input_field f0 payload1
+            |> input_field f1 payload2
+            |> input_endRecord
+        )
+
+
+input_tag3 f id tag payload1 payload2 payload3 =
+    input_variant f
+        (input_record id tag
+            |> input_field f0 payload1
+            |> input_field f1 payload2
+            |> input_field f2 payload3
+            |> input_endRecord
+        )
 
 
 input_record id toOutput =
