@@ -48,6 +48,7 @@ import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import List.Extra
 import Result.Extra
 
 
@@ -73,12 +74,12 @@ mainForm =
     -- simpleInput
     -- petOwnerRecordInput
     petOwnerCustomTypeInput
-        |> toForm FormMsg
+        |> toForm "pet owner" FormMsg
 
 
 simpleIntInput : Input String String Int
 simpleIntInput =
-    int "hello"
+    int
 
 
 type alias Pet =
@@ -101,9 +102,9 @@ type alias PetInputDelta =
 
 petInput : Input PetInputState PetInputDelta Pet
 petInput =
-    record "pet" Pet
-        |> field i0 (string "pet's name")
-        |> field i1 (int "pet's age")
+    record Pet
+        |> field i0 "pet's name" string
+        |> field i1 "pet's age" int
         |> endRecord
 
 
@@ -130,10 +131,10 @@ type alias PetOwnerRecordInputDelta =
 
 petOwnerRecordInput : Input PetOwnerRecordInputState PetOwnerRecordInputDelta PetOwnerRecord
 petOwnerRecordInput =
-    record "pet owner" PetOwnerRecord
-        |> field i0 (string "name")
-        |> field i1 (int "age")
-        |> field i2 petInput
+    record PetOwnerRecord
+        |> field i0 "name" string
+        |> field i1 "age" int
+        |> field i2 "pet" petInput
         |> endRecord
 
 
@@ -166,10 +167,10 @@ type alias PetOwnerCustomTypeInputDelta =
 
 petOwnerCustomTypeInput : Input PetOwnerCustomInputState PetOwnerCustomTypeInputDelta PetOwnerCustom
 petOwnerCustomTypeInput =
-    customType "pet owner"
-        |> tag1 i0 "name" Name (string "name")
-        |> tag1 i1 "age" Age (int "age")
-        |> tag1 i2 "pet_" Pet_ petInput
+    customType
+        |> tag1 i0 "name" Name string
+        |> tag1 i1 "age" Age int
+        |> tag1 i2 "pet" Pet_ petInput
         |> tag0 i3 "none" None
         |> endCustomType
 
@@ -219,15 +220,18 @@ type alias Form state delta output msg =
 
 type Input state delta output
     = Input
-        { id : String
-        , index : Int
-        , init : state
-        , update : delta -> state -> state
-        , view : ViewConfig state -> Html delta
-        , parse : state -> Result (List String) output
-        , validators : List { check : output -> Bool, feedback : Result String String }
-        , debounce : Float
-        }
+        (String
+         ->
+            { id : String
+            , index : Int
+            , init : state
+            , update : delta -> state -> state
+            , view : ViewConfig state -> Html delta
+            , parse : state -> Result (List String) output
+            , validators : List { check : output -> Bool, feedback : Result String String }
+            , debounce : Float
+            }
+        )
 
 
 type alias ViewConfig state =
@@ -302,12 +306,16 @@ type alias Deltas5 a b c d e =
 -}
 
 
-toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
-toForm toMsg (Input input) =
-    { init = input.init
-    , update = input.update
-    , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
-    , submit = input.parse
+toForm : String -> (delta -> msg) -> Input state delta output -> Form state delta output msg
+toForm id toMsg (Input input) =
+    let
+        { init, update, view, parse } =
+            input id
+    in
+    { init = init
+    , update = update
+    , view = \state -> view { state = state, status = Intact, id = id } |> H.map toMsg
+    , submit = parse
     }
 
 
@@ -331,25 +339,27 @@ type alias IntInputDelta =
     String
 
 
-int : String -> Input String String Int
-int id =
+int : Input String String Int
+int =
     Input
-        { id = id
-        , index = 0
-        , init = ""
-        , update = \delta _ -> delta
-        , view = stringView
-        , parse =
-            \input ->
-                case String.toInt input of
-                    Just i ->
-                        Ok i
+        (\id ->
+            { id = id
+            , index = 0
+            , init = ""
+            , update = \delta _ -> delta
+            , view = stringView
+            , parse =
+                \input ->
+                    case String.toInt input of
+                        Just i ->
+                            Ok i
 
-                    Nothing ->
-                        Err [ "must be a whole number" ]
-        , validators = []
-        , debounce = 0
-        }
+                        Nothing ->
+                            Err [ "must be a whole number" ]
+            , validators = []
+            , debounce = 0
+            }
+        )
 
 
 type alias StringInputState =
@@ -360,32 +370,36 @@ type alias StringInputDelta =
     String
 
 
-string : String -> Input String String String
-string id =
+string : Input String String String
+string =
     Input
-        { id = id
-        , index = 0
-        , init = ""
-        , update = \delta _ -> delta
-        , view = stringView
-        , parse = Ok
-        , validators = []
-        , debounce = 500
-        }
+        (\id ->
+            { id = id
+            , index = 0
+            , init = ""
+            , update = \delta _ -> delta
+            , view = stringView
+            , parse = Ok
+            , validators = []
+            , debounce = 500
+            }
+        )
 
 
-always : String -> output -> Input States0 Deltas0 output
-always id output =
+always : output -> Input States0 Deltas0 output
+always output =
     Input
-        { id = id
-        , index = 0
-        , init = States0
-        , update = \_ _ -> States0
-        , view = \_ -> H.text ""
-        , parse = \_ -> Ok output
-        , validators = []
-        , debounce = 0
-        }
+        (\id ->
+            { id = id
+            , index = 0
+            , init = States0
+            , update = \_ _ -> States0
+            , view = \_ -> H.text ""
+            , parse = \_ -> Ok output
+            , validators = []
+            , debounce = 0
+            }
+        )
 
 
 type alias MaybeInputState state =
@@ -404,12 +418,9 @@ type alias MaybeInputDelta delta =
         )
 
 
-maybe :
-    String
-    -> Input state delta output
-    -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
-maybe id input =
-    customType id
+maybe : Input state delta output -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
+maybe input =
+    customType
         |> tag1 i0 "Just" Just input
         |> tag0 i1 "Nothing" Nothing
         |> endCustomType
@@ -426,9 +437,8 @@ maybe id input =
 -}
 
 
-record id toOutput =
-    { id = id
-    , index = 0
+record toOutput =
+    { index = 0
     , toOutput = toOutput
     , fields = identity
     , deltas = identity
@@ -439,13 +449,16 @@ record id toOutput =
     }
 
 
-field sel (Input input) rec =
-    { id = rec.id
-    , index = rec.index + 1
+field sel id (Input input) rec =
+    let
+        i =
+            input id
+    in
+    { index = rec.index + 1
     , toOutput = rec.toOutput
-    , fields = rec.fields << Tuple.pair { field = { input | index = rec.index }, selector = instantiateSelector sel }
+    , fields = rec.fields << Tuple.pair { field = { i | index = rec.index }, selector = instantiateSelector sel }
     , deltas = rec.deltas << Tuple.pair Nothing
-    , states = rec.states << Tuple.pair input.init
+    , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
     , parser = rec.parser >> recordStateParser
@@ -464,15 +477,17 @@ endRecord rec =
             rec.states End
     in
     Input
-        { id = rec.id
-        , index = 0
-        , init = inits
-        , update = \delta state -> updateRecordStates rec.updater fields delta state
-        , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
-        , parse = \state -> parseRecordStates rec.parser rec.toOutput fields state
-        , validators = []
-        , debounce = 0
-        }
+        (\id ->
+            { id = id
+            , index = 0
+            , init = inits
+            , update = \delta state -> updateRecordStates rec.updater fields delta state
+            , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
+            , parse = \state -> parseRecordStates rec.parser rec.toOutput fields state
+            , validators = []
+            , debounce = 0
+            }
+        )
 
 
 
@@ -571,9 +586,8 @@ type CustomTypeDelta variants
     | TagDeltaReceived variants
 
 
-customType id =
-    { id = id
-    , index = 0
+customType =
+    { index = 0
     , names = []
     , fns = identity
     , deltas = identity
@@ -584,18 +598,21 @@ customType id =
     }
 
 
-variant sel (Input input) rec =
-    { id = rec.id
-    , index = rec.index + 1
-    , names = input.id :: rec.names
+variant sel id (Input input) rec =
+    let
+        i =
+            input id
+    in
+    { index = rec.index + 1
+    , names = id :: rec.names
     , fns =
         rec.fns
             << Tuple.pair
-                { field = { input | index = rec.index }
+                { field = { i | index = rec.index }
                 , selector = instantiateSelector sel
                 }
     , deltas = rec.deltas << Tuple.pair Nothing
-    , states = rec.states << Tuple.pair input.init
+    , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
     , parser = rec.parser >> selectedTagParser
@@ -603,32 +620,35 @@ variant sel (Input input) rec =
 
 
 tag0 f id tag =
-    variant f (always id tag)
+    variant f id (always tag)
 
 
-tag1 f id tag payload1 =
+tag1 f id tag input =
     variant f
-        (record id tag
-            |> field i0 payload1
+        id
+        (record tag
+            |> field i0 "0" input
             |> endRecord
         )
 
 
-tag2 f id tag payload1 payload2 =
+tag2 f id tag input1 input2 =
     variant f
-        (record id tag
-            |> field i0 payload1
-            |> field i1 payload2
+        id
+        (record tag
+            |> field i0 "0" input1
+            |> field i1 "1" input2
             |> endRecord
         )
 
 
-tag3 f id tag payload1 payload2 payload3 =
+tag3 f id tag input1 input2 input3 =
     variant f
-        (record id tag
-            |> field i0 payload1
-            |> field i1 payload2
-            |> field i2 payload3
+        id
+        (record tag
+            |> field i0 "0" input1
+            |> field i1 "1" input2
+            |> field i2 "2" input3
             |> endRecord
         )
 
@@ -643,34 +663,49 @@ endCustomType rec =
 
         inits =
             rec.states End
+
+        names =
+            List.reverse rec.names
     in
     Input
-        { id = rec.id
-        , index = 0
-        , init = { tagStates = inits, selectedTag = 0 }
-        , update =
-            \delta state ->
-                case delta of
-                    TagSelected idx ->
-                        { state | selectedTag = idx }
+        (\id ->
+            { id = id
+            , index = 0
+            , init = { tagStates = inits, selectedTag = 0 }
+            , update =
+                \delta state ->
+                    case delta of
+                        TagSelected idx ->
+                            { state | selectedTag = idx }
 
-                    TagDeltaReceived tagDelta ->
-                        { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
-        , view =
-            \{ state } ->
-                H.div []
-                    [ H.text rec.id
-                    , H.div []
-                        (List.indexedMap
-                            (\index name -> H.button [ HE.onClick (TagSelected index) ] [ H.text name ])
-                            (List.reverse rec.names)
-                        )
-                    , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
-                    ]
-        , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
-        , validators = []
-        , debounce = 0
-        }
+                        TagDeltaReceived tagDelta ->
+                            { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
+            , view =
+                \{ state } ->
+                    let
+                        selectedName =
+                            List.Extra.getAt state.selectedTag names
+                                |> Maybe.withDefault "ERROR"
+                    in
+                    H.div []
+                        [ H.text id
+                        , H.div []
+                            (List.indexedMap
+                                (\index name ->
+                                    H.button
+                                        [ HE.onClick (TagSelected index) ]
+                                        [ H.text name ]
+                                )
+                                names
+                            )
+                        , H.text selectedName
+                        , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
+                        ]
+            , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+            , validators = []
+            , debounce = 0
+            }
+        )
 
 
 
