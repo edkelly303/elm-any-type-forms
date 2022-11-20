@@ -63,6 +63,26 @@ import Result.Extra
 -}
 
 
+main =
+    Browser.element
+        { init = \() -> ( mainForm.init, Cmd.none )
+        , view = mainForm.view
+        , update =
+            \msg model ->
+                case msg of
+                    FormMsg m ->
+                        let
+                            newModel =
+                                mainForm.update m model
+
+                            _ =
+                                Debug.log "output" (mainForm.submit newModel)
+                        in
+                        ( newModel, Cmd.none )
+        , subscriptions = \_ -> Sub.none
+        }
+
+
 type
     Msg
     -- = FormMsg StringInputDelta
@@ -173,26 +193,6 @@ petOwnerCustomTypeInput =
         |> tag1 i2 "pet" Pet_ petInput
         |> tag0 i3 "none" None
         |> endCustomType
-
-
-main =
-    Browser.element
-        { init = \() -> ( mainForm.init, Cmd.none )
-        , view = mainForm.view
-        , update =
-            \msg model ->
-                case msg of
-                    FormMsg m ->
-                        let
-                            newModel =
-                                mainForm.update m model
-
-                            _ =
-                                Debug.log "output" (mainForm.submit newModel)
-                        in
-                        ( newModel, Cmd.none )
-        , subscriptions = \_ -> Sub.none
-        }
 
 
 
