@@ -34,6 +34,7 @@ module Example2 exposing
     , i5
     , int
     , main
+    , maybe
     , record
     , string
     , tag0
@@ -333,7 +334,7 @@ int : String -> Input String String Int
 int id =
     { id = id
     , index = 0
-    , init = "1"
+    , init = ""
     , update = \delta _ -> delta
     , view = stringView
     , parse =
@@ -361,7 +362,7 @@ string : String -> Input String String String
 string id =
     { id = id
     , index = 0
-    , init = "I'm a string!"
+    , init = ""
     , update = \delta _ -> delta
     , view = stringView
     , parse = Ok
@@ -381,6 +382,33 @@ always output id =
     , validators = []
     , debounce = 0
     }
+
+
+type alias MaybeInputState state =
+    CustomTypeState
+        (States2
+            (States1 state)
+            States0
+        )
+
+
+type alias MaybeInputDelta delta =
+    CustomTypeDelta
+        (Deltas2
+            (Deltas1 delta)
+            Deltas0
+        )
+
+
+maybe :
+    Input state delta output
+    -> String
+    -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
+maybe input id =
+    customType id
+        |> tag1 i0 "Just" Just input
+        |> tag0 i1 "Nothing" Nothing
+        |> endCustomType
 
 
 
