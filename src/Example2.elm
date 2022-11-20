@@ -65,7 +65,7 @@ type
     Msg
     -- = FormMsg StringInputDelta
     -- = FormMsg PetOwnerRecordInputDelta
-    = FormMsg PetOwnerCustomInputDelta
+    = FormMsg PetOwnerCustomTypeInputDelta
 
 
 mainForm =
@@ -152,7 +152,7 @@ type alias PetOwnerCustomInputState =
         )
 
 
-type alias PetOwnerCustomInputDelta =
+type alias PetOwnerCustomTypeInputDelta =
     CustomTypeDelta
         (Deltas4
             (Deltas1 StringInputDelta)
@@ -162,7 +162,7 @@ type alias PetOwnerCustomInputDelta =
         )
 
 
-petOwnerCustomTypeInput : Input PetOwnerCustomInputState PetOwnerCustomInputDelta PetOwnerCustom
+petOwnerCustomTypeInput : Input PetOwnerCustomInputState PetOwnerCustomTypeInputDelta PetOwnerCustom
 petOwnerCustomTypeInput =
     customType "pet owner"
         |> tag1 i0 "name" Name (string "name")
