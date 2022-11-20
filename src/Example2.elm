@@ -1,4 +1,47 @@
-module Example2 exposing (..)
+module Example2 exposing
+    ( CustomTypeDelta
+    , CustomTypeState
+    , Deltas0
+    , Deltas1
+    , Deltas2
+    , Deltas3
+    , Deltas4
+    , Deltas5
+    , End
+    , Form
+    , Input
+    , IntInputDelta
+    , IntInputState
+    , States0
+    , States1
+    , States2
+    , States3
+    , States4
+    , States5
+    , StringInputDelta
+    , StringInputState
+    , ViewConfig
+    , always
+    , customType
+    , endCustomType
+    , endRecord
+    , field
+    , i0
+    , i1
+    , i2
+    , i3
+    , i4
+    , i5
+    , int
+    , main
+    , record
+    , string
+    , tag0
+    , tag1
+    , tag2
+    , tag3
+    , toForm
+    )
 
 import Browser
 import Html as H exposing (Html)
@@ -8,7 +51,14 @@ import Result.Extra
 
 
 
--- Userland types
+{-
+   db    db .d8888. d88888b d8888b. db       .d8b.  d8b   db d8888b.
+   88    88 88'  YP 88'     88  `8D 88      d8' `8b 888o  88 88  `8D
+   88    88 `8bo.   88ooooo 88oobY' 88      88ooo88 88V8o 88 88   88
+   88    88   `Y8b. 88~~~~~ 88`8b   88      88~~~88 88 V8o88 88   88
+   88b  d88 db   8D 88.     88 `88. 88booo. 88   88 88  V888 88  .8D
+   ~Y8888P' `8888Y' Y88888P 88   YD Y88888P YP   YP VP   V8P Y8888D'
+-}
 
 
 type
@@ -19,16 +69,40 @@ type
 
 
 mainForm =
-    -- input_toForm FormMsg simpleInput
-    -- input_toForm FormMsg recordInput
-    input_toForm FormMsg customInput
+    -- toForm FormMsg simpleInput
+    -- toForm FormMsg petOwnerRecordInput
+    toForm FormMsg petOwnerCustomTypeInput
 
 
-type PetOwnerCustom
-    = Age Int
-    | Name String
-    | Pet_ Pet
-    | None
+simpleInput : Input String String Int
+simpleInput =
+    int "hello"
+
+
+type alias Pet =
+    { petName : String
+    , petAge : Int
+    }
+
+
+type alias PetInputState =
+    States2
+        StringInputState
+        IntInputState
+
+
+type alias PetInputDelta =
+    Deltas2
+        StringInputDelta
+        IntInputDelta
+
+
+petInput : Input PetInputState PetInputDelta Pet
+petInput =
+    record "pet" Pet
+        |> field i0 (string "pet's name")
+        |> field i1 (int "pet's age")
+        |> endRecord
 
 
 type alias PetOwnerRecord =
@@ -52,6 +126,22 @@ type alias PetOwnerRecordInputDelta =
         PetInputDelta
 
 
+petOwnerRecordInput : Input PetOwnerRecordInputState PetOwnerRecordInputDelta PetOwnerRecord
+petOwnerRecordInput =
+    record "pet owner" PetOwnerRecord
+        |> field i0 (string "name")
+        |> field i1 (int "age")
+        |> field i2 petInput
+        |> endRecord
+
+
+type PetOwnerCustom
+    = Age Int
+    | Name String
+    | Pet_ Pet
+    | None
+
+
 type alias PetOwnerCustomInputState =
     CustomTypeState
         (States4
@@ -72,64 +162,14 @@ type alias PetOwnerCustomInputDelta =
         )
 
 
-type alias Pet =
-    { petName : String
-    , petAge : Int
-    }
-
-
-type alias PetInputState =
-    States2
-        StringInputState
-        IntInputState
-
-
-type alias PetInputDelta =
-    Deltas2
-        StringInputDelta
-        IntInputDelta
-
-
-simpleInput : Input String String Int
-simpleInput =
-    input_int "hello"
-
-
-recordInput : Input PetOwnerRecordInputState PetOwnerRecordInputDelta PetOwnerRecord
-recordInput =
-    input_record "pet owner"
-        (\name age pet ->
-            { name = name
-            , age = age
-            , pet = pet
-            }
-        )
-        |> input_field f0 (input_string "name")
-        |> input_field f1 (input_int "age")
-        |> input_field f2
-            (input_record "pet" Pet
-                |> input_field f0 (input_string "pet's name")
-                |> input_field f1 (input_int "pet's age")
-                |> input_endRecord
-            )
-        |> input_endRecord
-
-
-customInput : Input PetOwnerCustomInputState PetOwnerCustomInputDelta PetOwnerCustom
-customInput =
-    input_customType "custom type"
-        |> input_tag1 f0 "name" Name (input_string "name")
-        |> input_tag1 f1 "age" Age (input_int "age")
-        |> input_tag1 f2
-            "pet_"
-            Pet_
-            (input_record "pet" Pet
-                |> input_field f0 (input_string "pet's name")
-                |> input_field f1 (input_int "pet's age")
-                |> input_endRecord
-            )
-        |> input_tag0 f3 "none" None
-        |> input_endCustomType
+petOwnerCustomTypeInput : Input PetOwnerCustomInputState PetOwnerCustomInputDelta PetOwnerCustom
+petOwnerCustomTypeInput =
+    customType "pet owner"
+        |> tag1 i0 "name" Name (string "name")
+        |> tag1 i1 "age" Age (int "age")
+        |> tag1 i2 "pet_" Pet_ petInput
+        |> tag0 i3 "none" None
+        |> endCustomType
 
 
 main =
@@ -153,7 +193,14 @@ main =
 
 
 
--- Library types
+{-
+   d888888b db    db d8888b. d88888b .d8888.
+   `~~88~~' `8b  d8' 88  `8D 88'     88'  YP
+      88     `8bd8'  88oodD' 88ooooo `8bo.
+      88       88    88~~~   88~~~~~   `Y8b.
+      88       88    88      88.     db   8D
+      YP       YP    88      Y88888P `8888Y'
+-}
 
 
 type End
@@ -191,22 +238,6 @@ type Status
     = Intact
     | Debouncing
     | Idle (List (Result String String))
-
-
-type alias IntInputState =
-    String
-
-
-type alias IntInputDelta =
-    String
-
-
-type alias StringInputState =
-    String
-
-
-type alias StringInputDelta =
-    String
 
 
 type States0
@@ -257,19 +288,19 @@ type alias Deltas5 a b c d e =
     ( Maybe a, ( Maybe b, ( Maybe c, ( Maybe d, ( Maybe e, End ) ) ) ) )
 
 
-type alias CustomTypeState variants =
-    { tagStates : variants
-    , selectedTag : Int
-    }
+
+{-
+   d88888b  .d88b.  d8888b. .88b  d88. .d8888.
+   88'     .8P  Y8. 88  `8D 88'YbdP`88 88'  YP
+   88ooo   88    88 88oobY' 88  88  88 `8bo.
+   88~~~   88    88 88`8b   88  88  88   `Y8b.
+   88      `8b  d8' 88 `88. 88  88  88 db   8D
+   YP       `Y88P'  88   YD YP  YP  YP `8888Y'
+-}
 
 
-type CustomTypeDelta variants
-    = TagSelected Int
-    | TagDeltaReceived variants
-
-
-input_toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
-input_toForm toMsg input =
+toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
+toForm toMsg input =
     { init = input.init
     , update = input.update
     , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
@@ -277,8 +308,28 @@ input_toForm toMsg input =
     }
 
 
-input_int : String -> Input String String Int
-input_int id =
+
+{-
+   d888888b d8b   db d8888b. db    db d888888b .d8888.
+     `88'   888o  88 88  `8D 88    88 `~~88~~' 88'  YP
+      88    88V8o 88 88oodD' 88    88    88    `8bo.
+      88    88 V8o88 88~~~   88    88    88      `Y8b.
+     .88.   88  V888 88      88b  d88    88    db   8D
+   Y888888P VP   V8P 88      ~Y8888P'    YP    `8888Y'
+
+-}
+
+
+type alias IntInputState =
+    String
+
+
+type alias IntInputDelta =
+    String
+
+
+int : String -> Input String String Int
+int id =
     { id = id
     , index = 0
     , init = "1"
@@ -297,8 +348,16 @@ input_int id =
     }
 
 
-input_string : String -> Input String String String
-input_string id =
+type alias StringInputState =
+    String
+
+
+type alias StringInputDelta =
+    String
+
+
+string : String -> Input String String String
+string id =
     { id = id
     , index = 0
     , init = "I'm a string!"
@@ -310,8 +369,8 @@ input_string id =
     }
 
 
-input_always : output -> String -> Input States0 Deltas0 output
-input_always output id =
+always : output -> String -> Input States0 Deltas0 output
+always output id =
     { id = id
     , index = 0
     , init = States0
@@ -323,38 +382,18 @@ input_always output id =
     }
 
 
-input_tag0 f id tag =
-    input_variant f (input_always tag id)
+
+{-
+   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b. .d8888.
+   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D 88'  YP
+   88oobY' 88ooooo 8P      88    88 88oobY' 88   88 `8bo.
+   88`8b   88~~~~~ 8b      88    88 88`8b   88   88   `Y8b.
+   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D db   8D
+   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D' `8888Y'
+-}
 
 
-input_tag1 f id tag payload1 =
-    input_variant f
-        (input_record id tag
-            |> input_field f0 payload1
-            |> input_endRecord
-        )
-
-
-input_tag2 f id tag payload1 payload2 =
-    input_variant f
-        (input_record id tag
-            |> input_field f0 payload1
-            |> input_field f1 payload2
-            |> input_endRecord
-        )
-
-
-input_tag3 f id tag payload1 payload2 payload3 =
-    input_variant f
-        (input_record id tag
-            |> input_field f0 payload1
-            |> input_field f1 payload2
-            |> input_field f2 payload3
-            |> input_endRecord
-        )
-
-
-input_record id toOutput =
+record id toOutput =
     { id = id
     , index = 0
     , toOutput = toOutput
@@ -367,7 +406,7 @@ input_record id toOutput =
     }
 
 
-input_field sel input rec =
+field sel input rec =
     { id = rec.id
     , index = rec.index + 1
     , toOutput = rec.toOutput
@@ -380,7 +419,7 @@ input_field sel input rec =
     }
 
 
-input_endRecord rec =
+endRecord rec =
     let
         fields =
             rec.fields End
@@ -402,13 +441,24 @@ input_endRecord rec =
     }
 
 
-parseRecordStates parser toOutput fields states =
-    parser (\output End End -> output) (Ok toOutput) fields states
+
+{-
+   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
+   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
+   88oobY' 88ooooo 8P      88    88 88oobY' 88   88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
+   88`8b   88~~~~~ 8b      88    88 88`8b   88   88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
+   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
+   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
+-}
 
 
-recordStateParser next toOutputResult ( { field }, fields ) ( state, states ) =
+parseRecordStates parser toOutput fns states =
+    parser (\output End End -> output) (Ok toOutput) fns states
+
+
+recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
     next
-        (case ( toOutputResult, field.parse state ) of
+        (case ( toOutputResult, fns.field.parse state ) of
             ( Ok toOutput, Ok parsed ) ->
                 Ok (toOutput parsed)
 
@@ -421,55 +471,77 @@ recordStateParser next toOutputResult ( { field }, fields ) ( state, states ) =
             ( Err es, Err es2 ) ->
                 Err (es ++ es2)
         )
-        fields
-        states
+        restFns
+        restStates
 
 
-viewRecordStates viewer emptyDeltas fields states =
-    viewer (\list _ End End -> list) [] emptyDeltas fields states
+viewRecordStates viewer emptyDeltas fns states =
+    viewer (\list _ End End -> list) [] emptyDeltas fns states
         |> List.reverse
         |> H.div []
 
 
-recordStateViewer next list emptyDeltas ( { field, selector }, fields ) ( state, states ) =
+recordStateViewer next list emptyDeltas ( fns, restFns ) ( state, restStates ) =
     next
-        ((field.view
+        ((fns.field.view
             { state = state
             , status = Intact
-            , id = field.id
+            , id = fns.field.id
             }
             |> H.map
                 (\delta ->
-                    selector.set (\_ -> Just delta) emptyDeltas
+                    fns.selector.set (\_ -> Just delta) emptyDeltas
                 )
          )
             :: list
         )
         emptyDeltas
-        fields
-        states
+        restFns
+        restStates
 
 
 updateRecordStates updater fields deltas states =
     updater (\End End End -> End) fields deltas states
 
 
-recordStateUpdater next ( { field }, fields ) ( delta, deltas ) ( state, states ) =
+recordStateUpdater next ( fns, restFns ) ( delta, restDeltas ) ( state, restStates ) =
     ( case delta of
         Nothing ->
             state
 
         Just d ->
-            field.update d state
-    , next fields deltas states
+            fns.field.update d state
+    , next restFns restDeltas restStates
     )
 
 
-input_customType id =
+
+{-
+    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b .d8888.
+   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'     88'  YP
+   8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo `8bo.
+   8b      88    88   `Y8b.    88    88    88 88  88  88         88       88    88~~~   88~~~~~   `Y8b.
+   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.     db   8D
+    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P `8888Y'
+-}
+
+
+type alias CustomTypeState variants =
+    { tagStates : variants
+    , selectedTag : Int
+    }
+
+
+type CustomTypeDelta variants
+    = TagSelected Int
+    | TagDeltaReceived variants
+
+
+customType id =
     { id = id
     , index = 0
     , names = []
-    , fields = identity
+    , fns = identity
     , deltas = identity
     , states = identity
     , updater = identity
@@ -478,12 +550,12 @@ input_customType id =
     }
 
 
-input_variant sel input rec =
+variant sel input rec =
     { id = rec.id
     , index = rec.index + 1
     , names = input.id :: rec.names
-    , fields =
-        rec.fields
+    , fns =
+        rec.fns
             << Tuple.pair
                 { field = { input | index = rec.index }
                 , selector = instantiateSelector sel
@@ -496,10 +568,41 @@ input_variant sel input rec =
     }
 
 
-input_endCustomType rec =
+tag0 f id tag =
+    variant f (always tag id)
+
+
+tag1 f id tag payload1 =
+    variant f
+        (record id tag
+            |> field i0 payload1
+            |> endRecord
+        )
+
+
+tag2 f id tag payload1 payload2 =
+    variant f
+        (record id tag
+            |> field i0 payload1
+            |> field i1 payload2
+            |> endRecord
+        )
+
+
+tag3 f id tag payload1 payload2 payload3 =
+    variant f
+        (record id tag
+            |> field i0 payload1
+            |> field i1 payload2
+            |> field i2 payload3
+            |> endRecord
+        )
+
+
+endCustomType rec =
     let
-        fields =
-            rec.fields End
+        fns =
+            rec.fns End
 
         emptyDeltas =
             rec.deltas End
@@ -517,7 +620,7 @@ input_endCustomType rec =
                     { state | selectedTag = idx }
 
                 TagDeltaReceived tagDelta ->
-                    { state | tagStates = updateRecordStates rec.updater fields tagDelta state.tagStates }
+                    { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
     , view =
         \{ state } ->
             H.div []
@@ -527,54 +630,65 @@ input_endCustomType rec =
                         (\index name -> H.button [ HE.onClick (TagSelected index) ] [ H.text name ])
                         (List.reverse rec.names)
                     )
-                , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fields state.tagStates
+                , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
                 ]
-    , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fields state.tagStates
+    , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
     , validators = []
     , debounce = 0
     }
 
 
-parseSelectedTagState parser selectedTag fields states =
+
+{-
+    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
+   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
+   8P      88    88 `8bo.      88    88    88 88  88  88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
+   8b      88    88   `Y8b.    88    88    88 88  88  88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
+   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
+    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
+-}
+
+
+parseSelectedTagState parser selectedTag fns states =
     parser
         (\result _ End End -> result)
         (Err [ "tag index " ++ String.fromInt selectedTag ++ " not found" ])
         selectedTag
-        fields
+        fns
         states
 
 
-selectedTagParser next result selectedTag ( { field }, fields ) ( state, states ) =
+selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
     next
-        (if field.index == selectedTag then
-            field.parse state
+        (if fns.field.index == selectedTag then
+            fns.field.parse state
 
          else
             result
         )
         selectedTag
-        fields
-        states
+        restFns
+        restStates
 
 
-viewSelectedTagState viewer selectedTag emptyDeltas fields states =
-    viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag emptyDeltas fields states
+viewSelectedTagState viewer selectedTag emptyDeltas fns states =
+    viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag emptyDeltas fns states
         |> Maybe.map (H.map TagDeltaReceived)
         |> Maybe.withDefault (H.text "ERROR!")
 
 
-selectedTagViewer next maybeView selectedTag emptyDeltas ( { field, selector }, fields ) ( state, states ) =
+selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( state, restStates ) =
     next
-        (if field.index == selectedTag then
+        (if fns.field.index == selectedTag then
             Just
-                (field.view
+                (fns.field.view
                     { state = state
                     , status = Intact
-                    , id = field.id
+                    , id = fns.field.id
                     }
                     |> H.map
                         (\delta ->
-                            selector.set (\_ -> Just delta) emptyDeltas
+                            fns.selector.set (\_ -> Just delta) emptyDeltas
                         )
                 )
 
@@ -583,32 +697,43 @@ selectedTagViewer next maybeView selectedTag emptyDeltas ( { field, selector }, 
         )
         selectedTag
         emptyDeltas
-        fields
-        states
+        restFns
+        restStates
 
 
 
--- STUFF
+{-
+   .d8888. d88888b db      d88888b  .o88b. d888888b  .d88b.  d8888b. .d8888.
+   88'  YP 88'     88      88'     d8P  Y8 `~~88~~' .8P  Y8. 88  `8D 88'  YP
+   `8bo.   88ooooo 88      88ooooo 8P         88    88    88 88oobY' `8bo.
+     `Y8b. 88~~~~~ 88      88~~~~~ 8b         88    88    88 88`8b     `Y8b.
+   db   8D 88.     88booo. 88.     Y8b  d8    88    `8b  d8' 88 `88. db   8D
+   `8888Y' Y88888P Y88888P Y88888P  `Y88P'    YP     `Y88P'  88   YD `8888Y'
+-}
 
 
-f0 =
+i0 =
     composeSelectors { getFieldState = identity, getField = identity, set = identity }
 
 
-f1 =
+i1 =
     composeSelectors { getFieldState = Tuple.second, getField = Tuple.second, set = Tuple.mapSecond }
 
 
-f2 =
-    f1 >> f1
+i2 =
+    i1 >> i1
 
 
-f3 =
-    f2 >> f1
+i3 =
+    i2 >> i1
 
 
-f4 =
-    f3 >> f1
+i4 =
+    i3 >> i1
+
+
+i5 =
+    i4 >> i1
 
 
 composeSelectors selector1 selector2 =
@@ -627,6 +752,17 @@ instantiateSelector selector =
     , getField = s.getField
     , set = \updater state -> s.set (Tuple.mapFirst updater) state
     }
+
+
+
+{-
+   db    db d888888b d88888b db   d8b   db .d8888.
+   88    88   `88'   88'     88   I8I   88 88'  YP
+   Y8    8P    88    88ooooo 88   I8I   88 `8bo.
+   `8b  d8'    88    88~~~~~ Y8   I8I   88   `Y8b.
+    `8bd8'    .88.   88.     `8b d8'8b d8' db   8D
+      YP    Y888888P Y88888P  `8b8' `8d8'  `8888Y'
+-}
 
 
 stringView : ViewConfig String -> Html String
