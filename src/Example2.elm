@@ -371,8 +371,8 @@ string id =
     }
 
 
-always : output -> String -> Input States0 Deltas0 output
-always output id =
+always : String -> output -> Input States0 Deltas0 output
+always id output =
     { id = id
     , index = 0
     , init = States0
@@ -401,10 +401,10 @@ type alias MaybeInputDelta delta =
 
 
 maybe :
-    Input state delta output
-    -> String
+    String
+    -> Input state delta output
     -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
-maybe input id =
+maybe id input =
     customType id
         |> tag1 i0 "Just" Just input
         |> tag0 i1 "Nothing" Nothing
@@ -598,7 +598,7 @@ variant sel input rec =
 
 
 tag0 f id tag =
-    variant f (always tag id)
+    variant f (always id tag)
 
 
 tag1 f id tag payload1 =
