@@ -217,16 +217,17 @@ type alias Form state delta output msg =
     }
 
 
-type alias Input state delta output =
-    { id : String
-    , index : Int
-    , init : state
-    , update : delta -> state -> state
-    , view : ViewConfig state -> Html delta
-    , parse : state -> Result (List String) output
-    , validators : List { check : output -> Bool, feedback : Result String String }
-    , debounce : Float
-    }
+type Input state delta output
+    = Input
+        { id : String
+        , index : Int
+        , init : state
+        , update : delta -> state -> state
+        , view : ViewConfig state -> Html delta
+        , parse : state -> Result (List String) output
+        , validators : List { check : output -> Bool, feedback : Result String String }
+        , debounce : Float
+        }
 
 
 type alias ViewConfig state =
@@ -302,7 +303,7 @@ type alias Deltas5 a b c d e =
 
 
 toForm : (delta -> msg) -> Input state delta output -> Form state delta output msg
-toForm toMsg input =
+toForm toMsg (Input input) =
     { init = input.init
     , update = input.update
     , view = \state -> input.view { state = state, status = Intact, id = input.id } |> H.map toMsg
@@ -332,22 +333,23 @@ type alias IntInputDelta =
 
 int : String -> Input String String Int
 int id =
-    { id = id
-    , index = 0
-    , init = ""
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse =
-        \input ->
-            case String.toInt input of
-                Just i ->
-                    Ok i
+    Input
+        { id = id
+        , index = 0
+        , init = ""
+        , update = \delta _ -> delta
+        , view = stringView
+        , parse =
+            \input ->
+                case String.toInt input of
+                    Just i ->
+                        Ok i
 
-                Nothing ->
-                    Err [ "must be a whole number" ]
-    , validators = []
-    , debounce = 0
-    }
+                    Nothing ->
+                        Err [ "must be a whole number" ]
+        , validators = []
+        , debounce = 0
+        }
 
 
 type alias StringInputState =
@@ -360,28 +362,30 @@ type alias StringInputDelta =
 
 string : String -> Input String String String
 string id =
-    { id = id
-    , index = 0
-    , init = ""
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse = Ok
-    , validators = []
-    , debounce = 500
-    }
+    Input
+        { id = id
+        , index = 0
+        , init = ""
+        , update = \delta _ -> delta
+        , view = stringView
+        , parse = Ok
+        , validators = []
+        , debounce = 500
+        }
 
 
 always : String -> output -> Input States0 Deltas0 output
 always id output =
-    { id = id
-    , index = 0
-    , init = States0
-    , update = \_ _ -> States0
-    , view = \_ -> H.text ""
-    , parse = \_ -> Ok output
-    , validators = []
-    , debounce = 0
-    }
+    Input
+        { id = id
+        , index = 0
+        , init = States0
+        , update = \_ _ -> States0
+        , view = \_ -> H.text ""
+        , parse = \_ -> Ok output
+        , validators = []
+        , debounce = 0
+        }
 
 
 type alias MaybeInputState state =
@@ -435,7 +439,7 @@ record id toOutput =
     }
 
 
-field sel input rec =
+field sel (Input input) rec =
     { id = rec.id
     , index = rec.index + 1
     , toOutput = rec.toOutput
@@ -459,15 +463,16 @@ endRecord rec =
         inits =
             rec.states End
     in
-    { id = rec.id
-    , index = 0
-    , init = inits
-    , update = \delta state -> updateRecordStates rec.updater fields delta state
-    , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
-    , parse = \state -> parseRecordStates rec.parser rec.toOutput fields state
-    , validators = []
-    , debounce = 0
-    }
+    Input
+        { id = rec.id
+        , index = 0
+        , init = inits
+        , update = \delta state -> updateRecordStates rec.updater fields delta state
+        , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
+        , parse = \state -> parseRecordStates rec.parser rec.toOutput fields state
+        , validators = []
+        , debounce = 0
+        }
 
 
 
@@ -579,7 +584,7 @@ customType id =
     }
 
 
-variant sel input rec =
+variant sel (Input input) rec =
     { id = rec.id
     , index = rec.index + 1
     , names = input.id :: rec.names
@@ -639,32 +644,33 @@ endCustomType rec =
         inits =
             rec.states End
     in
-    { id = rec.id
-    , index = 0
-    , init = { tagStates = inits, selectedTag = 0 }
-    , update =
-        \delta state ->
-            case delta of
-                TagSelected idx ->
-                    { state | selectedTag = idx }
+    Input
+        { id = rec.id
+        , index = 0
+        , init = { tagStates = inits, selectedTag = 0 }
+        , update =
+            \delta state ->
+                case delta of
+                    TagSelected idx ->
+                        { state | selectedTag = idx }
 
-                TagDeltaReceived tagDelta ->
-                    { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
-    , view =
-        \{ state } ->
-            H.div []
-                [ H.text rec.id
-                , H.div []
-                    (List.indexedMap
-                        (\index name -> H.button [ HE.onClick (TagSelected index) ] [ H.text name ])
-                        (List.reverse rec.names)
-                    )
-                , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
-                ]
-    , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
-    , validators = []
-    , debounce = 0
-    }
+                    TagDeltaReceived tagDelta ->
+                        { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
+        , view =
+            \{ state } ->
+                H.div []
+                    [ H.text rec.id
+                    , H.div []
+                        (List.indexedMap
+                            (\index name -> H.button [ HE.onClick (TagSelected index) ] [ H.text name ])
+                            (List.reverse rec.names)
+                        )
+                    , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
+                    ]
+        , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+        , validators = []
+        , debounce = 0
+        }
 
 
 
