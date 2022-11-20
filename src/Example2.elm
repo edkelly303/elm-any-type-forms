@@ -69,13 +69,14 @@ type
 
 
 mainForm =
-    -- toForm FormMsg simpleInput
-    -- toForm FormMsg petOwnerRecordInput
-    toForm FormMsg petOwnerCustomTypeInput
+    -- simpleInput
+    -- petOwnerRecordInput
+    petOwnerCustomTypeInput
+        |> toForm FormMsg
 
 
-simpleInput : Input String String Int
-simpleInput =
+simpleIntInput : Input String String Int
+simpleIntInput =
     int "hello"
 
 
