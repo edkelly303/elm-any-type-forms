@@ -46,18 +46,15 @@ type
     Msg
     -- = FormMsg (Delta String)
     -- = FormMsg (Delta SimpleRecordInputDelta)
-    = FormMsg (Delta NestedRecordInputDelta)
-
-
-
--- = FormMsg (Delta SimpleCustomInputDelta)
+    -- = FormMsg (Delta NestedRecordInputDelta)
+    = FormMsg (Delta SimpleCustomInputDelta)
 
 
 mainForm =
     -- int
     -- simpleRecordInput
-    nestedRecordInput
-        -- simpleCustomInput
+    -- nestedRecordInput
+    simpleCustomInput
         |> toForm "form" FormMsg
 
 
@@ -117,32 +114,38 @@ nestedRecordInput =
 
 type SimpleCustom
     = Red
-    | Green String
+    | Green Int
+
+
+type alias SimpleCustomInputDelta =
+    CustomTypeDelta
+        (Deltas2
+            Deltas0
+            (Deltas1 String)
+        )
+
+
+type alias SimpleCustomInputState =
+    CustomTypeState
+        (States2
+            States0
+            (States1 String)
+        )
+
+
+simpleCustomInput :
+    Input
+        SimpleCustomInputState
+        SimpleCustomInputDelta
+        SimpleCustom
+simpleCustomInput =
+    customType
+        |> tag0 i0 "red" Red
+        |> tag1 i1 "green" Green int
+        |> endCustomType
 
 
 
--- type alias SimpleCustomInputDelta =
---     CustomTypeDelta
---         (Deltas2
---             Deltas0
---             (Deltas1 String)
---         )
--- type alias SimpleCustomInputState =
---     CustomTypeState
---         (States2
---             States0
---             (States1 String)
---         )
--- simpleCustomInput :
---     Input
---         SimpleCustomInputState
---         SimpleCustomInputDelta
---         SimpleCustom
--- simpleCustomInput =
---     customType
---         |> tag0 i0 "red" Red
---         |> tag1 i1 "green" Green string
---         |> endCustomType
 {-
    d888888b db    db d8888b. d88888b .d8888.
    `~~88~~' `8b  d8' 88  `8D 88'     88'  YP
@@ -484,13 +487,13 @@ endRecord rec =
                                     updateRecordStates rec.updater emptyDeltas fields deltas state
                             in
                             ( State s newState
-                            , cmd
+                            , Cmd.map ChangeState cmd
                             )
 
                         _ ->
                             ( State s state, Cmd.none )
             , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
-            , parse = \(State s state) -> parseRecordStates rec.parser rec.toOutput fields state
+            , parse = \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
             }
         )
 
@@ -578,7 +581,13 @@ statusFromInternalState parser (State internalState state) =
 updateRecordStates updater emptyDeltas fields deltas states =
     let
         { newStates, newCmds } =
-            updater (\output _ End End End -> output) { newStates = identity, newCmds = [] } emptyDeltas fields deltas states
+            updater
+                (\output _ End End End -> output)
+                { newStates = identity, newCmds = [] }
+                emptyDeltas
+                fields
+                deltas
+                states
     in
     ( newStates End, Cmd.batch newCmds )
 
@@ -592,7 +601,7 @@ recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( de
             newCmd
                 |> Cmd.map
                     (\d ->
-                        ChangeState (fns.selector.set (\_ -> d) emptyDeltas)
+                        fns.selector.set (\_ -> d) emptyDeltas
                     )
     in
     next
@@ -614,169 +623,215 @@ recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( de
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.     db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P `8888Y'
 -}
--- type alias CustomTypeState variants =
---     { tagStates : variants
---     , selectedTag : Int
---     }
--- type CustomTypeDelta variants
---     = TagSelected Int
---     | TagDeltaReceived variants
--- customType =
---     { index = 0
---     , names = []
---     , fns = identity
---     , deltas = identity
---     , states = identity
---     , updater = identity
---     , viewer = identity
---     , parser = identity
---     }
--- variant sel id (Input input) rec =
---     let
---         i =
---             input id
---     in
---     { index = rec.index + 1
---     , names = id :: rec.names
---     , fns =
---         rec.fns
---             << Tuple.pair
---                 { field = { i | index = rec.index }
---                 , selector = instantiateSelector sel
---                 }
---     , deltas = rec.deltas << Tuple.pair Skip
---     , states = rec.states << Tuple.pair i.init
---     , updater = rec.updater >> recordStateUpdater
---     , viewer = rec.viewer >> selectedTagViewer
---     , parser = rec.parser >> selectedTagParser
---     }
--- tag0 f id tag =
---     variant f id (always tag)
--- tag1 f id tag input =
---     variant f
---         id
---         (record tag
---             |> field i0 "0" input
---             |> endRecord
---         )
--- tag2 f id tag input1 input2 =
---     variant f
---         id
---         (record tag
---             |> field i0 "0" input1
---             |> field i1 "1" input2
---             |> endRecord
---         )
--- tag3 f id tag input1 input2 input3 =
---     variant f
---         id
---         (record tag
---             |> field i0 "0" input1
---             |> field i1 "1" input2
---             |> field i2 "2" input3
---             |> endRecord
---         )
--- endCustomType rec =
---     let
---         fns =
---             rec.fns End
---         emptyDeltas =
---             rec.deltas End
---         inits =
---             rec.states End
---         names =
---             List.reverse rec.names
---     in
---     Input
---         (\id ->
---             { id = id
---             , index = 0
---             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
---             , update =
---                 \delta (State s state) ->
---                     case delta of
---                         Skip ->
---                             State s state
---                         ChangeState (TagSelected idx) ->
---                             State s { state | selectedTag = idx }
---                         ChangeState (TagDeltaReceived tagDelta) ->
---                             State s { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
---                         _ ->
---                             State s state
---             , view =
---                 \{ state } ->
---                     let
---                         selectedName =
---                             List.Extra.getAt state.selectedTag names
---                                 |> Maybe.withDefault "ERROR"
---                     in
---                     H.div []
---                         [ H.text id
---                         , H.div []
---                             (List.indexedMap
---                                 (\index name ->
---                                     H.button
---                                         [ HE.onClick (ChangeState (TagSelected index)) ]
---                                         [ H.text name ]
---                                 )
---                                 names
---                             )
---                         , H.text selectedName
---                         , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
---                         ]
---             , parse = \(State s state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
---             }
---         )
--- {-
---     .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
---    d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
---    8P      88    88 `8bo.      88    88    88 88  88  88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
---    8b      88    88   `Y8b.    88    88    88 88  88  88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
---    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
---     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
--- -}
--- parseSelectedTagState parser selectedTag fns states =
---     parser
---         (\result _ End End -> result)
---         (Err [ "tag index " ++ String.fromInt selectedTag ++ " not found" ])
---         selectedTag
---         fns
---         states
--- selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
---     next
---         (if fns.field.index == selectedTag then
---             fns.field.parse state
---          else
---             result
---         )
---         selectedTag
---         restFns
---         restStates
--- viewSelectedTagState viewer selectedTag emptyDeltas fns states =
---     viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag emptyDeltas fns states
---         |> Maybe.map (H.map (ChangeState << TagDeltaReceived))
---         |> Maybe.withDefault (H.text "ERROR!")
--- selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( State s state, restStates ) =
---     next
---         (if fns.field.index == selectedTag then
---             Just
---                 (fns.field.view
---                     { state = state
---                     , status = Intact
---                     , id = fns.field.id
---                     }
---                     |> H.map
---                         (\delta ->
---                             fns.selector.set (\_ -> delta) emptyDeltas
---                         )
---                 )
---          else
---             maybeView
---         )
---         selectedTag
---         emptyDeltas
---         restFns
---         restStates
+
+
+type alias CustomTypeState variants =
+    { tagStates : variants
+    , selectedTag : Int
+    }
+
+
+type CustomTypeDelta variants
+    = TagSelected Int
+    | TagDeltaReceived variants
+
+
+customType =
+    { index = 0
+    , names = []
+    , fns = identity
+    , deltas = identity
+    , states = identity
+    , updater = identity
+    , viewer = identity
+    , parser = identity
+    }
+
+
+variant sel id (Input input) rec =
+    let
+        i =
+            input id
+    in
+    { index = rec.index + 1
+    , names = id :: rec.names
+    , fns =
+        rec.fns
+            << Tuple.pair
+                { field = { i | index = rec.index }
+                , selector = instantiateSelector sel
+                }
+    , deltas = rec.deltas << Tuple.pair Skip
+    , states = rec.states << Tuple.pair i.init
+    , updater = rec.updater >> recordStateUpdater
+    , viewer = rec.viewer >> selectedTagViewer
+    , parser = rec.parser >> selectedTagParser
+    }
+
+
+tag0 f id tag =
+    variant f id (always tag)
+
+
+tag1 f id tag input =
+    variant f
+        id
+        (record tag
+            |> field i0 "0" input
+            |> endRecord
+        )
+
+
+tag2 f id tag input1 input2 =
+    variant f
+        id
+        (record tag
+            |> field i0 "0" input1
+            |> field i1 "1" input2
+            |> endRecord
+        )
+
+
+tag3 f id tag input1 input2 input3 =
+    variant f
+        id
+        (record tag
+            |> field i0 "0" input1
+            |> field i1 "1" input2
+            |> field i2 "2" input3
+            |> endRecord
+        )
+
+
+endCustomType rec =
+    let
+        fns =
+            rec.fns End
+
+        emptyDeltas =
+            rec.deltas End
+
+        inits =
+            rec.states End
+
+        names =
+            List.reverse rec.names
+    in
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = State Intact_ { tagStates = inits, selectedTag = 0 }
+            , update =
+                \delta (State s state) ->
+                    case delta of
+                        Skip ->
+                            ( State s state, Cmd.none )
+
+                        ChangeState (TagSelected idx) ->
+                            ( State s { state | selectedTag = idx }, Cmd.none )
+
+                        ChangeState (TagDeltaReceived tagDelta) ->
+                            let
+                                ( newTagStates, cmd ) =
+                                    updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
+                            in
+                            ( State s { state | tagStates = newTagStates }
+                            , Cmd.map (ChangeState << TagDeltaReceived) cmd
+                            )
+
+                        _ ->
+                            ( State s state, Cmd.none )
+            , view =
+                \{ state } ->
+                    let
+                        selectedName =
+                            List.Extra.getAt state.selectedTag names
+                                |> Maybe.withDefault "ERROR"
+                    in
+                    H.div []
+                        [ H.text id
+                        , H.div []
+                            (List.indexedMap
+                                (\index name ->
+                                    H.button
+                                        [ HE.onClick (ChangeState (TagSelected index)) ]
+                                        [ H.text name ]
+                                )
+                                names
+                            )
+                        , H.text selectedName
+                        , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
+                        ]
+            , parse = \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+            }
+        )
+
+
+
+{-
+    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
+   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
+   8P      88    88 `8bo.      88    88    88 88  88  88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
+   8b      88    88   `Y8b.    88    88    88 88  88  88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
+   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
+    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
+-}
+
+
+parseSelectedTagState parser selectedTag fns states =
+    parser
+        (\result _ End End -> result)
+        (Err [ "tag index " ++ String.fromInt selectedTag ++ " not found" ])
+        selectedTag
+        fns
+        states
+
+
+selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
+    next
+        (if fns.field.index == selectedTag then
+            fns.field.parse state
+
+         else
+            result
+        )
+        selectedTag
+        restFns
+        restStates
+
+
+viewSelectedTagState viewer selectedTag emptyDeltas fns states =
+    viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag emptyDeltas fns states
+        |> Maybe.map (H.map (ChangeState << TagDeltaReceived))
+        |> Maybe.withDefault (H.text "ERROR!")
+
+
+selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( State s state, restStates ) =
+    next
+        (if fns.field.index == selectedTag then
+            Just
+                (fns.field.view
+                    { state = state
+                    , status = Intact
+                    , id = fns.field.id
+                    }
+                    |> H.map
+                        (\delta ->
+                            fns.selector.set (\_ -> delta) emptyDeltas
+                        )
+                )
+
+         else
+            maybeView
+        )
+        selectedTag
+        emptyDeltas
+        restFns
+        restStates
+
+
+
 {-
    .d8888. d88888b db      d88888b  .o88b. d888888b  .d88b.  d8888b. .d8888.
    88'  YP 88'     88      88'     d8P  Y8 `~~88~~' .8P  Y8. 88  `8D 88'  YP
