@@ -158,16 +158,20 @@ type End
 
 
 type alias Form state delta output msg =
-    { init : state
-    , update : Delta delta -> state -> state
-    , view : state -> Html msg
-    , submit : state -> Result (List String) output
+    { init : State state
+    , update : Delta delta -> State state -> State state
+    , view : State state -> Html msg
+    , submit : State state -> Result (List String) output
     }
 
 
 type Delta delta
     = Skip
     | Delta delta
+
+
+type State state
+    = State {} state
 
 
 type alias InputConfig state delta output =
@@ -184,10 +188,10 @@ type Input state delta output
          ->
             { id : String
             , index : Int
-            , init : state
-            , update : Delta delta -> state -> state
+            , init : State state
+            , update : Delta delta -> State state -> State state
             , view : ViewConfig state -> Html (Delta delta)
-            , parse : state -> Result (List String) output
+            , parse : State state -> Result (List String) output
             , validators : List { check : output -> Bool, feedback : Result String String }
             , debounce : Float
             }
@@ -212,11 +216,11 @@ type States0
 
 
 type alias States1 a =
-    ( a, End )
+    ( State a, End )
 
 
 type alias States2 a b =
-    ( a, States1 b )
+    ( State a, States1 b )
 
 
 type Deltas0
@@ -250,7 +254,7 @@ toForm id toMsg (Input input) =
     in
     { init = init
     , update = update
-    , view = \state -> view { state = state, status = Intact, id = id } |> H.map toMsg
+    , view = \(State s state) -> view { state = state, status = Intact, id = id } |> H.map toMsg
     , submit = parse
     }
 
@@ -273,17 +277,17 @@ fromConfig config =
         (\id ->
             { id = id
             , index = 0
-            , init = config.init
+            , init = State {} config.init
             , update =
-                \wrappedDelta state ->
+                \wrappedDelta (State s state) ->
                     case wrappedDelta of
                         Skip ->
-                            state
+                            State s state
 
                         Delta delta ->
-                            config.update delta state
+                            State s (config.update delta state)
             , view = config.view >> H.map Delta
-            , parse = config.parse
+            , parse = \(State s state) -> config.parse state
             , validators = []
             , debounce = 0
             }
@@ -335,18 +339,12 @@ string =
 
 always : output -> Input States0 Deltas0 output
 always output =
-    Input
-        (\id ->
-            { id = id
-            , index = 0
-            , init = States0
-            , update = \_ _ -> States0
-            , view = \_ -> H.text ""
-            , parse = \_ -> Ok output
-            , validators = []
-            , debounce = 0
-            }
-        )
+    fromConfig
+        { init = States0
+        , update = \_ _ -> States0
+        , view = \_ -> H.text ""
+        , parse = \_ -> Ok output
+        }
 
 
 type alias MaybeInputState state =
@@ -427,17 +425,17 @@ endRecord rec =
         (\id ->
             { id = id
             , index = 0
-            , init = inits
+            , init = State {} inits
             , update =
-                \delta state ->
+                \delta (State s state) ->
                     case delta of
                         Skip ->
-                            state
+                            State s state
 
                         Delta deltas ->
-                            updateRecordStates rec.updater fields deltas state
+                            State s (updateRecordStates rec.updater fields deltas state)
             , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
-            , parse = \state -> parseRecordStates rec.parser rec.toOutput fields state
+            , parse = \(State s state) -> parseRecordStates rec.parser rec.toOutput fields state
             , validators = []
             , debounce = 0
             }
@@ -484,7 +482,7 @@ viewRecordStates viewer emptyDeltas fns states =
         |> H.div []
 
 
-recordStateViewer next list emptyDeltas ( fns, restFns ) ( state, restStates ) =
+recordStateViewer next list emptyDeltas ( fns, restFns ) ( State s state, restStates ) =
     next
         ((fns.field.view
             { state = state
@@ -620,18 +618,18 @@ endCustomType rec =
         (\id ->
             { id = id
             , index = 0
-            , init = { tagStates = inits, selectedTag = 0 }
+            , init = State {} { tagStates = inits, selectedTag = 0 }
             , update =
-                \delta state ->
+                \delta (State s state) ->
                     case delta of
                         Skip ->
-                            state
+                            State s state
 
                         Delta (TagSelected idx) ->
-                            { state | selectedTag = idx }
+                            State s { state | selectedTag = idx }
 
                         Delta (TagDeltaReceived tagDelta) ->
-                            { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
+                            State s { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
             , view =
                 \{ state } ->
                     let
@@ -653,7 +651,7 @@ endCustomType rec =
                         , H.text selectedName
                         , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
                         ]
-            , parse = \state -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+            , parse = \(State s state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
             , validators = []
             , debounce = 0
             }
@@ -699,7 +697,7 @@ viewSelectedTagState viewer selectedTag emptyDeltas fns states =
         |> Maybe.withDefault (H.text "ERROR!")
 
 
-selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( state, restStates ) =
+selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( State s state, restStates ) =
     next
         (if fns.field.index == selectedTag then
             Just
