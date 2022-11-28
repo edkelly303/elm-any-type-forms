@@ -1,48 +1,4 @@
-module Example2 exposing
-    ( CustomTypeDelta
-    , CustomTypeState
-    , Deltas0
-    , Deltas1
-    , Deltas2
-    , Deltas3
-    , Deltas4
-    , Deltas5
-    , End
-    , Form
-    , Input
-    , IntInputDelta
-    , IntInputState
-    , States0
-    , States1
-    , States2
-    , States3
-    , States4
-    , States5
-    , StringInputDelta
-    , StringInputState
-    , ViewConfig
-    , always
-    , customType
-    , endCustomType
-    , endRecord
-    , field
-    , i0
-    , i1
-    , i2
-    , i3
-    , i4
-    , i5
-    , int
-    , main
-    , maybe
-    , record
-    , string
-    , tag0
-    , tag1
-    , tag2
-    , tag3
-    , toForm
-    )
+module Example2 exposing (..)
 
 import Browser
 import Html as H exposing (Html)
@@ -85,113 +41,86 @@ main =
 
 type
     Msg
-    -- = FormMsg StringInputDelta
-    -- = FormMsg PetOwnerRecordInputDelta
-    = FormMsg PetOwnerCustomTypeInputDelta
+    -- = FormMsg (Delta String)
+    -- = FormMsg (Delta SimpleRecordInputDelta)
+    -- = FormMsg (Delta NestedRecordInputDelta)
+    = FormMsg (Delta SimpleCustomInputDelta)
 
 
 mainForm =
-    -- simpleInput
-    -- petOwnerRecordInput
-    petOwnerCustomTypeInput
-        |> toForm "pet owner" FormMsg
+    -- int
+    -- simpleRecordInput
+    -- nestedRecordInput
+    simpleCustomInput
+        |> toForm "form" FormMsg
 
 
-simpleIntInput : Input String String Int
-simpleIntInput =
-    int
-
-
-type alias Pet =
-    { petName : String
-    , petAge : Int
-    }
-
-
-type alias PetInputState =
-    States2
-        StringInputState
-        IntInputState
-
-
-type alias PetInputDelta =
-    Deltas2
-        StringInputDelta
-        IntInputDelta
-
-
-petInput : Input PetInputState PetInputDelta Pet
-petInput =
-    record Pet
-        |> field i0 "pet's name" string
-        |> field i1 "pet's age" int
-        |> endRecord
-
-
-type alias PetOwnerRecord =
+type alias SimpleRecord =
     { name : String
     , age : Int
-    , pet : Pet
     }
 
 
-type alias PetOwnerRecordInputState =
-    States3
-        StringInputState
-        IntInputState
-        PetInputState
+type alias Deltas1 a =
+    ( Delta a, End )
 
 
-type alias PetOwnerRecordInputDelta =
-    Deltas3
-        StringInputDelta
-        IntInputDelta
-        PetInputDelta
+type alias Deltas2 a b =
+    ( Delta a, Deltas1 b )
 
 
-petOwnerRecordInput : Input PetOwnerRecordInputState PetOwnerRecordInputDelta PetOwnerRecord
-petOwnerRecordInput =
-    record PetOwnerRecord
+type alias SimpleRecordInputDelta =
+    Deltas2
+        String
+        String
+
+
+simpleRecordInput :
+    Input
+        ( String, ( String, End ) )
+        SimpleRecordInputDelta
+        SimpleRecord
+simpleRecordInput =
+    record SimpleRecord
         |> field i0 "name" string
         |> field i1 "age" int
-        |> field i2 "pet" petInput
         |> endRecord
 
 
-type PetOwnerCustom
-    = Age Int
-    | Name String
-    | Pet_ Pet
-    | None
+type alias NestedRecord =
+    { record : SimpleRecord
+    }
 
 
-type alias PetOwnerCustomInputState =
-    CustomTypeState
-        (States4
-            (States1 StringInputState)
-            (States1 IntInputState)
-            (States1 PetInputState)
-            States0
-        )
+type alias NestedRecordInputDelta =
+    Deltas1 SimpleRecordInputDelta
 
 
-type alias PetOwnerCustomTypeInputDelta =
-    CustomTypeDelta
-        (Deltas4
-            (Deltas1 StringInputDelta)
-            (Deltas1 IntInputDelta)
-            (Deltas1 PetInputDelta)
-            Deltas0
-        )
+nestedRecordInput : Input ( ( String, ( String, End ) ), End ) NestedRecordInputDelta NestedRecord
+nestedRecordInput =
+    record NestedRecord
+        |> field i0 "record" simpleRecordInput
+        |> endRecord
 
 
-petOwnerCustomTypeInput : Input PetOwnerCustomInputState PetOwnerCustomTypeInputDelta PetOwnerCustom
-petOwnerCustomTypeInput =
+type SimpleCustom
+    = Red
+    | Green String
+
+
+type alias SimpleCustomInputDelta =
+    CustomTypeDelta ( Delta Deltas0, ( Delta ( Delta String, End ), End ) )
+
+
+simpleCustomInput :
+    Input
+        { tagStates : ( States0, ( ( String, End ), End ) ), selectedTag : Int }
+        SimpleCustomInputDelta
+        SimpleCustom
+simpleCustomInput =
     customType
-        |> tag1 i0 "name" Name string
-        |> tag1 i1 "age" Age int
-        |> tag1 i2 "pet" Pet_ petInput
-        |> tag0 i3 "none" None
+        |> tag0 i0 "red" Red
+        |> tag1 i1 "green" Green string
         |> endCustomType
 
 
@@ -212,9 +141,22 @@ type End
 
 type alias Form state delta output msg =
     { init : state
-    , update : delta -> state -> state
+    , update : Delta delta -> state -> state
     , view : state -> Html msg
     , submit : state -> Result (List String) output
+    }
+
+
+type Delta delta
+    = Skip
+    | Delta delta
+
+
+type alias InputConfig state delta output =
+    { init : state
+    , update : delta -> state -> state
+    , view : ViewConfig state -> Html delta
+    , parse : state -> Result (List String) output
     }
 
 
@@ -225,8 +167,8 @@ type Input state delta output
             { id : String
             , index : Int
             , init : state
-            , update : delta -> state -> state
-            , view : ViewConfig state -> Html delta
+            , update : Delta delta -> state -> state
+            , view : ViewConfig state -> Html (Delta delta)
             , parse : state -> Result (List String) output
             , validators : List { check : output -> Bool, feedback : Result String String }
             , debounce : Float
@@ -247,54 +189,6 @@ type Status
     | Idle (List (Result String String))
 
 
-type States0
-    = States0
-
-
-type Deltas0
-    = Deltas0
-
-
-type alias States1 a =
-    ( a, End )
-
-
-type alias Deltas1 a =
-    ( Maybe a, End )
-
-
-type alias States2 a b =
-    ( a, ( b, End ) )
-
-
-type alias Deltas2 a b =
-    ( Maybe a, ( Maybe b, End ) )
-
-
-type alias States3 a b c =
-    ( a, ( b, ( c, End ) ) )
-
-
-type alias Deltas3 a b c =
-    ( Maybe a, ( Maybe b, ( Maybe c, End ) ) )
-
-
-type alias States4 a b c d =
-    ( a, ( b, ( c, ( d, End ) ) ) )
-
-
-type alias Deltas4 a b c d =
-    ( Maybe a, ( Maybe b, ( Maybe c, ( Maybe d, End ) ) ) )
-
-
-type alias States5 a b c d e =
-    ( a, ( b, ( c, ( d, ( e, End ) ) ) ) )
-
-
-type alias Deltas5 a b c d e =
-    ( Maybe a, ( Maybe b, ( Maybe c, ( Maybe d, ( Maybe e, End ) ) ) ) )
-
-
 
 {-
    d88888b  .d88b.  d8888b. .88b  d88. .d8888.
@@ -306,7 +200,7 @@ type alias Deltas5 a b c d e =
 -}
 
 
-toForm : String -> (delta -> msg) -> Input state delta output -> Form state delta output msg
+toForm : String -> (Delta delta -> msg) -> Input state delta output -> Form state delta output msg
 toForm id toMsg (Input input) =
     let
         { init, update, view, parse } =
@@ -331,6 +225,29 @@ toForm id toMsg (Input input) =
 -}
 
 
+fromConfig : InputConfig state delta output -> Input state delta output
+fromConfig config =
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = config.init
+            , update =
+                \wrappedDelta state ->
+                    case wrappedDelta of
+                        Skip ->
+                            state
+
+                        Delta delta ->
+                            config.update delta state
+            , view = config.view >> H.map Delta
+            , parse = config.parse
+            , validators = []
+            , debounce = 0
+            }
+        )
+
+
 type alias IntInputState =
     String
 
@@ -341,25 +258,19 @@ type alias IntInputDelta =
 
 int : Input String String Int
 int =
-    Input
-        (\id ->
-            { id = id
-            , index = 0
-            , init = ""
-            , update = \delta _ -> delta
-            , view = stringView
-            , parse =
-                \input ->
-                    case String.toInt input of
-                        Just i ->
-                            Ok i
+    fromConfig
+        { init = ""
+        , update = \delta _ -> delta
+        , view = stringView
+        , parse =
+            \input ->
+                case String.toInt input of
+                    Just i ->
+                        Ok i
 
-                        Nothing ->
-                            Err [ "must be a whole number" ]
-            , validators = []
-            , debounce = 0
-            }
-        )
+                    Nothing ->
+                        Err [ "must be a whole number" ]
+        }
 
 
 type alias StringInputState =
@@ -372,18 +283,20 @@ type alias StringInputDelta =
 
 string : Input String String String
 string =
-    Input
-        (\id ->
-            { id = id
-            , index = 0
-            , init = ""
-            , update = \delta _ -> delta
-            , view = stringView
-            , parse = Ok
-            , validators = []
-            , debounce = 500
-            }
-        )
+    fromConfig
+        { init = ""
+        , update = \delta _ -> delta
+        , view = stringView
+        , parse = Ok
+        }
+
+
+type States0
+    = States0
+
+
+type Deltas0
+    = Deltas0
 
 
 always : output -> Input States0 Deltas0 output
@@ -400,6 +313,14 @@ always output =
             , debounce = 0
             }
         )
+
+
+type alias States1 a =
+    ( a, End )
+
+
+type alias States2 a b =
+    ( a, States1 b )
 
 
 type alias MaybeInputState state =
@@ -457,7 +378,7 @@ field sel id (Input input) rec =
     { index = rec.index + 1
     , toOutput = rec.toOutput
     , fields = rec.fields << Tuple.pair { field = { i | index = rec.index }, selector = instantiateSelector sel }
-    , deltas = rec.deltas << Tuple.pair Nothing
+    , deltas = rec.deltas << Tuple.pair Skip
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
@@ -481,7 +402,14 @@ endRecord rec =
             { id = id
             , index = 0
             , init = inits
-            , update = \delta state -> updateRecordStates rec.updater fields delta state
+            , update =
+                \delta state ->
+                    case delta of
+                        Skip ->
+                            state
+
+                        Delta deltas ->
+                            updateRecordStates rec.updater fields deltas state
             , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
             , parse = \state -> parseRecordStates rec.parser rec.toOutput fields state
             , validators = []
@@ -539,7 +467,7 @@ recordStateViewer next list emptyDeltas ( fns, restFns ) ( state, restStates ) =
             }
             |> H.map
                 (\delta ->
-                    fns.selector.set (\_ -> Just delta) emptyDeltas
+                    Delta (fns.selector.set (\_ -> delta) emptyDeltas)
                 )
          )
             :: list
@@ -554,12 +482,7 @@ updateRecordStates updater fields deltas states =
 
 
 recordStateUpdater next ( fns, restFns ) ( delta, restDeltas ) ( state, restStates ) =
-    ( case delta of
-        Nothing ->
-            state
-
-        Just d ->
-            fns.field.update d state
+    ( fns.field.update delta state
     , next restFns restDeltas restStates
     )
 
@@ -611,7 +534,7 @@ variant sel id (Input input) rec =
                 { field = { i | index = rec.index }
                 , selector = instantiateSelector sel
                 }
-    , deltas = rec.deltas << Tuple.pair Nothing
+    , deltas = rec.deltas << Tuple.pair Skip
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
@@ -675,10 +598,13 @@ endCustomType rec =
             , update =
                 \delta state ->
                     case delta of
-                        TagSelected idx ->
+                        Skip ->
+                            state
+
+                        Delta (TagSelected idx) ->
                             { state | selectedTag = idx }
 
-                        TagDeltaReceived tagDelta ->
+                        Delta (TagDeltaReceived tagDelta) ->
                             { state | tagStates = updateRecordStates rec.updater fns tagDelta state.tagStates }
             , view =
                 \{ state } ->
@@ -693,7 +619,7 @@ endCustomType rec =
                             (List.indexedMap
                                 (\index name ->
                                     H.button
-                                        [ HE.onClick (TagSelected index) ]
+                                        [ HE.onClick (Delta (TagSelected index)) ]
                                         [ H.text name ]
                                 )
                                 names
@@ -743,7 +669,7 @@ selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates )
 
 viewSelectedTagState viewer selectedTag emptyDeltas fns states =
     viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag emptyDeltas fns states
-        |> Maybe.map (H.map TagDeltaReceived)
+        |> Maybe.map (H.map (Delta << TagDeltaReceived))
         |> Maybe.withDefault (H.text "ERROR!")
 
 
@@ -758,7 +684,7 @@ selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( stat
                     }
                     |> H.map
                         (\delta ->
-                            fns.selector.set (\_ -> Just delta) emptyDeltas
+                            fns.selector.set (\_ -> delta) emptyDeltas
                         )
                 )
 
