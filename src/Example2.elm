@@ -67,9 +67,15 @@ type alias SimpleRecordInputDelta =
         String
 
 
+type alias SimpleRecordInputState =
+    States2
+        String
+        String
+
+
 simpleRecordInput :
     Input
-        ( String, ( String, End ) )
+        SimpleRecordInputState
         SimpleRecordInputDelta
         SimpleRecord
 simpleRecordInput =
@@ -88,7 +94,15 @@ type alias NestedRecordInputDelta =
     Deltas1 SimpleRecordInputDelta
 
 
-nestedRecordInput : Input ( ( String, ( String, End ) ), End ) NestedRecordInputDelta NestedRecord
+type alias NestedRecordInputState =
+    States1 SimpleRecordInputState
+
+
+nestedRecordInput :
+    Input
+        NestedRecordInputState
+        NestedRecordInputDelta
+        NestedRecord
 nestedRecordInput =
     record NestedRecord
         |> field i0 "record" simpleRecordInput
@@ -101,12 +115,24 @@ type SimpleCustom
 
 
 type alias SimpleCustomInputDelta =
-    CustomTypeDelta ( Delta Deltas0, ( Delta ( Delta String, End ), End ) )
+    CustomTypeDelta
+        (Deltas2
+            Deltas0
+            (Deltas1 String)
+        )
+
+
+type alias SimpleCustomInputState =
+    CustomTypeState
+        (States2
+            States0
+            (States1 String)
+        )
 
 
 simpleCustomInput :
     Input
-        { tagStates : ( States0, ( ( String, End ), End ) ), selectedTag : Int }
+        SimpleCustomInputState
         SimpleCustomInputDelta
         SimpleCustom
 simpleCustomInput =
