@@ -402,25 +402,31 @@ always output =
         }
 
 
+type alias MaybeInputState state =
+    CustomTypeState
+        (States2
+            (States1 state)
+            States0
+        )
 
--- type alias MaybeInputState state =
---     CustomTypeState
---         (States2
---             (States1 state)
---             States0
---         )
--- type alias MaybeInputDelta delta =
---     CustomTypeDelta
---         (Deltas2
---             (Deltas1 delta)
---             Deltas0
---         )
--- maybe : Input state delta output -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
--- maybe input =
---     customType
---         |> tag1 i0 "Just" Just input
---         |> tag0 i1 "Nothing" Nothing
---         |> endCustomType
+
+type alias MaybeInputDelta delta =
+    CustomTypeDelta
+        (Deltas2
+            (Deltas1 delta)
+            Deltas0
+        )
+
+
+maybe : Input state delta output -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
+maybe input =
+    customType
+        |> tag1 i0 "Just" Just input
+        |> tag0 i1 "Nothing" Nothing
+        |> endCustomType
+
+
+
 {-
    d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b. .d8888.
    88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D 88'  YP
