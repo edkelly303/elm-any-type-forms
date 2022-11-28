@@ -61,14 +61,6 @@ type alias SimpleRecord =
     }
 
 
-type alias Deltas1 a =
-    ( Delta a, End )
-
-
-type alias Deltas2 a b =
-    ( Delta a, Deltas1 b )
-
-
 type alias SimpleRecordInputDelta =
     Deltas2
         String
@@ -189,6 +181,30 @@ type Status
     | Idle (List (Result String String))
 
 
+type States0
+    = States0
+
+
+type alias States1 a =
+    ( a, End )
+
+
+type alias States2 a b =
+    ( a, States1 b )
+
+
+type Deltas0
+    = Deltas0
+
+
+type alias Deltas1 a =
+    ( Delta a, End )
+
+
+type alias Deltas2 a b =
+    ( Delta a, Deltas1 b )
+
+
 
 {-
    d88888b  .d88b.  d8888b. .88b  d88. .d8888.
@@ -291,14 +307,6 @@ string =
         }
 
 
-type States0
-    = States0
-
-
-type Deltas0
-    = Deltas0
-
-
 always : output -> Input States0 Deltas0 output
 always output =
     Input
@@ -313,14 +321,6 @@ always output =
             , debounce = 0
             }
         )
-
-
-type alias States1 a =
-    ( a, End )
-
-
-type alias States2 a b =
-    ( a, States1 b )
 
 
 type alias MaybeInputState state =
