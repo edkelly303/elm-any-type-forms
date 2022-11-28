@@ -343,14 +343,6 @@ fromConfig config =
         )
 
 
-type alias IntInputState =
-    String
-
-
-type alias IntInputDelta =
-    String
-
-
 int : Input String String Int
 int =
     fromConfig
@@ -368,14 +360,6 @@ int =
         , validators = []
         , debounce = 1000
         }
-
-
-type alias StringInputState =
-    String
-
-
-type alias StringInputDelta =
-    String
 
 
 string : Input String String String
