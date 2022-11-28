@@ -338,7 +338,7 @@ fromConfig config =
                                     , Cmd.none
                                     )
             , view = config.view >> H.map ChangeState
-            , parse = \(State s state) -> config.parse state
+            , parse = \(State _ state) -> config.parse state
             }
         )
 
