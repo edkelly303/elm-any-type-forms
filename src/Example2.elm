@@ -5,6 +5,7 @@ import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode
+import List.Extra
 import Process
 import Result.Extra
 import Task
@@ -89,7 +90,7 @@ simpleRecordInput =
 
 
 type alias NestedRecord =
-    { title : String
+    { titles : List Int
     , record : SimpleRecord
     , custom : SimpleCustom
     }
@@ -97,14 +98,14 @@ type alias NestedRecord =
 
 type alias NestedRecordInputDelta =
     Deltas3
-        String
+        (ListDelta String)
         SimpleRecordInputDelta
         SimpleCustomInputDelta
 
 
 type alias NestedRecordInputState =
     States3
-        String
+        (ListState String)
         SimpleRecordInputState
         SimpleCustomInputState
 
@@ -116,7 +117,7 @@ nestedRecordInput :
         NestedRecord
 nestedRecordInput =
     record NestedRecord
-        |> field i0 "title" string
+        |> field i0 "titles" (list boundedInt)
         |> field i1 "record" simpleRecordInput
         |> field i2 "custom" simpleCustomInput
         |> endRecord
@@ -291,7 +292,10 @@ toForm id toMsg (Input input) =
             input id
     in
     { init = init
-    , update = \msg state -> update msg state |> Tuple.mapSecond (Cmd.map toMsg)
+    , update =
+        \msg state ->
+            update msg state
+                |> Tuple.mapSecond (Cmd.map toMsg)
     , view =
         \(State internalState state) ->
             view
@@ -478,6 +482,102 @@ maybe input =
         |> endCustomType
 
 
+type alias ListState state =
+    List (State state)
+
+
+type ListDelta delta
+    = AddItem
+    | DeleteItem Int
+    | ChangeItem Int (Delta delta)
+
+
+list : Input state delta output -> Input (List (State state)) (ListDelta delta) (List output)
+list (Input toInput) =
+    let
+        input =
+            toInput ""
+    in
+    { init = []
+    , update =
+        \delta state ->
+            case delta of
+                AddItem ->
+                    input.init :: state
+
+                ChangeItem idx itemDelta ->
+                    List.indexedMap
+                        (\i item ->
+                            if i == idx then
+                                let
+                                    ( newItem, cmd ) =
+                                        input.update itemDelta item
+                                in
+                                newItem
+
+                            else
+                                item
+                        )
+                        state
+
+                DeleteItem idx ->
+                    List.Extra.removeAt idx state
+    , view =
+        \config ->
+            H.div [ HA.style "margin-bottom" "10px" ]
+                [ H.text config.id
+                , H.div
+                    [ HA.style "margin-top" "10px"
+                    , HA.style "margin-bottom" "10px"
+                    ]
+                    [ H.button [ HE.onClick AddItem ] [ H.text "add item" ] ]
+                , borderedDiv
+                    (List.indexedMap
+                        (\idx (State internalState state) ->
+                            H.div [ HA.style "margin-bottom" "10px" ]
+                                [ H.text ("item #" ++ String.fromInt idx)
+                                , input.view
+                                    { state = state
+                                    , status = statusFromInternalState input.parse (State internalState state)
+                                    , id = ""
+                                    }
+                                    |> H.map (ChangeItem idx)
+                                , H.button [ HE.onClick (DeleteItem idx) ] [ H.text "delete" ]
+                                ]
+                        )
+                        config.state
+                    )
+                , statusView config.status
+                ]
+    , parse =
+        \state ->
+            List.foldr
+                (\( idx, item ) res ->
+                    case res of
+                        Ok outputs ->
+                            case input.parse item of
+                                Ok output ->
+                                    Ok (output :: outputs)
+
+                                Err errs ->
+                                    Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) errs)
+
+                        Err errs ->
+                            case input.parse item of
+                                Ok _ ->
+                                    Err errs
+
+                                Err newErrs ->
+                                    Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) newErrs ++ errs)
+                )
+                (Ok [])
+                (List.indexedMap Tuple.pair state)
+    , debounce = 0
+    , validators = []
+    }
+        |> fromConfig
+
+
 
 {-
    d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b. .d8888.
@@ -594,12 +694,12 @@ recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
 
 
 viewRecordStates viewer emptyDeltas fns states =
-    viewer (\list _ End End -> list) [] emptyDeltas fns states
+    viewer (\views _ End End -> views) [] emptyDeltas fns states
         |> List.reverse
         |> H.div []
 
 
-recordStateViewer next list emptyDeltas ( fns, restFns ) ( State internalState state, restStates ) =
+recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState state, restStates ) =
     next
         ((fns.field.view
             { state = state
@@ -611,7 +711,7 @@ recordStateViewer next list emptyDeltas ( fns, restFns ) ( State internalState s
                     ChangeState (fns.selector.set (\_ -> delta) emptyDeltas)
                 )
          )
-            :: list
+            :: views
         )
         emptyDeltas
         restFns
