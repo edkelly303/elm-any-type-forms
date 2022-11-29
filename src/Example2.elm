@@ -823,40 +823,51 @@ customTypeView ids rec emptyDeltas fns config =
         options =
             List.indexedMap Tuple.pair ids
     in
-    H.div []
-        [ radioView options config.id config.state.selectedTag (ChangeState << TagSelected)
-        , viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates
+    H.div [ HA.style "margin-top" "10px" ]
+        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text config.id ]
+        , H.div
+            [ HA.style "border-width" "1px"
+            , HA.style "border-color" "lightGray"
+            , HA.style "border-style" "solid"
+            ]
+            [ H.div [ HA.style "margin" "10px" ]
+                [ radioView options config.id config.state.selectedTag (ChangeState << TagSelected)
+                , H.div
+                    [ HA.style "border-width" "1px"
+                    , HA.style "border-color" "lightGray"
+                    , HA.style "border-style" "solid"
+                    ]
+                    [ H.div
+                        [ HA.style "margin" "10px" ]
+                        [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
+                    ]
+                ]
+            ]
         ]
 
 
 radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
 radioView options id selectedOption toMsg =
-    H.div [ HA.style "margin-top" "10px" ]
-        [ H.div
-            [ HA.style "margin-top" "10px" ]
-            [ H.text id ]
-        , H.div [ HA.style "margin-bottom" "10px" ]
-            (List.map
-                (\( option, label ) ->
-                    H.div []
-                        [ H.input
-                            [ HA.type_ "radio"
-                            , HA.id (id ++ label)
-                            , HA.name id
-                            , HA.value label
-                            , HA.checked (selectedOption == option)
-                            , HA.style "margin-top" "10px"
-                            , onChecked (toMsg option)
-                            ]
-                            []
-                        , H.label
-                            [ HA.for (id ++ label) ]
-                            [ H.text label ]
+    H.div [ HA.style "margin-bottom" "10px" ]
+        (List.map
+            (\( option, label ) ->
+                H.span [ HA.style "margin-right" "10px" ]
+                    [ H.input
+                        [ HA.type_ "radio"
+                        , HA.id (id ++ label)
+                        , HA.name id
+                        , HA.value label
+                        , HA.checked (selectedOption == option)
+                        , onChecked (toMsg option)
                         ]
-                )
-                options
+                        []
+                    , H.label
+                        [ HA.for (id ++ label) ]
+                        [ H.text label ]
+                    ]
             )
-        ]
+            options
+        )
 
 
 onChecked : msg -> H.Attribute msg
