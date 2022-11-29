@@ -84,21 +84,24 @@ simpleRecordInput =
 type SimpleCustomType
     = Red
     | Green Int
+    | Blue String (Maybe Int)
 
 
 type alias SimpleCustomTypeDelta =
     CustomTypeDelta
-        (Deltas2
+        (Deltas3
             Deltas0
             (Deltas1 String)
+            (Deltas2 String (MaybeDelta String))
         )
 
 
 type alias SimpleCustomTypeState =
     CustomTypeState
-        (States2
+        (States3
             States0
             (States1 String)
+            (States2 String (MaybeState String))
         )
 
 
@@ -111,6 +114,7 @@ simpleCustomTypeInput =
     customType
         |> tag0 i0 "red" Red
         |> tag1 i1 "green" Green "integer" boundedInt
+        |> tag2 i2 "blue" Blue "string" string "maybe int" (maybe int)
         |> endCustomType
 
 
