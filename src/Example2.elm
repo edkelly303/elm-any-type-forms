@@ -560,7 +560,7 @@ endRecord rec =
                             , HA.style "border-color" "lightGray"
                             , HA.style "border-style" "solid"
                             ]
-                            [ H.div [ HA.style "margin" "5px" ] [ viewRecordStates rec.viewer emptyDeltas fields state ]
+                            [ H.div [ HA.style "margin" "10px" ] [ viewRecordStates rec.viewer emptyDeltas fields state ]
                             ]
                         ]
             , parse = \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
