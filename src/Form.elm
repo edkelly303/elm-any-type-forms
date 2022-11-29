@@ -1,106 +1,1070 @@
-module Form exposing
-    ( End
-    , end
-    , f0
-    , f1
-    , f10
-    , f2
-    , f3
-    , f4
-    , f5
-    , f6
-    , f7
-    , f8
-    , f9
-    , failIf2
-    , failIf3
-    , field
-    , infoIf2
-    , infoIf3
-    , new
-    )
+module Form exposing (..)
 
-import Dict
-import Dict.Extra
-import Field
+import Browser
+import Html as H exposing (Html)
+import Html.Attributes as HA
+import Html.Events as HE
+import Json.Decode
 import List.Extra
+import Process
 import Result.Extra
+import Task
+import Time
 
 
 
--- Types
+{-
+   db    db .d8888. d88888b d8888b. db       .d8b.  d8b   db d8888b.
+   88    88 88'  YP 88'     88  `8D 88      d8' `8b 888o  88 88  `8D
+   88    88 `8bo.   88ooooo 88oobY' 88      88ooo88 88V8o 88 88   88
+   88    88   `Y8b. 88~~~~~ 88`8b   88      88~~~88 88 V8o88 88   88
+   88b  d88 db   8D 88.     88 `88. 88booo. 88   88 88  V888 88  .8D
+   ~Y8888P' `8888Y' Y88888P 88   YD Y88888P YP   YP VP   V8P Y8888D'
+-}
+
+
+main =
+    Browser.element
+        { init = \() -> ( mainForm.init, Cmd.none )
+        , view = mainForm.view
+        , update =
+            \msg model ->
+                case msg of
+                    FormMsg m ->
+                        let
+                            ( newModel, cmd ) =
+                                mainForm.update m model
+
+                            _ =
+                                Debug.log "output" (mainForm.submit newModel)
+                        in
+                        ( newModel, cmd )
+        , subscriptions = \_ -> Sub.none
+        }
+
+
+type
+    Msg
+    -- = FormMsg (Delta String)
+    -- = FormMsg (Delta SimpleRecordInputDelta)
+    -- = FormMsg (Delta SimpleCustomInputDelta)
+    = FormMsg (Delta NestedRecordInputDelta)
+
+
+mainForm =
+    -- int
+    -- simpleRecordInput
+    -- simpleCustomInput
+    nestedRecordInput
+        |> toForm "form" FormMsg
+
+
+type alias SimpleRecord =
+    { name : String
+    , age : Int
+    }
+
+
+type alias SimpleRecordInputDelta =
+    Deltas2
+        String
+        String
+
+
+type alias SimpleRecordInputState =
+    States2
+        String
+        String
+
+
+simpleRecordInput :
+    Input
+        SimpleRecordInputState
+        SimpleRecordInputDelta
+        SimpleRecord
+simpleRecordInput =
+    record SimpleRecord
+        |> field i0 "name" string
+        |> field i1 "age" boundedInt
+        |> endRecord
+
+
+type alias NestedRecord =
+    { titles : List Int
+    , record : SimpleRecord
+    , custom : SimpleCustom
+    }
+
+
+type alias NestedRecordInputDelta =
+    Deltas3
+        (ListDelta String)
+        SimpleRecordInputDelta
+        SimpleCustomInputDelta
+
+
+type alias NestedRecordInputState =
+    States3
+        (ListState String)
+        SimpleRecordInputState
+        SimpleCustomInputState
+
+
+nestedRecordInput :
+    Input
+        NestedRecordInputState
+        NestedRecordInputDelta
+        NestedRecord
+nestedRecordInput =
+    record NestedRecord
+        |> field i0 "number list" (list boundedInt)
+        |> field i1 "record" simpleRecordInput
+        |> field i2 "custom type" simpleCustomInput
+        |> endRecord
+
+
+type SimpleCustom
+    = Red
+    | Green Int
+
+
+type alias SimpleCustomInputDelta =
+    CustomTypeDelta
+        (Deltas2
+            Deltas0
+            (Deltas1 String)
+        )
+
+
+type alias SimpleCustomInputState =
+    CustomTypeState
+        (States2
+            States0
+            (States1 String)
+        )
+
+
+simpleCustomInput :
+    Input
+        SimpleCustomInputState
+        SimpleCustomInputDelta
+        SimpleCustom
+simpleCustomInput =
+    customType
+        |> tag0 i0 "red" Red
+        |> tag1 i1 "green" Green "integer" boundedInt
+        |> endCustomType
+
+
+boundedInt : Input String String Int
+boundedInt =
+    intConfig
+        |> failIf (\x -> x <= 0) "must be greater than 0"
+        |> failIf (\x -> x > 120) "maximum is 120"
+        |> debounce 500
+        |> fromConfig
+
+
+
+{-
+   d888888b db    db d8888b. d88888b .d8888.
+   `~~88~~' `8b  d8' 88  `8D 88'     88'  YP
+      88     `8bd8'  88oodD' 88ooooo `8bo.
+      88       88    88~~~   88~~~~~   `Y8b.
+      88       88    88      88.     db   8D
+      YP       YP    88      Y88888P `8888Y'
+-}
 
 
 type End
     = End
 
 
-
--- State setters
-
-
-get : (b -> ( a, c )) -> b -> a
-get getter data =
-    (getter >> Tuple.first) data
-
-
-set : ((( a, b ) -> ( x, b )) -> c -> d) -> (a -> x) -> c -> d
-set setter updater data =
-    setter (Tuple.mapFirst updater) data
+type alias Form state delta output msg =
+    { init : State state
+    , update : Delta delta -> State state -> ( State state, Cmd msg )
+    , view : State state -> Html msg
+    , submit : State state -> Result (List ( String, String )) output
+    }
 
 
-setter1 : (b -> y) -> ( a, b ) -> ( a, y )
-setter1 =
-    Tuple.mapSecond
+type Delta delta
+    = Skip
+    | ChangeState delta
+    | StartDebouncing Time.Posix
+    | CheckDebouncer Time.Posix
 
 
-getter1 : ( a, b ) -> b
-getter1 =
-    Tuple.second
+type State state
+    = State InternalState state
 
 
-f0 =
+type InternalState
+    = Intact_
+    | DebouncingSince Time.Posix
+    | Idle_
+
+
+type alias InputConfig state delta output =
+    { init : state
+    , update : delta -> state -> state
+    , view : ViewConfig state -> Html delta
+    , parse : state -> Result (List String) output
+    , validators : List { check : output -> Bool, feedback : String }
+    , debounce : Float
+    }
+
+
+type Input state delta output
+    = Input
+        (String
+         ->
+            { id : String
+            , index : Int
+            , init : State state
+            , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
+            , view : ViewConfig state -> Html (Delta delta)
+            , parse : State state -> Result (List ( String, String )) output
+            }
+        )
+
+
+type alias ViewConfig state =
+    { id : String
+    , state : state
+    , status : Status
+    }
+
+
+type Status
+    = Intact
+    | Debouncing
+    | Idle (List (Result ( String, String ) ( String, String )))
+
+
+type States0
+    = States0
+
+
+type alias States1 a =
+    ( State a, End )
+
+
+type alias States2 a b =
+    ( State a, States1 b )
+
+
+type alias States3 a b c =
+    ( State a, States2 b c )
+
+
+type Deltas0
+    = Deltas0
+
+
+type alias Deltas1 a =
+    ( Delta a, End )
+
+
+type alias Deltas2 a b =
+    ( Delta a, Deltas1 b )
+
+
+type alias Deltas3 a b c =
+    ( Delta a, Deltas2 b c )
+
+
+
+{-
+   d88888b  .d88b.  d8888b. .88b  d88. .d8888.
+   88'     .8P  Y8. 88  `8D 88'YbdP`88 88'  YP
+   88ooo   88    88 88oobY' 88  88  88 `8bo.
+   88~~~   88    88 88`8b   88  88  88   `Y8b.
+   88      `8b  d8' 88 `88. 88  88  88 db   8D
+   YP       `Y88P'  88   YD YP  YP  YP `8888Y'
+-}
+
+
+toForm : String -> (Delta delta -> msg) -> Input state delta output -> Form state delta output msg
+toForm id toMsg (Input input) =
+    let
+        { init, update, view, parse } =
+            input id
+    in
+    { init = init
+    , update =
+        \msg state ->
+            update msg state
+                |> Tuple.mapSecond (Cmd.map toMsg)
+    , view =
+        \(State internalState state) ->
+            view
+                { state = state
+                , status = statusFromInternalState parse (State internalState state)
+                , id = id
+                }
+                |> H.map toMsg
+    , submit = parse
+    }
+
+
+
+{-
+   d888888b d8b   db d8888b. db    db d888888b .d8888.
+     `88'   888o  88 88  `8D 88    88 `~~88~~' 88'  YP
+      88    88V8o 88 88oodD' 88    88    88    `8bo.
+      88    88 V8o88 88~~~   88    88    88      `Y8b.
+     .88.   88  V888 88      88b  d88    88    db   8D
+   Y888888P VP   V8P 88      ~Y8888P'    YP    `8888Y'
+
+-}
+
+
+fromConfig : InputConfig state delta output -> Input state delta output
+fromConfig config =
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = State Intact_ config.init
+            , update = wrappedUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none ))) config.debounce
+            , view = config.view >> H.map ChangeState
+            , parse =
+                \(State _ state) ->
+                    case config.parse state of
+                        Ok output ->
+                            let
+                                feedback =
+                                    List.filterMap
+                                        (\v ->
+                                            if v.check output then
+                                                Just ( id, v.feedback )
+
+                                            else
+                                                Nothing
+                                        )
+                                        config.validators
+                            in
+                            if List.isEmpty feedback then
+                                Ok output
+
+                            else
+                                Err feedback
+
+                        Err errs ->
+                            Err (List.map (\err -> ( id, err )) errs)
+            }
+        )
+
+
+wrappedUpdate : (delta -> state -> ( state, Cmd delta )) -> Float -> (Delta delta -> State state -> ( State state, Cmd (Delta delta) ))
+wrappedUpdate update debounce_ =
+    \wrappedDelta (State internalState state) ->
+        case wrappedDelta of
+            Skip ->
+                ( State internalState state
+                , Cmd.none
+                )
+
+            ChangeState delta ->
+                let
+                    ( newState, cmd ) =
+                        update delta state
+                in
+                if debounce_ > 0 then
+                    ( State internalState newState
+                    , Cmd.batch
+                        [ Task.perform StartDebouncing Time.now
+                        , Cmd.map ChangeState cmd
+                        ]
+                    )
+
+                else
+                    ( State Idle_ newState
+                    , Cmd.map ChangeState cmd
+                    )
+
+            StartDebouncing now ->
+                ( State (DebouncingSince now) state
+                , Task.perform (\() -> CheckDebouncer now) (Process.sleep debounce_)
+                )
+
+            CheckDebouncer now ->
+                case internalState of
+                    DebouncingSince startTime ->
+                        if now == startTime then
+                            ( State Idle_ state
+                            , Cmd.none
+                            )
+
+                        else
+                            ( State internalState state
+                            , Cmd.none
+                            )
+
+                    _ ->
+                        ( State internalState state
+                        , Cmd.none
+                        )
+
+
+failIf : (output -> Bool) -> String -> InputConfig state delta output -> InputConfig state delta output
+failIf check feedback config =
+    { config | validators = { check = check, feedback = feedback } :: config.validators }
+
+
+debounce : Float -> InputConfig state delta output -> InputConfig state delta output
+debounce millis config =
+    { config | debounce = millis }
+
+
+int : Input String String Int
+int =
+    fromConfig intConfig
+
+
+intConfig : InputConfig String String Int
+intConfig =
+    { init = ""
+    , update = \delta _ -> delta
+    , view = stringView
+    , parse =
+        \input ->
+            case String.toInt input of
+                Just i ->
+                    Ok i
+
+                Nothing ->
+                    Err [ "must be a whole number" ]
+    , validators = []
+    , debounce = 500
+    }
+
+
+string : Input String String String
+string =
+    fromConfig stringConfig
+
+
+stringConfig : InputConfig String String String
+stringConfig =
+    { init = ""
+    , update = \delta _ -> delta
+    , view = stringView
+    , parse = Ok
+    , validators = []
+    , debounce = 500
+    }
+
+
+always : output -> Input States0 Deltas0 output
+always output =
+    fromConfig
+        { init = States0
+        , update = \_ _ -> States0
+        , view = \_ -> H.text ""
+        , parse = \_ -> Ok output
+        , validators = []
+        , debounce = 0
+        }
+
+
+type alias MaybeInputState state =
+    CustomTypeState
+        (States2
+            (States1 state)
+            States0
+        )
+
+
+type alias MaybeInputDelta delta =
+    CustomTypeDelta
+        (Deltas2
+            (Deltas1 delta)
+            Deltas0
+        )
+
+
+maybe : Input state delta output -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
+maybe input =
+    customType
+        |> tag1 i0 "Just" Just "" input
+        |> tag0 i1 "Nothing" Nothing
+        |> endCustomType
+
+
+type alias ListState state =
+    List (State state)
+
+
+type ListDelta delta
+    = InsertItem Int
+    | DeleteItem Int
+    | ChangeItem Int (Delta delta)
+
+
+list : Input state delta output -> Input (List (State state)) (ListDelta delta) (List output)
+list (Input toInput) =
+    let
+        input =
+            toInput ""
+    in
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = State Intact_ []
+            , update =
+                wrappedUpdate
+                    (\delta state ->
+                        case delta of
+                            InsertItem idx ->
+                                let
+                                    before =
+                                        List.take idx state
+
+                                    after =
+                                        List.drop idx state
+                                in
+                                ( before ++ input.init :: after, Cmd.none )
+
+                            ChangeItem idx itemDelta ->
+                                let
+                                    ( newState, cmds ) =
+                                        List.foldr
+                                            (\( i, item ) ( items, cmds_ ) ->
+                                                if i == idx then
+                                                    let
+                                                        ( newItem, newCmd ) =
+                                                            input.update itemDelta item
+                                                    in
+                                                    ( newItem :: items, newCmd :: cmds_ )
+
+                                                else
+                                                    ( item :: items, cmds_ )
+                                            )
+                                            ( [], [] )
+                                            (List.indexedMap Tuple.pair state)
+                                in
+                                ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
+
+                            DeleteItem idx ->
+                                ( List.Extra.removeAt idx state, Cmd.none )
+                    )
+                    0
+            , view =
+                \config ->
+                    H.div [ HA.style "margin-bottom" "10px" ]
+                        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text config.id ]
+                        , if List.isEmpty config.state then
+                            H.div
+                                [ HA.style "margin-top" "10px"
+                                , HA.style "margin-bottom" "10px"
+                                ]
+                                [ H.text "[ empty list ]"
+                                , H.button
+                                    [ HA.style "margin-left" "10px"
+                                    , HE.onClick (InsertItem 0)
+                                    ]
+                                    [ H.text "add an item" ]
+                                ]
+
+                          else
+                            borderedDiv
+                                [ H.div
+                                    [ HA.style "margin-top" "10px"
+                                    , HA.style "margin-bottom" "10px"
+                                    ]
+                                    [ H.button [ HE.onClick (InsertItem 0) ]
+                                        [ H.text "insert item" ]
+                                    ]
+                                , H.div []
+                                    (List.indexedMap
+                                        (\idx (State internalState state) ->
+                                            H.div [ HA.style "margin-bottom" "10px" ]
+                                                [ input.view
+                                                    { state = state
+                                                    , status = statusFromInternalState input.parse (State internalState state)
+                                                    , id = "list item #" ++ String.fromInt idx
+                                                    }
+                                                    |> H.map (ChangeItem idx)
+                                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("delete item #" ++ String.fromInt idx) ] ]
+                                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "insert item" ] ]
+                                                ]
+                                        )
+                                        config.state
+                                    )
+                                ]
+                        ]
+                        |> H.map ChangeState
+            , parse =
+                \(State _ state) ->
+                    List.foldr
+                        (\( idx, item ) res ->
+                            case res of
+                                Ok outputs ->
+                                    case input.parse item of
+                                        Ok output ->
+                                            Ok (output :: outputs)
+
+                                        Err errs ->
+                                            Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) errs)
+
+                                Err errs ->
+                                    case input.parse item of
+                                        Ok _ ->
+                                            Err errs
+
+                                        Err newErrs ->
+                                            Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) newErrs ++ errs)
+                        )
+                        (Ok [])
+                        (List.indexedMap Tuple.pair state)
+                        |> Result.mapError (List.map (\feedback -> ( id, feedback )))
+            }
+        )
+
+
+
+{-
+   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b. .d8888.
+   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D 88'  YP
+   88oobY' 88ooooo 8P      88    88 88oobY' 88   88 `8bo.
+   88`8b   88~~~~~ 8b      88    88 88`8b   88   88   `Y8b.
+   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D db   8D
+   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D' `8888Y'
+-}
+
+
+record toOutput =
+    { index = 0
+    , toOutput = toOutput
+    , fields = identity
+    , deltas = identity
+    , states = identity
+    , updater = identity
+    , viewer = identity
+    , parser = identity
+    }
+
+
+field sel id (Input input) rec =
+    let
+        i =
+            input id
+    in
+    { index = rec.index + 1
+    , toOutput = rec.toOutput
+    , fields = rec.fields << Tuple.pair { field = { i | index = rec.index }, selector = instantiateSelector sel }
+    , deltas = rec.deltas << Tuple.pair Skip
+    , states = rec.states << Tuple.pair i.init
+    , updater = rec.updater >> recordStateUpdater
+    , viewer = rec.viewer >> recordStateViewer
+    , parser = rec.parser >> recordStateParser
+    }
+
+
+endRecord rec =
+    let
+        fields =
+            rec.fields End
+
+        emptyDeltas =
+            rec.deltas End
+
+        inits =
+            rec.states End
+    in
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = State Intact_ inits
+            , update =
+                \delta (State s state) ->
+                    case delta of
+                        Skip ->
+                            ( State s state, Cmd.none )
+
+                        ChangeState deltas ->
+                            let
+                                ( newState, cmd ) =
+                                    updateRecordStates rec.updater emptyDeltas fields deltas state
+                            in
+                            ( State s newState
+                            , Cmd.map ChangeState cmd
+                            )
+
+                        _ ->
+                            ( State s state, Cmd.none )
+            , view =
+                \{ state } ->
+                    viewRecordStates rec.viewer emptyDeltas fields state
+                        |> recordView id
+            , parse = \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
+            }
+        )
+
+
+
+{-
+   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
+   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
+   88oobY' 88ooooo 8P      88    88 88oobY' 88   88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
+   88`8b   88~~~~~ 8b      88    88 88`8b   88   88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
+   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
+   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
+-}
+
+
+parseRecordStates parser toOutput fns states =
+    parser (\output End End -> output) (Ok toOutput) fns states
+
+
+recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
+    next
+        (case ( toOutputResult, fns.field.parse state ) of
+            ( Ok toOutput, Ok parsed ) ->
+                Ok (toOutput parsed)
+
+            ( Ok _, Err es ) ->
+                Err es
+
+            ( Err es, Ok _ ) ->
+                Err es
+
+            ( Err es, Err es2 ) ->
+                Err (es ++ es2)
+        )
+        restFns
+        restStates
+
+
+viewRecordStates viewer emptyDeltas fns states =
+    viewer (\views _ End End -> views) [] emptyDeltas fns states
+        |> List.reverse
+        |> H.div []
+
+
+recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState state, restStates ) =
+    next
+        ((fns.field.view
+            { state = state
+            , status = statusFromInternalState fns.field.parse (State internalState state)
+            , id = fns.field.id
+            }
+            |> H.map
+                (\delta ->
+                    ChangeState (fns.selector.set (\_ -> delta) emptyDeltas)
+                )
+         )
+            :: views
+        )
+        emptyDeltas
+        restFns
+        restStates
+
+
+statusFromInternalState parser (State internalState state) =
+    case internalState of
+        Intact_ ->
+            Intact
+
+        DebouncingSince _ ->
+            Debouncing
+
+        Idle_ ->
+            let
+                strings =
+                    case parser (State internalState state) of
+                        Ok _ ->
+                            []
+
+                        Err errs ->
+                            errs
+            in
+            Idle (List.map Err strings)
+
+
+updateRecordStates updater emptyDeltas fields deltas states =
+    let
+        { newStates, newCmds } =
+            updater
+                (\output _ End End End -> output)
+                { newStates = identity, newCmds = [] }
+                emptyDeltas
+                fields
+                deltas
+                states
+    in
+    ( newStates End, Cmd.batch newCmds )
+
+
+recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( delta, restDeltas ) ( state, restStates ) =
+    let
+        ( newState, newCmd ) =
+            fns.field.update delta state
+
+        cmd2 =
+            newCmd
+                |> Cmd.map
+                    (\d ->
+                        fns.selector.set (\_ -> d) emptyDeltas
+                    )
+    in
+    next
+        { newStates = newStates << Tuple.pair newState
+        , newCmds = cmd2 :: newCmds
+        }
+        emptyDeltas
+        restFns
+        restDeltas
+        restStates
+
+
+
+{-
+    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b .d8888.
+   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'     88'  YP
+   8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo `8bo.
+   8b      88    88   `Y8b.    88    88    88 88  88  88         88       88    88~~~   88~~~~~   `Y8b.
+   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.     db   8D
+    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P `8888Y'
+-}
+
+
+type alias CustomTypeState variants =
+    { tagStates : variants
+    , selectedTag : Int
+    }
+
+
+type CustomTypeDelta variants
+    = TagSelected Int
+    | TagDeltaReceived variants
+
+
+customType =
+    { index = 0
+    , names = []
+    , fns = identity
+    , deltas = identity
+    , states = identity
+    , updater = identity
+    , viewer = identity
+    , parser = identity
+    }
+
+
+variant sel id (Input input) rec =
+    let
+        i =
+            input id
+    in
+    { index = rec.index + 1
+    , names = id :: rec.names
+    , fns =
+        rec.fns
+            << Tuple.pair
+                { field = { i | index = rec.index }
+                , selector = instantiateSelector sel
+                }
+    , deltas = rec.deltas << Tuple.pair Skip
+    , states = rec.states << Tuple.pair i.init
+    , updater = rec.updater >> recordStateUpdater
+    , viewer = rec.viewer >> selectedTagViewer
+    , parser = rec.parser >> selectedTagParser
+    }
+
+
+tag0 f id tag =
+    variant f id (always tag)
+
+
+tag1 f id tag inputId input =
+    variant f
+        id
+        (record tag
+            |> field i0 inputId input
+            |> endRecord
+        )
+
+
+tag2 f id tag id1 input1 id2 input2 =
+    variant f
+        id
+        (record tag
+            |> field i0 id1 input1
+            |> field i1 id2 input2
+            |> endRecord
+        )
+
+
+tag3 f id tag id1 input1 id2 input2 id3 input3 =
+    variant f
+        id
+        (record tag
+            |> field i0 id1 input1
+            |> field i1 id2 input2
+            |> field i2 id3 input3
+            |> endRecord
+        )
+
+
+endCustomType rec =
+    let
+        fns =
+            rec.fns End
+
+        emptyDeltas =
+            rec.deltas End
+
+        inits =
+            rec.states End
+
+        names =
+            List.reverse rec.names
+    in
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = State Intact_ { tagStates = inits, selectedTag = 0 }
+            , update =
+                \delta (State s state) ->
+                    case delta of
+                        Skip ->
+                            ( State s state, Cmd.none )
+
+                        ChangeState (TagSelected idx) ->
+                            ( State s { state | selectedTag = idx }, Cmd.none )
+
+                        ChangeState (TagDeltaReceived tagDelta) ->
+                            let
+                                ( newTagStates, cmd ) =
+                                    updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
+                            in
+                            ( State s { state | tagStates = newTagStates }
+                            , Cmd.map (ChangeState << TagDeltaReceived) cmd
+                            )
+
+                        _ ->
+                            ( State s state, Cmd.none )
+            , view =
+                \config ->
+                    let
+                        options =
+                            List.indexedMap Tuple.pair names
+
+                        selectedTag =
+                            config.state.selectedTag
+
+                        tagStates =
+                            config.state.tagStates
+                    in
+                    viewSelectedTagState rec.viewer selectedTag emptyDeltas fns tagStates
+                        |> customTypeView config.id options selectedTag
+            , parse = \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+            }
+        )
+
+
+
+{-
+    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
+   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
+   8P      88    88 `8bo.      88    88    88 88  88  88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
+   8b      88    88   `Y8b.    88    88    88 88  88  88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
+   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
+    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
+-}
+
+
+parseSelectedTagState parser selectedTag fns states =
+    parser
+        (\result _ End End -> result)
+        (Err [ ( "FATAL ERROR", "tag index " ++ String.fromInt selectedTag ++ " not found" ) ])
+        selectedTag
+        fns
+        states
+
+
+selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
+    next
+        (if fns.field.index == selectedTag then
+            fns.field.parse state
+
+         else
+            result
+        )
+        selectedTag
+        restFns
+        restStates
+
+
+viewSelectedTagState viewer selectedTag emptyDeltas fns states =
+    viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag emptyDeltas fns states
+        |> Maybe.map (H.map (ChangeState << TagDeltaReceived))
+        |> Maybe.withDefault (H.text "ERROR!")
+
+
+selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( State s state, restStates ) =
+    next
+        (if fns.field.index == selectedTag then
+            Just
+                (fns.field.view
+                    { state = state
+                    , status = Intact
+                    , id = fns.field.id
+                    }
+                    |> H.map
+                        (\delta ->
+                            fns.selector.set (\_ -> delta) emptyDeltas
+                        )
+                )
+
+         else
+            maybeView
+        )
+        selectedTag
+        emptyDeltas
+        restFns
+        restStates
+
+
+
+{-
+   .d8888. d88888b db      d88888b  .o88b. d888888b  .d88b.  d8888b. .d8888.
+   88'  YP 88'     88      88'     d8P  Y8 `~~88~~' .8P  Y8. 88  `8D 88'  YP
+   `8bo.   88ooooo 88      88ooooo 8P         88    88    88 88oobY' `8bo.
+     `Y8b. 88~~~~~ 88      88~~~~~ 8b         88    88    88 88`8b     `Y8b.
+   db   8D 88.     88booo. 88.     Y8b  d8    88    `8b  d8' 88 `88. db   8D
+   `8888Y' Y88888P Y88888P Y88888P  `Y88P'    YP     `Y88P'  88   YD `8888Y'
+-}
+
+
+i0 =
     composeSelectors { getFieldState = identity, getField = identity, set = identity }
 
 
-f1 =
-    composeSelectors { getFieldState = getter1, getField = getter1, set = setter1 }
+i1 =
+    composeSelectors { getFieldState = Tuple.second, getField = Tuple.second, set = Tuple.mapSecond }
 
 
-f2 =
-    f1 >> f1
+i2 =
+    i1 >> i1
 
 
-f3 =
-    f2 >> f1
+i3 =
+    i2 >> i1
 
 
-f4 =
-    f3 >> f1
+i4 =
+    i3 >> i1
 
 
-f5 =
-    f4 >> f1
-
-
-f6 =
-    f5 >> f1
-
-
-f7 =
-    f6 >> f1
-
-
-f8 =
-    f7 >> f1
-
-
-f9 =
-    f8 >> f1
-
-
-f10 =
-    f9 >> f1
+i5 =
+    i4 >> i1
 
 
 composeSelectors selector1 selector2 =
@@ -111,604 +1075,155 @@ composeSelectors selector1 selector2 =
 
 
 instantiateSelector selector =
-    selector { getFieldState = identity, getField = identity, set = identity }
-
-
-
--- Tuple walkers
-
-
-updateFieldStates : ((End -> End -> End -> End) -> fields -> deltas -> states -> statesAndCmds) -> fields -> deltas -> states -> statesAndCmds
-updateFieldStates fieldStateUpdater fields deltas states =
-    fieldStateUpdater (\End End End -> End) fields deltas states
-
-
-fieldStateUpdater1 next ( field_, fields ) ( delta, deltas ) ( state, states ) =
     let
-        stateAndCmd =
-            Field.update field_ delta state
+        s =
+            selector { getFieldState = Tuple.first, getField = Tuple.first, set = identity }
     in
-    ( stateAndCmd
-    , next fields deltas states
-    )
+    { getFieldState = s.getFieldState
+    , getField = s.getField
+    , set = \updater state -> s.set (Tuple.mapFirst updater) state
+    }
 
 
-checkFieldParsed fieldParsedChecker fields deltas states =
-    fieldParsedChecker (\maybeIndex _ _ _ -> maybeIndex) Nothing fields deltas states
+
+{-
+   db    db d888888b d88888b db   d8b   db .d8888.
+   88    88   `88'   88'     88   I8I   88 88'  YP
+   Y8    8P    88    88ooooo 88   I8I   88 `8bo.
+   `8b  d8'    88    88~~~~~ Y8   I8I   88   `Y8b.
+    `8bd8'    .88.   88.     `8b d8'8b d8' db   8D
+      YP    Y888888P Y88888P  `8b8' `8d8'  `8888Y'
+-}
 
 
-fieldParsedChecker1 next maybeIndex ( field_, fields ) ( delta, deltas ) ( state, states ) =
-    let
-        newMaybeIndex =
-            case Field.indexIfParsed field_ delta state of
-                Just index ->
-                    Just index
-
-                Nothing ->
-                    maybeIndex
-    in
-    next newMaybeIndex fields deltas states
+recordView : String -> Html (Delta msg) -> Html (Delta msg)
+recordView id recordStatesView =
+    H.div
+        []
+        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+        , borderedDiv [ recordStatesView ]
+        ]
 
 
-parseAllFields : ((End -> End -> End) -> b -> c -> a) -> b -> c -> a
-parseAllFields allFieldsParser fields states =
-    allFieldsParser (\End End -> End) fields states
+customTypeView id options selectedTag selectedTagView =
+    H.div [ HA.style "margin-top" "10px" ]
+        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+        , borderedDiv
+            [ radioView options id selectedTag (ChangeState << TagSelected)
+            , borderedDiv [ selectedTagView ]
+            ]
+        ]
 
 
-allFieldsParser1 next ( field_, fields ) ( state, states ) =
-    ( Field.parse field_ state, next fields states )
+stringView : ViewConfig String -> Html String
+stringView fieldState =
+    H.div [ HA.style "margin-bottom" "10px" ]
+        [ H.div
+            [ HA.style "margin-bottom" "10px" ]
+            [ H.text fieldState.id ]
+        , H.input
+            [ HE.onInput identity
+            , HA.value fieldState.state
+            , HA.style "background-color"
+                (case fieldState.status of
+                    Intact ->
+                        "white"
+
+                    Debouncing ->
+                        "lightYellow"
+
+                    Idle feedback ->
+                        if List.any Result.Extra.isErr feedback then
+                            "pink"
+
+                        else
+                            "paleGreen"
+                )
+            ]
+            [ H.text fieldState.state ]
+        , statusView fieldState.status
+        ]
 
 
-extractCmds cmdStripper statesAndCmds =
-    let
-        ( ( states, cmdsList ), _ ) =
-            cmdStripper ( ( End, [] ), statesAndCmds )
-    in
-    ( states, Cmd.batch cmdsList )
+statusView : Status -> Html msg
+statusView status =
+    case status of
+        Idle [] ->
+            H.div
+                [ HA.style "margin-top" "10px", HA.style "margin-bottom" "10px" ]
+                [ H.text "✅ Looking good!" ]
 
+        Idle feedback ->
+            H.div [ HA.style "margin-top" "10px" ]
+                (List.map
+                    (\f ->
+                        let
+                            ( icon, txt ) =
+                                case f of
+                                    Ok ( _, t ) ->
+                                        ( "💬", t )
 
-cmdExtractor1 ( ( outState, outCmd ), ( ( state, cmd ), statesAndCmds ) ) =
-    ( ( ( state, outState ), cmd :: outCmd ), statesAndCmds )
-
-
-collectValidators validatorCollector fields =
-    validatorCollector (\validators _ -> validators) [] fields
-
-
-validatorCollector1 next output ( field_, fields ) =
-    next (( field_.index, field_.validators ) :: output) fields
-
-
-view viewer toMsg fields states =
-    viewer (\_ End End -> End) toMsg fields states
-
-
-viewer1 next toMsg ( field_, fields ) ( state, states ) =
-    ( Field.view toMsg field_ state
-    , next toMsg fields states
-    )
-
-
-combine combiner inits fields =
-    combiner (\_ End -> End) inits fields
-
-
-combiner1 next inits ( fieldBuilder, fieldBuilders ) =
-    let
-        convertValidators =
-            \formData ->
-                let
-                    fieldState =
-                        get fieldBuilder.getter formData
-
-                    newFieldState =
-                        Field.validate fieldBuilder fieldState
-                in
-                set fieldBuilder.setter (always newFieldState) formData
-    in
-    ( { index = fieldBuilder.index
-      , id = fieldBuilder.id
-      , update = fieldBuilder.update
-      , view = fieldBuilder.view
-      , parse = fieldBuilder.parse
-      , validators = convertValidators
-      , debounce = fieldBuilder.debounce
-      , toFormData = \delta -> set fieldBuilder.setter (\s -> { s | delta = delta }) inits
-      }
-    , next inits fieldBuilders
-    )
-
-
-toList : (( List a, b ) -> ( List c, d )) -> b -> List c
-toList toLister tuple =
-    toLister ( [], tuple )
-        |> Tuple.first
-        |> List.reverse
-
-
-toLister1 : ( List a, ( a, b ) ) -> ( List a, b )
-toLister1 ( list, ( item, items ) ) =
-    ( item :: list, items )
-
-
-reverse : (( End, b ) -> ( a, c )) -> b -> a
-reverse reverser tuple =
-    reverser ( End, tuple )
-        |> Tuple.first
-
-
-reverser1 : ( a, ( b, c ) ) -> ( ( b, a ), c )
-reverser1 ( s, ( fst, rest ) ) =
-    ( ( fst, s ), rest )
-
-
-unfurl : (( Result error b, c ) -> ( a, d )) -> b -> c -> a
-unfurl unfurler toOutput states =
-    unfurler ( Ok toOutput, states )
-        |> Tuple.first
-
-
-unfurler1 :
-    ( Result error (output -> a)
-    , ( Field.State input delta output
-      , c
-      )
-    )
-    -> ( Result () a, c )
-unfurler1 ( toOutput, ( state, states ) ) =
-    ( case ( toOutput, state.output ) of
-        ( Ok fn, Field.Parsed val ) ->
-            if List.any Result.Extra.isErr state.feedback then
-                Err ()
-
-            else
-                Ok (fn val)
+                                    Err ( _, t ) ->
+                                        ( "❌", t )
+                        in
+                        H.div
+                            [ HA.style "margin-bottom" "10px" ]
+                            [ H.text (icon ++ " " ++ txt) ]
+                    )
+                    feedback
+                )
 
         _ ->
-            Err ()
-    , states
-    )
+            H.text ""
 
 
-
--- Form builder functions
-
-
-new :
-    a
-    -> b
-    ->
-        { unfurler : c -> c
-        , combiner : d -> d
-        , updater : e -> e
-        , cmdExtractor : f -> f
-        , validatorCollector : g -> g
-        , fieldParsedChecker : h -> h
-        , allFieldsParser : i -> i
-        , viewer : j -> j
-        , toLister : k -> k
-        , stateReverser : l -> l
-        , fieldReverser : m -> m
-        , index : number
-        , inits : End
-        , fields : End
-        , emptyMsg : End
-        , validators : Dict.Dict n v
-        , toMsg : b
-        , output : a
-        }
-new output toMsg =
-    { unfurler = identity
-    , combiner = identity
-    , updater = identity
-    , cmdExtractor = identity
-    , validatorCollector = identity
-    , fieldParsedChecker = identity
-    , allFieldsParser = identity
-    , viewer = identity
-    , toLister = identity
-    , stateReverser = identity
-    , fieldReverser = identity
-    , index = 0
-    , inits = End
-    , fields = End
-    , emptyMsg = End
-    , validators = Dict.empty
-    , toMsg = toMsg
-    , output = output
-    }
+borderedDiv : List (Html msg) -> Html msg
+borderedDiv content =
+    H.div
+        [ HA.style "border-width" "1px"
+        , HA.style "border-color" "lightGray"
+        , HA.style "border-style" "solid"
+        ]
+        [ H.div
+            [ HA.style "margin" "10px" ]
+            content
+        ]
 
 
-field idx fieldBuilder formBuilder =
-    { unfurler = formBuilder.unfurler >> unfurler1
-    , combiner = formBuilder.combiner >> combiner1
-    , updater = formBuilder.updater >> fieldStateUpdater1
-    , cmdExtractor = formBuilder.cmdExtractor >> cmdExtractor1
-    , validatorCollector = formBuilder.validatorCollector >> validatorCollector1
-    , fieldParsedChecker = formBuilder.fieldParsedChecker >> fieldParsedChecker1
-    , allFieldsParser = formBuilder.allFieldsParser >> allFieldsParser1
-    , viewer = formBuilder.viewer >> viewer1
-    , toLister = formBuilder.toLister >> toLister1
-    , stateReverser = formBuilder.stateReverser >> reverser1
-    , fieldReverser = formBuilder.fieldReverser >> reverser1
-    , index = formBuilder.index + 1
-    , inits =
-        ( { input = fieldBuilder.init
-          , delta = Field.Noop
-          , output = Field.Intact_
-          , lastTouched = Nothing
-          , feedback = []
-          }
-        , formBuilder.inits
-        )
-    , fields =
-        ( { index = formBuilder.index
-          , id = fieldBuilder.id
-          , update = fieldBuilder.update
-          , view = fieldBuilder.view
-          , parse = fieldBuilder.parse
-          , validators = fieldBuilder.validators
-          , debounce = fieldBuilder.debounce
-          , setter = instantiateSelector idx |> .set
-          , getter = instantiateSelector idx |> .getFieldState
-          }
-        , formBuilder.fields
-        )
-    , validators = formBuilder.validators
-    , toMsg = formBuilder.toMsg
-    , output = formBuilder.output
-    }
-
-
-end :
-    { a
-        | stateReverser : ( End, reversedFormData ) -> ( formData, d )
-        , inits : reversedFormData
-        , combiner : (e -> End -> End) -> formData -> reversedFieldBuilders -> reversedFields
-        , fields : reversedFieldBuilders
-        , fieldReverser : ( End, reversedFields ) -> ( fields, j )
-        , validatorCollector : (k -> l -> k) -> List m -> fields -> List ( Int, formData -> formData )
-        , validators : Dict.Dict Int (List (formData -> formData))
-        , index : Int
-        , updater : (End -> End -> End -> End) -> fields -> formData -> formData -> s
-        , cmdExtractor : ( ( End, List (Cmd formData) ), s ) -> ( ( reversedFormData, List (Cmd formData) ), u )
-        , fieldParsedChecker : (Maybe Int -> x -> y -> z -> Maybe Int) -> Maybe Int -> fields -> formData -> formData -> Maybe Int
-        , toMsg : formData -> msg
-        , viewer : (e1 -> End -> End -> End) -> (formData -> msg) -> fields -> formData -> h1
-        , toLister : ( List element, h1 ) -> ( List element, k1 )
-        , allFieldsParser : (End -> End -> End) -> fields -> formData -> formData
-        , unfurler : ( Result String o1, formData ) -> ( Result () value, r1 )
-        , output : o1
-    }
-    ->
-        { init : ( formData, Cmd msg )
-        , update : formData -> formData -> ( formData, Cmd msg )
-        , view : formData -> List element
-        , submit : formData -> Result formData value
-        }
-end formBuilder =
-    let
-        inits =
-            reverse formBuilder.stateReverser formBuilder.inits
-
-        fields =
-            combine formBuilder.combiner inits formBuilder.fields
-                |> reverse formBuilder.fieldReverser
-
-        fieldValidators =
-            fields
-                |> collectValidators formBuilder.validatorCollector
-                |> Dict.fromList
-
-        formValidators =
-            formBuilder.validators
-                |> Dict.Extra.mapKeys (\i -> formBuilder.index - i - 1)
-    in
-    { init = ( inits, Cmd.none )
-    , update =
-        \deltas states0 ->
-            let
-                ( reversedStates1, cmd ) =
-                    updateFieldStates formBuilder.updater fields deltas states0
-                        |> extractCmds formBuilder.cmdExtractor
-
-                states1 =
-                    reversedStates1
-                        |> reverse formBuilder.stateReverser
-
-                maybeParsedIndex =
-                    checkFieldParsed formBuilder.fieldParsedChecker fields deltas states0
-
-                states2 =
-                    case maybeParsedIndex of
-                        Nothing ->
-                            states1
-
-                        Just index ->
-                            let
-                                relevantFieldValidators =
-                                    fieldValidators
-                                        |> Dict.get index
-                                        |> Maybe.map List.singleton
-                                        |> Maybe.withDefault []
-
-                                relevantFormValidators =
-                                    formValidators
-                                        |> Dict.get index
-                                        |> Maybe.withDefault []
-                            in
-                            List.foldl (\v s -> v s) states1 (relevantFieldValidators ++ relevantFormValidators)
-            in
-            ( states2
-            , Cmd.map formBuilder.toMsg cmd
+radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
+radioView options id selectedOption toMsg =
+    H.div [ HA.style "margin-bottom" "10px" ]
+        (List.map
+            (\( option, label ) ->
+                H.span [ HA.style "margin-right" "10px" ]
+                    [ H.input
+                        [ HA.type_ "radio"
+                        , HA.id (id ++ label)
+                        , HA.name id
+                        , HA.value label
+                        , HA.checked (selectedOption == option)
+                        , onChecked (toMsg option)
+                        ]
+                        []
+                    , H.label
+                        [ HA.for (id ++ label) ]
+                        [ H.text label ]
+                    ]
             )
-    , view =
-        \states ->
-            view formBuilder.viewer formBuilder.toMsg fields states
-                |> toList formBuilder.toLister
-    , submit =
-        \states0 ->
-            let
-                states1 =
-                    parseAllFields formBuilder.allFieldsParser fields states0
-
-                allFieldValidators =
-                    Dict.values fieldValidators
-
-                states2 =
-                    List.foldl (\v s -> v s) states1 allFieldValidators
-
-                allFormValidators =
-                    Dict.values formValidators
-                        |> List.concat
-
-                states3 =
-                    List.foldl (\v s -> v s) states2 allFormValidators
-            in
-            case unfurl formBuilder.unfurler formBuilder.output states3 of
-                Ok output ->
-                    Ok output
-
-                Err () ->
-                    Err states2
-    }
-
-
-
--- FORM-LEVEL VALIDATION (OF MULTIPLE FIELDS)
-
-
-failIf2 =
-    check2 Err
-
-
-infoIf2 =
-    check2 Ok
-
-
-check2 toResult check message selector1 selector2 formBuilder =
-    let
-        feedback =
-            toResult message
-
-        sel1 =
-            instantiateSelector selector1
-
-        sel2 =
-            instantiateSelector selector2
-
-        v =
-            \state ->
-                let
-                    fieldState1 =
-                        get sel1.getFieldState state
-
-                    fieldState2 =
-                        get sel2.getFieldState state
-                in
-                case ( fieldState1.output, fieldState2.output ) of
-                    ( Field.Parsed output1, Field.Parsed output2 ) ->
-                        if check output1 output2 then
-                            state
-                                |> addFeedback sel1 feedback fieldState1
-                                |> addFeedback sel2 feedback fieldState2
-
-                        else
-                            state
-                                |> removeFeedback sel1 feedback fieldState1
-                                |> removeFeedback sel2 feedback fieldState2
-
-                    _ ->
-                        state
-                            |> removeFeedback sel1 feedback fieldState1
-                            |> removeFeedback sel2 feedback fieldState2
-    in
-    { formBuilder
-        | validators =
-            formBuilder.validators
-                |> updateAtIndex (getIndex sel1 formBuilder) v
-                |> updateAtIndex (getIndex sel2 formBuilder) v
-    }
-
-
-getIndex sel formBuilder =
-    get sel.getField formBuilder.fields
-        |> .index
-
-
-addFeedback sel feedback fs s =
-    set sel.set (\_ -> { fs | feedback = List.Extra.unique (feedback :: fs.feedback) }) s
-
-
-removeFeedback sel feedback fs s =
-    set sel.set (\_ -> { fs | feedback = List.Extra.remove feedback fs.feedback }) s
-
-
-updateAtIndex idx v =
-    Dict.update idx
-        (\maybeExistingValidators ->
-            case maybeExistingValidators of
-                Nothing ->
-                    Just [ v ]
-
-                Just existingValidators ->
-                    Just (v :: existingValidators)
+            options
         )
 
 
-failIf3 =
-    check3 Err
+onChecked : msg -> H.Attribute msg
+onChecked msg =
+    HE.on "input"
+        (HE.targetChecked
+            |> Json.Decode.andThen
+                (\checked ->
+                    if checked then
+                        Json.Decode.succeed msg
 
-
-infoIf3 =
-    check3 Ok
-
-
-check3 toResult check message selector1 selector2 selector3 formBuilder =
-    let
-        feedback =
-            toResult message
-
-        sel1 =
-            instantiateSelector selector1
-
-        sel2 =
-            instantiateSelector selector2
-
-        sel3 =
-            instantiateSelector selector3
-
-        v =
-            \state ->
-                let
-                    fieldState1 =
-                        get sel1.getFieldState state
-
-                    fieldState2 =
-                        get sel2.getFieldState state
-
-                    fieldState3 =
-                        get sel3.getFieldState state
-                in
-                case ( fieldState1.output, fieldState2.output ) of
-                    ( Field.Parsed output1, Field.Parsed output2 ) ->
-                        if check output1 output2 then
-                            state
-                                |> addFeedback sel1 feedback fieldState1
-                                |> addFeedback sel2 feedback fieldState2
-                                |> addFeedback sel3 feedback fieldState3
-
-                        else
-                            state
-                                |> removeFeedback sel1 feedback fieldState1
-                                |> removeFeedback sel2 feedback fieldState2
-                                |> removeFeedback sel3 feedback fieldState3
-
-                    _ ->
-                        state
-                            |> removeFeedback sel1 feedback fieldState1
-                            |> removeFeedback sel2 feedback fieldState2
-                            |> removeFeedback sel3 feedback fieldState3
-    in
-    { formBuilder
-        | validators =
-            formBuilder.validators
-                |> updateAtIndex (getIndex sel1 formBuilder) v
-                |> updateAtIndex (getIndex sel2 formBuilder) v
-                |> updateAtIndex (getIndex sel3 formBuilder) v
-    }
-
-
-
--- A SKETCH OF MULTI-FIELD VALIDATION WITH APPLICATIVES
---
--- showIf : checker -> String -> Checker checker
--- showIf checker feedback =
---     { check = checker, feedback = feedback, fails = False }
--- failIf : checker -> String -> Checker checker
--- failIf checker feedback =
---     { check = checker, feedback = feedback, fails = True }
--- test : Result (List String) (List String)
--- test =
---     multivalidate
---         ( Err "f0 did not parse", ( Ok 1, ( Ok 1, End ) ) )
---         [ failIf (\f1_ f2_ -> f1_ == f2_) "failed because f1 and f2 are equal!"
---         , failIf (\f1_ f2_ -> f1_ <= f2_) "failed because f1 <= f2!"
---         , showIf (\_ _ -> True) "this always gets shown if validation passes"
---         , showIf (\f1_ _ -> f1_ == 2) "this gets shown if f1 == 2"
---         ]
---         (fld f1 >> fld f2)
--- type Validator checker formData
---     = Validator (Result (List String) (List (Checker checker))) formData
--- type alias Checker checker =
---     { check : checker
---     , fails : Bool
---     , feedback : String
---     }
--- multivalidate :
---     formData
---     -> List (Checker checker)
---     -> (Validator checker formData -> Validator Bool formData)
---     -> Result (List String) (List String)
--- multivalidate formData checkers fieldGetters =
---     Validator (Ok checkers) formData
---         |> fieldGetters
---         |> done
--- fld :
---     ({ get : a -> a, set : b -> b } -> { c | get : formData -> ( Result String d, e ) })
---     -> Validator (d -> f) formData
---     -> Validator f formData
--- fld idx (Validator resultCheckers formData) =
---     let
---         fieldGetter =
---             instantiateIndex idx |> .get
---         resultFieldData =
---             fieldGetter formData |> Tuple.first
---         appliedCheckers =
---             case ( resultCheckers, resultFieldData ) of
---                 ( Ok checkers, Ok fieldData ) ->
---                     Ok
---                         (List.map
---                             (\checker ->
---                                 { check = checker.check fieldData
---                                 , feedback = checker.feedback
---                                 , fails = checker.fails
---                                 }
---                             )
---                             checkers
---                         )
---                 ( Err previousErrs, Ok _ ) ->
---                     Err previousErrs
---                 ( Ok _, Err parsingErr ) ->
---                     Err [ parsingErr ]
---                 ( Err previousErrs, Err parsingErr ) ->
---                     Err (parsingErr :: previousErrs)
---     in
---     Validator appliedCheckers formData
--- done : Validator Bool formData -> Result (List String) (List String)
--- done (Validator resultCheckers _) =
---     case resultCheckers of
---         Err e ->
---             Err e
---         Ok [] ->
---             Ok []
---         Ok checkers ->
---             List.foldl
---                 (\{ check, feedback, fails } resultFeedbacks ->
---                     case resultFeedbacks of
---                         Err feedbacks ->
---                             if check && fails then
---                                 Err (feedback :: feedbacks)
---                             else
---                                 Err feedbacks
---                         Ok feedbacks ->
---                             if check then
---                                 if fails then
---                                     Err [ feedback ]
---                                 else
---                                     Ok (feedback :: feedbacks)
---                             else
---                                 Ok feedbacks
---                 )
---                 (Ok [])
---                 checkers
+                    else
+                        Json.Decode.fail ""
+                )
+        )
