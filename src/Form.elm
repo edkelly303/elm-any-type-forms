@@ -1,4 +1,58 @@
-module Form exposing (..)
+module Form exposing
+    ( CustomTypeDelta
+    , CustomTypeState
+    , Delta
+    , Deltas0
+    , Deltas1
+    , Deltas2
+    , Deltas3
+    , Deltas4
+    , Deltas5
+    , Form
+    , Input
+    , ListDelta
+    , ListState
+    , MaybeDelta
+    , MaybeState
+    , State
+    , States0
+    , States1
+    , States2
+    , States3
+    , States4
+    , States5
+    , TupleDelta
+    , TupleState
+    , always
+    , customType
+    , debounce
+    , endCustomType
+    , endRecord
+    , failIf
+    , field
+    , fromConfig
+    , i0
+    , i1
+    , i2
+    , i3
+    , i4
+    , i5
+    , int
+    , intConfig
+    , list
+    , maybe
+    , record
+    , string
+    , stringConfig
+    , tag0
+    , tag1
+    , tag2
+    , tag3
+    , tag4
+    , tag5
+    , toForm
+    , tuple
+    )
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -104,6 +158,14 @@ type alias States3 a b c =
     ( State a, States2 b c )
 
 
+type alias States4 a b c d =
+    ( State a, States3 b c d )
+
+
+type alias States5 a b c d e =
+    ( State a, States4 b c d e )
+
+
 type Deltas0
     = Deltas0
 
@@ -118,6 +180,14 @@ type alias Deltas2 a b =
 
 type alias Deltas3 a b c =
     ( Delta a, Deltas2 b c )
+
+
+type alias Deltas4 a b c d =
+    ( Delta a, Deltas3 b c d )
+
+
+type alias Deltas5 a b c d e =
+    ( Delta a, Deltas4 b c d e )
 
 
 
@@ -315,7 +385,7 @@ always output =
         }
 
 
-type alias MaybeInputState state =
+type alias MaybeState state =
     CustomTypeState
         (States2
             (States1 state)
@@ -323,7 +393,7 @@ type alias MaybeInputState state =
         )
 
 
-type alias MaybeInputDelta delta =
+type alias MaybeDelta delta =
     CustomTypeDelta
         (Deltas2
             (Deltas1 delta)
@@ -331,12 +401,31 @@ type alias MaybeInputDelta delta =
         )
 
 
-maybe : Input state delta output -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
+maybe : Input state delta output -> Input (MaybeState state) (MaybeDelta delta) (Maybe output)
 maybe input =
     customType
         |> tag1 i0 "Just" Just "" input
         |> tag0 i1 "Nothing" Nothing
         |> endCustomType
+
+
+type alias TupleState s1 s2 =
+    States2 s1 s2
+
+
+type alias TupleDelta d1 d2 =
+    Deltas2 d1 d2
+
+
+tuple :
+    Input state1 delta1 output1
+    -> Input state2 delta2 output2
+    -> Input (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
+tuple fst snd =
+    record Tuple.pair
+        |> field i0 "first" fst
+        |> field i1 "second" snd
+        |> endRecord
 
 
 type alias ListState state =
@@ -611,6 +700,10 @@ recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState 
         restStates
 
 
+statusFromInternalState :
+    (State state -> Result (List ( String, String )) output)
+    -> State state
+    -> Status
 statusFromInternalState parser (State internalState state) =
     case internalState of
         Intact_ ->
@@ -753,6 +846,31 @@ tag3 f id tag id1 input1 id2 input2 id3 input3 =
             |> field i0 id1 input1
             |> field i1 id2 input2
             |> field i2 id3 input3
+            |> endRecord
+        )
+
+
+tag4 f id tag id1 input1 id2 input2 id3 input3 id4 input4 =
+    variant f
+        id
+        (record tag
+            |> field i0 id1 input1
+            |> field i1 id2 input2
+            |> field i2 id3 input3
+            |> field i3 id4 input4
+            |> endRecord
+        )
+
+
+tag5 f id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
+    variant f
+        id
+        (record tag
+            |> field i0 id1 input1
+            |> field i1 id2 input2
+            |> field i2 id3 input3
+            |> field i3 id4 input4
+            |> field i4 id5 input5
             |> endRecord
         )
 
@@ -951,6 +1069,12 @@ recordView id recordStatesView =
         ]
 
 
+customTypeView :
+    String
+    -> List ( Int, String )
+    -> Int
+    -> Html (Delta (CustomTypeDelta variants))
+    -> Html (Delta (CustomTypeDelta variants))
 customTypeView id options selectedTag selectedTagView =
     H.div [ HA.style "margin-top" "10px" ]
         [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
