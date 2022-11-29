@@ -552,17 +552,8 @@ endRecord rec =
                             ( State s state, Cmd.none )
             , view =
                 \{ state } ->
-                    H.div
-                        []
-                        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
-                        , H.div
-                            [ HA.style "border-width" "1px"
-                            , HA.style "border-color" "lightGray"
-                            , HA.style "border-style" "solid"
-                            ]
-                            [ H.div [ HA.style "margin" "10px" ] [ viewRecordStates rec.viewer emptyDeltas fields state ]
-                            ]
-                        ]
+                    viewRecordStates rec.viewer emptyDeltas fields state
+                        |> recordView id
             , parse = \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
             }
         )
@@ -812,76 +803,22 @@ endCustomType rec =
 
                         _ ->
                             ( State s state, Cmd.none )
-            , view = customTypeView names rec emptyDeltas fns
+            , view =
+                \config ->
+                    let
+                        options =
+                            List.indexedMap Tuple.pair names
+
+                        selectedTag =
+                            config.state.selectedTag
+
+                        tagStates =
+                            config.state.tagStates
+                    in
+                    viewSelectedTagState rec.viewer selectedTag emptyDeltas fns tagStates
+                        |> customTypeView config.id options selectedTag
             , parse = \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
             }
-        )
-
-
-customTypeView ids rec emptyDeltas fns config =
-    let
-        options =
-            List.indexedMap Tuple.pair ids
-    in
-    H.div [ HA.style "margin-top" "10px" ]
-        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text config.id ]
-        , H.div
-            [ HA.style "border-width" "1px"
-            , HA.style "border-color" "lightGray"
-            , HA.style "border-style" "solid"
-            ]
-            [ H.div [ HA.style "margin" "10px" ]
-                [ radioView options config.id config.state.selectedTag (ChangeState << TagSelected)
-                , H.div
-                    [ HA.style "border-width" "1px"
-                    , HA.style "border-color" "lightGray"
-                    , HA.style "border-style" "solid"
-                    ]
-                    [ H.div
-                        [ HA.style "margin" "10px" ]
-                        [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
-                    ]
-                ]
-            ]
-        ]
-
-
-radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
-radioView options id selectedOption toMsg =
-    H.div [ HA.style "margin-bottom" "10px" ]
-        (List.map
-            (\( option, label ) ->
-                H.span [ HA.style "margin-right" "10px" ]
-                    [ H.input
-                        [ HA.type_ "radio"
-                        , HA.id (id ++ label)
-                        , HA.name id
-                        , HA.value label
-                        , HA.checked (selectedOption == option)
-                        , onChecked (toMsg option)
-                        ]
-                        []
-                    , H.label
-                        [ HA.for (id ++ label) ]
-                        [ H.text label ]
-                    ]
-            )
-            options
-        )
-
-
-onChecked : msg -> H.Attribute msg
-onChecked msg =
-    HE.on "input"
-        (HE.targetChecked
-            |> Json.Decode.andThen
-                (\checked ->
-                    if checked then
-                        Json.Decode.succeed msg
-
-                    else
-                        Json.Decode.fail ""
-                )
         )
 
 
@@ -1012,6 +949,25 @@ instantiateSelector selector =
 -}
 
 
+recordView : String -> Html (Delta msg) -> Html (Delta msg)
+recordView id recordStatesView =
+    H.div
+        []
+        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+        , borderedDiv [ recordStatesView ]
+        ]
+
+
+customTypeView id options selectedTag selectedTagView =
+    H.div [ HA.style "margin-top" "10px" ]
+        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+        , borderedDiv
+            [ radioView options id selectedTag (ChangeState << TagSelected)
+            , borderedDiv [ selectedTagView ]
+            ]
+        ]
+
+
 stringView : ViewConfig String -> Html String
 stringView fieldState =
     H.div [ HA.style "margin-bottom" "10px" ]
@@ -1072,3 +1028,55 @@ statusView status =
 
         _ ->
             H.text ""
+
+
+borderedDiv : List (Html msg) -> Html msg
+borderedDiv content =
+    H.div
+        [ HA.style "border-width" "1px"
+        , HA.style "border-color" "lightGray"
+        , HA.style "border-style" "solid"
+        ]
+        [ H.div
+            [ HA.style "margin" "10px" ]
+            content
+        ]
+
+
+radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
+radioView options id selectedOption toMsg =
+    H.div [ HA.style "margin-bottom" "10px" ]
+        (List.map
+            (\( option, label ) ->
+                H.span [ HA.style "margin-right" "10px" ]
+                    [ H.input
+                        [ HA.type_ "radio"
+                        , HA.id (id ++ label)
+                        , HA.name id
+                        , HA.value label
+                        , HA.checked (selectedOption == option)
+                        , onChecked (toMsg option)
+                        ]
+                        []
+                    , H.label
+                        [ HA.for (id ++ label) ]
+                        [ H.text label ]
+                    ]
+            )
+            options
+        )
+
+
+onChecked : msg -> H.Attribute msg
+onChecked msg =
+    HE.on "input"
+        (HE.targetChecked
+            |> Json.Decode.andThen
+                (\checked ->
+                    if checked then
+                        Json.Decode.succeed msg
+
+                    else
+                        Json.Decode.fail ""
+                )
+        )
