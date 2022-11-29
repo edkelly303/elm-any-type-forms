@@ -4,7 +4,7 @@ import Browser
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import List.Extra
+import Json.Decode
 import Process
 import Result.Extra
 import Task
@@ -46,15 +46,18 @@ type
     Msg
     -- = FormMsg (Delta String)
     -- = FormMsg (Delta SimpleRecordInputDelta)
-    -- = FormMsg (Delta NestedRecordInputDelta)
-    = FormMsg (Delta SimpleCustomInputDelta)
+    = FormMsg (Delta NestedRecordInputDelta)
+
+
+
+-- = FormMsg (Delta SimpleCustomInputDelta)
 
 
 mainForm =
     -- int
     -- simpleRecordInput
-    -- nestedRecordInput
-    simpleCustomInput
+    nestedRecordInput
+        -- simpleCustomInput
         |> toForm "form" FormMsg
 
 
@@ -84,21 +87,29 @@ simpleRecordInput :
 simpleRecordInput =
     record SimpleRecord
         |> field i0 "name" string
-        |> field i1 "age" int
+        |> field i1 "age" boundedInt
         |> endRecord
 
 
 type alias NestedRecord =
-    { record : SimpleRecord
+    { title : String
+    , record : SimpleRecord
+    , custom : SimpleCustom
     }
 
 
 type alias NestedRecordInputDelta =
-    Deltas1 SimpleRecordInputDelta
+    Deltas3
+        String
+        SimpleRecordInputDelta
+        SimpleCustomInputDelta
 
 
 type alias NestedRecordInputState =
-    States1 SimpleRecordInputState
+    States3
+        String
+        SimpleRecordInputState
+        SimpleCustomInputState
 
 
 nestedRecordInput :
@@ -108,7 +119,9 @@ nestedRecordInput :
         NestedRecord
 nestedRecordInput =
     record NestedRecord
-        |> field i0 "record" simpleRecordInput
+        |> field i0 "title" string
+        |> field i1 "record" simpleRecordInput
+        |> field i2 "custom" simpleCustomInput
         |> endRecord
 
 
@@ -141,8 +154,17 @@ simpleCustomInput :
 simpleCustomInput =
     customType
         |> tag0 i0 "red" Red
-        |> tag1 i1 "green" Green int
+        |> tag1 i1 "green" Green "integer" boundedInt
         |> endCustomType
+
+
+boundedInt : Input String String Int
+boundedInt =
+    intConfig
+        |> failIf (\x -> x <= 0) "must be greater than 0"
+        |> failIf (\x -> x > 120) "maximum is 120"
+        |> debounce 500
+        |> fromConfig
 
 
 
@@ -164,7 +186,7 @@ type alias Form state delta output msg =
     { init : State state
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
-    , submit : State state -> Result (List String) output
+    , submit : State state -> Result (List ( String, String )) output
     }
 
 
@@ -190,7 +212,7 @@ type alias InputConfig state delta output =
     , update : delta -> state -> state
     , view : ViewConfig state -> Html delta
     , parse : state -> Result (List String) output
-    , validators : List { check : output -> Bool, feedback : Result String String }
+    , validators : List { check : output -> Bool, feedback : String }
     , debounce : Float
     }
 
@@ -204,7 +226,7 @@ type Input state delta output
             , init : State state
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , view : ViewConfig state -> Html (Delta delta)
-            , parse : State state -> Result (List String) output
+            , parse : State state -> Result (List ( String, String )) output
             }
         )
 
@@ -219,7 +241,7 @@ type alias ViewConfig state =
 type Status
     = Intact
     | Debouncing
-    | Idle (List (Result String String))
+    | Idle (List (Result ( String, String ) ( String, String )))
 
 
 type States0
@@ -234,6 +256,10 @@ type alias States2 a b =
     ( State a, States1 b )
 
 
+type alias States3 a b c =
+    ( State a, States2 b c )
+
+
 type Deltas0
     = Deltas0
 
@@ -244,6 +270,10 @@ type alias Deltas1 a =
 
 type alias Deltas2 a b =
     ( Delta a, Deltas1 b )
+
+
+type alias Deltas3 a b c =
+    ( Delta a, Deltas2 b c )
 
 
 
@@ -338,40 +368,81 @@ fromConfig config =
                                     , Cmd.none
                                     )
             , view = config.view >> H.map ChangeState
-            , parse = \(State _ state) -> config.parse state
+            , parse =
+                \(State _ state) ->
+                    case config.parse state of
+                        Ok output ->
+                            let
+                                feedback =
+                                    List.filterMap
+                                        (\v ->
+                                            if v.check output then
+                                                Just ( id, v.feedback )
+
+                                            else
+                                                Nothing
+                                        )
+                                        config.validators
+                            in
+                            if List.isEmpty feedback then
+                                Ok output
+
+                            else
+                                Err feedback
+
+                        Err errs ->
+                            Err (List.map (\err -> ( id, err )) errs)
             }
         )
 
 
+failIf : (output -> Bool) -> String -> InputConfig state delta output -> InputConfig state delta output
+failIf check feedback config =
+    { config | validators = { check = check, feedback = feedback } :: config.validators }
+
+
+debounce : Float -> InputConfig state delta output -> InputConfig state delta output
+debounce millis config =
+    { config | debounce = millis }
+
+
 int : Input String String Int
 int =
-    fromConfig
-        { init = ""
-        , update = \delta _ -> delta
-        , view = stringView
-        , parse =
-            \input ->
-                case String.toInt input of
-                    Just i ->
-                        Ok i
+    fromConfig intConfig
 
-                    Nothing ->
-                        Err [ "must be a whole number" ]
-        , validators = []
-        , debounce = 1000
-        }
+
+intConfig : InputConfig String String Int
+intConfig =
+    { init = ""
+    , update = \delta _ -> delta
+    , view = stringView
+    , parse =
+        \input ->
+            case String.toInt input of
+                Just i ->
+                    Ok i
+
+                Nothing ->
+                    Err [ "must be a whole number" ]
+    , validators = []
+    , debounce = 500
+    }
 
 
 string : Input String String String
 string =
-    fromConfig
-        { init = ""
-        , update = \delta _ -> delta
-        , view = stringView
-        , parse = Ok
-        , validators = []
-        , debounce = 0
-        }
+    fromConfig stringConfig
+
+
+stringConfig : InputConfig String String String
+stringConfig =
+    { init = ""
+    , update = \delta _ -> delta
+    , view = stringView
+    , parse = Ok
+    , validators = []
+    , debounce = 500
+    }
 
 
 always : output -> Input States0 Deltas0 output
@@ -405,7 +476,7 @@ type alias MaybeInputDelta delta =
 maybe : Input state delta output -> Input (MaybeInputState state) (MaybeInputDelta delta) (Maybe output)
 maybe input =
     customType
-        |> tag1 i0 "Just" Just input
+        |> tag1 i0 "Just" Just "" input
         |> tag0 i1 "Nothing" Nothing
         |> endCustomType
 
@@ -565,7 +636,7 @@ statusFromInternalState parser (State internalState state) =
                         Err errs ->
                             errs
             in
-            Idle (List.map Ok strings)
+            Idle (List.map Err strings)
 
 
 updateRecordStates updater emptyDeltas fields deltas states =
@@ -663,32 +734,32 @@ tag0 f id tag =
     variant f id (always tag)
 
 
-tag1 f id tag input =
+tag1 f id tag inputId input =
     variant f
         id
         (record tag
-            |> field i0 "0" input
+            |> field i0 inputId input
             |> endRecord
         )
 
 
-tag2 f id tag input1 input2 =
+tag2 f id tag id1 input1 id2 input2 =
     variant f
         id
         (record tag
-            |> field i0 "0" input1
-            |> field i1 "1" input2
+            |> field i0 id1 input1
+            |> field i1 id2 input2
             |> endRecord
         )
 
 
-tag3 f id tag input1 input2 input3 =
+tag3 f id tag id1 input1 id2 input2 id3 input3 =
     variant f
         id
         (record tag
-            |> field i0 "0" input1
-            |> field i1 "1" input2
-            |> field i2 "2" input3
+            |> field i0 id1 input1
+            |> field i1 id2 input2
+            |> field i2 id3 input3
             |> endRecord
         )
 
@@ -732,29 +803,65 @@ endCustomType rec =
 
                         _ ->
                             ( State s state, Cmd.none )
-            , view =
-                \{ state } ->
-                    let
-                        selectedName =
-                            List.Extra.getAt state.selectedTag names
-                                |> Maybe.withDefault "ERROR"
-                    in
-                    H.div []
-                        [ H.text id
-                        , H.div []
-                            (List.indexedMap
-                                (\index name ->
-                                    H.button
-                                        [ HE.onClick (ChangeState (TagSelected index)) ]
-                                        [ H.text name ]
-                                )
-                                names
-                            )
-                        , H.text selectedName
-                        , viewSelectedTagState rec.viewer state.selectedTag emptyDeltas fns state.tagStates
-                        ]
+            , view = customTypeView names rec emptyDeltas fns
             , parse = \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
             }
+        )
+
+
+customTypeView ids rec emptyDeltas fns config =
+    let
+        options =
+            List.indexedMap Tuple.pair ids
+    in
+    H.div []
+        [ radioView options config.id config.state.selectedTag (ChangeState << TagSelected)
+        , viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates
+        ]
+
+
+radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
+radioView options id selectedOption toMsg =
+    H.div [ HA.style "margin-top" "30px" ]
+        [ H.div
+            [ HA.style "margin-top" "10px" ]
+            [ H.text id ]
+        , H.div [ HA.style "margin-bottom" "10px" ]
+            (List.map
+                (\( option, label ) ->
+                    H.div []
+                        [ H.input
+                            [ HA.type_ "radio"
+                            , HA.id (id ++ label)
+                            , HA.name id
+                            , HA.value label
+                            , HA.checked (selectedOption == option)
+                            , HA.style "margin-top" "10px"
+                            , onChecked (toMsg option)
+                            ]
+                            []
+                        , H.label
+                            [ HA.for (id ++ label) ]
+                            [ H.text label ]
+                        ]
+                )
+                options
+            )
+        ]
+
+
+onChecked : msg -> H.Attribute msg
+onChecked msg =
+    HE.on "input"
+        (HE.targetChecked
+            |> Json.Decode.andThen
+                (\checked ->
+                    if checked then
+                        Json.Decode.succeed msg
+
+                    else
+                        Json.Decode.fail ""
+                )
         )
 
 
@@ -772,7 +879,7 @@ endCustomType rec =
 parseSelectedTagState parser selectedTag fns states =
     parser
         (\result _ End End -> result)
-        (Err [ "tag index " ++ String.fromInt selectedTag ++ " not found" ])
+        (Err [ ( "FATAL ERROR", "tag index " ++ String.fromInt selectedTag ++ " not found" ) ])
         selectedTag
         fns
         states
@@ -930,10 +1037,10 @@ statusView status =
                         let
                             ( icon, txt ) =
                                 case f of
-                                    Ok t ->
+                                    Ok ( _, t ) ->
                                         ( "💬", t )
 
-                                    Err t ->
+                                    Err ( _, t ) ->
                                         ( "❌", t )
                         in
                         H.div
