@@ -117,9 +117,9 @@ nestedRecordInput :
         NestedRecord
 nestedRecordInput =
     record NestedRecord
-        |> field i0 "titles" (list boundedInt)
+        |> field i0 "number list" (list boundedInt)
         |> field i1 "record" simpleRecordInput
-        |> field i2 "custom" simpleCustomInput
+        |> field i2 "custom type" simpleCustomInput
         |> endRecord
 
 
@@ -498,7 +498,7 @@ type alias ListState state =
 
 
 type ListDelta delta
-    = AddItem
+    = InsertItem Int
     | DeleteItem Int
     | ChangeItem Int (Delta delta)
 
@@ -518,8 +518,15 @@ list (Input toInput) =
                 wrappedUpdate
                     (\delta state ->
                         case delta of
-                            AddItem ->
-                                ( input.init :: state, Cmd.none )
+                            InsertItem idx ->
+                                let
+                                    before =
+                                        List.take idx state
+
+                                    after =
+                                        List.drop idx state
+                                in
+                                ( before ++ input.init :: after, Cmd.none )
 
                             ChangeItem idx itemDelta ->
                                 let
@@ -548,28 +555,46 @@ list (Input toInput) =
             , view =
                 \config ->
                     H.div [ HA.style "margin-bottom" "10px" ]
-                        [ H.text config.id
-                        , H.div
-                            [ HA.style "margin-top" "10px"
-                            , HA.style "margin-bottom" "10px"
-                            ]
-                            [ H.button [ HE.onClick AddItem ] [ H.text "add item" ] ]
-                        , borderedDiv
-                            (List.indexedMap
-                                (\idx (State internalState state) ->
-                                    H.div [ HA.style "margin-bottom" "10px" ]
-                                        [ H.text ("item #" ++ String.fromInt idx)
-                                        , input.view
-                                            { state = state
-                                            , status = statusFromInternalState input.parse (State internalState state)
-                                            , id = ""
-                                            }
-                                            |> H.map (ChangeItem idx)
-                                        , H.button [ HE.onClick (DeleteItem idx) ] [ H.text "delete" ]
-                                        ]
-                                )
-                                config.state
-                            )
+                        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text config.id ]
+                        , if List.isEmpty config.state then
+                            H.div
+                                [ HA.style "margin-top" "10px"
+                                , HA.style "margin-bottom" "10px"
+                                ]
+                                [ H.text "[ empty list ]"
+                                , H.button
+                                    [ HA.style "margin-left" "10px"
+                                    , HE.onClick (InsertItem 0)
+                                    ]
+                                    [ H.text "add an item" ]
+                                ]
+
+                          else
+                            borderedDiv
+                                [ H.div
+                                    [ HA.style "margin-top" "10px"
+                                    , HA.style "margin-bottom" "10px"
+                                    ]
+                                    [ H.button [ HE.onClick (InsertItem 0) ]
+                                        [ H.text "insert item" ]
+                                    ]
+                                , H.div []
+                                    (List.indexedMap
+                                        (\idx (State internalState state) ->
+                                            H.div [ HA.style "margin-bottom" "10px" ]
+                                                [ input.view
+                                                    { state = state
+                                                    , status = statusFromInternalState input.parse (State internalState state)
+                                                    , id = "list item #" ++ String.fromInt idx
+                                                    }
+                                                    |> H.map (ChangeItem idx)
+                                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("delete item #" ++ String.fromInt idx) ] ]
+                                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "insert item" ] ]
+                                                ]
+                                        )
+                                        config.state
+                                    )
+                                ]
                         ]
                         |> H.map ChangeState
             , parse =
