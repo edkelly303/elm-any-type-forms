@@ -327,47 +327,7 @@ fromConfig config =
             { id = id
             , index = 0
             , init = State Intact_ config.init
-            , update =
-                \wrappedDelta (State internalState state) ->
-                    case wrappedDelta of
-                        Skip ->
-                            ( State internalState state
-                            , Cmd.none
-                            )
-
-                        ChangeState delta ->
-                            if config.debounce > 0 then
-                                ( State internalState (config.update delta state)
-                                , Task.perform StartDebouncing Time.now
-                                )
-
-                            else
-                                ( State Idle_ (config.update delta state)
-                                , Cmd.none
-                                )
-
-                        StartDebouncing now ->
-                            ( State (DebouncingSince now) state
-                            , Task.perform (\() -> CheckDebouncer now) (Process.sleep config.debounce)
-                            )
-
-                        CheckDebouncer now ->
-                            case internalState of
-                                DebouncingSince startTime ->
-                                    if now == startTime then
-                                        ( State Idle_ state
-                                        , Cmd.none
-                                        )
-
-                                    else
-                                        ( State internalState state
-                                        , Cmd.none
-                                        )
-
-                                _ ->
-                                    ( State internalState state
-                                    , Cmd.none
-                                    )
+            , update = wrappedUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none ))) config.debounce
             , view = config.view >> H.map ChangeState
             , parse =
                 \(State _ state) ->
@@ -395,6 +355,57 @@ fromConfig config =
                             Err (List.map (\err -> ( id, err )) errs)
             }
         )
+
+
+wrappedUpdate : (delta -> state -> ( state, Cmd delta )) -> Float -> (Delta delta -> State state -> ( State state, Cmd (Delta delta) ))
+wrappedUpdate update debounce_ =
+    \wrappedDelta (State internalState state) ->
+        case wrappedDelta of
+            Skip ->
+                ( State internalState state
+                , Cmd.none
+                )
+
+            ChangeState delta ->
+                let
+                    ( newState, cmd ) =
+                        update delta state
+                in
+                if debounce_ > 0 then
+                    ( State internalState newState
+                    , Cmd.batch
+                        [ Task.perform StartDebouncing Time.now
+                        , Cmd.map ChangeState cmd
+                        ]
+                    )
+
+                else
+                    ( State Idle_ newState
+                    , Cmd.map ChangeState cmd
+                    )
+
+            StartDebouncing now ->
+                ( State (DebouncingSince now) state
+                , Task.perform (\() -> CheckDebouncer now) (Process.sleep debounce_)
+                )
+
+            CheckDebouncer now ->
+                case internalState of
+                    DebouncingSince startTime ->
+                        if now == startTime then
+                            ( State Idle_ state
+                            , Cmd.none
+                            )
+
+                        else
+                            ( State internalState state
+                            , Cmd.none
+                            )
+
+                    _ ->
+                        ( State internalState state
+                        , Cmd.none
+                        )
 
 
 failIf : (output -> Bool) -> String -> InputConfig state delta output -> InputConfig state delta output
@@ -498,84 +509,95 @@ list (Input toInput) =
         input =
             toInput ""
     in
-    { init = []
-    , update =
-        \delta state ->
-            case delta of
-                AddItem ->
-                    input.init :: state
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = State Intact_ []
+            , update =
+                wrappedUpdate
+                    (\delta state ->
+                        case delta of
+                            AddItem ->
+                                ( input.init :: state, Cmd.none )
 
-                ChangeItem idx itemDelta ->
-                    List.indexedMap
-                        (\i item ->
-                            if i == idx then
+                            ChangeItem idx itemDelta ->
                                 let
-                                    ( newItem, cmd ) =
-                                        input.update itemDelta item
+                                    ( newState, cmds ) =
+                                        List.foldr
+                                            (\( i, item ) ( items, cmds_ ) ->
+                                                if i == idx then
+                                                    let
+                                                        ( newItem, newCmd ) =
+                                                            input.update itemDelta item
+                                                    in
+                                                    ( newItem :: items, newCmd :: cmds_ )
+
+                                                else
+                                                    ( item :: items, cmds_ )
+                                            )
+                                            ( [], [] )
+                                            (List.indexedMap Tuple.pair state)
                                 in
-                                newItem
+                                ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
 
-                            else
-                                item
-                        )
-                        state
-
-                DeleteItem idx ->
-                    List.Extra.removeAt idx state
-    , view =
-        \config ->
-            H.div [ HA.style "margin-bottom" "10px" ]
-                [ H.text config.id
-                , H.div
-                    [ HA.style "margin-top" "10px"
-                    , HA.style "margin-bottom" "10px"
-                    ]
-                    [ H.button [ HE.onClick AddItem ] [ H.text "add item" ] ]
-                , borderedDiv
-                    (List.indexedMap
-                        (\idx (State internalState state) ->
-                            H.div [ HA.style "margin-bottom" "10px" ]
-                                [ H.text ("item #" ++ String.fromInt idx)
-                                , input.view
-                                    { state = state
-                                    , status = statusFromInternalState input.parse (State internalState state)
-                                    , id = ""
-                                    }
-                                    |> H.map (ChangeItem idx)
-                                , H.button [ HE.onClick (DeleteItem idx) ] [ H.text "delete" ]
-                                ]
-                        )
-                        config.state
+                            DeleteItem idx ->
+                                ( List.Extra.removeAt idx state, Cmd.none )
                     )
-                , statusView config.status
-                ]
-    , parse =
-        \state ->
-            List.foldr
-                (\( idx, item ) res ->
-                    case res of
-                        Ok outputs ->
-                            case input.parse item of
-                                Ok output ->
-                                    Ok (output :: outputs)
+                    0
+            , view =
+                \config ->
+                    H.div [ HA.style "margin-bottom" "10px" ]
+                        [ H.text config.id
+                        , H.div
+                            [ HA.style "margin-top" "10px"
+                            , HA.style "margin-bottom" "10px"
+                            ]
+                            [ H.button [ HE.onClick AddItem ] [ H.text "add item" ] ]
+                        , borderedDiv
+                            (List.indexedMap
+                                (\idx (State internalState state) ->
+                                    H.div [ HA.style "margin-bottom" "10px" ]
+                                        [ H.text ("item #" ++ String.fromInt idx)
+                                        , input.view
+                                            { state = state
+                                            , status = statusFromInternalState input.parse (State internalState state)
+                                            , id = ""
+                                            }
+                                            |> H.map (ChangeItem idx)
+                                        , H.button [ HE.onClick (DeleteItem idx) ] [ H.text "delete" ]
+                                        ]
+                                )
+                                config.state
+                            )
+                        ]
+                        |> H.map ChangeState
+            , parse =
+                \(State _ state) ->
+                    List.foldr
+                        (\( idx, item ) res ->
+                            case res of
+                                Ok outputs ->
+                                    case input.parse item of
+                                        Ok output ->
+                                            Ok (output :: outputs)
+
+                                        Err errs ->
+                                            Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) errs)
 
                                 Err errs ->
-                                    Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) errs)
+                                    case input.parse item of
+                                        Ok _ ->
+                                            Err errs
 
-                        Err errs ->
-                            case input.parse item of
-                                Ok _ ->
-                                    Err errs
-
-                                Err newErrs ->
-                                    Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) newErrs ++ errs)
-                )
-                (Ok [])
-                (List.indexedMap Tuple.pair state)
-    , debounce = 0
-    , validators = []
-    }
-        |> fromConfig
+                                        Err newErrs ->
+                                            Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) newErrs ++ errs)
+                        )
+                        (Ok [])
+                        (List.indexedMap Tuple.pair state)
+                        |> Result.mapError (List.map (\feedback -> ( id, feedback )))
+            }
+        )
 
 
 
