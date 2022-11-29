@@ -15,10 +15,10 @@ main =
 
 update msg model =
     case msg of
-        FormMsg m ->
+        FormMsg formMsg ->
             let
                 ( newModel, cmd ) =
-                    mainForm.update m model
+                    mainForm.update formMsg model
 
                 _ =
                     Debug.log "output" (mainForm.submit newModel)
