@@ -46,18 +46,15 @@ type
     Msg
     -- = FormMsg (Delta String)
     -- = FormMsg (Delta SimpleRecordInputDelta)
+    -- = FormMsg (Delta SimpleCustomInputDelta)
     = FormMsg (Delta NestedRecordInputDelta)
-
-
-
--- = FormMsg (Delta SimpleCustomInputDelta)
 
 
 mainForm =
     -- int
     -- simpleRecordInput
+    -- simpleCustomInput
     nestedRecordInput
-        -- simpleCustomInput
         |> toForm "form" FormMsg
 
 
@@ -553,7 +550,19 @@ endRecord rec =
 
                         _ ->
                             ( State s state, Cmd.none )
-            , view = \{ state } -> viewRecordStates rec.viewer emptyDeltas fields state
+            , view =
+                \{ state } ->
+                    H.div
+                        []
+                        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+                        , H.div
+                            [ HA.style "border-width" "1px"
+                            , HA.style "border-color" "lightGray"
+                            , HA.style "border-style" "solid"
+                            ]
+                            [ H.div [ HA.style "margin" "5px" ] [ viewRecordStates rec.viewer emptyDeltas fields state ]
+                            ]
+                        ]
             , parse = \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
             }
         )
@@ -822,7 +831,7 @@ customTypeView ids rec emptyDeltas fns config =
 
 radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
 radioView options id selectedOption toMsg =
-    H.div [ HA.style "margin-top" "30px" ]
+    H.div [ HA.style "margin-top" "10px" ]
         [ H.div
             [ HA.style "margin-top" "10px" ]
             [ H.text id ]
@@ -994,7 +1003,7 @@ instantiateSelector selector =
 
 stringView : ViewConfig String -> Html String
 stringView fieldState =
-    H.div [ HA.style "margin-bottom" "30px" ]
+    H.div [ HA.style "margin-bottom" "10px" ]
         [ H.div
             [ HA.style "margin-bottom" "10px" ]
             [ H.text fieldState.id ]
