@@ -29,15 +29,15 @@ update msg model =
 type
     Msg
     -- = FormMsg (Delta String)
-    -- = FormMsg (Delta SimpleRecordInputDelta)
-    -- = FormMsg (Delta SimpleCustomInputDelta)
-    = FormMsg (Delta NestedRecordInputDelta)
+    -- = FormMsg (Delta SimpleRecordDelta)
+    -- = FormMsg (Delta SimpleCustomTypeDelta)
+    = FormMsg (Delta NestedRecordDelta)
 
 
 mainForm =
     -- boundedInt
     -- simpleRecordInput
-    -- simpleCustomInput
+    -- simpleCustomTypeInput
     nestedRecordInput
         |> toForm "my first form example" FormMsg
 
@@ -57,13 +57,13 @@ type alias SimpleRecord =
     }
 
 
-type alias SimpleRecordInputDelta =
+type alias SimpleRecordDelta =
     Deltas2
         String
         String
 
 
-type alias SimpleRecordInputState =
+type alias SimpleRecordState =
     States2
         String
         String
@@ -71,8 +71,8 @@ type alias SimpleRecordInputState =
 
 simpleRecordInput :
     Input
-        SimpleRecordInputState
-        SimpleRecordInputDelta
+        SimpleRecordState
+        SimpleRecordDelta
         SimpleRecord
 simpleRecordInput =
     record SimpleRecord
@@ -81,12 +81,12 @@ simpleRecordInput =
         |> endRecord
 
 
-type SimpleCustom
+type SimpleCustomType
     = Red
     | Green Int
 
 
-type alias SimpleCustomInputDelta =
+type alias SimpleCustomTypeDelta =
     CustomTypeDelta
         (Deltas2
             Deltas0
@@ -94,7 +94,7 @@ type alias SimpleCustomInputDelta =
         )
 
 
-type alias SimpleCustomInputState =
+type alias SimpleCustomTypeState =
     CustomTypeState
         (States2
             States0
@@ -102,12 +102,12 @@ type alias SimpleCustomInputState =
         )
 
 
-simpleCustomInput :
+simpleCustomTypeInput :
     Input
-        SimpleCustomInputState
-        SimpleCustomInputDelta
-        SimpleCustom
-simpleCustomInput =
+        SimpleCustomTypeState
+        SimpleCustomTypeDelta
+        SimpleCustomType
+simpleCustomTypeInput =
     customType
         |> tag0 i0 "red" Red
         |> tag1 i1 "green" Green "integer" boundedInt
@@ -117,32 +117,32 @@ simpleCustomInput =
 type alias NestedRecord =
     { titles : List Int
     , record : SimpleRecord
-    , custom : SimpleCustom
+    , custom : SimpleCustomType
     }
 
 
-type alias NestedRecordInputDelta =
+type alias NestedRecordDelta =
     Deltas3
         (ListDelta String)
-        SimpleRecordInputDelta
-        SimpleCustomInputDelta
+        SimpleRecordDelta
+        SimpleCustomTypeDelta
 
 
-type alias NestedRecordInputState =
+type alias NestedRecordState =
     States3
         (ListState String)
-        SimpleRecordInputState
-        SimpleCustomInputState
+        SimpleRecordState
+        SimpleCustomTypeState
 
 
 nestedRecordInput :
     Input
-        NestedRecordInputState
-        NestedRecordInputDelta
+        NestedRecordState
+        NestedRecordDelta
         NestedRecord
 nestedRecordInput =
     record NestedRecord
         |> field i0 "number list" (list boundedInt)
         |> field i1 "record" simpleRecordInput
-        |> field i2 "custom type" simpleCustomInput
+        |> field i2 "custom type" simpleCustomTypeInput
         |> endRecord
