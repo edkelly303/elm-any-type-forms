@@ -80,9 +80,9 @@ type alias RatioDelta =
     TupleDelta UnitDelta UnitDelta
 
 
-ratio : Input RatioState RatioDelta (Ratio a b)
-ratio =
-    tuple unit unit
+ratio : String -> String -> Input RatioState RatioDelta (Ratio a b)
+ratio fstId sndId =
+    tuple fstId unit sndId unit
 
 
 type Measure
@@ -324,7 +324,7 @@ type alias VolumeRecordDelta =
 volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
-        |> field i0 "ratio" ratio
+        |> field i0 "ratio" (ratio "grams" "millilitres")
         |> endRecord
 
 
@@ -346,7 +346,7 @@ wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
         |> field i0 "singularName" string
-        |> field i1 "ratio" ratio
+        |> field i1 "ratio" (ratio "grams" "per item")
         |> endRecord
 
 
@@ -370,7 +370,7 @@ customRecord =
     record CustomRecord
         |> field i0 "singularCollection" string
         |> field i1 "pluralCollection" string
-        |> field i2 "ratio" ratio
+        |> field i2 "ratio" (ratio "grams" "per item")
         |> endRecord
 
 

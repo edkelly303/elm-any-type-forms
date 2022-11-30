@@ -125,23 +125,6 @@ type alias Form state delta output msg =
     }
 
 
-type Delta delta
-    = Skip
-    | ChangeState delta
-    | StartDebouncing Time.Posix
-    | CheckDebouncer Time.Posix
-
-
-type State state
-    = State InternalState state
-
-
-type InternalState
-    = Intact_
-    | DebouncingSince Time.Posix
-    | Idle_
-
-
 type alias InputConfig state delta output =
     { init : state
     , update : delta -> state -> state
@@ -177,6 +160,29 @@ type Status
     = Intact
     | Debouncing
     | Idle (List (Result ( String, String ) ( String, String )))
+
+
+
+{-
+   .d8888. d888888b  .d8b.  d888888b d88888b .d8888.
+   88'  YP `~~88~~' d8' `8b `~~88~~' 88'     88'  YP
+   `8bo.      88    88ooo88    88    88ooooo `8bo.
+     `Y8b.    88    88~~~88    88    88~~~~~   `Y8b.
+   db   8D    88    88   88    88    88.     db   8D
+   `8888Y'    YP    YP   YP    YP    Y88888P `8888Y'
+
+
+-}
+
+
+type State state
+    = State InternalState state
+
+
+type InternalState
+    = Intact_
+    | DebouncingSince Time.Posix
+    | Idle_
 
 
 type States0
@@ -241,6 +247,26 @@ type alias States14 a b c d e f g h i j k l m n =
 
 type alias States15 a b c d e f g h i j k l m n o =
     ( State a, States14 b c d e f g h i j k l m n o )
+
+
+
+{-
+   d8888b. d88888b db      d888888b  .d8b.  .d8888.
+   88  `8D 88'     88      `~~88~~' d8' `8b 88'  YP
+   88   88 88ooooo 88         88    88ooo88 `8bo.
+   88   88 88~~~~~ 88         88    88~~~88   `Y8b.
+   88  .8D 88.     88booo.    88    88   88 db   8D
+   Y8888D' Y88888P Y88888P    YP    YP   YP `8888Y'
+
+
+-}
+
+
+type Delta delta
+    = Skip
+    | ChangeState delta
+    | StartDebouncing Time.Posix
+    | CheckDebouncer Time.Posix
 
 
 type Deltas0
@@ -441,14 +467,53 @@ wrappedUpdate update debounce_ =
                         )
 
 
+
+{-
+   db    db  .d8b.  db      d888888b d8888b.  .d8b.  d888888b d888888b  .d88b.  d8b   db
+   88    88 d8' `8b 88        `88'   88  `8D d8' `8b `~~88~~'   `88'   .8P  Y8. 888o  88
+   Y8    8P 88ooo88 88         88    88   88 88ooo88    88       88    88    88 88V8o 88
+   `8b  d8' 88~~~88 88         88    88   88 88~~~88    88       88    88    88 88 V8o88
+    `8bd8'  88   88 88booo.   .88.   88  .8D 88   88    88      .88.   `8b  d8' 88  V888
+      YP    YP   YP Y88888P Y888888P Y8888D' YP   YP    YP    Y888888P  `Y88P'  VP   V8P
+
+
+-}
+
+
 failIf : (output -> Bool) -> String -> InputConfig state delta output -> InputConfig state delta output
 failIf check feedback config =
     { config | validators = { check = check, feedback = feedback } :: config.validators }
 
 
+
+{-
+   d8888b. d88888b d8888b.  .d88b.  db    db d8b   db  .o88b. d888888b d8b   db  d888b
+   88  `8D 88'     88  `8D .8P  Y8. 88    88 888o  88 d8P  Y8   `88'   888o  88 88' Y8b
+   88   88 88ooooo 88oooY' 88    88 88    88 88V8o 88 8P         88    88V8o 88 88
+   88   88 88~~~~~ 88~~~b. 88    88 88    88 88 V8o88 8b         88    88 V8o88 88  ooo
+   88  .8D 88.     88   8D `8b  d8' 88b  d88 88  V888 Y8b  d8   .88.   88  V888 88. ~8~
+   Y8888D' Y88888P Y8888P'  `Y88P'  ~Y8888P' VP   V8P  `Y88P' Y888888P VP   V8P  Y888P
+
+
+-}
+
+
 debounce : Float -> InputConfig state delta output -> InputConfig state delta output
 debounce millis config =
     { config | debounce = millis }
+
+
+
+{-
+   d888888b d8b   db d888888b
+     `88'   888o  88 `~~88~~'
+      88    88V8o 88    88
+      88    88 V8o88    88
+     .88.   88  V888    88
+   Y888888P VP   V8P    YP
+
+
+-}
 
 
 int : Input String String Int
@@ -474,6 +539,19 @@ intConfig =
     }
 
 
+
+{-
+   .d8888. d888888b d8888b. d888888b d8b   db  d888b
+   88'  YP `~~88~~' 88  `8D   `88'   888o  88 88' Y8b
+   `8bo.      88    88oobY'    88    88V8o 88 88
+     `Y8b.    88    88`8b      88    88 V8o88 88  ooo
+   db   8D    88    88 `88.   .88.   88  V888 88. ~8~
+   `8888Y'    YP    88   YD Y888888P VP   V8P  Y888P
+
+
+-}
+
+
 string : Input String String String
 string =
     fromConfig stringConfig
@@ -488,6 +566,19 @@ stringConfig =
     , validators = []
     , debounce = 500
     }
+
+
+
+{-
+   d88888b d8b   db db    db .88b  d88.
+   88'     888o  88 88    88 88'YbdP`88
+   88ooooo 88V8o 88 88    88 88  88  88
+   88~~~~~ 88 V8o88 88    88 88  88  88
+   88.     88  V888 88b  d88 88  88  88
+   Y88888P VP   V8P ~Y8888P' YP  YP  YP
+
+
+-}
 
 
 type alias EnumState enum =
@@ -524,6 +615,19 @@ always output =
         }
 
 
+
+{-
+   db   d8b   db d8888b.  .d8b.  d8888b. d8888b. d88888b d8888b.
+   88   I8I   88 88  `8D d8' `8b 88  `8D 88  `8D 88'     88  `8D
+   88   I8I   88 88oobY' 88ooo88 88oodD' 88oodD' 88ooooo 88oobY'
+   Y8   I8I   88 88`8b   88~~~88 88~~~   88~~~   88~~~~~ 88`8b
+   `8b d8'8b d8' 88 `88. 88   88 88      88      88.     88 `88.
+    `8b8' `8d8'  88   YD YP   YP 88      88      Y88888P 88   YD
+
+
+-}
+
+
 type alias WrapperState state =
     CustomTypeState (States1 (States1 state))
 
@@ -539,28 +643,54 @@ wrapper id wrapping input =
         |> endCustomType
 
 
+
+{-
+   .88b  d88.  .d8b.  db    db d8888b. d88888b
+   88'YbdP`88 d8' `8b `8b  d8' 88  `8D 88'
+   88  88  88 88ooo88  `8bd8'  88oooY' 88ooooo
+   88  88  88 88~~~88    88    88~~~b. 88~~~~~
+   88  88  88 88   88    88    88   8D 88.
+   YP  YP  YP YP   YP    YP    Y8888P' Y88888P
+
+
+-}
+
+
 type alias MaybeState state =
     CustomTypeState
         (States2
-            (States1 state)
             States0
+            (States1 state)
         )
 
 
 type alias MaybeDelta delta =
     CustomTypeDelta
         (Deltas2
-            (Deltas1 delta)
             Deltas0
+            (Deltas1 delta)
         )
 
 
 maybe : Input state delta output -> Input (MaybeState state) (MaybeDelta delta) (Maybe output)
 maybe input =
     customType
-        |> tag1 i0 "Just" Just "" input
-        |> tag0 i1 "Nothing" Nothing
+        |> tag0 i0 "Nothing" Nothing
+        |> tag1 i1 "Just" Just "" input
         |> endCustomType
+
+
+
+{-
+   d888888b db    db d8888b. db      d88888b
+   `~~88~~' 88    88 88  `8D 88      88'
+      88    88    88 88oodD' 88      88ooooo
+      88    88    88 88~~~   88      88~~~~~
+      88    88b  d88 88      88booo. 88.
+      YP    ~Y8888P' 88      Y88888P Y88888P
+
+
+-}
 
 
 type alias TupleState s1 s2 =
@@ -572,14 +702,29 @@ type alias TupleDelta d1 d2 =
 
 
 tuple :
-    Input state1 delta1 output1
+    String
+    -> Input state1 delta1 output1
+    -> String
     -> Input state2 delta2 output2
     -> Input (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
-tuple fst snd =
+tuple fstId fst sndId snd =
     record Tuple.pair
-        |> field i0 "first" fst
-        |> field i1 "second" snd
+        |> field i0 fstId fst
+        |> field i1 sndId snd
         |> endRecord
+
+
+
+{-
+   db      d888888b .d8888. d888888b
+   88        `88'   88'  YP `~~88~~'
+   88         88    `8bo.      88
+   88         88      `Y8b.    88
+   88booo.   .88.   db   8D    88
+   Y88888P Y888888P `8888Y'    YP
+
+
+-}
 
 
 type alias ListState state =
