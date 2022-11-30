@@ -46,6 +46,8 @@ module Form exposing
     , States9
     , TupleDelta
     , TupleState
+    , WrapperDelta
+    , WrapperState
     , always
     , customType
     , debounce
@@ -86,6 +88,7 @@ module Form exposing
     , tag5
     , toForm
     , tuple
+    , wrapper
     )
 
 import Html as H exposing (Html)
@@ -519,6 +522,21 @@ always output =
         , validators = []
         , debounce = 0
         }
+
+
+type alias WrapperState state =
+    CustomTypeState (States1 (States1 state))
+
+
+type alias WrapperDelta delta =
+    CustomTypeDelta (Deltas1 (Deltas1 delta))
+
+
+wrapper : String -> (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
+wrapper id wrapping input =
+    customType
+        |> tag1 i0 id wrapping "" input
+        |> endCustomType
 
 
 type alias MaybeState state =

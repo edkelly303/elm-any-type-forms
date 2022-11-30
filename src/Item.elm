@@ -13,18 +13,16 @@ type ItemId
 
 
 type alias IdState =
-    CustomTypeState (States1 (States1 String))
+    WrapperState String
 
 
 type alias IdDelta =
-    CustomTypeDelta (Deltas1 (Deltas1 String))
+    WrapperDelta String
 
 
 itemId : Input IdState IdDelta (Id ItemId)
 itemId =
-    customType
-        |> tag1 i0 "id" Id "int" positiveInt
-        |> endCustomType
+    wrapper "id" Id positiveInt
 
 
 type Gram
@@ -44,19 +42,23 @@ type Unit a
 
 
 type alias UnitState =
-    CustomTypeState (States1 (States1 String))
+    WrapperState String
 
 
 type alias UnitDelta =
-    CustomTypeDelta (Deltas1 (Deltas1 String))
+    WrapperDelta String
 
 
 unit : Input UnitState UnitDelta (Unit a)
 unit =
-    customType
-        |> tag1 i0 "unit" Unit "int" positiveInt
-        |> endCustomType
+    wrapper "unit" Unit nonNegativeInt
 
+
+nonNegativeInt : Input String String Int
+nonNegativeInt =
+    intConfig
+        |> failIf (\x -> x < 0) "must be zero or greater"
+        |> fromConfig
 
 positiveInt : Input String String Int
 positiveInt =
