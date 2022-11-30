@@ -60,6 +60,7 @@ nonNegativeInt =
         |> failIf (\x -> x < 0) "must be zero or greater"
         |> fromConfig
 
+
 positiveInt : Input String String Int
 positiveInt =
     intConfig
@@ -247,7 +248,7 @@ item =
         |> field i2 "aliases" (list string)
         |> field i3 "emoji" (maybe emoji)
         |> field i4 "category" category
-        |> field i5 "purchase history" (list purchaseHistory)
+        |> field i5 "purchaseHistory" (list purchaseHistory)
         |> field i6 "doNotSuggestUntil" (maybe posix)
         |> field i7 "maybeVolume" (maybe volumeRecord)
         |> field i8 "maybeWhole" (maybe wholeRecord)
@@ -256,6 +257,7 @@ item =
         |> endRecord
 
 
+emoji : Input String String String
 emoji =
     stringConfig
         |> failIf (\x -> String.length x /= 1) "must be exactly one character"
@@ -298,11 +300,7 @@ type alias PurchaseHistoryDelta =
         MeasureDelta
 
 
-purchaseHistory :
-    Input
-        PurchaseHistoryState
-        PurchaseHistoryDelta
-        PurchaseHistory
+purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
     record PurchaseHistory
         |> field i0 "time" posix
