@@ -2,6 +2,7 @@ module Example exposing (..)
 
 import Browser
 import Form exposing (..)
+import Item
 
 
 main =
@@ -31,14 +32,16 @@ type
     -- = FormMsg (Delta String)
     -- = FormMsg (Delta SimpleRecordDelta)
     -- = FormMsg (Delta SimpleCustomTypeDelta)
-    = FormMsg (Delta NestedRecordDelta)
+    -- = FormMsg (Delta NestedRecordDelta)
+    = FormMsg (Delta Item.ItemDelta)
 
 
 mainForm =
     -- boundedInt
     -- simpleRecordInput
     -- simpleCustomTypeInput
-    nestedRecordInput
+    -- nestedRecordInput
+    Item.item
         |> toForm "my first form example" FormMsg
 
 

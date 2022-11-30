@@ -4,10 +4,21 @@ module Form exposing
     , Delta
     , Deltas0
     , Deltas1
+    , Deltas10
+    , Deltas11
+    , Deltas12
+    , Deltas13
+    , Deltas14
+    , Deltas15
     , Deltas2
     , Deltas3
     , Deltas4
     , Deltas5
+    , Deltas6
+    , Deltas7
+    , Deltas8
+    , Deltas9
+    , End
     , Form
     , Input
     , ListDelta
@@ -17,10 +28,20 @@ module Form exposing
     , State
     , States0
     , States1
+    , States10
+    , States11
+    , States12
+    , States13
+    , States14
+    , States15
     , States2
     , States3
     , States4
     , States5
+    , States6
+    , States7
+    , States8
+    , States9
     , TupleDelta
     , TupleState
     , always
@@ -33,10 +54,20 @@ module Form exposing
     , fromConfig
     , i0
     , i1
+    , i10
+    , i11
+    , i12
+    , i13
+    , i14
+    , i15
     , i2
     , i3
     , i4
     , i5
+    , i6
+    , i7
+    , i8
+    , i9
     , int
     , intConfig
     , list
@@ -166,6 +197,46 @@ type alias States5 a b c d e =
     ( State a, States4 b c d e )
 
 
+type alias States6 a b c d e f =
+    ( State a, States5 b c d e f )
+
+
+type alias States7 a b c d e f g =
+    ( State a, States6 b c d e f g )
+
+
+type alias States8 a b c d e f g h =
+    ( State a, States7 b c d e f g h )
+
+
+type alias States9 a b c d e f g h i =
+    ( State a, States8 b c d e f g h i )
+
+
+type alias States10 a b c d e f g h i j =
+    ( State a, States9 b c d e f g h i j )
+
+
+type alias States11 a b c d e f g h i j k =
+    ( State a, States10 b c d e f g h i j k )
+
+
+type alias States12 a b c d e f g h i j k l =
+    ( State a, States11 b c d e f g h i j k l )
+
+
+type alias States13 a b c d e f g h i j k l m =
+    ( State a, States12 b c d e f g h i j k l m )
+
+
+type alias States14 a b c d e f g h i j k l m n =
+    ( State a, States13 b c d e f g h i j k l m n )
+
+
+type alias States15 a b c d e f g h i j k l m n o =
+    ( State a, States14 b c d e f g h i j k l m n o )
+
+
 type Deltas0
     = Deltas0
 
@@ -188,6 +259,46 @@ type alias Deltas4 a b c d =
 
 type alias Deltas5 a b c d e =
     ( Delta a, Deltas4 b c d e )
+
+
+type alias Deltas6 a b c d e f =
+    ( Delta a, Deltas5 b c d e f )
+
+
+type alias Deltas7 a b c d e f g =
+    ( Delta a, Deltas6 b c d e f g )
+
+
+type alias Deltas8 a b c d e f g h =
+    ( Delta a, Deltas7 b c d e f g h )
+
+
+type alias Deltas9 a b c d e f g h i =
+    ( Delta a, Deltas8 b c d e f g h i )
+
+
+type alias Deltas10 a b c d e f g h i j =
+    ( Delta a, Deltas9 b c d e f g h i j )
+
+
+type alias Deltas11 a b c d e f g h i j k =
+    ( Delta a, Deltas10 b c d e f g h i j k )
+
+
+type alias Deltas12 a b c d e f g h i j k l =
+    ( Delta a, Deltas11 b c d e f g h i j k l )
+
+
+type alias Deltas13 a b c d e f g h i j k l m =
+    ( Delta a, Deltas12 b c d e f g h i j k l m )
+
+
+type alias Deltas14 a b c d e f g h i j k l m n =
+    ( Delta a, Deltas13 b c d e f g h i j k l m n )
+
+
+type alias Deltas15 a b c d e f g h i j k l m n o =
+    ( Delta a, Deltas14 b c d e f g h i j k l m n o )
 
 
 
@@ -1029,6 +1140,46 @@ i4 =
 
 i5 =
     i4 >> i1
+
+
+i6 =
+    i5 >> i1
+
+
+i7 =
+    i6 >> i1
+
+
+i8 =
+    i7 >> i1
+
+
+i9 =
+    i8 >> i1
+
+
+i10 =
+    i9 >> i1
+
+
+i11 =
+    i10 >> i1
+
+
+i12 =
+    i11 >> i1
+
+
+i13 =
+    i12 >> i1
+
+
+i14 =
+    i13 >> i1
+
+
+i15 =
+    i14 >> i1
 
 
 composeSelectors selector1 selector2 =
