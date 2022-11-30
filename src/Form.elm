@@ -19,6 +19,8 @@ module Form exposing
     , Deltas8
     , Deltas9
     , End
+    , EnumDelta
+    , EnumState
     , Form
     , Input
     , ListDelta
@@ -49,6 +51,7 @@ module Form exposing
     , debounce
     , endCustomType
     , endRecord
+    , enumConfig
     , failIf
     , field
     , fromConfig
@@ -484,6 +487,28 @@ stringConfig =
     }
 
 
+type alias EnumState enum =
+    enum
+
+
+type alias EnumDelta enum =
+    enum
+
+
+enumConfig :
+    ( String, EnumState enum )
+    -> List ( String, EnumState enum )
+    -> InputConfig (EnumState enum) (EnumDelta enum) enum
+enumConfig tag tags =
+    { init = Tuple.second tag
+    , update = \delta _ -> delta
+    , view = enumView (tag :: tags)
+    , parse = Ok
+    , validators = []
+    , debounce = 0
+    }
+
+
 always : output -> Input States0 Deltas0 output
 always output =
     fromConfig
@@ -600,8 +625,12 @@ list (Input toInput) =
                     0
             , view =
                 \config ->
-                    H.div [ HA.style "margin-bottom" "10px" ]
-                        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text config.id ]
+                    H.div [ HA.style "margin-bottom" "30px" ]
+                        [ H.div
+                            [ HA.style "margin-bottom" "10px"
+                            , HA.style "font-weight" "bold"
+                            ]
+                            [ H.text config.id ]
                         , if List.isEmpty config.state then
                             H.div
                                 [ HA.style "margin-top" "10px"
@@ -1215,7 +1244,7 @@ recordView : String -> Html (Delta msg) -> Html (Delta msg)
 recordView id recordStatesView =
     H.div
         []
-        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+        [ H.div [ HA.style "margin-bottom" "30px", HA.style "font-weight" "bold" ] [ H.text id ]
         , borderedDiv [ recordStatesView ]
         ]
 
@@ -1227,8 +1256,11 @@ customTypeView :
     -> Html (Delta (CustomTypeDelta variants))
     -> Html (Delta (CustomTypeDelta variants))
 customTypeView id options selectedTag selectedTagView =
-    H.div [ HA.style "margin-top" "10px" ]
-        [ H.div [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+    H.div
+        [ HA.style "margin-top" "10px"
+        , HA.style "margin-bottom" "30px"
+        ]
+        [ H.div [ HA.style "margin-bottom" "10px", HA.style "font-weight" "bold" ] [ H.text id ]
         , borderedDiv
             [ radioView options id selectedTag (ChangeState << TagSelected)
             , borderedDiv [ selectedTagView ]
@@ -1238,9 +1270,11 @@ customTypeView id options selectedTag selectedTagView =
 
 stringView : ViewConfig String -> Html String
 stringView fieldState =
-    H.div [ HA.style "margin-bottom" "10px" ]
+    H.div [ HA.style "margin-bottom" "30px" ]
         [ H.div
-            [ HA.style "margin-bottom" "10px" ]
+            [ HA.style "margin-bottom" "10px"
+            , HA.style "font-weight" "bold"
+            ]
             [ H.text fieldState.id ]
         , H.input
             [ HE.onInput identity
@@ -1308,6 +1342,19 @@ borderedDiv content =
         [ H.div
             [ HA.style "margin" "10px" ]
             content
+        ]
+
+
+enumView : List ( String, enum ) -> ViewConfig enum -> Html enum
+enumView tags config =
+    H.div
+        [ HA.style "margin-bottom" "30px" ]
+        [ H.div
+            [ HA.style "margin-bottom" "10px"
+            , HA.style "font-weight" "bold"
+            ]
+            [ H.text config.id ]
+        , radioView (List.map (\( a, b ) -> ( b, a )) tags) config.id config.state identity
         ]
 
 

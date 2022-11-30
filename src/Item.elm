@@ -120,43 +120,11 @@ measure =
 
 
 type alias CategoryState =
-    CustomTypeState
-        (States14
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-        )
+    EnumState Category
 
 
 type alias CategoryDelta =
-    CustomTypeDelta
-        (Deltas14
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-        )
+    EnumDelta Category
 
 
 type Category
@@ -178,76 +146,50 @@ type Category
 
 category : Input CategoryState CategoryDelta Category
 category =
-    customType
-        |> tag0 i0 "miscellaneous" Miscellaneous
-        |> tag0 i1 "personal" Personal
-        |> tag0 i2 "dairy" Dairy
-        |> tag0 i3 "chilled" Chilled
-        |> tag0 i4 "fruit and veg" FruitAndVeg
-        |> tag0 i5 "meat" Meat
-        |> tag0 i6 "fish" Fish
-        |> tag0 i7 "non-perishables" NonPerishables
-        |> tag0 i8 "gluten-free" GlutenFree
-        |> tag0 i9 "snacks" Snacks
-        |> tag0 i10 "cleaning" Cleaning
-        |> tag0 i11 "frozen" Frozen
-        |> tag0 i12 "baking" Baking
-        |> tag0 i13 "drinks" Drinks
-        |> endCustomType
+    enumConfig
+        ( "miscellaneous", Miscellaneous )
+        [ ( "personal", Personal )
+        , ( "dairy", Dairy )
+        , ( "chilled", Chilled )
+        , ( "fruit and veg", FruitAndVeg )
+        , ( "meat", Meat )
+        , ( "fish", Fish )
+        , ( "non-perishables", NonPerishables )
+        , ( "gluten-free", GlutenFree )
+        , ( "snacks", Snacks )
+        , ( "cleaning", Cleaning )
+        , ( "frozen", Frozen )
+        , ( "baking", Baking )
+        , ( "drinks", Drinks )
+        ]
+        |> fromConfig
 
 
 type alias MonthState =
-    CustomTypeState
-        (States12
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-            States0
-        )
+    EnumState Time.Month
 
 
 type alias MonthDelta =
-    CustomTypeDelta
-        (Deltas12
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-            Deltas0
-        )
+    EnumDelta Time.Month
 
 
 month : Input MonthState MonthDelta Time.Month
 month =
-    customType
-        |> tag0 i0 "jan" Time.Jan
-        |> tag0 i1 "feb" Time.Feb
-        |> tag0 i2 "mar" Time.Mar
-        |> tag0 i3 "apr" Time.Apr
-        |> tag0 i4 "may" Time.May
-        |> tag0 i5 "jun" Time.Jun
-        |> tag0 i6 "jul" Time.Jul
-        |> tag0 i7 "aug" Time.Aug
-        |> tag0 i8 "sep" Time.Sep
-        |> tag0 i9 "oct" Time.Oct
-        |> tag0 i10 "nov" Time.Nov
-        |> tag0 i11 "dec" Time.Dec
-        |> endCustomType
+    enumConfig
+        ( "jan", Time.Jan )
+        [ ( "feb", Time.Feb )
+        , ( "mar", Time.Mar )
+        , ( "apr", Time.Apr )
+        , ( "may", Time.May )
+        , ( "jun", Time.Jun )
+        , ( "jul", Time.Jul )
+        , ( "aug", Time.Aug )
+        , ( "sep", Time.Sep )
+        , ( "oct", Time.Oct )
+        , ( "nov", Time.Nov )
+        , ( "dec", Time.Dec )
+        ]
+        |> fromConfig
 
 
 type alias Item =
