@@ -56,7 +56,6 @@ module Form exposing
     , enum
     , failIf
     , field
-    , makeInput
     , i0
     , i1
     , i10
@@ -75,7 +74,9 @@ module Form exposing
     , i9
     , int
     , list
+    , makeInput
     , maybe
+    , noteIf
     , record
     , string
     , tag0
@@ -143,6 +144,7 @@ type Input state delta output
             , view : ViewConfig state -> Html (Delta delta)
             , preValidate : State state -> Result (List ( String, String )) output
             , validate : State state -> Result (List ( String, String )) output
+            , notify : State state -> List ( String, String )
             }
         )
 
@@ -345,7 +347,7 @@ type alias Deltas15 a b c d e f g h i j k l m n o =
 toForm : String -> (Delta delta -> msg) -> Input state delta output -> Form state delta output msg
 toForm id toMsg (Input input) =
     let
-        { init, update, view, validate } =
+        { init, update, view, validate, notify } =
             input id
     in
     { init = init
@@ -357,7 +359,7 @@ toForm id toMsg (Input input) =
         \(State internalState state) ->
             view
                 { state = state
-                , status = statusFromInternalState validate (State internalState state)
+                , status = statusFromInternalState validate notify (State internalState state)
                 , id = id
                 }
                 |> H.map toMsg
@@ -396,6 +398,7 @@ makeInput config =
             , view = config.view >> H.map ChangeState
             , preValidate = validate
             , validate = validate
+            , notify = \_ -> []
             }
         )
 
@@ -466,44 +469,69 @@ wrappedUpdate update debounce_ =
 
 failIf : (output -> Bool) -> String -> Input state delta output -> Input state delta output
 failIf check feedback (Input input) =
-    Input
-        (input
-            >> (\i ->
-                    let
-                        newValidator =
-                            \state ->
-                                case i.preValidate state of
-                                    Ok output ->
-                                        if check output then
-                                            Err [ ( i.id, feedback ) ]
+    let
+        validate i =
+            let
+                newValidator =
+                    \state ->
+                        case i.preValidate state of
+                            Ok output ->
+                                if check output then
+                                    Err [ ( i.id, feedback ) ]
 
-                                        else
-                                            Ok output
+                                else
+                                    Ok output
 
-                                    Err errs ->
-                                        Err errs
+                            Err errs ->
+                                Err errs
 
-                        existingValidator =
-                            i.validate
-                    in
-                    { i
-                        | validate =
-                            \state ->
-                                case ( newValidator state, existingValidator state ) of
-                                    ( Ok _, Ok output ) ->
-                                        Ok output
+                existingValidator =
+                    i.validate
+            in
+            { i
+                | validate =
+                    \state ->
+                        case ( newValidator state, existingValidator state ) of
+                            ( Ok _, Ok output ) ->
+                                Ok output
 
-                                    ( Ok _, Err errs ) ->
-                                        Err errs
+                            ( Ok _, Err errs ) ->
+                                Err errs
 
-                                    ( Err errs, Ok _ ) ->
-                                        Err errs
+                            ( Err errs, Ok _ ) ->
+                                Err errs
 
-                                    ( Err errs1, Err errs2 ) ->
-                                        Err (List.Extra.unique (errs1 ++ errs2))
-                    }
-               )
-        )
+                            ( Err errs1, Err errs2 ) ->
+                                Err (List.Extra.unique (errs1 ++ errs2))
+            }
+    in
+    Input (input >> validate)
+
+
+noteIf : (output -> Bool) -> String -> Input state delta output -> Input state delta output
+noteIf check feedback (Input input) =
+    let
+        show i =
+            { i
+                | notify =
+                    \state ->
+                        List.Extra.unique
+                            (i.notify state
+                                ++ (case i.preValidate state of
+                                        Ok output ->
+                                            if check output then
+                                                [ ( i.id, feedback ) ]
+
+                                            else
+                                                []
+
+                                        Err _ ->
+                                            []
+                                   )
+                            )
+            }
+    in
+    Input (input >> show)
 
 
 
@@ -824,9 +852,10 @@ list (Input toInput) =
             , init = State Intact_ []
             , preUpdate = preUpdate
             , update = preUpdate 0
-            , view = listView input.view input.validate
+            , view = listView input.view input.validate input.notify
             , preValidate = validate
             , validate = validate
+            , notify = \_ -> []
             }
         )
 
@@ -916,6 +945,7 @@ endRecord rec =
                         |> recordView id
             , preValidate = validate
             , validate = validate
+            , notify = \_ -> []
             }
         )
 
@@ -964,7 +994,7 @@ recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState 
     next
         ((fns.field.view
             { state = state
-            , status = statusFromInternalState fns.field.validate (State internalState state)
+            , status = statusFromInternalState fns.field.validate fns.field.notify (State internalState state)
             , id = fns.field.id
             }
             |> H.map
@@ -981,9 +1011,10 @@ recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState 
 
 statusFromInternalState :
     (State state -> Result (List ( String, String )) output)
+    -> (State state -> List ( String, String ))
     -> State state
     -> Status
-statusFromInternalState parser (State internalState state) =
+statusFromInternalState validator notifier (State internalState state) =
     case internalState of
         Intact_ ->
             Intact
@@ -993,15 +1024,18 @@ statusFromInternalState parser (State internalState state) =
 
         Idle_ ->
             let
-                strings =
-                    case parser (State internalState state) of
+                errors =
+                    case validator (State internalState state) of
                         Ok _ ->
                             []
 
                         Err errs ->
                             errs
+
+                notes =
+                    notifier (State internalState state)
             in
-            Idle (List.map Err strings)
+            Idle (List.map Err errors ++ List.map Ok notes)
 
 
 updateRecordStates updater emptyDeltas fields deltas states =
@@ -1216,6 +1250,7 @@ endCustomType rec =
                         |> customTypeView config.id options selectedTag
             , preValidate = validate
             , validate = validate
+            , notify = \_ -> []
             }
         )
 
@@ -1425,9 +1460,10 @@ customTypeView id options selectedTag selectedTagView =
 listView :
     (ViewConfig state -> Html (Delta delta))
     -> (State state -> Result (List ( String, String )) output)
+    -> (State state -> List ( String, String ))
     -> ViewConfig (List (State state))
     -> Html (Delta (ListDelta delta))
-listView inputView inputParse config =
+listView inputView inputParse inputFeedback config =
     H.div [ HA.style "margin-bottom" "30px" ]
         [ H.h4
             [ HA.style "margin-bottom" "10px" ]
@@ -1463,7 +1499,7 @@ listView inputView inputParse config =
                                         [ H.text ("list item #" ++ String.fromInt idx) ]
                                     , inputView
                                         { state = state
-                                        , status = statusFromInternalState inputParse (State internalState state)
+                                        , status = statusFromInternalState inputParse inputFeedback (State internalState state)
                                         , id = ""
                                         }
                                         |> H.map (ChangeItem idx)

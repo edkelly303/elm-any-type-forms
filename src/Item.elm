@@ -61,7 +61,9 @@ nonNegativeInt =
 
 positiveInt : Input String String Int
 positiveInt =
-    int |> failIf (\x -> x < 1) "must be a positive integer"
+    int
+        |> failIf (\x -> x < 1) "must be a positive integer"
+        |> noteIf (\x -> x > 199) "wow!"
 
 
 type alias Ratio a b =
