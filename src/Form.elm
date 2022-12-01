@@ -787,54 +787,7 @@ list (Input toInput) =
                     )
                     0
             , view =
-                \config ->
-                    H.div [ HA.style "margin-bottom" "30px" ]
-                        [ H.div
-                            [ HA.style "margin-bottom" "10px"
-                            , HA.style "font-weight" "bold"
-                            ]
-                            [ H.text config.id ]
-                        , if List.isEmpty config.state then
-                            H.div
-                                [ HA.style "margin-top" "10px"
-                                , HA.style "margin-bottom" "10px"
-                                ]
-                                [ H.text "[ empty list ]"
-                                , H.button
-                                    [ HA.style "margin-left" "10px"
-                                    , HE.onClick (InsertItem 0)
-                                    ]
-                                    [ H.text "add an item" ]
-                                ]
-
-                          else
-                            borderedDiv
-                                [ H.div
-                                    [ HA.style "margin-top" "10px"
-                                    , HA.style "margin-bottom" "10px"
-                                    ]
-                                    [ H.button [ HE.onClick (InsertItem 0) ]
-                                        [ H.text "insert item" ]
-                                    ]
-                                , H.div []
-                                    (List.indexedMap
-                                        (\idx (State internalState state) ->
-                                            H.div [ HA.style "margin-bottom" "10px" ]
-                                                [ input.view
-                                                    { state = state
-                                                    , status = statusFromInternalState input.parse (State internalState state)
-                                                    , id = "list item #" ++ String.fromInt idx
-                                                    }
-                                                    |> H.map (ChangeItem idx)
-                                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("delete item #" ++ String.fromInt idx) ] ]
-                                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "insert item" ] ]
-                                                ]
-                                        )
-                                        config.state
-                                    )
-                                ]
-                        ]
-                        |> H.map ChangeState
+                listView input.view input.parse
             , parse =
                 \(State _ state) ->
                     List.foldr
@@ -1433,6 +1386,61 @@ customTypeView id options selectedTag selectedTagView =
             , borderedDiv [ selectedTagView ]
             ]
         ]
+
+
+listView :
+    (ViewConfig state -> Html (Delta delta))
+    -> (State state -> Result (List ( String, String )) output)
+    -> ViewConfig (List (State state))
+    -> Html (Delta (ListDelta delta))
+listView inputView inputParse config =
+    H.div [ HA.style "margin-bottom" "30px" ]
+        [ H.div
+            [ HA.style "margin-bottom" "10px"
+            , HA.style "font-weight" "bold"
+            ]
+            [ H.text config.id ]
+        , if List.isEmpty config.state then
+            H.div
+                [ HA.style "margin-top" "10px"
+                , HA.style "margin-bottom" "10px"
+                ]
+                [ H.text "[ empty list ]"
+                , H.button
+                    [ HA.style "margin-left" "10px"
+                    , HE.onClick (InsertItem 0)
+                    ]
+                    [ H.text "add an item" ]
+                ]
+
+          else
+            borderedDiv
+                [ H.div
+                    [ HA.style "margin-top" "10px"
+                    , HA.style "margin-bottom" "10px"
+                    ]
+                    [ H.button [ HE.onClick (InsertItem 0) ]
+                        [ H.text "insert item" ]
+                    ]
+                , H.div []
+                    (List.indexedMap
+                        (\idx (State internalState state) ->
+                            H.div [ HA.style "margin-bottom" "10px" ]
+                                [ inputView
+                                    { state = state
+                                    , status = statusFromInternalState inputParse (State internalState state)
+                                    , id = "list item #" ++ String.fromInt idx
+                                    }
+                                    |> H.map (ChangeItem idx)
+                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("delete item #" ++ String.fromInt idx) ] ]
+                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "insert item" ] ]
+                                ]
+                        )
+                        config.state
+                    )
+                ]
+        ]
+        |> H.map ChangeState
 
 
 stringView : ViewConfig String -> Html String
