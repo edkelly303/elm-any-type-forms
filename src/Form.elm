@@ -839,6 +839,10 @@ list (Input toInput) =
                 \(State _ state) ->
                     List.foldr
                         (\( idx, item ) res ->
+                            let
+                                identifyErrors e =
+                                    List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
+                            in
                             case res of
                                 Ok outputs ->
                                     case input.parse item of
@@ -846,7 +850,7 @@ list (Input toInput) =
                                             Ok (output :: outputs)
 
                                         Err errs ->
-                                            Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) errs)
+                                            Err (identifyErrors errs)
 
                                 Err errs ->
                                     case input.parse item of
@@ -854,7 +858,7 @@ list (Input toInput) =
                                             Err errs
 
                                         Err newErrs ->
-                                            Err (List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) newErrs ++ errs)
+                                            Err (identifyErrors newErrs ++ errs)
                         )
                         (Ok [])
                         (List.indexedMap Tuple.pair state)
