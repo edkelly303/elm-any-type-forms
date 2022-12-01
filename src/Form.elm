@@ -56,7 +56,7 @@ module Form exposing
     , enum
     , failIf
     , field
-    , fromConfig
+    , makeInput
     , i0
     , i1
     , i10
@@ -377,8 +377,8 @@ toForm id toMsg (Input input) =
 -}
 
 
-fromConfig : InputConfig state delta output -> Input state delta output
-fromConfig config =
+makeInput : InputConfig state delta output -> Input state delta output
+makeInput config =
     Input
         (\id ->
             let
@@ -539,7 +539,7 @@ debounce millis (Input input) =
 
 int : Input String String Int
 int =
-    fromConfig
+    makeInput
         { init = ""
         , update = \delta _ -> delta
         , view = stringView
@@ -569,7 +569,7 @@ int =
 
 string : Input String String String
 string =
-    fromConfig
+    makeInput
         { init = ""
         , update = \delta _ -> delta
         , view = stringView
@@ -603,7 +603,7 @@ enum :
     -> List ( String, EnumState enum )
     -> Input (EnumState enum) (EnumDelta enum) enum
 enum tag tags =
-    fromConfig
+    makeInput
         { init = Tuple.second tag
         , update = \delta _ -> delta
         , view = enumView (tag :: tags)
@@ -613,7 +613,7 @@ enum tag tags =
 
 always : output -> Input States0 Deltas0 output
 always output =
-    fromConfig
+    makeInput
         { init = States0
         , update = \_ _ -> States0
         , view = \_ -> H.text ""
