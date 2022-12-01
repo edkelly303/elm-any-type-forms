@@ -139,10 +139,10 @@ type Input state delta output
             { id : String
             , index : Int
             , init : State state
-            , preUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
+            , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , view : ViewConfig state -> Html (Delta delta)
-            , preValidate : State state -> Result (List ( String, String )) output
+            , baseValidate : State state -> Result (List ( String, String )) output
             , validate : State state -> Result (List ( String, String )) output
             , notify : State state -> List ( String, String )
             }
@@ -393,10 +393,10 @@ makeInput config =
             { id = id
             , index = 0
             , init = State Intact_ config.init
-            , preUpdate = preUpdate
+            , baseUpdate = preUpdate
             , update = preUpdate 0
             , view = config.view >> H.map ChangeState
-            , preValidate = validate
+            , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
             }
@@ -474,7 +474,7 @@ failIf check feedback (Input input) =
             let
                 newValidator =
                     \state ->
-                        case i.preValidate state of
+                        case i.baseValidate state of
                             Ok output ->
                                 if check output then
                                     Err [ ( i.id, feedback ) ]
@@ -515,20 +515,23 @@ noteIf check feedback (Input input) =
             { i
                 | notify =
                     \state ->
-                        List.Extra.unique
-                            (i.notify state
-                                ++ (case i.preValidate state of
-                                        Ok output ->
-                                            if check output then
-                                                [ ( i.id, feedback ) ]
+                        let
+                            existingNotes =
+                                i.notify state
 
-                                            else
-                                                []
+                            newNotes =
+                                case i.baseValidate state of
+                                    Ok output ->
+                                        if check output then
+                                            [ ( i.id, feedback ) ]
 
-                                        Err _ ->
+                                        else
                                             []
-                                   )
-                            )
+
+                                    Err _ ->
+                                        []
+                        in
+                        List.Extra.unique (existingNotes ++ newNotes)
             }
     in
     Input (input >> show)
@@ -549,7 +552,11 @@ noteIf check feedback (Input input) =
 
 debounce : Float -> Input state delta output -> Input state delta output
 debounce millis (Input input) =
-    Input (input >> (\i -> { i | update = i.preUpdate millis }))
+    let
+        debouncer i =
+            { i | update = i.baseUpdate millis }
+    in
+    Input (input >> debouncer)
 
 
 
@@ -580,6 +587,7 @@ int =
                     Nothing ->
                         Err [ "must be a whole number" ]
         }
+        |> debounce 500
 
 
 
@@ -603,6 +611,7 @@ string =
         , view = stringView
         , parse = Ok
         }
+        |> debounce 500
 
 
 
@@ -637,6 +646,19 @@ enum tag tags =
         , view = enumView (tag :: tags)
         , parse = Ok
         }
+
+
+
+{-
+    .d8b.  db      db   d8b   db  .d8b.  db    db .d8888.
+   d8' `8b 88      88   I8I   88 d8' `8b `8b  d8' 88'  YP
+   88ooo88 88      88   I8I   88 88ooo88  `8bd8'  `8bo.
+   88~~~88 88      Y8   I8I   88 88~~~88    88      `Y8b.
+   88   88 88booo. `8b d8'8b d8' 88   88    88    db   8D
+   YP   YP Y88888P  `8b8' `8d8'  YP   YP    YP    `8888Y'
+
+
+-}
 
 
 always : output -> Input States0 Deltas0 output
@@ -850,10 +872,10 @@ list (Input toInput) =
             { id = id
             , index = 0
             , init = State Intact_ []
-            , preUpdate = preUpdate
+            , baseUpdate = preUpdate
             , update = preUpdate 0
             , view = listView input.view input.validate input.notify
-            , preValidate = validate
+            , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
             }
@@ -937,13 +959,13 @@ endRecord rec =
             { id = id
             , index = 0
             , init = State Intact_ inits
-            , preUpdate = \_ -> update
+            , baseUpdate = \_ -> update
             , update = update
             , view =
                 \{ state } ->
                     viewRecordStates rec.viewer emptyDeltas fields state
                         |> recordView id
-            , preValidate = validate
+            , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
             }
@@ -1232,7 +1254,7 @@ endCustomType rec =
             { id = id
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
-            , preUpdate = \_ -> update
+            , baseUpdate = \_ -> update
             , update = update
             , view =
                 \config ->
@@ -1248,7 +1270,7 @@ endCustomType rec =
                     in
                     viewSelectedTagState rec.viewer selectedTag emptyDeltas fns tagStates
                         |> customTypeView config.id options selectedTag
-            , preValidate = validate
+            , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
             }
