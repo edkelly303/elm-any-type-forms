@@ -47,11 +47,9 @@ mainForm =
 
 boundedInt : Input String String Int
 boundedInt =
-    intConfig
+    int
         |> failIf (\x -> x <= 0) "must be greater than 0"
         |> failIf (\x -> x > 120) "maximum is 120"
-        |> debounce 500
-        |> fromConfig
 
 
 type alias SimpleRecord =

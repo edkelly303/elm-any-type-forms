@@ -56,16 +56,12 @@ unit =
 
 nonNegativeInt : Input String String Int
 nonNegativeInt =
-    intConfig
-        |> failIf (\x -> x < 0) "must be zero or greater"
-        |> fromConfig
+    int |> failIf (\x -> x < 0) "must be zero or greater"
 
 
 positiveInt : Input String String Int
 positiveInt =
-    intConfig
-        |> failIf (\x -> x < 1) "must be a positive integer"
-        |> fromConfig
+    int |> failIf (\x -> x < 1) "must be a positive integer"
 
 
 type alias Ratio a b =
@@ -149,7 +145,7 @@ type Category
 
 category : Input CategoryState CategoryDelta Category
 category =
-    enumConfig
+    enum
         ( "miscellaneous", Miscellaneous )
         [ ( "personal", Personal )
         , ( "dairy", Dairy )
@@ -165,7 +161,6 @@ category =
         , ( "baking", Baking )
         , ( "drinks", Drinks )
         ]
-        |> fromConfig
 
 
 type alias MonthState =
@@ -178,7 +173,7 @@ type alias MonthDelta =
 
 month : Input MonthState MonthDelta Time.Month
 month =
-    enumConfig
+    enum
         ( "jan", Time.Jan )
         [ ( "feb", Time.Feb )
         , ( "mar", Time.Mar )
@@ -192,7 +187,6 @@ month =
         , ( "nov", Time.Nov )
         , ( "dec", Time.Dec )
         ]
-        |> fromConfig
 
 
 type alias Item =
@@ -244,7 +238,7 @@ item : Input ItemState ItemDelta Item
 item =
     record Item
         |> field i0 "id" itemId
-        |> field i1 "name" string
+        |> field i1 "name" (string |> debounce 1000)
         |> field i2 "aliases" (list string)
         |> field i3 "emoji" (maybe emoji)
         |> field i4 "category" category
@@ -259,9 +253,8 @@ item =
 
 emoji : Input String String String
 emoji =
-    stringConfig
+    string
         |> failIf (\x -> String.length x /= 1) "must be exactly one character"
-        |> fromConfig
 
 
 type alias PosixState =
@@ -324,7 +317,7 @@ type alias VolumeRecordDelta =
 volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
-        |> field i0 "ratio" (ratio "grams" "millilitres")
+        |> field i0 "ratio g/ml" (ratio "grams" "millilitres")
         |> endRecord
 
 
@@ -346,7 +339,7 @@ wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
         |> field i0 "singularName" string
-        |> field i1 "ratio" (ratio "grams" "per item")
+        |> field i1 "ratio g/item" (ratio "grams" "per item")
         |> endRecord
 
 
@@ -370,7 +363,7 @@ customRecord =
     record CustomRecord
         |> field i0 "singularCollection" string
         |> field i1 "pluralCollection" string
-        |> field i2 "ratio" (ratio "grams" "per item")
+        |> field i2 "ratio g/item" (ratio "grams" "per item")
         |> endRecord
 
 

@@ -53,7 +53,7 @@ module Form exposing
     , debounce
     , endCustomType
     , endRecord
-    , enumConfig
+    , enum
     , failIf
     , field
     , fromConfig
@@ -74,12 +74,10 @@ module Form exposing
     , i8
     , i9
     , int
-    , intConfig
     , list
     , maybe
     , record
     , string
-    , stringConfig
     , tag0
     , tag1
     , tag2
@@ -130,8 +128,6 @@ type alias InputConfig state delta output =
     , update : delta -> state -> state
     , view : ViewConfig state -> Html delta
     , parse : state -> Result (List String) output
-    , validators : List { check : output -> Bool, feedback : String }
-    , debounce : Float
     }
 
 
@@ -142,9 +138,11 @@ type Input state delta output
             { id : String
             , index : Int
             , init : State state
+            , preUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , view : ViewConfig state -> Html (Delta delta)
-            , parse : State state -> Result (List ( String, String )) output
+            , preValidate : State state -> Result (List ( String, String )) output
+            , validate : State state -> Result (List ( String, String )) output
             }
         )
 
@@ -347,7 +345,7 @@ type alias Deltas15 a b c d e f g h i j k l m n o =
 toForm : String -> (Delta delta -> msg) -> Input state delta output -> Form state delta output msg
 toForm id toMsg (Input input) =
     let
-        { init, update, view, parse } =
+        { init, update, view, validate } =
             input id
     in
     { init = init
@@ -359,11 +357,11 @@ toForm id toMsg (Input input) =
         \(State internalState state) ->
             view
                 { state = state
-                , status = statusFromInternalState parse (State internalState state)
+                , status = statusFromInternalState validate (State internalState state)
                 , id = id
                 }
                 |> H.map toMsg
-    , submit = parse
+    , submit = validate
     }
 
 
@@ -383,35 +381,21 @@ fromConfig : InputConfig state delta output -> Input state delta output
 fromConfig config =
     Input
         (\id ->
+            let
+                preUpdate =
+                    wrappedUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none )))
+
+                validate =
+                    \(State _ state) -> config.parse state |> Result.mapError (List.map (Tuple.pair id))
+            in
             { id = id
             , index = 0
             , init = State Intact_ config.init
-            , update = wrappedUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none ))) config.debounce
+            , preUpdate = preUpdate
+            , update = preUpdate 0
             , view = config.view >> H.map ChangeState
-            , parse =
-                \(State _ state) ->
-                    case config.parse state of
-                        Ok output ->
-                            let
-                                feedback =
-                                    List.filterMap
-                                        (\v ->
-                                            if v.check output then
-                                                Just ( id, v.feedback )
-
-                                            else
-                                                Nothing
-                                        )
-                                        config.validators
-                            in
-                            if List.isEmpty feedback then
-                                Ok output
-
-                            else
-                                Err feedback
-
-                        Err errs ->
-                            Err (List.map (\err -> ( id, err )) errs)
+            , preValidate = validate
+            , validate = validate
             }
         )
 
@@ -480,9 +464,46 @@ wrappedUpdate update debounce_ =
 -}
 
 
-failIf : (output -> Bool) -> String -> InputConfig state delta output -> InputConfig state delta output
-failIf check feedback config =
-    { config | validators = { check = check, feedback = feedback } :: config.validators }
+failIf : (output -> Bool) -> String -> Input state delta output -> Input state delta output
+failIf check feedback (Input input) =
+    Input
+        (input
+            >> (\i ->
+                    let
+                        newValidator =
+                            \state ->
+                                case i.preValidate state of
+                                    Ok output ->
+                                        if check output then
+                                            Err [ ( i.id, feedback ) ]
+
+                                        else
+                                            Ok output
+
+                                    Err errs ->
+                                        Err errs
+
+                        existingValidator =
+                            i.validate
+                    in
+                    { i
+                        | validate =
+                            \state ->
+                                case ( newValidator state, existingValidator state ) of
+                                    ( Ok _, Ok output ) ->
+                                        Ok output
+
+                                    ( Ok _, Err errs ) ->
+                                        Err errs
+
+                                    ( Err errs, Ok _ ) ->
+                                        Err errs
+
+                                    ( Err errs1, Err errs2 ) ->
+                                        Err (List.Extra.unique (errs1 ++ errs2))
+                    }
+               )
+        )
 
 
 
@@ -498,9 +519,9 @@ failIf check feedback config =
 -}
 
 
-debounce : Float -> InputConfig state delta output -> InputConfig state delta output
-debounce millis config =
-    { config | debounce = millis }
+debounce : Float -> Input state delta output -> Input state delta output
+debounce millis (Input input) =
+    Input (input >> (\i -> { i | update = i.preUpdate millis }))
 
 
 
@@ -518,25 +539,19 @@ debounce millis config =
 
 int : Input String String Int
 int =
-    fromConfig intConfig
+    fromConfig
+        { init = ""
+        , update = \delta _ -> delta
+        , view = stringView
+        , parse =
+            \input ->
+                case String.toInt input of
+                    Just i ->
+                        Ok i
 
-
-intConfig : InputConfig String String Int
-intConfig =
-    { init = ""
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse =
-        \input ->
-            case String.toInt input of
-                Just i ->
-                    Ok i
-
-                Nothing ->
-                    Err [ "must be a whole number" ]
-    , validators = []
-    , debounce = 500
-    }
+                    Nothing ->
+                        Err [ "must be a whole number" ]
+        }
 
 
 
@@ -554,18 +569,12 @@ intConfig =
 
 string : Input String String String
 string =
-    fromConfig stringConfig
-
-
-stringConfig : InputConfig String String String
-stringConfig =
-    { init = ""
-    , update = \delta _ -> delta
-    , view = stringView
-    , parse = Ok
-    , validators = []
-    , debounce = 500
-    }
+    fromConfig
+        { init = ""
+        , update = \delta _ -> delta
+        , view = stringView
+        , parse = Ok
+        }
 
 
 
@@ -589,18 +598,17 @@ type alias EnumDelta enum =
     enum
 
 
-enumConfig :
+enum :
     ( String, EnumState enum )
     -> List ( String, EnumState enum )
-    -> InputConfig (EnumState enum) (EnumDelta enum) enum
-enumConfig tag tags =
-    { init = Tuple.second tag
-    , update = \delta _ -> delta
-    , view = enumView (tag :: tags)
-    , parse = Ok
-    , validators = []
-    , debounce = 0
-    }
+    -> Input (EnumState enum) (EnumDelta enum) enum
+enum tag tags =
+    fromConfig
+        { init = Tuple.second tag
+        , update = \delta _ -> delta
+        , view = enumView (tag :: tags)
+        , parse = Ok
+        }
 
 
 always : output -> Input States0 Deltas0 output
@@ -610,8 +618,6 @@ always output =
         , update = \_ _ -> States0
         , view = \_ -> H.text ""
         , parse = \_ -> Ok output
-        , validators = []
-        , debounce = 0
         }
 
 
@@ -639,7 +645,7 @@ type alias WrapperDelta delta =
 wrapper : String -> (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
 wrapper id wrapping input =
     customType
-        |> tag1 i0 id wrapping "" input
+        |> tag1 i0 "" wrapping id input
         |> endCustomType
 
 
@@ -742,80 +748,85 @@ list (Input toInput) =
     let
         input =
             toInput ""
+
+        preUpdate =
+            wrappedUpdate
+                (\delta state ->
+                    case delta of
+                        InsertItem idx ->
+                            let
+                                before =
+                                    List.take idx state
+
+                                after =
+                                    List.drop idx state
+                            in
+                            ( before ++ input.init :: after, Cmd.none )
+
+                        ChangeItem idx itemDelta ->
+                            let
+                                ( newState, cmds ) =
+                                    List.foldr
+                                        (\( i, item ) ( items, cmds_ ) ->
+                                            if i == idx then
+                                                let
+                                                    ( newItem, newCmd ) =
+                                                        input.update itemDelta item
+                                                in
+                                                ( newItem :: items, newCmd :: cmds_ )
+
+                                            else
+                                                ( item :: items, cmds_ )
+                                        )
+                                        ( [], [] )
+                                        (List.indexedMap Tuple.pair state)
+                            in
+                            ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
+
+                        DeleteItem idx ->
+                            ( List.Extra.removeAt idx state, Cmd.none )
+                )
     in
     Input
         (\id ->
+            let
+                validate =
+                    \(State _ state) ->
+                        List.foldr
+                            (\( idx, item ) res ->
+                                let
+                                    identifyErrors e =
+                                        List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
+                                in
+                                case res of
+                                    Ok outputs ->
+                                        case input.validate item of
+                                            Ok output ->
+                                                Ok (output :: outputs)
+
+                                            Err errs ->
+                                                Err (identifyErrors errs)
+
+                                    Err errs ->
+                                        case input.validate item of
+                                            Ok _ ->
+                                                Err errs
+
+                                            Err newErrs ->
+                                                Err (identifyErrors newErrs ++ errs)
+                            )
+                            (Ok [])
+                            (List.indexedMap Tuple.pair state)
+                            |> Result.mapError (List.map (\feedback -> ( id, feedback )))
+            in
             { id = id
             , index = 0
             , init = State Intact_ []
-            , update =
-                wrappedUpdate
-                    (\delta state ->
-                        case delta of
-                            InsertItem idx ->
-                                let
-                                    before =
-                                        List.take idx state
-
-                                    after =
-                                        List.drop idx state
-                                in
-                                ( before ++ input.init :: after, Cmd.none )
-
-                            ChangeItem idx itemDelta ->
-                                let
-                                    ( newState, cmds ) =
-                                        List.foldr
-                                            (\( i, item ) ( items, cmds_ ) ->
-                                                if i == idx then
-                                                    let
-                                                        ( newItem, newCmd ) =
-                                                            input.update itemDelta item
-                                                    in
-                                                    ( newItem :: items, newCmd :: cmds_ )
-
-                                                else
-                                                    ( item :: items, cmds_ )
-                                            )
-                                            ( [], [] )
-                                            (List.indexedMap Tuple.pair state)
-                                in
-                                ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
-
-                            DeleteItem idx ->
-                                ( List.Extra.removeAt idx state, Cmd.none )
-                    )
-                    0
-            , view =
-                listView input.view input.parse
-            , parse =
-                \(State _ state) ->
-                    List.foldr
-                        (\( idx, item ) res ->
-                            let
-                                identifyErrors e =
-                                    List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
-                            in
-                            case res of
-                                Ok outputs ->
-                                    case input.parse item of
-                                        Ok output ->
-                                            Ok (output :: outputs)
-
-                                        Err errs ->
-                                            Err (identifyErrors errs)
-
-                                Err errs ->
-                                    case input.parse item of
-                                        Ok _ ->
-                                            Err errs
-
-                                        Err newErrs ->
-                                            Err (identifyErrors newErrs ++ errs)
-                        )
-                        (Ok [])
-                        (List.indexedMap Tuple.pair state)
-                        |> Result.mapError (List.map (\feedback -> ( id, feedback )))
+            , preUpdate = preUpdate
+            , update = preUpdate 0
+            , view = listView input.view input.validate
+            , preValidate = validate
+            , validate = validate
             }
         )
 
@@ -869,34 +880,42 @@ endRecord rec =
 
         inits =
             rec.states End
+
+        update =
+            \delta (State s state) ->
+                case delta of
+                    Skip ->
+                        ( State s state, Cmd.none )
+
+                    ChangeState deltas ->
+                        let
+                            ( newState, cmd ) =
+                                updateRecordStates rec.updater emptyDeltas fields deltas state
+                        in
+                        ( State s newState
+                        , Cmd.map ChangeState cmd
+                        )
+
+                    _ ->
+                        ( State s state, Cmd.none )
     in
     Input
         (\id ->
+            let
+                validate =
+                    \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
+            in
             { id = id
             , index = 0
             , init = State Intact_ inits
-            , update =
-                \delta (State s state) ->
-                    case delta of
-                        Skip ->
-                            ( State s state, Cmd.none )
-
-                        ChangeState deltas ->
-                            let
-                                ( newState, cmd ) =
-                                    updateRecordStates rec.updater emptyDeltas fields deltas state
-                            in
-                            ( State s newState
-                            , Cmd.map ChangeState cmd
-                            )
-
-                        _ ->
-                            ( State s state, Cmd.none )
+            , preUpdate = \_ -> update
+            , update = update
             , view =
                 \{ state } ->
                     viewRecordStates rec.viewer emptyDeltas fields state
                         |> recordView id
-            , parse = \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
+            , preValidate = validate
+            , validate = validate
             }
         )
 
@@ -918,7 +937,7 @@ parseRecordStates parser toOutput fns states =
 
 recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
     next
-        (case ( toOutputResult, fns.field.parse state ) of
+        (case ( toOutputResult, fns.field.validate state ) of
             ( Ok toOutput, Ok parsed ) ->
                 Ok (toOutput parsed)
 
@@ -945,7 +964,7 @@ recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState 
     next
         ((fns.field.view
             { state = state
-            , status = statusFromInternalState fns.field.parse (State internalState state)
+            , status = statusFromInternalState fns.field.validate (State internalState state)
             , id = fns.field.id
             }
             |> H.map
@@ -1148,32 +1167,39 @@ endCustomType rec =
 
         names =
             List.reverse rec.names
+
+        update =
+            \delta (State s state) ->
+                case delta of
+                    Skip ->
+                        ( State s state, Cmd.none )
+
+                    ChangeState (TagSelected idx) ->
+                        ( State s { state | selectedTag = idx }, Cmd.none )
+
+                    ChangeState (TagDeltaReceived tagDelta) ->
+                        let
+                            ( newTagStates, cmd ) =
+                                updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
+                        in
+                        ( State s { state | tagStates = newTagStates }
+                        , Cmd.map (ChangeState << TagDeltaReceived) cmd
+                        )
+
+                    _ ->
+                        ( State s state, Cmd.none )
     in
     Input
         (\id ->
+            let
+                validate =
+                    \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+            in
             { id = id
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
-            , update =
-                \delta (State s state) ->
-                    case delta of
-                        Skip ->
-                            ( State s state, Cmd.none )
-
-                        ChangeState (TagSelected idx) ->
-                            ( State s { state | selectedTag = idx }, Cmd.none )
-
-                        ChangeState (TagDeltaReceived tagDelta) ->
-                            let
-                                ( newTagStates, cmd ) =
-                                    updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
-                            in
-                            ( State s { state | tagStates = newTagStates }
-                            , Cmd.map (ChangeState << TagDeltaReceived) cmd
-                            )
-
-                        _ ->
-                            ( State s state, Cmd.none )
+            , preUpdate = \_ -> update
+            , update = update
             , view =
                 \config ->
                     let
@@ -1188,7 +1214,8 @@ endCustomType rec =
                     in
                     viewSelectedTagState rec.viewer selectedTag emptyDeltas fns tagStates
                         |> customTypeView config.id options selectedTag
-            , parse = \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+            , preValidate = validate
+            , validate = validate
             }
         )
 
@@ -1216,7 +1243,7 @@ parseSelectedTagState parser selectedTag fns states =
 selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
     next
         (if fns.field.index == selectedTag then
-            fns.field.parse state
+            fns.field.validate state
 
          else
             result
@@ -1364,8 +1391,8 @@ recordView : String -> Html (Delta msg) -> Html (Delta msg)
 recordView id recordStatesView =
     H.div
         []
-        [ H.div [ HA.style "margin-bottom" "30px", HA.style "font-weight" "bold" ] [ H.text id ]
-        , borderedDiv [ recordStatesView ]
+        [ H.h4 [ HA.style "margin-bottom" "30px" ] [ H.text id ]
+        , recordStatesView
         ]
 
 
@@ -1380,12 +1407,19 @@ customTypeView id options selectedTag selectedTagView =
         [ HA.style "margin-top" "10px"
         , HA.style "margin-bottom" "30px"
         ]
-        [ H.div [ HA.style "margin-bottom" "10px", HA.style "font-weight" "bold" ] [ H.text id ]
-        , borderedDiv
-            [ radioView options id selectedTag (ChangeState << TagSelected)
-            , borderedDiv [ selectedTagView ]
+        (if List.length options > 1 then
+            [ H.h4 [ HA.style "margin-bottom" "10px" ] [ H.text id ]
+            , H.div []
+                [ radioView options id selectedTag (ChangeState << TagSelected)
+                , selectedTagView
+                ]
             ]
-        ]
+
+         else
+            [ H.h4 [] [ H.text id ]
+            , selectedTagView
+            ]
+        )
 
 
 listView :
@@ -1395,10 +1429,8 @@ listView :
     -> Html (Delta (ListDelta delta))
 listView inputView inputParse config =
     H.div [ HA.style "margin-bottom" "30px" ]
-        [ H.div
-            [ HA.style "margin-bottom" "10px"
-            , HA.style "font-weight" "bold"
-            ]
+        [ H.h4
+            [ HA.style "margin-bottom" "10px" ]
             [ H.text config.id ]
         , if List.isEmpty config.state then
             H.div
@@ -1414,7 +1446,7 @@ listView inputView inputParse config =
                 ]
 
           else
-            borderedDiv
+            H.div []
                 [ H.div
                     [ HA.style "margin-top" "10px"
                     , HA.style "margin-bottom" "10px"
@@ -1426,12 +1458,16 @@ listView inputView inputParse config =
                     (List.indexedMap
                         (\idx (State internalState state) ->
                             H.div [ HA.style "margin-bottom" "10px" ]
-                                [ inputView
-                                    { state = state
-                                    , status = statusFromInternalState inputParse (State internalState state)
-                                    , id = "list item #" ++ String.fromInt idx
-                                    }
-                                    |> H.map (ChangeItem idx)
+                                [ borderedDiv
+                                    [ H.h4 []
+                                        [ H.text ("list item #" ++ String.fromInt idx) ]
+                                    , inputView
+                                        { state = state
+                                        , status = statusFromInternalState inputParse (State internalState state)
+                                        , id = ""
+                                        }
+                                        |> H.map (ChangeItem idx)
+                                    ]
                                 , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("delete item #" ++ String.fromInt idx) ] ]
                                 , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "insert item" ] ]
                                 ]
@@ -1446,10 +1482,8 @@ listView inputView inputParse config =
 stringView : ViewConfig String -> Html String
 stringView fieldState =
     H.div [ HA.style "margin-bottom" "30px" ]
-        [ H.div
-            [ HA.style "margin-bottom" "10px"
-            , HA.style "font-weight" "bold"
-            ]
+        [ H.h4
+            [ HA.style "margin-bottom" "10px" ]
             [ H.text fieldState.id ]
         , H.input
             [ HE.onInput identity
@@ -1524,10 +1558,8 @@ enumView : List ( String, enum ) -> ViewConfig enum -> Html enum
 enumView tags config =
     H.div
         [ HA.style "margin-bottom" "30px" ]
-        [ H.div
-            [ HA.style "margin-bottom" "10px"
-            , HA.style "font-weight" "bold"
-            ]
+        [ H.h4
+            [ HA.style "margin-bottom" "10px" ]
             [ H.text config.id ]
         , radioView (List.map (\( a, b ) -> ( b, a )) tags) config.id config.state identity
         ]
