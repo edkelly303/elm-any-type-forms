@@ -798,48 +798,48 @@ list (Input toInput) =
     let
         input =
             toInput ""
-
-        preUpdate =
-            wrappedUpdate
-                (\delta state ->
-                    case delta of
-                        InsertItem idx ->
-                            let
-                                before =
-                                    List.take idx state
-
-                                after =
-                                    List.drop idx state
-                            in
-                            ( before ++ input.init :: after, Cmd.none )
-
-                        ChangeItem idx itemDelta ->
-                            let
-                                ( newState, cmds ) =
-                                    List.foldr
-                                        (\( i, item ) ( items, cmds_ ) ->
-                                            if i == idx then
-                                                let
-                                                    ( newItem, newCmd ) =
-                                                        input.update itemDelta item
-                                                in
-                                                ( newItem :: items, newCmd :: cmds_ )
-
-                                            else
-                                                ( item :: items, cmds_ )
-                                        )
-                                        ( [], [] )
-                                        (List.indexedMap Tuple.pair state)
-                            in
-                            ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
-
-                        DeleteItem idx ->
-                            ( List.Extra.removeAt idx state, Cmd.none )
-                )
     in
     Input
         (\id ->
             let
+                preUpdate =
+                    wrappedUpdate
+                        (\delta state ->
+                            case delta of
+                                InsertItem idx ->
+                                    let
+                                        before =
+                                            List.take idx state
+
+                                        after =
+                                            List.drop idx state
+                                    in
+                                    ( before ++ input.init :: after, Cmd.none )
+
+                                ChangeItem idx itemDelta ->
+                                    let
+                                        ( newState, cmds ) =
+                                            List.foldr
+                                                (\( i, item ) ( items, cmds_ ) ->
+                                                    if i == idx then
+                                                        let
+                                                            ( newItem, newCmd ) =
+                                                                input.update itemDelta item
+                                                        in
+                                                        ( newItem :: items, newCmd :: cmds_ )
+
+                                                    else
+                                                        ( item :: items, cmds_ )
+                                                )
+                                                ( [], [] )
+                                                (List.indexedMap Tuple.pair state)
+                                    in
+                                    ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
+
+                                DeleteItem idx ->
+                                    ( List.Extra.removeAt idx state, Cmd.none )
+                        )
+
                 validate =
                     \(State _ state) ->
                         List.foldr
@@ -1009,7 +1009,6 @@ recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
 viewRecordStates viewer emptyDeltas fns states =
     viewer (\views _ End End -> views) [] emptyDeltas fns states
         |> List.reverse
-        |> H.div []
 
 
 recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState state, restStates ) =
@@ -1151,12 +1150,12 @@ variant sel id (Input input) rec =
     }
 
 
-tag0 f id tag =
-    variant f id (always tag)
+tag0 sel id tag =
+    variant sel id (always tag)
 
 
-tag1 f id tag inputId input =
-    variant f
+tag1 sel id tag inputId input =
+    variant sel
         id
         (record tag
             |> field i0 inputId input
@@ -1164,8 +1163,8 @@ tag1 f id tag inputId input =
         )
 
 
-tag2 f id tag id1 input1 id2 input2 =
-    variant f
+tag2 sel id tag id1 input1 id2 input2 =
+    variant sel
         id
         (record tag
             |> field i0 id1 input1
@@ -1174,8 +1173,8 @@ tag2 f id tag id1 input1 id2 input2 =
         )
 
 
-tag3 f id tag id1 input1 id2 input2 id3 input3 =
-    variant f
+tag3 sel id tag id1 input1 id2 input2 id3 input3 =
+    variant sel
         id
         (record tag
             |> field i0 id1 input1
@@ -1185,8 +1184,8 @@ tag3 f id tag id1 input1 id2 input2 id3 input3 =
         )
 
 
-tag4 f id tag id1 input1 id2 input2 id3 input3 id4 input4 =
-    variant f
+tag4 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 =
+    variant sel
         id
         (record tag
             |> field i0 id1 input1
@@ -1197,8 +1196,8 @@ tag4 f id tag id1 input1 id2 input2 id3 input3 id4 input4 =
         )
 
 
-tag5 f id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
-    variant f
+tag5 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
+    variant sel
         id
         (record tag
             |> field i0 id1 input1
@@ -1444,12 +1443,12 @@ instantiateSelector selector =
 -}
 
 
-recordView : String -> Html (Delta msg) -> Html (Delta msg)
-recordView id recordStatesView =
+recordView : String -> List (Html (Delta msg)) -> Html (Delta msg)
+recordView id recordStatesViews =
     H.div
         []
         [ H.h4 [ HA.style "margin-bottom" "30px" ] [ H.text id ]
-        , recordStatesView
+        , H.div [] recordStatesViews
         ]
 
 
