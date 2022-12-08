@@ -170,8 +170,6 @@ type Status
      `Y8b.    88    88~~~88    88    88~~~~~   `Y8b.
    db   8D    88    88   88    88    88.     db   8D
    `8888Y'    YP    YP   YP    YP    Y88888P `8888Y'
-
-
 -}
 
 
@@ -257,8 +255,6 @@ type alias States15 a b c d e f g h i j k l m n o =
    88   88 88~~~~~ 88         88    88~~~88   `Y8b.
    88  .8D 88.     88booo.    88    88   88 db   8D
    Y8888D' Y88888P Y88888P    YP    YP   YP `8888Y'
-
-
 -}
 
 
@@ -375,7 +371,6 @@ toForm id toMsg (Input input) =
       88    88 V8o88 88~~~   88    88    88      `Y8b.
      .88.   88  V888 88      88b  d88    88    db   8D
    Y888888P VP   V8P 88      ~Y8888P'    YP    `8888Y'
-
 -}
 
 
@@ -462,8 +457,6 @@ wrappedUpdate update debounce_ =
    `8b  d8' 88~~~88 88         88    88   88 88~~~88    88       88    88    88 88 V8o88
     `8bd8'  88   88 88booo.   .88.   88  .8D 88   88    88      .88.   `8b  d8' 88  V888
       YP    YP   YP Y88888P Y888888P Y8888D' YP   YP    YP    Y888888P  `Y88P'  VP   V8P
-
-
 -}
 
 
@@ -545,8 +538,6 @@ noteIf check feedback (Input input) =
    88   88 88~~~~~ 88~~~b. 88    88 88    88 88 V8o88 8b         88    88 V8o88 88  ooo
    88  .8D 88.     88   8D `8b  d8' 88b  d88 88  V888 Y8b  d8   .88.   88  V888 88. ~8~
    Y8888D' Y88888P Y8888P'  `Y88P'  ~Y8888P' VP   V8P  `Y88P' Y888888P VP   V8P  Y888P
-
-
 -}
 
 
@@ -567,8 +558,6 @@ debounce millis (Input input) =
       88    88 V8o88    88
      .88.   88  V888    88
    Y888888P VP   V8P    YP
-
-
 -}
 
 
@@ -598,8 +587,6 @@ int =
      `Y8b.    88    88`8b      88    88 V8o88 88  ooo
    db   8D    88    88 `88.   .88.   88  V888 88. ~8~
    `8888Y'    YP    88   YD Y888888P VP   V8P  Y888P
-
-
 -}
 
 
@@ -622,8 +609,6 @@ string =
    88~~~~~ 88 V8o88 88    88 88  88  88
    88.     88  V888 88b  d88 88  88  88
    Y88888P VP   V8P ~Y8888P' YP  YP  YP
-
-
 -}
 
 
@@ -656,8 +641,6 @@ enum tag tags =
    88~~~88 88      Y8   I8I   88 88~~~88    88      `Y8b.
    88   88 88booo. `8b d8'8b d8' 88   88    88    db   8D
    YP   YP Y88888P  `8b8' `8d8'  YP   YP    YP    `8888Y'
-
-
 -}
 
 
@@ -679,8 +662,6 @@ always output =
    Y8   I8I   88 88`8b   88~~~88 88~~~   88~~~   88~~~~~ 88`8b
    `8b d8'8b d8' 88 `88. 88   88 88      88      88.     88 `88.
     `8b8' `8d8'  88   YD YP   YP 88      88      Y88888P 88   YD
-
-
 -}
 
 
@@ -707,8 +688,6 @@ wrapper id wrapping input =
    88  88  88 88~~~88    88    88~~~b. 88~~~~~
    88  88  88 88   88    88    88   8D 88.
    YP  YP  YP YP   YP    YP    Y8888P' Y88888P
-
-
 -}
 
 
@@ -744,8 +723,6 @@ maybe input =
       88    88    88 88~~~   88      88~~~~~
       88    88b  d88 88      88booo. 88.
       YP    ~Y8888P' 88      Y88888P Y88888P
-
-
 -}
 
 
@@ -778,8 +755,6 @@ tuple fstId fst sndId snd =
    88         88      `Y8b.    88
    88booo.   .88.   db   8D    88
    Y88888P Y888888P `8888Y'    YP
-
-
 -}
 
 
@@ -884,12 +859,13 @@ list (Input toInput) =
 
 
 {-
-   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b. .d8888.
-   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D 88'  YP
-   88oobY' 88ooooo 8P      88    88 88oobY' 88   88 `8bo.
-   88`8b   88~~~~~ 8b      88    88 88`8b   88   88   `Y8b.
-   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D db   8D
-   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D' `8888Y'
+   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b.
+   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D
+   88oobY' 88ooooo 8P      88    88 88oobY' 88   88
+   88`8b   88~~~~~ 8b      88    88 88`8b   88   88
+   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D
+   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'
+
 -}
 
 
@@ -1097,12 +1073,12 @@ recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( de
 
 
 {-
-    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b .d8888.
-   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'     88'  YP
-   8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo `8bo.
-   8b      88    88   `Y8b.    88    88    88 88  88  88         88       88    88~~~   88~~~~~   `Y8b.
-   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.     db   8D
-    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P `8888Y'
+    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b
+   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'
+   8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo
+   8b      88    88   `Y8b.    88    88    88 88  88  88         88       88    88~~~   88~~~~~
+   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.
+    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P
 -}
 
 
