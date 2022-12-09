@@ -385,7 +385,7 @@ makeInput config =
         (\id ->
             let
                 preUpdate =
-                    wrappedUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none )))
+                    wrapUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none )))
 
                 validate =
                     \(State _ state) -> config.parse state |> Result.mapError (List.map (Tuple.pair id))
@@ -403,55 +403,54 @@ makeInput config =
         )
 
 
-wrappedUpdate : (delta -> state -> ( state, Cmd delta )) -> Float -> (Delta delta -> State state -> ( State state, Cmd (Delta delta) ))
-wrappedUpdate update debounce_ =
-    \wrappedDelta (State internalState state) ->
-        case wrappedDelta of
-            Skip ->
-                ( State internalState state
-                , Cmd.none
-                )
+wrapUpdate : (delta -> state -> ( state, Cmd delta )) -> Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
+wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
+    case wrappedDelta of
+        Skip ->
+            ( State internalState state
+            , Cmd.none
+            )
 
-            ChangeState delta ->
-                let
-                    ( newState, cmd ) =
-                        update delta state
-                in
-                if debounce_ > 0 then
-                    ( State internalState newState
-                    , Cmd.batch
-                        [ Task.perform StartDebouncing Time.now
-                        , Cmd.map ChangeState cmd
-                        ]
-                    )
-
-                else
-                    ( State Idle_ newState
+        ChangeState delta ->
+            let
+                ( newState, cmd ) =
+                    innerUpdate delta state
+            in
+            if debounce_ > 0 then
+                ( State internalState newState
+                , Cmd.batch
+                    [ Task.perform StartDebouncing Time.now
                     , Cmd.map ChangeState cmd
-                    )
-
-            StartDebouncing now ->
-                ( State (DebouncingSince now) state
-                , Task.perform (\() -> CheckDebouncer now) (Process.sleep debounce_)
+                    ]
                 )
 
-            CheckDebouncer now ->
-                case internalState of
-                    DebouncingSince startTime ->
-                        if now == startTime then
-                            ( State Idle_ state
-                            , Cmd.none
-                            )
+            else
+                ( State Idle_ newState
+                , Cmd.map ChangeState cmd
+                )
 
-                        else
-                            ( State internalState state
-                            , Cmd.none
-                            )
+        StartDebouncing now ->
+            ( State (DebouncingSince now) state
+            , Task.perform (\() -> CheckDebouncer now) (Process.sleep debounce_)
+            )
 
-                    _ ->
+        CheckDebouncer now ->
+            case internalState of
+                DebouncingSince startTime ->
+                    if now == startTime then
+                        ( State Idle_ state
+                        , Cmd.none
+                        )
+
+                    else
                         ( State internalState state
                         , Cmd.none
                         )
+
+                _ ->
+                    ( State internalState state
+                    , Cmd.none
+                    )
 
 
 
@@ -782,43 +781,43 @@ list (Input toInput) =
     Input
         (\id ->
             let
-                preUpdate =
-                    wrappedUpdate
-                        (\delta state ->
-                            case delta of
-                                InsertItem idx ->
-                                    let
-                                        before =
-                                            List.take idx state
+                update =
+                    wrapUpdate listUpdate
 
-                                        after =
-                                            List.drop idx state
-                                    in
-                                    ( before ++ input.init :: after, Cmd.none )
+                listUpdate delta state =
+                    case delta of
+                        InsertItem idx ->
+                            let
+                                before =
+                                    List.take idx state
 
-                                ChangeItem idx itemDelta ->
-                                    let
-                                        ( newState, cmds ) =
-                                            List.foldr
-                                                (\( i, item ) ( items, cmds_ ) ->
-                                                    if i == idx then
-                                                        let
-                                                            ( newItem, newCmd ) =
-                                                                input.update itemDelta item
-                                                        in
-                                                        ( newItem :: items, newCmd :: cmds_ )
+                                after =
+                                    List.drop idx state
+                            in
+                            ( before ++ input.init :: after, Cmd.none )
 
-                                                    else
-                                                        ( item :: items, cmds_ )
-                                                )
-                                                ( [], [] )
-                                                (List.indexedMap Tuple.pair state)
-                                    in
-                                    ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
+                        ChangeItem idx itemDelta ->
+                            let
+                                ( newState, cmds ) =
+                                    List.foldr
+                                        (\( i, item ) ( items, cmds_ ) ->
+                                            if i == idx then
+                                                let
+                                                    ( newItem, newCmd ) =
+                                                        input.update itemDelta item
+                                                in
+                                                ( newItem :: items, newCmd :: cmds_ )
 
-                                DeleteItem idx ->
-                                    ( List.Extra.removeAt idx state, Cmd.none )
-                        )
+                                            else
+                                                ( item :: items, cmds_ )
+                                        )
+                                        ( [], [] )
+                                        (List.indexedMap Tuple.pair state)
+                            in
+                            ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
+
+                        DeleteItem idx ->
+                            ( List.Extra.removeAt idx state, Cmd.none )
 
                 validate =
                     \(State _ state) ->
@@ -852,8 +851,8 @@ list (Input toInput) =
             { id = id
             , index = 0
             , init = State Intact_ []
-            , baseUpdate = preUpdate
-            , update = preUpdate 0
+            , baseUpdate = update
+            , update = update 0
             , view = listView input.view input.validate input.notify
             , baseValidate = validate
             , validate = validate
