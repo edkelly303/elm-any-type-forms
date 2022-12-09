@@ -952,18 +952,23 @@ endRecord rec =
 
                         idViews =
                             List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
+
+                        combinedViews =
+                            List.map2
+                                (\idView fieldView ->
+                                    H.div []
+                                        [ idView
+                                        , fieldView
+                                        ]
+                                )
+                                idViews
+                                fieldViews
                     in
-                    H.div []
-                        (List.map2
-                            (\idView fieldView ->
-                                H.div []
-                                    [ idView
-                                    , fieldView
-                                    ]
-                            )
-                            idViews
-                            fieldViews
-                        )
+                    if List.length combinedViews > 1 then
+                        borderedDiv combinedViews
+
+                    else
+                        H.div [] combinedViews
             , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
@@ -1500,7 +1505,10 @@ listView inputView inputParse inputFeedback config =
                         (\idx (State internalState state) ->
                             H.div [ HA.style "margin-bottom" "10px" ]
                                 [ borderedDiv
-                                    [ H.div [ HA.style "margin-bottom" "10px", HA.style "color" "gray" ]
+                                    [ H.div
+                                        [ HA.style "margin-bottom" "10px"
+                                        , HA.style "color" "gray"
+                                        ]
                                         [ H.text ("Item #" ++ String.fromInt idx) ]
                                     , inputView
                                         { state = state
