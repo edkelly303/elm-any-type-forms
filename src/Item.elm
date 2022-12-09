@@ -1,6 +1,8 @@
 module Item exposing (Item, ItemDelta, ItemState, item)
 
 import Form exposing (..)
+import Html as H exposing (Html)
+import Html.Attributes as HA
 import Time
 
 
@@ -51,19 +53,12 @@ type alias UnitDelta =
 
 unit : Input UnitState UnitDelta (Unit a)
 unit =
-    wrapper Unit nonNegativeInt
-
-
-nonNegativeInt : Input String String Int
-nonNegativeInt =
-    int |> failIf (\x -> x < 0) "Must be zero or greater"
+    wrapper Unit positiveInt
 
 
 positiveInt : Input String String Int
 positiveInt =
-    int
-        |> failIf (\x -> x < 1) "Must be a positive integer"
-        |> noteIf (\x -> x > 199) "Wow!"
+    int |> failIf (\x -> x < 1) "Must be greater than zero"
 
 
 type alias Ratio a b =
@@ -81,6 +76,28 @@ type alias RatioDelta =
 ratio : String -> String -> Input RatioState RatioDelta (Ratio a b)
 ratio fstId sndId =
     tuple fstId unit sndId unit
+        |> withView
+            (\children config ->
+                case children of
+                    [ fst, snd ] ->
+                        H.div
+                            [ HA.style "display" "flex"
+                            , HA.style "align-items" ""
+                            ]
+                            [ H.div [ HA.style "margin-right" "20px" ]
+                                [ H.text fstId
+                                , fst
+                                ]
+                            , H.text "per"
+                            , H.div [ HA.style "margin-left" "20px" ]
+                                [ H.text sndId
+                                , snd
+                                ]
+                            ]
+
+                    _ ->
+                        H.text "ERROR"
+            )
 
 
 type Measure
@@ -214,7 +231,7 @@ type alias ItemState =
         (MaybeState String)
         CategoryState
         (ListState PurchaseHistoryState)
-        (MaybeState PosixState)
+        (MaybeState String)
         (MaybeState VolumeRecordState)
         (MaybeState WholeRecordState)
         (ListState CustomRecordState)
@@ -229,7 +246,7 @@ type alias ItemDelta =
         (MaybeDelta String)
         CategoryDelta
         (ListDelta PurchaseHistoryDelta)
-        (MaybeDelta PosixDelta)
+        (MaybeDelta String)
         (MaybeDelta VolumeRecordDelta)
         (MaybeDelta WholeRecordDelta)
         (ListDelta CustomRecordDelta)
@@ -240,12 +257,12 @@ item : Input ItemState ItemDelta Item
 item =
     record Item
         |> field i0 "Id" itemId
-        |> field i1 "Name" (string |> debounce 1000)
-        |> field i2 "Aliases" (list string)
+        |> field i1 "Name" nonEmptyString
+        |> field i2 "Aliases" (list nonEmptyString)
         |> field i3 "Emoji" (maybe emoji)
         |> field i4 "Category" category
         |> field i5 "Purchase History" (list purchaseHistory)
-        |> field i6 "Do Not Suggest Until" (maybe posix)
+        |> field i6 "Do Not Suggest Until" (maybe datetime)
         |> field i7 "Volume" (maybe volumeRecord)
         |> field i8 "Whole" (maybe wholeRecord)
         |> field i9 "Custom" (list customRecord)
@@ -253,25 +270,16 @@ item =
         |> endRecord
 
 
+nonEmptyString : Input String String String
+nonEmptyString =
+    string
+        |> failIf String.isEmpty "Must not be blank"
+
+
 emoji : Input String String String
 emoji =
     string
         |> failIf (\x -> String.length x /= 1) "Must be exactly one character"
-
-
-type alias PosixState =
-    States1 String
-
-
-type alias PosixDelta =
-    Deltas1 String
-
-
-posix : Input PosixState PosixDelta Time.Posix
-posix =
-    record Time.millisToPosix
-        |> field i0 "" positiveInt
-        |> endRecord
 
 
 type alias PurchaseHistory =
@@ -283,14 +291,14 @@ type alias PurchaseHistory =
 
 type alias PurchaseHistoryState =
     States3
-        PosixState
+        String
         UnitState
         MeasureState
 
 
 type alias PurchaseHistoryDelta =
     Deltas3
-        PosixDelta
+        String
         UnitDelta
         MeasureDelta
 
@@ -298,9 +306,9 @@ type alias PurchaseHistoryDelta =
 purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
     record PurchaseHistory
-        |> field i0 "Time" posix
-        |> field i1 "Grams" unit
-        |> field i2 "Measure" measure
+        |> field i0 "Time of purchase" datetime
+        |> field i1 "Amount purchased (grams)" unit
+        |> field i2 "Purchased by measure" measure
         |> endRecord
 
 
@@ -319,7 +327,7 @@ type alias VolumeRecordDelta =
 volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
-        |> field i0 "Ratio" (ratio "Grams" "Millilitres")
+        |> field i0 "Density" (ratio "Grams" "Millilitre")
         |> endRecord
 
 
@@ -341,7 +349,7 @@ wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
         |> field i0 "Singular Name" string
-        |> field i1 "Ratio" (ratio "Grams" "Per Item")
+        |> field i1 "Weight" (ratio "Grams" "Item")
         |> endRecord
 
 
@@ -365,7 +373,7 @@ customRecord =
     record CustomRecord
         |> field i0 "Singular Collection" string
         |> field i1 "Plural Collection" string
-        |> field i2 "Ratio" (ratio "Grams" "Per Item")
+        |> field i2 "Weight" (ratio "Grams" "Item")
         |> endRecord
 
 

@@ -50,6 +50,7 @@ module Form exposing
     , WrapperState
     , always
     , customType
+    , datetime
     , debounce
     , endCustomType
     , endRecord
@@ -87,12 +88,14 @@ module Form exposing
     , tag5
     , toForm
     , tuple
+    , withView
     , wrapper
     )
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Iso8601
 import Json.Decode
 import List.Extra
 import Process
@@ -141,6 +144,7 @@ type Input state delta output
             , init : State state
             , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
+            , childViews : ViewConfig state -> List (Html (Delta delta))
             , view : ViewConfig state -> Html (Delta delta)
             , baseValidate : State state -> Result (List ( String, String )) output
             , validate : State state -> Result (List ( String, String )) output
@@ -395,6 +399,7 @@ makeInput config =
             , init = State Intact_ config.init
             , baseUpdate = preUpdate
             , update = preUpdate 0
+            , childViews = \_ -> []
             , view = config.view >> H.map ChangeState
             , baseValidate = validate
             , validate = validate
@@ -554,6 +559,18 @@ debounce millis (Input input) =
     Input (input >> debouncer)
 
 
+withView :
+    (List (Html (Delta delta)) -> ViewConfig state -> Html (Delta delta))
+    -> Input state delta output
+    -> Input state delta output
+withView v (Input input) =
+    let
+        viewer i =
+            { i | view = \config -> v (i.childViews config) config }
+    in
+    Input (input >> viewer)
+
+
 
 {-
    d888888b d8b   db d888888b
@@ -570,7 +587,7 @@ int =
     makeInput
         { init = ""
         , update = \delta _ -> delta
-        , view = stringView
+        , view = textInputView "number"
         , parse =
             \input ->
                 case String.toInt input of
@@ -599,8 +616,30 @@ string =
     makeInput
         { init = ""
         , update = \delta _ -> delta
-        , view = stringView
+        , view = textInputView "text"
         , parse = Ok
+        }
+        |> debounce 500
+
+
+
+{-
+   d8888b.  .d8b.  d888888b d88888b d888888b d888888b .88b  d88. d88888b
+   88  `8D d8' `8b `~~88~~' 88'     `~~88~~'   `88'   88'YbdP`88 88'
+   88   88 88ooo88    88    88ooooo    88       88    88  88  88 88ooooo
+   88   88 88~~~88    88    88~~~~~    88       88    88  88  88 88~~~~~
+   88  .8D 88   88    88    88.        88      .88.   88  88  88 88.
+   Y8888D' YP   YP    YP    Y88888P    YP    Y888888P YP  YP  YP Y88888P
+-}
+
+
+datetime : Input String String Time.Posix
+datetime =
+    makeInput
+        { init = ""
+        , update = \delta _ -> delta
+        , view = textInputView "datetime-local"
+        , parse = Iso8601.toTime >> Result.mapError (\_ -> [ "Not a valid datetime" ])
         }
         |> debounce 500
 
@@ -679,9 +718,16 @@ type alias WrapperDelta delta =
 
 wrapper : (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
 wrapper wrapping input =
-    record wrapping
-        |> field i0 "" input
-        |> endRecord
+    Input
+        (\id ->
+            let
+                (Input toWrapped) =
+                    record wrapping
+                        |> field i0 id input
+                        |> endRecord
+            in
+            toWrapped id
+        )
 
 
 
@@ -713,10 +759,17 @@ type alias MaybeDelta delta =
 
 maybe : Input state delta output -> Input (MaybeState state) (MaybeDelta delta) (Maybe output)
 maybe input =
-    customType
-        |> tag0 i0 "Nothing" Nothing
-        |> tag1 i1 "Just" Just "" input
-        |> endCustomType
+    Input
+        (\id ->
+            let
+                (Input toWrapped) =
+                    customType
+                        |> tag0 i0 "Nothing" Nothing
+                        |> tag1 i1 "Just" Just id input
+                        |> endCustomType
+            in
+            toWrapped id
+        )
 
 
 
@@ -853,6 +906,7 @@ list (Input toInput) =
             , init = State Intact_ []
             , baseUpdate = update
             , update = update 0
+            , childViews = \_ -> []
             , view = listView input.view input.validate input.notify
             , baseValidate = validate
             , validate = validate
@@ -931,10 +985,13 @@ endRecord rec =
                 _ ->
                     ( State s state, Cmd.none )
 
-        view config =
+        childViews config =
+            viewRecordStates rec.viewer emptyDeltas fields config.state
+
+        view childViews_ config =
             let
                 fieldViews =
-                    viewRecordStates rec.viewer emptyDeltas fields config.state
+                    childViews_ config
 
                 idViews =
                     List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
@@ -954,7 +1011,7 @@ endRecord rec =
                 borderedDiv combinedViews
 
             else
-                H.div [] combinedViews
+                H.div [] fieldViews
 
         validate (State _ state) =
             parseRecordStates rec.parser rec.toOutput fields state
@@ -966,7 +1023,8 @@ endRecord rec =
             , init = State Intact_ inits
             , baseUpdate = \_ -> update
             , update = update
-            , view = view
+            , childViews = \config -> childViews config
+            , view = \config -> view childViews config
             , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
@@ -1245,6 +1303,19 @@ endCustomType rec =
 
                     _ ->
                         ( State s state, Cmd.none )
+
+        childViews config =
+            [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
+
+        view config =
+            let
+                options =
+                    List.indexedMap Tuple.pair names
+
+                childViews_ =
+                    childViews config
+            in
+            customTypeView config.id options config.state.selectedTag childViews_
     in
     Input
         (\id ->
@@ -1257,20 +1328,8 @@ endCustomType rec =
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
             , baseUpdate = \_ -> update
             , update = update
-            , view =
-                \config ->
-                    let
-                        options =
-                            List.indexedMap Tuple.pair names
-
-                        selectedTag =
-                            config.state.selectedTag
-
-                        tagStates =
-                            config.state.tagStates
-                    in
-                    viewSelectedTagState rec.viewer selectedTag emptyDeltas fns tagStates
-                        |> customTypeView config.id options selectedTag
+            , childViews = \config -> childViews config
+            , view = \config -> view config
             , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
@@ -1449,7 +1508,7 @@ customTypeView :
     String
     -> List ( Int, String )
     -> Int
-    -> Html (Delta (CustomTypeDelta variants))
+    -> List (Html (Delta (CustomTypeDelta variants)))
     -> Html (Delta (CustomTypeDelta variants))
 customTypeView id options selectedTag selectedTagView =
     H.div
@@ -1459,12 +1518,12 @@ customTypeView id options selectedTag selectedTagView =
         (if List.length options > 1 then
             [ H.div []
                 [ radioView options id selectedTag (ChangeState << TagSelected)
-                , selectedTagView
+                , H.div [] selectedTagView
                 ]
             ]
 
          else
-            [ selectedTagView ]
+            selectedTagView
         )
 
 
@@ -1526,18 +1585,19 @@ listView inputView inputParse inputFeedback config =
         |> H.map ChangeState
 
 
-stringView : ViewConfig String -> Html String
-stringView fieldState =
+textInputView : String -> ViewConfig String -> Html String
+textInputView type_ config =
     H.div
         [ HA.style "margin-top" "10px"
         , HA.style "margin-bottom" "30px"
         ]
         [ H.input
             [ HE.onInput identity
-            , HA.id fieldState.id
-            , HA.value fieldState.state
+            , HA.type_ type_
+            , HA.id config.id
+            , HA.value config.state
             , HA.style "background-color"
-                (case fieldState.status of
+                (case config.status of
                     Intact ->
                         "white"
 
@@ -1552,8 +1612,8 @@ stringView fieldState =
                             "paleGreen"
                 )
             ]
-            [ H.text fieldState.state ]
-        , statusView fieldState.status
+            [ H.text config.state ]
+        , statusView config.status
         ]
 
 
