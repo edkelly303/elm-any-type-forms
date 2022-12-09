@@ -27,7 +27,7 @@ view model =
         , HA.style "background-color" "gray"
         ]
         [ H.div
-            [ HA.style "width" "900px"
+            [ HA.style "width" "600px"
             , HA.style "outline" "solid 1px gray"
             , HA.style "border-radius" "5px"
             , HA.style "margin" "10px"

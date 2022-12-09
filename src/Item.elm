@@ -86,12 +86,12 @@ ratio fstId sndId =
                             ]
                             [ H.div [ HA.style "margin-right" "20px" ]
                                 [ H.text fstId
-                                , fst
+                                , H.div [ HA.style "margin-top" "10px" ] [ fst ]
                                 ]
                             , H.text "per"
                             , H.div [ HA.style "margin-left" "20px" ]
                                 [ H.text sndId
-                                , snd
+                                , H.div [ HA.style "margin-top" "10px" ] [ snd ]
                                 ]
                             ]
 

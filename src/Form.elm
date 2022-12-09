@@ -1522,10 +1522,7 @@ customTypeView :
     -> List (Html (Delta (CustomTypeDelta variants)))
     -> Html (Delta (CustomTypeDelta variants))
 customTypeView id options selectedTag selectedTagView =
-    H.div
-        [ HA.style "margin-top" "10px"
-        , HA.style "margin-bottom" "30px"
-        ]
+    H.div []
         (if List.length options > 1 then
             [ H.div []
                 [ radioView options id selectedTag (ChangeState << TagSelected)
@@ -1545,50 +1542,43 @@ listView :
     -> ViewConfig (List (State state))
     -> Html (Delta (ListDelta delta))
 listView inputView inputParse inputFeedback config =
-    H.div [ HA.style "margin-bottom" "30px" ]
+    H.div []
         [ if List.isEmpty config.state then
-            H.div
-                [ HA.style "margin-top" "10px"
-                , HA.style "margin-bottom" "10px"
-                ]
-                [ H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
-                ]
+            H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
 
           else
             H.div []
-                [ H.div []
-                    (List.indexedMap
-                        (\idx (State internalState state) ->
-                            H.div [ HA.style "margin-bottom" "10px" ]
-                                [ H.details []
-                                    [ H.summary
-                                        [ HA.style "margin-bottom" "10px"
-                                        , HA.style "color" "gray"
-                                        ]
-                                        [ H.text ("#" ++ String.fromInt (idx + 1))
-                                        , H.button
-                                            [ HA.style "margin-left" "10px"
-                                            , HE.onClick (DeleteItem idx)
-                                            ]
-                                            [ H.text "❌" ]
-                                        , H.button
-                                            [ HA.style "margin-left" "10px"
-                                            , HE.onClick (InsertItem (idx + 1))
-                                            ]
-                                            [ H.text "➕" ]
-                                        ]
-                                    , inputView
-                                        { state = state
-                                        , status = statusFromInternalState inputParse inputFeedback (State internalState state)
-                                        , id = config.id ++ "-item#" ++ String.fromInt (idx + 1)
-                                        }
-                                        |> H.map (ChangeItem idx)
+                (List.indexedMap
+                    (\idx (State internalState state) ->
+                        H.div []
+                            [ H.details []
+                                [ H.summary
+                                    [ HA.style "margin-bottom" "10px"
+                                    , HA.style "color" "gray"
                                     ]
+                                    [ H.text ("#" ++ String.fromInt (idx + 1))
+                                    , H.button
+                                        [ HA.style "margin-left" "10px"
+                                        , HE.onClick (DeleteItem idx)
+                                        ]
+                                        [ H.text "❌" ]
+                                    , H.button
+                                        [ HA.style "margin-left" "10px"
+                                        , HE.onClick (InsertItem (idx + 1))
+                                        ]
+                                        [ H.text "➕" ]
+                                    ]
+                                , inputView
+                                    { state = state
+                                    , status = statusFromInternalState inputParse inputFeedback (State internalState state)
+                                    , id = config.id ++ "-item#" ++ String.fromInt (idx + 1)
+                                    }
+                                    |> H.map (ChangeItem idx)
                                 ]
-                        )
-                        config.state
+                            ]
                     )
-                ]
+                    config.state
+                )
         ]
         |> H.map ChangeState
 
@@ -1596,9 +1586,7 @@ listView inputView inputParse inputFeedback config =
 textInputView : String -> ViewConfig String -> Html String
 textInputView type_ config =
     H.div
-        [ HA.style "margin-top" "10px"
-        , HA.style "margin-bottom" "30px"
-        ]
+        []
         [ H.input
             [ HE.onInput identity
             , HA.type_ type_
@@ -1630,7 +1618,9 @@ statusView status =
     case status of
         Idle [] ->
             H.div
-                [ HA.style "margin-top" "10px", HA.style "margin-bottom" "10px" ]
+                [ HA.style "margin-top" "10px"
+                , HA.style "margin-bottom" "10px"
+                ]
                 [ H.text "✅ Looking good!" ]
 
         Idle feedback ->
@@ -1672,23 +1662,20 @@ borderedDiv content =
 
 enumView : List ( String, enum ) -> ViewConfig enum -> Html enum
 enumView tags config =
-    H.div
-        [ HA.style "margin-bottom" "30px", HA.style "margin-top" "10px" ]
-        [ radioView (List.map (\( a, b ) -> ( b, a )) tags) config.id config.state identity ]
+    radioView (List.map (\( a, b ) -> ( b, a )) tags) config.id config.state identity
 
 
 radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
 radioView options id selectedOption toMsg =
     H.div
-        [ HA.style "margin-bottom" "10px"
-        , HA.style "display" "flex"
+        [ HA.style "display" "flex"
         , HA.style "flex-wrap" "wrap"
         ]
         (List.map
             (\( option, label ) ->
                 H.div
-                    [ HA.style "margin-right" "5px"
-                    , HA.style "margin-bottom" "5px"
+                    [ HA.style "margin-right" "15px"
+                    , HA.style "margin-bottom" "10px"
                     ]
                     [ H.input
                         [ HA.type_ "radio"
@@ -1700,7 +1687,9 @@ radioView options id selectedOption toMsg =
                         ]
                         []
                     , H.label
-                        [ HA.for (id ++ "-" ++ label) ]
+                        [ HA.for (id ++ "-" ++ label)
+                        , HA.style "margin-left" "4px"
+                        ]
                         [ H.text label ]
                     ]
             )
