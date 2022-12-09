@@ -1581,7 +1581,7 @@ listView inputView inputParse inputFeedback config =
                                     , inputView
                                         { state = state
                                         , status = statusFromInternalState inputParse inputFeedback (State internalState state)
-                                        , id = config.id ++ "-item-" ++ String.fromInt idx
+                                        , id = config.id ++ "-item#" ++ String.fromInt idx
                                         }
                                         |> H.map (ChangeItem idx)
                                     ]
