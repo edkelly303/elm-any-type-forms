@@ -1551,42 +1551,39 @@ listView inputView inputParse inputFeedback config =
                 [ HA.style "margin-top" "10px"
                 , HA.style "margin-bottom" "10px"
                 ]
-                [ H.text "[ empty list ]"
-                , H.button
-                    [ HA.style "margin-left" "10px"
-                    , HE.onClick (InsertItem 0)
-                    ]
-                    [ H.text "Add an item" ]
+                [ H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
                 ]
 
           else
             H.div []
-                [ H.div
-                    [ HA.style "margin-top" "10px"
-                    , HA.style "margin-bottom" "10px"
-                    ]
-                    [ H.button [ HE.onClick (InsertItem 0) ]
-                        [ H.text "Insert item" ]
-                    ]
-                , H.div []
+                [ H.div []
                     (List.indexedMap
                         (\idx (State internalState state) ->
                             H.div [ HA.style "margin-bottom" "10px" ]
-                                [ borderedDiv
-                                    [ H.div
+                                [ H.details []
+                                    [ H.summary
                                         [ HA.style "margin-bottom" "10px"
                                         , HA.style "color" "gray"
                                         ]
-                                        [ H.text ("Item #" ++ String.fromInt idx) ]
+                                        [ H.text ("#" ++ String.fromInt (idx + 1))
+                                        , H.button
+                                            [ HA.style "margin-left" "10px"
+                                            , HE.onClick (DeleteItem idx)
+                                            ]
+                                            [ H.text "❌" ]
+                                        , H.button
+                                            [ HA.style "margin-left" "10px"
+                                            , HE.onClick (InsertItem (idx + 1))
+                                            ]
+                                            [ H.text "➕" ]
+                                        ]
                                     , inputView
                                         { state = state
                                         , status = statusFromInternalState inputParse inputFeedback (State internalState state)
-                                        , id = config.id ++ "-item#" ++ String.fromInt idx
+                                        , id = config.id ++ "-item#" ++ String.fromInt (idx + 1)
                                         }
                                         |> H.map (ChangeItem idx)
                                     ]
-                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("Delete item #" ++ String.fromInt idx) ] ]
-                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "Insert item" ] ]
                                 ]
                         )
                         config.state
