@@ -915,60 +915,59 @@ endRecord rec =
         inits =
             rec.states End
 
-        update =
-            \delta (State s state) ->
-                case delta of
-                    Skip ->
-                        ( State s state, Cmd.none )
+        update delta (State s state) =
+            case delta of
+                Skip ->
+                    ( State s state, Cmd.none )
 
-                    ChangeState deltas ->
-                        let
-                            ( newState, cmd ) =
-                                updateRecordStates rec.updater emptyDeltas fields deltas state
-                        in
-                        ( State s newState
-                        , Cmd.map ChangeState cmd
+                ChangeState deltas ->
+                    let
+                        ( newState, cmd ) =
+                            updateRecordStates rec.updater emptyDeltas fields deltas state
+                    in
+                    ( State s newState
+                    , Cmd.map ChangeState cmd
+                    )
+
+                _ ->
+                    ( State s state, Cmd.none )
+
+        view config =
+            let
+                fieldViews =
+                    viewRecordStates rec.viewer emptyDeltas fields config.state
+
+                idViews =
+                    List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
+
+                combinedViews =
+                    List.map2
+                        (\idView fieldView ->
+                            H.div []
+                                [ idView
+                                , fieldView
+                                ]
                         )
+                        idViews
+                        fieldViews
+            in
+            if List.length combinedViews > 1 then
+                borderedDiv combinedViews
 
-                    _ ->
-                        ( State s state, Cmd.none )
+            else
+                H.div [] combinedViews
+
+        validate (State _ state) =
+            parseRecordStates rec.parser rec.toOutput fields state
     in
     Input
         (\id ->
-            let
-                validate =
-                    \(State _ state) -> parseRecordStates rec.parser rec.toOutput fields state
-            in
             { id = id
             , index = 0
             , init = State Intact_ inits
             , baseUpdate = \_ -> update
             , update = update
-            , view =
-                \{ state } ->
-                    let
-                        fieldViews =
-                            viewRecordStates rec.viewer emptyDeltas fields state
-
-                        idViews =
-                            List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
-
-                        combinedViews =
-                            List.map2
-                                (\idView fieldView ->
-                                    H.div []
-                                        [ idView
-                                        , fieldView
-                                        ]
-                                )
-                                idViews
-                                fieldViews
-                    in
-                    if List.length combinedViews > 1 then
-                        borderedDiv combinedViews
-
-                    else
-                        H.div [] combinedViews
+            , view = view
             , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
