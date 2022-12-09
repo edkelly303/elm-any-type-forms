@@ -666,17 +666,17 @@ always output =
 
 
 type alias WrapperState state =
-    (States1 state)
+    States1 state
 
 
 type alias WrapperDelta delta =
-    (Deltas1 delta)
+    Deltas1 delta
 
 
-wrapper : String -> (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
-wrapper id wrapping input =
+wrapper :  (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
+wrapper wrapping input =
     record wrapping
-        |> field i0 id input
+        |> field i0 "" input
         |> endRecord
 
 

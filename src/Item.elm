@@ -22,7 +22,7 @@ type alias IdDelta =
 
 itemId : Input IdState IdDelta (Id ItemId)
 itemId =
-    wrapper "id" Id positiveInt
+    wrapper Id positiveInt
 
 
 type Gram
@@ -51,7 +51,7 @@ type alias UnitDelta =
 
 unit : Input UnitState UnitDelta (Unit a)
 unit =
-    wrapper "unit" Unit nonNegativeInt
+    wrapper Unit nonNegativeInt
 
 
 nonNegativeInt : Input String String Int
@@ -270,7 +270,7 @@ type alias PosixDelta =
 posix : Input PosixState PosixDelta Time.Posix
 posix =
     record Time.millisToPosix
-        |> field i0 "posix timestamp" positiveInt
+        |> field i0 "" positiveInt
         |> endRecord
 
 
@@ -319,7 +319,7 @@ type alias VolumeRecordDelta =
 volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
-        |> field i0 "ratio g/ml" (ratio "grams" "millilitres")
+        |> field i0 "ratio" (ratio "grams" "millilitres")
         |> endRecord
 
 
@@ -341,7 +341,7 @@ wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
         |> field i0 "singularName" string
-        |> field i1 "ratio g/item" (ratio "grams" "per item")
+        |> field i1 "ratio" (ratio "grams" "per item")
         |> endRecord
 
 
@@ -365,7 +365,7 @@ customRecord =
     record CustomRecord
         |> field i0 "singularCollection" string
         |> field i1 "pluralCollection" string
-        |> field i2 "ratio g/item" (ratio "grams" "per item")
+        |> field i2 "ratio" (ratio "grams" "per item")
         |> endRecord
 
 
