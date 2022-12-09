@@ -73,6 +73,7 @@ module Form exposing
     , i7
     , i8
     , i9
+    , initialise
     , int
     , layout
     , list
@@ -128,7 +129,8 @@ type alias Form state delta output msg =
 
 
 type alias InputConfig state delta output =
-    { init : state
+    { empty : state
+    , initialise : output -> state
     , update : delta -> state -> state
     , view : ViewConfig state -> Html delta
     , parse : state -> Result (List String) output
@@ -142,6 +144,7 @@ type Input state delta output
             { id : String
             , index : Int
             , init : State state
+            , initialise : Maybe (output -> state)
             , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , childViews : ViewConfig state -> List (Html (Delta delta))
@@ -396,7 +399,8 @@ makeInput config =
             in
             { id = id
             , index = 0
-            , init = State Intact_ config.init
+            , init = State Intact_ config.empty
+            , initialise = Just config.initialise
             , baseUpdate = preUpdate
             , update = preUpdate 0
             , childViews = \_ -> []
@@ -460,12 +464,12 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 
 
 {-
-   db    db  .d8b.  db      d888888b d8888b.  .d8b.  d888888b d888888b  .d88b.  d8b   db
-   88    88 d8' `8b 88        `88'   88  `8D d8' `8b `~~88~~'   `88'   .8P  Y8. 888o  88
-   Y8    8P 88ooo88 88         88    88   88 88ooo88    88       88    88    88 88V8o 88
-   `8b  d8' 88~~~88 88         88    88   88 88~~~88    88       88    88    88 88 V8o88
-    `8bd8'  88   88 88booo.   .88.   88  .8D 88   88    88      .88.   `8b  d8' 88  V888
-      YP    YP   YP Y88888P Y888888P Y8888D' YP   YP    YP    Y888888P  `Y88P'  VP   V8P
+   d88888b  .d8b.  d888888b db           d888888b d88888b
+   88'     d8' `8b   `88'   88             `88'   88'
+   88ooo   88ooo88    88    88              88    88ooo
+   88~~~   88~~~88    88    88              88    88~~~
+   88      88   88   .88.   88booo.        .88.   88
+   YP      YP   YP Y888888P Y88888P      Y888888P YP
 -}
 
 
@@ -510,6 +514,17 @@ failIf check feedback (Input input) =
     Input (input >> validate)
 
 
+
+{-
+   d8b   db  .d88b.  d888888b d88888b      d888888b d88888b
+   888o  88 .8P  Y8. `~~88~~' 88'            `88'   88'
+   88V8o 88 88    88    88    88ooooo         88    88ooo
+   88 V8o88 88    88    88    88~~~~~         88    88~~~
+   88  V888 `8b  d8'    88    88.            .88.   88
+   VP   V8P  `Y88P'     YP    Y88888P      Y888888P YP
+-}
+
+
 noteIf : (output -> Bool) -> String -> Input state delta output -> Input state delta output
 noteIf check feedback (Input input) =
     let
@@ -541,12 +556,12 @@ noteIf check feedback (Input input) =
 
 
 {-
-   d8888b. d88888b d8888b.  .d88b.  db    db d8b   db  .o88b. d888888b d8b   db  d888b
-   88  `8D 88'     88  `8D .8P  Y8. 88    88 888o  88 d8P  Y8   `88'   888o  88 88' Y8b
-   88   88 88ooooo 88oooY' 88    88 88    88 88V8o 88 8P         88    88V8o 88 88
-   88   88 88~~~~~ 88~~~b. 88    88 88    88 88 V8o88 8b         88    88 V8o88 88  ooo
-   88  .8D 88.     88   8D `8b  d8' 88b  d88 88  V888 Y8b  d8   .88.   88  V888 88. ~8~
-   Y8888D' Y88888P Y8888P'  `Y88P'  ~Y8888P' VP   V8P  `Y88P' Y888888P VP   V8P  Y888P
+   d8888b. d88888b d8888b.  .d88b.  db    db d8b   db  .o88b. d88888b
+   88  `8D 88'     88  `8D .8P  Y8. 88    88 888o  88 d8P  Y8 88'
+   88   88 88ooooo 88oooY' 88    88 88    88 88V8o 88 8P      88ooooo
+   88   88 88~~~~~ 88~~~b. 88    88 88    88 88 V8o88 8b      88~~~~~
+   88  .8D 88.     88   8D `8b  d8' 88b  d88 88  V888 Y8b  d8 88.
+   Y8888D' Y88888P Y8888P'  `Y88P'  ~Y8888P' VP   V8P  `Y88P' Y88888P
 -}
 
 
@@ -584,6 +599,32 @@ layout v (Input input) =
 
 
 {-
+   d888888b d8b   db d888888b d888888b d888888b  .d8b.  db      d888888b .d8888. d88888b
+     `88'   888o  88   `88'   `~~88~~'   `88'   d8' `8b 88        `88'   88'  YP 88'
+      88    88V8o 88    88       88       88    88ooo88 88         88    `8bo.   88ooooo
+      88    88 V8o88    88       88       88    88~~~88 88         88      `Y8b. 88~~~~~
+     .88.   88  V888   .88.      88      .88.   88   88 88booo.   .88.   db   8D 88.
+   Y888888P VP   V8P Y888888P    YP    Y888888P YP   YP Y88888P Y888888P `8888Y' Y88888P
+
+-}
+
+
+initialise : output -> Input state delta output -> Input state delta output
+initialise output (Input input) =
+    let
+        initialiser i =
+            case i.initialise of
+                Nothing ->
+                    i
+
+                Just initialise_ ->
+                    { i | init = State Intact_ (initialise_ output) }
+    in
+    Input (input >> initialiser)
+
+
+
+{-
    d888888b d8b   db d888888b
      `88'   888o  88 `~~88~~'
       88    88V8o 88    88
@@ -596,7 +637,8 @@ layout v (Input input) =
 int : Input String String Int
 int =
     makeInput
-        { init = ""
+        { empty = ""
+        , initialise = String.fromInt
         , update = \delta _ -> delta
         , view = textInputView "number"
         , parse =
@@ -625,7 +667,8 @@ int =
 string : Input String String String
 string =
     makeInput
-        { init = ""
+        { empty = ""
+        , initialise = identity
         , update = \delta _ -> delta
         , view = textInputView "text"
         , parse = Ok
@@ -647,7 +690,8 @@ string =
 datetime : Input String String Time.Posix
 datetime =
     makeInput
-        { init = ""
+        { empty = ""
+        , initialise = Iso8601.fromTime
         , update = \delta _ -> delta
         , view = textInputView "datetime-local"
         , parse = Iso8601.toTime >> Result.mapError (\_ -> [ "Not a valid datetime" ])
@@ -680,7 +724,8 @@ enum :
     -> Input (EnumState enum) (EnumDelta enum) enum
 enum tag tags =
     makeInput
-        { init = Tuple.second tag
+        { empty = Tuple.second tag
+        , initialise = identity
         , update = \delta _ -> delta
         , view = enumView (tag :: tags)
         , parse = Ok
@@ -701,7 +746,8 @@ enum tag tags =
 always : output -> Input States0 Deltas0 output
 always output =
     makeInput
-        { init = States0
+        { empty = States0
+        , initialise = \_ -> States0
         , update = \_ _ -> States0
         , view = \_ -> H.text ""
         , parse = \_ -> Ok output
@@ -914,6 +960,8 @@ list (Input toInput) =
             in
             { id = id
             , index = 0
+            , initialise =
+                input.initialise |> Maybe.map (\i -> List.map (\item -> State Intact_ (i item)))
             , init = State Intact_ []
             , baseUpdate = update
             , update = update 0
@@ -1032,6 +1080,7 @@ endRecord rec =
             { id = id
             , index = 0
             , init = State Intact_ inits
+            , initialise = Nothing
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
@@ -1337,6 +1386,7 @@ endCustomType rec =
             { id = id
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
+            , initialise = Nothing
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config

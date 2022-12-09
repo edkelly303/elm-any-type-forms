@@ -3,7 +3,71 @@ module Item exposing (Item, ItemDelta, ItemState, item)
 import Form exposing (..)
 import Html as H
 import Html.Attributes as HA
+import Iso8601
+import List.Extra exposing (init)
 import Time
+
+
+type alias Item =
+    { id : Id ItemId
+    , name : String
+    , aliases : List String
+    , emoji : Maybe String
+    , category : Category
+    , purchaseHistory : List PurchaseHistory
+    , doNotSuggestUntil : Maybe Time.Posix
+    , maybeVolume : Maybe VolumeRecord
+    , maybeWhole : Maybe WholeRecord
+    , custom : List CustomRecord
+    , maybeSeasonality : Maybe Seasonality
+    }
+
+
+type alias ItemState =
+    States11
+        IdState
+        String
+        (ListState String)
+        (MaybeState String)
+        CategoryState
+        (ListState PurchaseHistoryState)
+        (MaybeState String)
+        (MaybeState VolumeRecordState)
+        (MaybeState WholeRecordState)
+        (ListState CustomRecordState)
+        (MaybeState SeasonalityState)
+
+
+type alias ItemDelta =
+    Deltas11
+        IdDelta
+        String
+        (ListDelta String)
+        (MaybeDelta String)
+        CategoryDelta
+        (ListDelta PurchaseHistoryDelta)
+        (MaybeDelta String)
+        (MaybeDelta VolumeRecordDelta)
+        (MaybeDelta WholeRecordDelta)
+        (ListDelta CustomRecordDelta)
+        (MaybeDelta SeasonalityDelta)
+
+
+item : Input ItemState ItemDelta Item
+item =
+    record Item
+        |> field i0 "Id" (itemId |> initialise (Id 1))
+        |> field i1 "Name" (nonEmptyString |> initialise "Bread")
+        |> field i2 "Aliases" (list nonEmptyString |> initialise [ "Hello" ])
+        |> field i3 "Emoji" (maybe emoji)
+        |> field i4 "Category" (category |> initialise NonPerishables)
+        |> field i5 "Purchase History" (list purchaseHistory)
+        |> field i6 "Do Not Suggest Until" (maybe datetime)
+        |> field i7 "Volume" (maybe volumeRecord)
+        |> field i8 "Whole" (maybe wholeRecord)
+        |> field i9 "Custom" (list customRecord)
+        |> field i10 "Seasonality" (maybe seasonality)
+        |> endRecord
 
 
 type Id a
@@ -51,14 +115,17 @@ type alias UnitDelta =
     WrapperDelta String
 
 
-unit : Input UnitState UnitDelta (Unit a)
-unit =
-    wrapper Unit positiveInt
-
-
 positiveInt : Input String String Int
 positiveInt =
-    int |> failIf (\x -> x < 1) "Must be greater than zero"
+    int
+        |> failIf (\x -> x < 1) "Must be greater than zero"
+
+
+unit : Input UnitState UnitDelta (Unit a)
+unit =
+    positiveInt
+        |> initialise 1
+        |> wrapper Unit
 
 
 type alias Ratio a b =
@@ -208,68 +275,6 @@ month =
         ]
 
 
-type alias Item =
-    { id : Id ItemId
-    , name : String
-    , aliases : List String
-    , emoji : Maybe String
-    , category : Category
-    , purchaseHistory : List PurchaseHistory
-    , doNotSuggestUntil : Maybe Time.Posix
-    , maybeVolume : Maybe VolumeRecord
-    , maybeWhole : Maybe WholeRecord
-    , custom : List CustomRecord
-    , maybeSeasonality : Maybe Seasonality
-    }
-
-
-type alias ItemState =
-    States11
-        IdState
-        String
-        (ListState String)
-        (MaybeState String)
-        CategoryState
-        (ListState PurchaseHistoryState)
-        (MaybeState String)
-        (MaybeState VolumeRecordState)
-        (MaybeState WholeRecordState)
-        (ListState CustomRecordState)
-        (MaybeState SeasonalityState)
-
-
-type alias ItemDelta =
-    Deltas11
-        IdDelta
-        String
-        (ListDelta String)
-        (MaybeDelta String)
-        CategoryDelta
-        (ListDelta PurchaseHistoryDelta)
-        (MaybeDelta String)
-        (MaybeDelta VolumeRecordDelta)
-        (MaybeDelta WholeRecordDelta)
-        (ListDelta CustomRecordDelta)
-        (MaybeDelta SeasonalityDelta)
-
-
-item : Input ItemState ItemDelta Item
-item =
-    record Item
-        |> field i0 "Id" itemId
-        |> field i1 "Name" nonEmptyString
-        |> field i2 "Aliases" (list nonEmptyString)
-        |> field i3 "Emoji" (maybe emoji)
-        |> field i4 "Category" category
-        |> field i5 "Purchase History" (list purchaseHistory)
-        |> field i6 "Do Not Suggest Until" (maybe datetime)
-        |> field i7 "Volume" (maybe volumeRecord)
-        |> field i8 "Whole" (maybe wholeRecord)
-        |> field i9 "Custom" (list customRecord)
-        |> field i10 "Seasonality" (maybe seasonality)
-        |> endRecord
-
-
 nonEmptyString : Input String String String
 nonEmptyString =
     string
@@ -306,9 +311,16 @@ type alias PurchaseHistoryDelta =
 purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
     record PurchaseHistory
-        |> field i0 "Time of purchase" datetime
+        |> field i0
+            "Time of purchase"
+            (datetime
+                |> initialise
+                    (Iso8601.toTime "2022-12-09T00:00:00"
+                        |> Result.withDefault (Time.millisToPosix 0)
+                    )
+            )
         |> field i1 "Amount purchased (grams)" unit
-        |> field i2 "Purchased by measure" measure
+        |> field i2 "Purchased by measure" (measure |> initialise Volume)
         |> endRecord
 
 
