@@ -20,9 +20,11 @@ view : State Item.ItemState -> Html Msg
 view model =
     H.div
         [ HA.style "width" "100%"
+        , HA.style "height" "100%"
         , HA.style "display" "flex"
         , HA.style "justify-content" "center"
         , HA.style "font-family" "sans"
+        , HA.style "background-color" "gray"
         ]
         [ H.div
             [ HA.style "width" "600px"
@@ -30,6 +32,7 @@ view model =
             , HA.style "border-radius" "5px"
             , HA.style "margin" "10px"
             , HA.style "padding" "20px"
+            , HA.style "background-color" "white"
             ]
             [ mainForm.view model ]
         ]

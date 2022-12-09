@@ -1505,7 +1505,7 @@ listView inputView inputParse inputFeedback config =
                                     , inputView
                                         { state = state
                                         , status = statusFromInternalState inputParse inputFeedback (State internalState state)
-                                        , id = ""
+                                        , id = config.id ++ "-item-" ++ String.fromInt idx
                                         }
                                         |> H.map (ChangeItem idx)
                                     ]
@@ -1525,10 +1525,10 @@ stringView fieldState =
     H.div
         [ HA.style "margin-top" "10px"
         , HA.style "margin-bottom" "30px"
-        , HA.id fieldState.id
         ]
         [ H.input
             [ HE.onInput identity
+            , HA.id fieldState.id
             , HA.value fieldState.state
             , HA.style "background-color"
                 (case fieldState.status of
@@ -1618,7 +1618,7 @@ radioView options id selectedOption toMsg =
                     ]
                     [ H.input
                         [ HA.type_ "radio"
-                        , HA.id (id ++ label)
+                        , HA.id (id ++ "-" ++ label)
                         , HA.name id
                         , HA.value label
                         , HA.checked (selectedOption == option)
@@ -1626,7 +1626,7 @@ radioView options id selectedOption toMsg =
                         ]
                         []
                     , H.label
-                        [ HA.for (id ++ label) ]
+                        [ HA.for (id ++ "-" ++ label) ]
                         [ H.text label ]
                     ]
             )
