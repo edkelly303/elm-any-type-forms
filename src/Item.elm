@@ -1,7 +1,7 @@
 module Item exposing (Item, ItemDelta, ItemState, item)
 
 import Form exposing (..)
-import Html as H exposing (Html)
+import Html as H
 import Html.Attributes as HA
 import Time
 
@@ -76,8 +76,8 @@ type alias RatioDelta =
 ratio : String -> String -> Input RatioState RatioDelta (Ratio a b)
 ratio fstId sndId =
     tuple fstId unit sndId unit
-        |> withView
-            (\children config ->
+        |> layout
+            (\children _ ->
                 case children of
                     [ fst, snd ] ->
                         H.div
