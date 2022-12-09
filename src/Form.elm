@@ -666,18 +666,18 @@ always output =
 
 
 type alias WrapperState state =
-    CustomTypeState (States1 (States1 state))
+    (States1 state)
 
 
 type alias WrapperDelta delta =
-    CustomTypeDelta (Deltas1 (Deltas1 delta))
+    (Deltas1 delta)
 
 
 wrapper : String -> (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
 wrapper id wrapping input =
-    customType
-        |> tag1 i0 "" wrapping id input
-        |> endCustomType
+    record wrapping
+        |> field i0 id input
+        |> endRecord
 
 
 
