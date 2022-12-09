@@ -353,12 +353,17 @@ toForm id toMsg (Input input) =
                 |> Tuple.mapSecond (Cmd.map toMsg)
     , view =
         \(State internalState state) ->
-            view
-                { state = state
-                , status = statusFromInternalState validate notify (State internalState state)
-                , id = id
-                }
-                |> H.map toMsg
+            H.div []
+                [ H.h1 [] [ H.text id ]
+                , H.div []
+                    [ view
+                        { state = state
+                        , status = statusFromInternalState validate notify (State internalState state)
+                        , id = id
+                        }
+                        |> H.map toMsg
+                    ]
+                ]
     , submit = validate
     }
 
@@ -673,7 +678,7 @@ type alias WrapperDelta delta =
     Deltas1 delta
 
 
-wrapper :  (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
+wrapper : (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
 wrapper wrapping input =
     record wrapping
         |> field i0 "" input
@@ -871,6 +876,7 @@ list (Input toInput) =
 
 record toOutput =
     { index = 0
+    , ids = []
     , toOutput = toOutput
     , fields = identity
     , deltas = identity
@@ -887,6 +893,7 @@ field sel id (Input input) rec =
             input id
     in
     { index = rec.index + 1
+    , ids = rec.ids ++ [ id ]
     , toOutput = rec.toOutput
     , fields = rec.fields << Tuple.pair { field = { i | index = rec.index }, selector = instantiateSelector sel }
     , deltas = rec.deltas << Tuple.pair Skip
@@ -939,8 +946,24 @@ endRecord rec =
             , update = update
             , view =
                 \{ state } ->
-                    viewRecordStates rec.viewer emptyDeltas fields state
-                        |> recordView id
+                    let
+                        fieldViews =
+                            viewRecordStates rec.viewer emptyDeltas fields state
+
+                        idViews =
+                            List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
+                    in
+                    H.div []
+                        (List.map2
+                            (\idView fieldView ->
+                                H.div []
+                                    [ idView
+                                    , fieldView
+                                    ]
+                            )
+                            idViews
+                            fieldViews
+                        )
             , baseValidate = validate
             , validate = validate
             , notify = \_ -> []
@@ -1419,15 +1442,6 @@ instantiateSelector selector =
 -}
 
 
-recordView : String -> List (Html (Delta msg)) -> Html (Delta msg)
-recordView id recordStatesViews =
-    H.div
-        []
-        [ H.h4 [ HA.style "margin-bottom" "30px" ] [ H.text id ]
-        , H.div [] recordStatesViews
-        ]
-
-
 customTypeView :
     String
     -> List ( Int, String )
@@ -1440,17 +1454,14 @@ customTypeView id options selectedTag selectedTagView =
         , HA.style "margin-bottom" "30px"
         ]
         (if List.length options > 1 then
-            [ H.h4 [ HA.style "margin-bottom" "10px" ] [ H.text id ]
-            , H.div []
+            [ H.div []
                 [ radioView options id selectedTag (ChangeState << TagSelected)
                 , selectedTagView
                 ]
             ]
 
          else
-            [ H.h4 [] [ H.text id ]
-            , selectedTagView
-            ]
+            [ selectedTagView ]
         )
 
 
@@ -1462,10 +1473,7 @@ listView :
     -> Html (Delta (ListDelta delta))
 listView inputView inputParse inputFeedback config =
     H.div [ HA.style "margin-bottom" "30px" ]
-        [ H.h4
-            [ HA.style "margin-bottom" "10px" ]
-            [ H.text config.id ]
-        , if List.isEmpty config.state then
+        [ if List.isEmpty config.state then
             H.div
                 [ HA.style "margin-top" "10px"
                 , HA.style "margin-bottom" "10px"
@@ -1475,7 +1483,7 @@ listView inputView inputParse inputFeedback config =
                     [ HA.style "margin-left" "10px"
                     , HE.onClick (InsertItem 0)
                     ]
-                    [ H.text "add an item" ]
+                    [ H.text "Add an item" ]
                 ]
 
           else
@@ -1485,15 +1493,15 @@ listView inputView inputParse inputFeedback config =
                     , HA.style "margin-bottom" "10px"
                     ]
                     [ H.button [ HE.onClick (InsertItem 0) ]
-                        [ H.text "insert item" ]
+                        [ H.text "Insert item" ]
                     ]
                 , H.div []
                     (List.indexedMap
                         (\idx (State internalState state) ->
                             H.div [ HA.style "margin-bottom" "10px" ]
                                 [ borderedDiv
-                                    [ H.h4 []
-                                        [ H.text ("list item #" ++ String.fromInt idx) ]
+                                    [ H.div [ HA.style "margin-bottom" "10px", HA.style "color" "gray" ]
+                                        [ H.text ("Item #" ++ String.fromInt idx) ]
                                     , inputView
                                         { state = state
                                         , status = statusFromInternalState inputParse inputFeedback (State internalState state)
@@ -1501,8 +1509,8 @@ listView inputView inputParse inputFeedback config =
                                         }
                                         |> H.map (ChangeItem idx)
                                     ]
-                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("delete item #" ++ String.fromInt idx) ] ]
-                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "insert item" ] ]
+                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (DeleteItem idx) ] [ H.text ("Delete item #" ++ String.fromInt idx) ] ]
+                                , H.div [ HA.style "margin-top" "10px" ] [ H.button [ HE.onClick (InsertItem (idx + 1)) ] [ H.text "Insert item" ] ]
                                 ]
                         )
                         config.state
@@ -1514,11 +1522,12 @@ listView inputView inputParse inputFeedback config =
 
 stringView : ViewConfig String -> Html String
 stringView fieldState =
-    H.div [ HA.style "margin-bottom" "30px" ]
-        [ H.h4
-            [ HA.style "margin-bottom" "10px" ]
-            [ H.text fieldState.id ]
-        , H.input
+    H.div
+        [ HA.style "margin-top" "10px"
+        , HA.style "margin-bottom" "30px"
+        , HA.id fieldState.id
+        ]
+        [ H.input
             [ HE.onInput identity
             , HA.value fieldState.state
             , HA.style "background-color"
@@ -1590,20 +1599,23 @@ borderedDiv content =
 enumView : List ( String, enum ) -> ViewConfig enum -> Html enum
 enumView tags config =
     H.div
-        [ HA.style "margin-bottom" "30px" ]
-        [ H.h4
-            [ HA.style "margin-bottom" "10px" ]
-            [ H.text config.id ]
-        , radioView (List.map (\( a, b ) -> ( b, a )) tags) config.id config.state identity
-        ]
+        [ HA.style "margin-bottom" "30px", HA.style "margin-top" "10px" ]
+        [ radioView (List.map (\( a, b ) -> ( b, a )) tags) config.id config.state identity ]
 
 
 radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
 radioView options id selectedOption toMsg =
-    H.div [ HA.style "margin-bottom" "10px" ]
+    H.div
+        [ HA.style "margin-bottom" "10px"
+        , HA.style "display" "flex"
+        , HA.style "flex-wrap" "wrap"
+        ]
         (List.map
             (\( option, label ) ->
-                H.span [ HA.style "margin-right" "10px" ]
+                H.div
+                    [ HA.style "margin-right" "5px"
+                    , HA.style "margin-bottom" "5px"
+                    ]
                     [ H.input
                         [ HA.type_ "radio"
                         , HA.id (id ++ label)

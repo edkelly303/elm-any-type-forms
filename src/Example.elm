@@ -2,16 +2,36 @@ module Example exposing (..)
 
 import Browser
 import Form exposing (..)
+import Html as H exposing (Html)
+import Html.Attributes as HA
 import Item
 
 
 main =
     Browser.element
         { init = \() -> ( mainForm.init, Cmd.none )
-        , view = mainForm.view
+        , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
         }
+
+
+view : State Item.ItemState -> Html Msg
+view model =
+    H.div
+        [ HA.style "width" "100%"
+        , HA.style "display" "flex"
+        , HA.style "justify-content" "center"
+        ]
+        [ H.div
+            [ HA.style "width" "600px"
+            , HA.style "outline" "solid 1px gray"
+            , HA.style "border-radius" "2px"
+            , HA.style "margin" "10px"
+            , HA.style "padding" "20px"
+            ]
+            [ mainForm.view model ]
+        ]
 
 
 update msg model =
@@ -42,7 +62,7 @@ mainForm =
     -- simpleCustomTypeInput
     -- nestedRecordInput
     Item.item
-        |> toForm "my first form example" FormMsg
+        |> toForm "Creating an Item" FormMsg
 
 
 boundedInt : Input String String Int

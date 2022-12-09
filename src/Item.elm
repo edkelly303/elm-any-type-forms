@@ -56,14 +56,14 @@ unit =
 
 nonNegativeInt : Input String String Int
 nonNegativeInt =
-    int |> failIf (\x -> x < 0) "must be zero or greater"
+    int |> failIf (\x -> x < 0) "Must be zero or greater"
 
 
 positiveInt : Input String String Int
 positiveInt =
     int
-        |> failIf (\x -> x < 1) "must be a positive integer"
-        |> noteIf (\x -> x > 199) "wow!"
+        |> failIf (\x -> x < 1) "Must be a positive integer"
+        |> noteIf (\x -> x > 199) "Wow!"
 
 
 type alias Ratio a b =
@@ -113,10 +113,10 @@ type alias MeasureDelta =
 measure : Input MeasureState MeasureDelta Measure
 measure =
     customType
-        |> tag0 i0 "weight" Weight
-        |> tag0 i1 "volume" Volume
-        |> tag0 i2 "whole" Whole
-        |> tag1 i3 "custom" Custom "string" string
+        |> tag0 i0 "Weight" Weight
+        |> tag0 i1 "Volume" Volume
+        |> tag0 i2 "Whole" Whole
+        |> tag1 i3 "Custom" Custom "Name of Custom Measure" string
         |> endCustomType
 
 
@@ -148,20 +148,20 @@ type Category
 category : Input CategoryState CategoryDelta Category
 category =
     enum
-        ( "miscellaneous", Miscellaneous )
-        [ ( "personal", Personal )
-        , ( "dairy", Dairy )
-        , ( "chilled", Chilled )
-        , ( "fruit and veg", FruitAndVeg )
-        , ( "meat", Meat )
-        , ( "fish", Fish )
-        , ( "non-perishables", NonPerishables )
-        , ( "gluten-free", GlutenFree )
-        , ( "snacks", Snacks )
-        , ( "cleaning", Cleaning )
-        , ( "frozen", Frozen )
-        , ( "baking", Baking )
-        , ( "drinks", Drinks )
+        ( "Miscellaneous", Miscellaneous )
+        [ ( "Personal", Personal )
+        , ( "Dairy", Dairy )
+        , ( "Chilled", Chilled )
+        , ( "Fruit and Veg", FruitAndVeg )
+        , ( "Meat", Meat )
+        , ( "Fish", Fish )
+        , ( "Non-perishables", NonPerishables )
+        , ( "Gluten-free", GlutenFree )
+        , ( "Snacks", Snacks )
+        , ( "Cleaning", Cleaning )
+        , ( "Frozen", Frozen )
+        , ( "Baking", Baking )
+        , ( "Drinks", Drinks )
         ]
 
 
@@ -176,18 +176,18 @@ type alias MonthDelta =
 month : Input MonthState MonthDelta Time.Month
 month =
     enum
-        ( "jan", Time.Jan )
-        [ ( "feb", Time.Feb )
-        , ( "mar", Time.Mar )
-        , ( "apr", Time.Apr )
-        , ( "may", Time.May )
-        , ( "jun", Time.Jun )
-        , ( "jul", Time.Jul )
-        , ( "aug", Time.Aug )
-        , ( "sep", Time.Sep )
-        , ( "oct", Time.Oct )
-        , ( "nov", Time.Nov )
-        , ( "dec", Time.Dec )
+        ( "Jan", Time.Jan )
+        [ ( "Feb", Time.Feb )
+        , ( "Mar", Time.Mar )
+        , ( "Apr", Time.Apr )
+        , ( "May", Time.May )
+        , ( "Jun", Time.Jun )
+        , ( "Jul", Time.Jul )
+        , ( "Aug", Time.Aug )
+        , ( "Sep", Time.Sep )
+        , ( "Oct", Time.Oct )
+        , ( "Nov", Time.Nov )
+        , ( "Dec", Time.Dec )
         ]
 
 
@@ -239,24 +239,24 @@ type alias ItemDelta =
 item : Input ItemState ItemDelta Item
 item =
     record Item
-        |> field i0 "id" itemId
-        |> field i1 "name" (string |> debounce 1000)
-        |> field i2 "aliases" (list string)
-        |> field i3 "emoji" (maybe emoji)
-        |> field i4 "category" category
-        |> field i5 "purchaseHistory" (list purchaseHistory)
-        |> field i6 "doNotSuggestUntil" (maybe posix)
-        |> field i7 "maybeVolume" (maybe volumeRecord)
-        |> field i8 "maybeWhole" (maybe wholeRecord)
-        |> field i9 "custom" (list customRecord)
-        |> field i10 "maybeSeasonality" (maybe seasonality)
+        |> field i0 "Id" itemId
+        |> field i1 "Name" (string |> debounce 1000)
+        |> field i2 "Aliases" (list string)
+        |> field i3 "Emoji" (maybe emoji)
+        |> field i4 "Category" category
+        |> field i5 "Purchase History" (list purchaseHistory)
+        |> field i6 "Do Not Suggest Until" (maybe posix)
+        |> field i7 "Volume" (maybe volumeRecord)
+        |> field i8 "Whole" (maybe wholeRecord)
+        |> field i9 "Custom" (list customRecord)
+        |> field i10 "Seasonality" (maybe seasonality)
         |> endRecord
 
 
 emoji : Input String String String
 emoji =
     string
-        |> failIf (\x -> String.length x /= 1) "must be exactly one character"
+        |> failIf (\x -> String.length x /= 1) "Must be exactly one character"
 
 
 type alias PosixState =
@@ -298,9 +298,9 @@ type alias PurchaseHistoryDelta =
 purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
     record PurchaseHistory
-        |> field i0 "time" posix
-        |> field i1 "grams" unit
-        |> field i2 "measure" measure
+        |> field i0 "Time" posix
+        |> field i1 "Grams" unit
+        |> field i2 "Measure" measure
         |> endRecord
 
 
@@ -319,7 +319,7 @@ type alias VolumeRecordDelta =
 volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
-        |> field i0 "ratio" (ratio "grams" "millilitres")
+        |> field i0 "Ratio" (ratio "Grams" "Millilitres")
         |> endRecord
 
 
@@ -340,8 +340,8 @@ type alias WholeRecordDelta =
 wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
-        |> field i0 "singularName" string
-        |> field i1 "ratio" (ratio "grams" "per item")
+        |> field i0 "Singular Name" string
+        |> field i1 "Ratio" (ratio "Grams" "Per Item")
         |> endRecord
 
 
@@ -363,9 +363,9 @@ type alias CustomRecordDelta =
 customRecord : Input CustomRecordState CustomRecordDelta CustomRecord
 customRecord =
     record CustomRecord
-        |> field i0 "singularCollection" string
-        |> field i1 "pluralCollection" string
-        |> field i2 "ratio" (ratio "grams" "per item")
+        |> field i0 "Singular Collection" string
+        |> field i1 "Plural Collection" string
+        |> field i2 "Ratio" (ratio "Grams" "Per Item")
         |> endRecord
 
 
@@ -386,6 +386,6 @@ type alias SeasonalityDelta =
 seasonality : Input SeasonalityState SeasonalityDelta Seasonality
 seasonality =
     record Seasonality
-        |> field i0 "startsAt" month
-        |> field i1 "endsAt" month
+        |> field i0 "Starts At" month
+        |> field i1 "Ends At" month
         |> endRecord
