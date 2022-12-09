@@ -74,6 +74,7 @@ module Form exposing
     , i8
     , i9
     , int
+    , layout
     , list
     , makeInput
     , maybe
@@ -88,7 +89,6 @@ module Form exposing
     , tag5
     , toForm
     , tuple
-    , withView
     , wrapper
     )
 
@@ -559,11 +559,22 @@ debounce millis (Input input) =
     Input (input >> debouncer)
 
 
-withView :
+
+{-
+   db       .d8b.  db    db  .d88b.  db    db d888888b
+   88      d8' `8b `8b  d8' .8P  Y8. 88    88 `~~88~~'
+   88      88ooo88  `8bd8'  88    88 88    88    88
+   88      88~~~88    88    88    88 88    88    88
+   88booo. 88   88    88    `8b  d8' 88b  d88    88
+   Y88888P YP   YP    YP     `Y88P'  ~Y8888P'    YP
+-}
+
+
+layout :
     (List (Html (Delta delta)) -> ViewConfig state -> Html (Delta delta))
     -> Input state delta output
     -> Input state delta output
-withView v (Input input) =
+layout v (Input input) =
     let
         viewer i =
             { i | view = \config -> v (i.childViews config) config }
