@@ -57,7 +57,7 @@ item =
     record Item
         |> field i0 "Id" (itemId |> initialise (Id 1))
         |> field i1 "Name" (nonEmptyString |> initialise "Bread")
-        |> field i2 "Aliases" (list nonEmptyString |> initialise [ "Hello" , "World"])
+        |> field i2 "Aliases" (list nonEmptyString |> initialise [ "Hello", "World" ])
         |> field i3 "Emoji" (maybe emoji |> initialise (Just "1"))
         |> field i4 "Category" (category |> initialise NonPerishables)
         |> field i5 "Purchase History" (list purchaseHistory)
@@ -200,7 +200,21 @@ measure =
         |> tag0 i1 "Volume" Volume
         |> tag0 i2 "Whole" Whole
         |> tag1 i3 "Custom" Custom "Name of Custom Measure" string
-        |> endCustomType
+        |> endCustomType2
+            (\output ->
+                case output of
+                    Weight ->
+                        initTag0 i0
+
+                    Volume ->
+                        initTag0 i1
+
+                    Whole ->
+                        initTag0 i2
+
+                    Custom c ->
+                        initTag1 i3 string c
+            )
 
 
 type alias CategoryState =
@@ -319,7 +333,7 @@ purchaseHistory =
                     )
             )
         |> field i1 "Amount purchased (grams)" unit
-        |> field i2 "Purchased by measure" (measure |> initialise Volume)
+        |> field i2 "Purchased by measure" (measure |> initialise (Custom "hello"))
         |> endRecord
 
 

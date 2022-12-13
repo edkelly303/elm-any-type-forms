@@ -90,7 +90,7 @@ module Form exposing
     , tag5
     , toForm
     , tuple
-    , wrapper
+    , wrapper, initTag0, initTag1, endCustomType2
     )
 
 import Html as H exposing (Html)
@@ -824,53 +824,77 @@ maybe input =
                         |> tag0 i0 "Nothing" Nothing
                         |> tag1 i1 "Just" Just id input
                         |> endCustomType2
-                            (\fns init output ->
+                            (\output ->
                                 case output of
                                     Nothing ->
-                                        { selectedTag = 0
-                                        , tagStates = init
-                                        }
+                                        initTag0 i0
 
                                     Just a ->
-                                        let
-                                            (Input toInnerInput) =
-                                                input
-
-                                            innerInput =
-                                                toInnerInput id
-
-                                            tagSelector =
-                                                instantiateSelector i1
-
-                                            argSelector =
-                                                instantiateSelector i0
-                                        in
-                                        case innerInput.initialise of
-                                            Nothing ->
-                                                { selectedTag = 0
-                                                , tagStates = init
-                                                }
-
-                                            Just initialise_ ->
-                                                { selectedTag =
-                                                    tagSelector.getField fns
-                                                        |> .field
-                                                        |> .index
-                                                , tagStates =
-                                                    tagSelector.set
-                                                        (\(State _ inner) ->
-                                                            State Intact_
-                                                                (argSelector.set
-                                                                    (\_ -> State Intact_ (initialise_ a))
-                                                                    inner
-                                                                )
-                                                        )
-                                                        init
-                                                }
+                                        initTag1 i1 input a
                             )
             in
             toWrapped id
         )
+
+
+initTag0 sel fns init =
+    let
+        selector =
+            instantiateSelector sel
+
+        idx =
+            selector.getField fns
+                |> .field
+                |> .index
+    in
+    { selectedTag = idx
+    , tagStates = init
+    }
+
+
+initTag1 sel input output fns init =
+    let
+        (Input toInnerInput) =
+            input
+
+        innerInput =
+            toInnerInput ""
+
+        tagSelector =
+            instantiateSelector sel
+
+        getTag =
+            tagSelector.getField
+
+        setTag =
+            tagSelector.set
+
+        setArg0 =
+            instantiateSelector i0
+                |> .set
+    in
+    case innerInput.initialise of
+        Nothing ->
+            { selectedTag = 0
+            , tagStates = init
+            }
+
+        Just initialise_ ->
+            { selectedTag =
+                getTag fns
+                    |> .field
+                    |> .index
+            , tagStates =
+                setTag
+                    (\(State _ inner) ->
+                        State Intact_
+                            (setArg0
+                                (\_ -> State Intact_ (initialise_ output))
+                                inner
+                            )
+                    )
+                    init
+            }
 
 
 
@@ -1499,7 +1523,7 @@ endCustomType2 initialiser rec =
             { id = id
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
-            , initialise = Just (initialiser fns inits)
+            , initialise = Just (\output -> initialiser output fns inits)
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
