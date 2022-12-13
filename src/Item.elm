@@ -4,7 +4,6 @@ import Form exposing (..)
 import Html as H
 import Html.Attributes as HA
 import Iso8601
-import List.Extra exposing (init)
 import Time
 
 
