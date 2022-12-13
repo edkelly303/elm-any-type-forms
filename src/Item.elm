@@ -58,8 +58,8 @@ item =
     record Item
         |> field i0 "Id" (itemId |> initialise (Id 1))
         |> field i1 "Name" (nonEmptyString |> initialise "Bread")
-        |> field i2 "Aliases" (list nonEmptyString |> initialise [ "Hello" ])
-        |> field i3 "Emoji" (maybe emoji)
+        |> field i2 "Aliases" (list nonEmptyString |> initialise [ "Hello" , "World"])
+        |> field i3 "Emoji" (maybe emoji |> initialise (Just "1"))
         |> field i4 "Category" (category |> initialise NonPerishables)
         |> field i5 "Purchase History" (list purchaseHistory)
         |> field i6 "Do Not Suggest Until" (maybe datetime)
