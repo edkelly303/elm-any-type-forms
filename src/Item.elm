@@ -323,18 +323,12 @@ type alias PurchaseHistoryDelta =
 
 purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
-    record PurchaseHistory
-        |> field i0
-            "Time of purchase"
-            (datetime
-                |> initialise
-                    (Iso8601.toTime "2022-12-09T00:00:00"
-                        |> Result.withDefault (Time.millisToPosix 0)
-                    )
-            )
-        |> field i1 "Amount purchased (grams)" unit
-        |> field i2 "Purchased by measure" (measure |> initialise (Custom "hello"))
-        |> endRecord
+    record2 PurchaseHistory
+        |> field2 i0 .time "Time of purchase" datetime
+        |> field2 i1 .grams "Amount purchased (grams)" unit
+        |> field2 i2 .measure "Purchased by measure" measure
+        |> endRecord2
+        |> initialise { time = Time.millisToPosix 0, grams = Unit 100, measure = Whole }
 
 
 type alias VolumeRecord =

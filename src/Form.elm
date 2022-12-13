@@ -53,10 +53,13 @@ module Form exposing
     , datetime
     , debounce
     , endCustomType
+    , endCustomType2
     , endRecord
+    , endRecord2
     , enum
     , failIf
     , field
+    , field2
     , i0
     , i1
     , i10
@@ -73,6 +76,8 @@ module Form exposing
     , i7
     , i8
     , i9
+    , initTag0
+    , initTag1
     , initialise
     , int
     , layout
@@ -81,6 +86,7 @@ module Form exposing
     , maybe
     , noteIf
     , record
+    , record2
     , string
     , tag0
     , tag1
@@ -90,7 +96,7 @@ module Form exposing
     , tag5
     , toForm
     , tuple
-    , wrapper, initTag0, initTag1, endCustomType2
+    , wrapper
     )
 
 import Html as H exposing (Html)
@@ -1158,6 +1164,140 @@ endRecord rec =
             , notify = \_ -> []
             }
         )
+
+
+record2 toOutput =
+    { index = 0
+    , ids = []
+    , toOutput = toOutput
+    , fields = identity
+    , deltas = identity
+    , states = identity
+    , updater = identity
+    , viewer = identity
+    , parser = identity
+    , initialiser = identity
+    }
+
+
+field2 sel fromOutput id (Input input) rec =
+    let
+        i =
+            input id
+    in
+    { index = rec.index + 1
+    , ids = rec.ids ++ [ id ]
+    , toOutput = rec.toOutput
+    , fields =
+        rec.fields
+            << Tuple.pair
+                { field = { i | index = rec.index }
+                , selector = instantiateSelector sel
+                , fromOutput = fromOutput
+                }
+    , deltas = rec.deltas << Tuple.pair Skip
+    , states = rec.states << Tuple.pair i.init
+    , updater = rec.updater >> recordStateUpdater
+    , viewer = rec.viewer >> recordStateViewer
+    , parser = rec.parser >> recordStateParser
+    , initialiser = rec.initialiser >> recordStateInitialiser
+    }
+
+
+endRecord2 rec =
+    let
+        fns =
+            rec.fields End
+
+        emptyDeltas =
+            rec.deltas End
+
+        inits =
+            rec.states End
+
+        update delta (State s state) =
+            case delta of
+                Skip ->
+                    ( State s state, Cmd.none )
+
+                ChangeState deltas ->
+                    let
+                        ( newState, cmd ) =
+                            updateRecordStates rec.updater emptyDeltas fns deltas state
+                    in
+                    ( State s newState
+                    , Cmd.map ChangeState cmd
+                    )
+
+                _ ->
+                    ( State s state, Cmd.none )
+
+        childViews config =
+            viewRecordStates rec.viewer emptyDeltas fns config.state
+
+        view childViews_ config =
+            let
+                fieldViews =
+                    childViews_ config
+
+                idViews =
+                    List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
+
+                combinedViews =
+                    List.map2
+                        (\idView fieldView ->
+                            H.div []
+                                [ idView
+                                , fieldView
+                                ]
+                        )
+                        idViews
+                        fieldViews
+            in
+            if List.length combinedViews > 1 then
+                borderedDiv combinedViews
+
+            else
+                H.div [] fieldViews
+
+        validate (State _ state) =
+            parseRecordStates rec.parser rec.toOutput fns state
+
+        _ =
+            Debug.log "inits  :" inits
+    in
+    Input
+        (\id ->
+            { id = id
+            , index = 0
+            , init = State Intact_ inits
+            , initialise = Just (\output -> initialiseRecordStates rec.initialiser output fns inits)
+            , baseUpdate = \_ -> update
+            , update = update
+            , childViews = \config -> childViews config
+            , view = \config -> view childViews config
+            , baseValidate = validate
+            , validate = validate
+            , notify = \_ -> []
+            }
+        )
+
+
+initialiseRecordStates initialiser output fns states =
+    initialiser (\_ End End -> End) output fns states
+
+
+recordStateInitialiser next output ( fns, restFns ) ( states, restStates ) =
+    case fns.field.initialise of
+        Just initialise_ ->
+            ( State Intact_ (initialise_ (fns.fromOutput output))
+            , next output restFns restStates
+            )
+
+        Nothing ->
+            ( fns.field.init
+            , next output restFns restStates
+            )
 
 
 
