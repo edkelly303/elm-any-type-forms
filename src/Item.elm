@@ -21,6 +21,88 @@ type alias Item =
     }
 
 
+type Id a
+    = Id Int
+
+
+type ItemId
+    = ItemId
+
+
+type alias Ratio a b =
+    ( Unit a, Unit b )
+
+
+type Gram
+    = Gram
+
+
+type Millilitre
+    = Millilitre
+
+
+type PerItem
+    = PerItem
+
+
+type Unit a
+    = Unit Int
+
+
+type Measure
+    = Weight
+    | Volume
+    | Whole
+    | Custom String
+
+
+type Category
+    = Miscellaneous
+    | Personal
+    | Dairy
+    | Chilled
+    | FruitAndVeg
+    | Meat
+    | Fish
+    | NonPerishables
+    | GlutenFree
+    | Snacks
+    | Cleaning
+    | Frozen
+    | Baking
+    | Drinks
+
+
+type alias PurchaseHistory =
+    { time : Time.Posix
+    , grams : Unit Gram
+    , measure : Measure
+    }
+
+
+type alias VolumeRecord =
+    { ratio : Ratio Gram Millilitre }
+
+
+type alias WholeRecord =
+    { singularName : String
+    , ratio : Ratio Gram PerItem
+    }
+
+
+type alias CustomRecord =
+    { singularCollection : String
+    , pluralCollection : String
+    , ratio : Ratio Gram PerItem
+    }
+
+
+type alias Seasonality =
+    { startsAt : Time.Month
+    , endsAt : Time.Month
+    }
+
+
 exampleItem : Item
 exampleItem =
     { id = Id 100
@@ -35,6 +117,19 @@ exampleItem =
     , custom = [ { singularCollection = "Loaf", pluralCollection = "Loaves", ratio = ( Unit 800, Unit 1 ) } ]
     , maybeSeasonality = Nothing
     }
+
+
+
+{-
+   d88888b  .d88b.  d8888b. .88b  d88.       .o88b.  .d88b.  d8888b. d88888b
+   88'     .8P  Y8. 88  `8D 88'YbdP`88      d8P  Y8 .8P  Y8. 88  `8D 88'
+   88ooo   88    88 88oobY' 88  88  88      8P      88    88 88   88 88ooooo
+   88~~~   88    88 88`8b   88  88  88      8b      88    88 88   88 88~~~~~
+   88      `8b  d8' 88 `88. 88  88  88      Y8b  d8 `8b  d8' 88  .8D 88.
+   YP       `Y88P'  88   YD YP  YP  YP       `Y88P'  `Y88P'  Y8888D' Y88888P
+
+
+-}
 
 
 type alias ItemState =
@@ -85,14 +180,6 @@ item =
         |> initialise exampleItem
 
 
-type Id a
-    = Id Int
-
-
-type ItemId
-    = ItemId
-
-
 type alias IdState =
     WrapperState String
 
@@ -104,22 +191,6 @@ type alias IdDelta =
 itemId : Input IdState IdDelta (Id ItemId)
 itemId =
     wrapper Id (\(Id int) -> int) positiveInt
-
-
-type Gram
-    = Gram
-
-
-type Millilitre
-    = Millilitre
-
-
-type PerItem
-    = PerItem
-
-
-type Unit a
-    = Unit Int
 
 
 type alias UnitState =
@@ -141,10 +212,6 @@ unit =
     positiveInt
         |> initialise 1
         |> wrapper Unit (\(Unit int) -> int)
-
-
-type alias Ratio a b =
-    ( Unit a, Unit b )
 
 
 type alias RatioState =
@@ -180,13 +247,6 @@ ratio fstId sndId =
                     _ ->
                         H.text "ERROR"
             )
-
-
-type Measure
-    = Weight
-    | Volume
-    | Whole
-    | Custom String
 
 
 type alias MeasureState =
@@ -241,29 +301,12 @@ type alias CategoryDelta =
     EnumDelta Category
 
 
-type Category
-    = Miscellaneous
-    | Personal
-    | Dairy
-    | Chilled
-    | FruitAndVeg
-    | Meat
-    | Fish
-    | NonPerishables
-    | GlutenFree
-    | Snacks
-    | Cleaning
-    | Frozen
-    | Baking
-    | Drinks
-
-
 category : Input CategoryState CategoryDelta Category
 category =
     enum
         ( "Miscellaneous", Miscellaneous )
-        [ ( "Personal", Personal )
-        , ( "Dairy", Dairy )
+        ( "Personal", Personal )
+        [ ( "Dairy", Dairy )
         , ( "Chilled", Chilled )
         , ( "Fruit and Veg", FruitAndVeg )
         , ( "Meat", Meat )
@@ -290,8 +333,8 @@ month : Input MonthState MonthDelta Time.Month
 month =
     enum
         ( "Jan", Time.Jan )
-        [ ( "Feb", Time.Feb )
-        , ( "Mar", Time.Mar )
+        ( "Feb", Time.Feb )
+        [ ( "Mar", Time.Mar )
         , ( "Apr", Time.Apr )
         , ( "May", Time.May )
         , ( "Jun", Time.Jun )
@@ -314,13 +357,6 @@ emoji : Input String String String
 emoji =
     string
         |> failIf (\x -> String.length x /= 1) "Must be exactly one character"
-
-
-type alias PurchaseHistory =
-    { time : Time.Posix
-    , grams : Unit Gram
-    , measure : Measure
-    }
 
 
 type alias PurchaseHistoryState =
@@ -351,10 +387,6 @@ purchaseHistory =
             }
 
 
-type alias VolumeRecord =
-    { ratio : Ratio Gram Millilitre }
-
-
 type alias VolumeRecordState =
     States1 RatioState
 
@@ -368,12 +400,6 @@ volumeRecord =
     record VolumeRecord
         |> field i0 .ratio "Density" (ratio "Grams" "Millilitre")
         |> endRecord
-
-
-type alias WholeRecord =
-    { singularName : String
-    , ratio : Ratio Gram PerItem
-    }
 
 
 type alias WholeRecordState =
@@ -392,13 +418,6 @@ wholeRecord =
         |> endRecord
 
 
-type alias CustomRecord =
-    { singularCollection : String
-    , pluralCollection : String
-    , ratio : Ratio Gram PerItem
-    }
-
-
 type alias CustomRecordState =
     States3 String String RatioState
 
@@ -414,12 +433,6 @@ customRecord =
         |> field i1 .pluralCollection "Plural Collection" string
         |> field i2 .ratio "Weight" (ratio "Grams" "Item")
         |> endRecord
-
-
-type alias Seasonality =
-    { startsAt : Time.Month
-    , endsAt : Time.Month
-    }
 
 
 type alias SeasonalityState =
