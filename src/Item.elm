@@ -408,7 +408,7 @@ type alias WholeRecordDelta =
 wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
-        |> field i0 .singularName "Singular Name" string
+        |> field i0 .singularName "Singular Name" nonEmptyString
         |> field i1 .ratio "Weight" (ratio "Grams" "Item")
         |> endRecord
 
@@ -424,8 +424,8 @@ type alias CustomRecordDelta =
 customRecord : Input CustomRecordState CustomRecordDelta CustomRecord
 customRecord =
     record CustomRecord
-        |> field i0 .singularCollection "Singular Collection" string
-        |> field i1 .pluralCollection "Plural Collection" string
+        |> field i0 .singularCollection "Singular Collection" nonEmptyString
+        |> field i1 .pluralCollection "Plural Collection" nonEmptyString
         |> field i2 .ratio "Weight" (ratio "Grams" "Item")
         |> endRecord
 
