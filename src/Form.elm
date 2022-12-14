@@ -1596,73 +1596,73 @@ tag5 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
         )
 
 
-oldEndCustomType rec =
-    let
-        fns =
-            rec.fns End
+-- oldEndCustomType rec =
+--     let
+--         fns =
+--             rec.fns End
 
-        emptyDeltas =
-            rec.deltas End
+--         emptyDeltas =
+--             rec.deltas End
 
-        inits =
-            rec.states End
+--         inits =
+--             rec.states End
 
-        names =
-            List.reverse rec.names
+--         names =
+--             List.reverse rec.names
 
-        update =
-            \delta (State s state) ->
-                case delta of
-                    Skip ->
-                        ( State s state, Cmd.none )
+--         update =
+--             \delta (State s state) ->
+--                 case delta of
+--                     Skip ->
+--                         ( State s state, Cmd.none )
 
-                    ChangeState (TagSelected idx) ->
-                        ( State s { state | selectedTag = idx }, Cmd.none )
+--                     ChangeState (TagSelected idx) ->
+--                         ( State s { state | selectedTag = idx }, Cmd.none )
 
-                    ChangeState (TagDeltaReceived tagDelta) ->
-                        let
-                            ( newTagStates, cmd ) =
-                                updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
-                        in
-                        ( State s { state | tagStates = newTagStates }
-                        , Cmd.map (ChangeState << TagDeltaReceived) cmd
-                        )
+--                     ChangeState (TagDeltaReceived tagDelta) ->
+--                         let
+--                             ( newTagStates, cmd ) =
+--                                 updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
+--                         in
+--                         ( State s { state | tagStates = newTagStates }
+--                         , Cmd.map (ChangeState << TagDeltaReceived) cmd
+--                         )
 
-                    _ ->
-                        ( State s state, Cmd.none )
+--                     _ ->
+--                         ( State s state, Cmd.none )
 
-        childViews config =
-            [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
+--         childViews config =
+--             [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
 
-        view config =
-            let
-                options =
-                    List.indexedMap Tuple.pair names
+--         view config =
+--             let
+--                 options =
+--                     List.indexedMap Tuple.pair names
 
-                childViews_ =
-                    childViews config
-            in
-            customTypeView config.id options config.state.selectedTag childViews_
-    in
-    Input
-        (\id ->
-            let
-                validate =
-                    \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
-            in
-            { id = id
-            , index = 0
-            , init = State Intact_ { tagStates = inits, selectedTag = 0 }
-            , initialise = Nothing
-            , baseUpdate = \_ -> update
-            , update = update
-            , childViews = \config -> childViews config
-            , view = \config -> view config
-            , baseValidate = validate
-            , validate = validate
-            , notify = \_ -> []
-            }
-        )
+--                 childViews_ =
+--                     childViews config
+--             in
+--             customTypeView config.id options config.state.selectedTag childViews_
+--     in
+--     Input
+--         (\id ->
+--             let
+--                 validate =
+--                     \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+--             in
+--             { id = id
+--             , index = 0
+--             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
+--             , initialise = Nothing
+--             , baseUpdate = \_ -> update
+--             , update = update
+--             , childViews = \config -> childViews config
+--             , view = \config -> view config
+--             , baseValidate = validate
+--             , validate = validate
+--             , notify = \_ -> []
+--             }
+--         )
 
 
 endCustomType initialiser rec =
