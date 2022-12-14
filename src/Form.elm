@@ -697,7 +697,7 @@ datetime : Input String String Time.Posix
 datetime =
     makeInput
         { empty = ""
-        , initialise = Iso8601.fromTime
+        , initialise = Iso8601.fromTime >> String.replace "Z" ""
         , update = \delta _ -> delta
         , view = textInputView "datetime-local"
         , parse = Iso8601.toTime >> Result.mapError (\_ -> [ "Not a valid datetime" ])
@@ -779,15 +779,15 @@ type alias WrapperDelta delta =
     Deltas1 delta
 
 
-wrapper : (output -> wrapped) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
-wrapper wrapping input =
+wrapper : (output -> wrapped) -> (wrapped -> output) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
+wrapper wrap unwrap input =
     Input
         (\id ->
             let
                 (Input toWrapped) =
-                    record wrapping
-                        |> field i0 id input
-                        |> endRecord
+                    record2 wrap
+                        |> field2 i0 unwrap id input
+                        |> endRecord2
             in
             toWrapped id
         )

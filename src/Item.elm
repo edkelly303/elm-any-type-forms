@@ -3,7 +3,6 @@ module Item exposing (Item, ItemDelta, ItemState, item)
 import Form exposing (..)
 import Html as H
 import Html.Attributes as HA
-import Iso8601
 import Time
 
 
@@ -87,7 +86,7 @@ type alias IdDelta =
 
 itemId : Input IdState IdDelta (Id ItemId)
 itemId =
-    wrapper Id positiveInt
+    wrapper Id (\(Id int) -> int) positiveInt
 
 
 type Gram
@@ -124,7 +123,7 @@ unit : Input UnitState UnitDelta (Unit a)
 unit =
     positiveInt
         |> initialise 1
-        |> wrapper Unit
+        |> wrapper Unit (\(Unit int) -> int)
 
 
 type alias Ratio a b =
@@ -328,7 +327,11 @@ purchaseHistory =
         |> field2 i1 .grams "Amount purchased (grams)" unit
         |> field2 i2 .measure "Purchased by measure" measure
         |> endRecord2
-        |> initialise { time = Time.millisToPosix 0, grams = Unit 100, measure = Whole }
+        |> initialise
+            { time = Time.millisToPosix 1500000000000
+            , grams = Unit 100
+            , measure = Whole
+            }
 
 
 type alias VolumeRecord =
