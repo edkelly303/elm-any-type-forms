@@ -165,11 +165,11 @@ type alias ItemDelta =
 item : Input ItemState ItemDelta Item
 item =
     record Item
-        |> field i0 .id "Id" (itemId |> initialise (Id 1))
-        |> field i1 .name "Name" (nonEmptyString |> initialise "Bread")
-        |> field i2 .aliases "Aliases" (list nonEmptyString |> initialise [ "Hello", "World" ])
-        |> field i3 .emoji "Emoji" (maybe emoji |> initialise (Just "1"))
-        |> field i4 .category "Category" (category |> initialise NonPerishables)
+        |> field i0 .id "Id" itemId
+        |> field i1 .name "Name" nonEmptyString
+        |> field i2 .aliases "Aliases" (list nonEmptyString)
+        |> field i3 .emoji "Emoji" (maybe emoji)
+        |> field i4 .category "Category" category
         |> field i5 .purchaseHistory "Purchase History" (list purchaseHistory)
         |> field i6 .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime)
         |> field i7 .maybeVolume "Volume" (maybe volumeRecord)
@@ -380,11 +380,6 @@ purchaseHistory =
         |> field i1 .grams "Amount purchased (grams)" unit
         |> field i2 .measure "Purchased by measure" measure
         |> endRecord
-        |> initialise
-            { time = Time.millisToPosix 1500000000000
-            , grams = Unit 100
-            , measure = Whole
-            }
 
 
 type alias VolumeRecordState =
@@ -447,5 +442,5 @@ seasonality : Input SeasonalityState SeasonalityDelta Seasonality
 seasonality =
     record Seasonality
         |> field i0 .startsAt "Starts At" month
-        |> field i1 .endsAt "Ends At" month
+        |> field i1 .endsAt "Ends At" (month |> initialise Time.Dec)
         |> endRecord
