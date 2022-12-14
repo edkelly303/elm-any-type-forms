@@ -723,14 +723,15 @@ type alias EnumDelta enum =
 
 enum :
     ( String, EnumState enum )
+    -> ( String, EnumState enum )
     -> List ( String, EnumState enum )
     -> Input (EnumState enum) (EnumDelta enum) enum
-enum tag tags =
+enum first second rest =
     makeInput
-        { empty = Tuple.second tag
+        { empty = Tuple.second first
         , initialise = identity
         , update = \delta _ -> delta
-        , view = enumView (tag :: tags)
+        , view = enumView (first :: second :: rest)
         , parse = Ok
         }
 
