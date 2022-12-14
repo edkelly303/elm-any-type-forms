@@ -1,4 +1,4 @@
-module Item exposing (Item, ItemDelta, ItemState, item)
+module Item exposing (Item, ItemDelta, ItemState, exampleItem, item)
 
 import Form exposing (..)
 import Html as H
@@ -18,6 +18,22 @@ type alias Item =
     , maybeWhole : Maybe WholeRecord
     , custom : List CustomRecord
     , maybeSeasonality : Maybe Seasonality
+    }
+
+
+exampleItem : Item
+exampleItem =
+    { id = Id 100
+    , name = "Bakery bread"
+    , aliases = [ "sourdough" ]
+    , emoji = Just "🥖"
+    , category = Baking
+    , purchaseHistory = []
+    , doNotSuggestUntil = Nothing
+    , maybeVolume = Nothing
+    , maybeWhole = Nothing
+    , custom = [ { singularCollection = "Loaf", pluralCollection = "Loaves", ratio = ( Unit 800, Unit 1 ) } ]
+    , maybeSeasonality = Nothing
     }
 
 
@@ -54,18 +70,19 @@ type alias ItemDelta =
 item : Input ItemState ItemDelta Item
 item =
     record Item
-        |> field i0 "Id" (itemId |> initialise (Id 1))
-        |> field i1 "Name" (nonEmptyString |> initialise "Bread")
-        |> field i2 "Aliases" (list nonEmptyString |> initialise [ "Hello", "World" ])
-        |> field i3 "Emoji" (maybe emoji |> initialise (Just "1"))
-        |> field i4 "Category" (category |> initialise NonPerishables)
-        |> field i5 "Purchase History" (list purchaseHistory)
-        |> field i6 "Do Not Suggest Until" (maybe datetime)
-        |> field i7 "Volume" (maybe volumeRecord)
-        |> field i8 "Whole" (maybe wholeRecord)
-        |> field i9 "Custom" (list customRecord)
-        |> field i10 "Seasonality" (maybe seasonality)
+        |> field i0 .id "Id" (itemId |> initialise (Id 1))
+        |> field i1 .name "Name" (nonEmptyString |> initialise "Bread")
+        |> field i2 .aliases "Aliases" (list nonEmptyString |> initialise [ "Hello", "World" ])
+        |> field i3 .emoji "Emoji" (maybe emoji |> initialise (Just "1"))
+        |> field i4 .category "Category" (category |> initialise NonPerishables)
+        |> field i5 .purchaseHistory "Purchase History" (list purchaseHistory)
+        |> field i6 .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime)
+        |> field i7 .maybeVolume "Volume" (maybe volumeRecord)
+        |> field i8 .maybeWhole "Whole" (maybe wholeRecord)
+        |> field i9 .custom "Custom" (list customRecord)
+        |> field i10 .maybeSeasonality "Seasonality" (maybe seasonality)
         |> endRecord
+        |> initialise exampleItem
 
 
 type Id a
@@ -199,7 +216,7 @@ measure =
         |> tag0 i1 "Volume" Volume
         |> tag0 i2 "Whole" Whole
         |> tag1 i3 "Custom" Custom "Name of Custom Measure" string
-        |> endCustomType2
+        |> endCustomType
             (\output ->
                 case output of
                     Weight ->
@@ -322,11 +339,11 @@ type alias PurchaseHistoryDelta =
 
 purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
-    record2 PurchaseHistory
-        |> field2 i0 .time "Time of purchase" datetime
-        |> field2 i1 .grams "Amount purchased (grams)" unit
-        |> field2 i2 .measure "Purchased by measure" measure
-        |> endRecord2
+    record PurchaseHistory
+        |> field i0 .time "Time of purchase" datetime
+        |> field i1 .grams "Amount purchased (grams)" unit
+        |> field i2 .measure "Purchased by measure" measure
+        |> endRecord
         |> initialise
             { time = Time.millisToPosix 1500000000000
             , grams = Unit 100
@@ -349,7 +366,7 @@ type alias VolumeRecordDelta =
 volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
-        |> field i0 "Density" (ratio "Grams" "Millilitre")
+        |> field i0 .ratio "Density" (ratio "Grams" "Millilitre")
         |> endRecord
 
 
@@ -370,8 +387,8 @@ type alias WholeRecordDelta =
 wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
-        |> field i0 "Singular Name" string
-        |> field i1 "Weight" (ratio "Grams" "Item")
+        |> field i0 .singularName "Singular Name" string
+        |> field i1 .ratio "Weight" (ratio "Grams" "Item")
         |> endRecord
 
 
@@ -393,9 +410,9 @@ type alias CustomRecordDelta =
 customRecord : Input CustomRecordState CustomRecordDelta CustomRecord
 customRecord =
     record CustomRecord
-        |> field i0 "Singular Collection" string
-        |> field i1 "Plural Collection" string
-        |> field i2 "Weight" (ratio "Grams" "Item")
+        |> field i0 .singularCollection "Singular Collection" string
+        |> field i1 .pluralCollection "Plural Collection" string
+        |> field i2 .ratio "Weight" (ratio "Grams" "Item")
         |> endRecord
 
 
@@ -416,6 +433,6 @@ type alias SeasonalityDelta =
 seasonality : Input SeasonalityState SeasonalityDelta Seasonality
 seasonality =
     record Seasonality
-        |> field i0 "Starts At" month
-        |> field i1 "Ends At" month
+        |> field i0 .startsAt "Starts At" month
+        |> field i1 .endsAt "Ends At" month
         |> endRecord

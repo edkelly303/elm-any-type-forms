@@ -101,8 +101,8 @@ simpleRecordInput :
         SimpleRecord
 simpleRecordInput =
     record SimpleRecord
-        |> field i0 "name" string
-        |> field i1 "age" boundedInt
+        |> field i0 .name "name" string
+        |> field i1 .age "age" boundedInt
         |> endRecord
 
 
@@ -141,6 +141,17 @@ simpleCustomTypeInput =
         |> tag2 i1 "green" Green "string" string "maybe int" (maybe int)
         |> tag0 i2 "blue" Blue
         |> endCustomType
+            (\tag ->
+                case tag of
+                    Red x ->
+                        initTag1 i0 boundedInt x
+
+                    Green x y ->
+                        initTag2 i1 string x (maybe int) y
+
+                    Blue ->
+                        initTag0 i2
+            )
 
 
 type alias NestedRecord =
@@ -171,7 +182,7 @@ nestedRecordInput :
         NestedRecord
 nestedRecordInput =
     record NestedRecord
-        |> field i0 "number list" (list boundedInt)
-        |> field i1 "record" simpleRecordInput
-        |> field i2 "custom type" simpleCustomTypeInput
+        |> field i0 .titles "number list" (list boundedInt)
+        |> field i1 .record "record" simpleRecordInput
+        |> field i2 .custom "custom type" simpleCustomTypeInput
         |> endRecord

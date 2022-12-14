@@ -53,13 +53,10 @@ module Form exposing
     , datetime
     , debounce
     , endCustomType
-    , endCustomType2
     , endRecord
-    , endRecord2
     , enum
     , failIf
     , field
-    , field2
     , i0
     , i1
     , i10
@@ -78,6 +75,7 @@ module Form exposing
     , i9
     , initTag0
     , initTag1
+    , initTag2
     , initialise
     , int
     , layout
@@ -86,7 +84,6 @@ module Form exposing
     , maybe
     , noteIf
     , record
-    , record2
     , string
     , tag0
     , tag1
@@ -785,9 +782,9 @@ wrapper wrap unwrap input =
         (\id ->
             let
                 (Input toWrapped) =
-                    record2 wrap
-                        |> field2 i0 unwrap id input
-                        |> endRecord2
+                    record wrap
+                        |> field i0 unwrap id input
+                        |> endRecord
             in
             toWrapped id
         )
@@ -829,7 +826,7 @@ maybe input =
                     customType
                         |> tag0 i0 "Nothing" Nothing
                         |> tag1 i1 "Just" Just id input
-                        |> endCustomType2
+                        |> endCustomType
                             (\output ->
                                 case output of
                                     Nothing ->
@@ -869,8 +866,10 @@ initTag1 sel input output fns init =
         tagSelector =
             instantiateSelector sel
 
-        getTag =
-            tagSelector.getField
+        selectedTag =
+            tagSelector.getField fns
+                |> .field
+                |> .index
 
         setTag =
             tagSelector.set
@@ -886,10 +885,7 @@ initTag1 sel input output fns init =
             }
 
         Just initialise_ ->
-            { selectedTag =
-                getTag fns
-                    |> .field
-                    |> .index
+            { selectedTag = selectedTag
             , tagStates =
                 setTag
                     (\(State _ inner) ->
@@ -900,6 +896,68 @@ initTag1 sel input output fns init =
                             )
                     )
                     init
+            }
+
+
+initTag2 sel input1 output1 input2 output2 fns init =
+    let
+        (Input toInnerInput1) =
+            input1
+
+        innerInput1 =
+            toInnerInput1 ""
+
+        (Input toInnerInput2) =
+            input2
+
+        innerInput2 =
+            toInnerInput2 ""
+
+        tagSelector =
+            instantiateSelector sel
+
+        selectedTag =
+            tagSelector.getField fns
+                |> .field
+                |> .index
+
+        setTag =
+            tagSelector.set
+
+        setArg0 =
+            instantiateSelector i0
+                |> .set
+
+        setArg1 =
+            instantiateSelector i1
+                |> .set
+    in
+    case ( innerInput1.initialise, innerInput2.initialise ) of
+        ( Just init1, Just init2 ) ->
+            { selectedTag = selectedTag
+            , tagStates =
+                init
+                    |> setTag
+                        (\(State _ inner) ->
+                            State Intact_
+                                (setArg0
+                                    (\_ -> State Intact_ (init1 output1))
+                                    inner
+                                )
+                        )
+                    |> setTag
+                        (\(State _ inner) ->
+                            State Intact_
+                                (setArg1
+                                    (\_ -> State Intact_ (init2 output2))
+                                    inner
+                                )
+                        )
+            }
+
+        _ ->
+            { selectedTag = 0
+            , tagStates = init
             }
 
 
@@ -930,8 +988,8 @@ tuple :
     -> Input (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
 tuple fstId fst sndId snd =
     record Tuple.pair
-        |> field i0 fstId fst
-        |> field i1 sndId snd
+        |> field i0 Tuple.first fstId fst
+        |> field i1 Tuple.second sndId snd
         |> endRecord
 
 
@@ -1060,7 +1118,7 @@ list (Input toInput) =
 -}
 
 
-record toOutput =
+oldRecord toOutput =
     { index = 0
     , ids = []
     , toOutput = toOutput
@@ -1073,7 +1131,7 @@ record toOutput =
     }
 
 
-field sel id (Input input) rec =
+oldField sel id (Input input) rec =
     let
         i =
             input id
@@ -1090,7 +1148,7 @@ field sel id (Input input) rec =
     }
 
 
-endRecord rec =
+oldEndRecord rec =
     let
         fields =
             rec.fields End
@@ -1166,7 +1224,7 @@ endRecord rec =
         )
 
 
-record2 toOutput =
+record toOutput =
     { index = 0
     , ids = []
     , toOutput = toOutput
@@ -1180,7 +1238,7 @@ record2 toOutput =
     }
 
 
-field2 sel fromOutput id (Input input) rec =
+field sel fromOutput id (Input input) rec =
     let
         i =
             input id
@@ -1204,7 +1262,7 @@ field2 sel fromOutput id (Input input) rec =
     }
 
 
-endRecord2 rec =
+endRecord rec =
     let
         fns =
             rec.fields End
@@ -1283,6 +1341,17 @@ endRecord2 rec =
         )
 
 
+
+{-
+   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
+   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
+   88oobY' 88ooooo 8P      88    88 88oobY' 88   88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
+   88`8b   88~~~~~ 8b      88    88 88`8b   88   88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
+   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
+   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
+-}
+
+
 initialiseRecordStates initialiser output fns states =
     initialiser (\_ End End -> End) output fns states
 
@@ -1298,17 +1367,6 @@ recordStateInitialiser next output ( fns, restFns ) ( states, restStates ) =
             ( fns.field.init
             , next output restFns restStates
             )
-
-
-
-{-
-   d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
-   88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D        `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
-   88oobY' 88ooooo 8P      88    88 88oobY' 88   88         88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
-   88`8b   88~~~~~ 8b      88    88 88`8b   88   88         88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
-   88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
-   88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
--}
 
 
 parseRecordStates parser toOutput fns states =
@@ -1485,59 +1543,59 @@ tag0 sel id tag =
 tag1 sel id tag inputId input =
     variant sel
         id
-        (record tag
-            |> field i0 inputId input
-            |> endRecord
+        (oldRecord tag
+            |> oldField i0 inputId input
+            |> oldEndRecord
         )
 
 
 tag2 sel id tag id1 input1 id2 input2 =
     variant sel
         id
-        (record tag
-            |> field i0 id1 input1
-            |> field i1 id2 input2
-            |> endRecord
+        (oldRecord tag
+            |> oldField i0 id1 input1
+            |> oldField i1 id2 input2
+            |> oldEndRecord
         )
 
 
 tag3 sel id tag id1 input1 id2 input2 id3 input3 =
     variant sel
         id
-        (record tag
-            |> field i0 id1 input1
-            |> field i1 id2 input2
-            |> field i2 id3 input3
-            |> endRecord
+        (oldRecord tag
+            |> oldField i0 id1 input1
+            |> oldField i1 id2 input2
+            |> oldField i2 id3 input3
+            |> oldEndRecord
         )
 
 
 tag4 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 =
     variant sel
         id
-        (record tag
-            |> field i0 id1 input1
-            |> field i1 id2 input2
-            |> field i2 id3 input3
-            |> field i3 id4 input4
-            |> endRecord
+        (oldRecord tag
+            |> oldField i0 id1 input1
+            |> oldField i1 id2 input2
+            |> oldField i2 id3 input3
+            |> oldField i3 id4 input4
+            |> oldEndRecord
         )
 
 
 tag5 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
     variant sel
         id
-        (record tag
-            |> field i0 id1 input1
-            |> field i1 id2 input2
-            |> field i2 id3 input3
-            |> field i3 id4 input4
-            |> field i4 id5 input5
-            |> endRecord
+        (oldRecord tag
+            |> oldField i0 id1 input1
+            |> oldField i1 id2 input2
+            |> oldField i2 id3 input3
+            |> oldField i3 id4 input4
+            |> oldField i4 id5 input5
+            |> oldEndRecord
         )
 
 
-endCustomType rec =
+oldEndCustomType rec =
     let
         fns =
             rec.fns End
@@ -1606,7 +1664,7 @@ endCustomType rec =
         )
 
 
-endCustomType2 initialiser rec =
+endCustomType initialiser rec =
     let
         fns =
             rec.fns End
