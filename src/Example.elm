@@ -137,7 +137,7 @@ simpleCustomTypeInput :
         SimpleCustomType
 simpleCustomTypeInput =
     customType
-        |> tag1 i0 "red" Red "integer" boundedInt
+        |> tag1 i0 "red" Red boundedInt
         |> tag2 i1 "green" Green "string" string "maybe int" (maybe int)
         |> tag0 i2 "blue" Blue
         |> endCustomType

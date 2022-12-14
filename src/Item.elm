@@ -275,7 +275,7 @@ measure =
         |> tag0 i0 "Weight" Weight
         |> tag0 i1 "Volume" Volume
         |> tag0 i2 "Whole" Whole
-        |> tag1 i3 "Custom" Custom "Name of Custom Measure" string
+        |> tag1 i3 "Custom" Custom string
         |> endCustomType
             (\output ->
                 case output of

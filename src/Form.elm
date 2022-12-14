@@ -826,7 +826,7 @@ maybe input =
                 (Input toWrapped) =
                     customType
                         |> tag0 i0 "Nothing" Nothing
-                        |> tag1 i1 "Just" Just id input
+                        |> tag1 i1 "Just" Just input
                         |> endCustomType
                             (\output ->
                                 case output of
@@ -1541,11 +1541,11 @@ tag0 sel id tag =
     variant sel id (always tag)
 
 
-tag1 sel id tag inputId input =
+tag1 sel id tag input =
     variant sel
         id
         (oldRecord tag
-            |> oldField i0 inputId input
+            |> oldField i0 "" input
             |> oldEndRecord
         )
 
