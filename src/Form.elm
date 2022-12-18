@@ -48,7 +48,6 @@ module Form exposing
     , TupleState
     , WrapperDelta
     , WrapperState
-    , always
     , customType
     , datetime
     , debounce
@@ -83,6 +82,7 @@ module Form exposing
     , makeInput
     , maybe
     , noteIf
+    , readOnly
     , record
     , string
     , tag0
@@ -628,6 +628,29 @@ initialise output (Input input) =
 
 
 {-
+   d8888b. d88888b  .d8b.  d8888b.  .d88b.  d8b   db db      db    db
+   88  `8D 88'     d8' `8b 88  `8D .8P  Y8. 888o  88 88      `8b  d8'
+   88oobY' 88ooooo 88ooo88 88   88 88    88 88V8o 88 88       `8bd8'
+   88`8b   88~~~~~ 88~~~88 88   88 88    88 88 V8o88 88         88
+   88 `88. 88.     88   88 88  .8D `8b  d8' 88  V888 88booo.    88
+   88   YD Y88888P YP   YP Y8888D'  `Y88P'  VP   V8P Y88888P    YP
+-}
+
+
+readOnly : Input state delta output -> Input state delta output
+readOnly (Input input) =
+    let
+        locker i =
+            { i
+                | update = \_ state -> ( state, Cmd.none )
+                , view = \config -> H.div [ HA.style "opacity" "50%" ] [ i.view config ]
+            }
+    in
+    Input (input >> locker)
+
+
+
+{-
    d888888b d8b   db d888888b
      `88'   888o  88 `~~88~~'
       88    88V8o 88    88
@@ -733,28 +756,6 @@ enum first second rest =
         , update = \delta _ -> delta
         , view = enumView (first :: second :: rest)
         , parse = Ok
-        }
-
-
-
-{-
-    .d8b.  db      db   d8b   db  .d8b.  db    db .d8888.
-   d8' `8b 88      88   I8I   88 d8' `8b `8b  d8' 88'  YP
-   88ooo88 88      88   I8I   88 88ooo88  `8bd8'  `8bo.
-   88~~~88 88      Y8   I8I   88 88~~~88    88      `Y8b.
-   88   88 88booo. `8b d8'8b d8' 88   88    88    db   8D
-   YP   YP Y88888P  `8b8' `8d8'  YP   YP    YP    `8888Y'
--}
-
-
-always : output -> Input States0 Deltas0 output
-always output =
-    makeInput
-        { empty = States0
-        , initialise = \_ -> States0
-        , update = \_ _ -> States0
-        , view = \_ -> H.text ""
-        , parse = \_ -> Ok output
         }
 
 
@@ -1538,7 +1539,17 @@ variant sel id (Input input) rec =
 
 
 tag0 sel id tag =
-    variant sel id (always tag)
+    let
+        null =
+            makeInput
+                { empty = States0
+                , initialise = \_ -> States0
+                , update = \_ _ -> States0
+                , view = \_ -> H.text ""
+                , parse = \_ -> Ok tag
+                }
+    in
+    variant sel id null
 
 
 tag1 sel id tag input =
@@ -1596,29 +1607,24 @@ tag5 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
         )
 
 
+
 -- oldEndCustomType rec =
 --     let
 --         fns =
 --             rec.fns End
-
 --         emptyDeltas =
 --             rec.deltas End
-
 --         inits =
 --             rec.states End
-
 --         names =
 --             List.reverse rec.names
-
 --         update =
 --             \delta (State s state) ->
 --                 case delta of
 --                     Skip ->
 --                         ( State s state, Cmd.none )
-
 --                     ChangeState (TagSelected idx) ->
 --                         ( State s { state | selectedTag = idx }, Cmd.none )
-
 --                     ChangeState (TagDeltaReceived tagDelta) ->
 --                         let
 --                             ( newTagStates, cmd ) =
@@ -1627,18 +1633,14 @@ tag5 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
 --                         ( State s { state | tagStates = newTagStates }
 --                         , Cmd.map (ChangeState << TagDeltaReceived) cmd
 --                         )
-
 --                     _ ->
 --                         ( State s state, Cmd.none )
-
 --         childViews config =
 --             [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
-
 --         view config =
 --             let
 --                 options =
 --                     List.indexedMap Tuple.pair names
-
 --                 childViews_ =
 --                     childViews config
 --             in
@@ -1939,9 +1941,7 @@ listView inputView inputParse inputFeedback config =
                         H.div []
                             [ H.details []
                                 [ H.summary
-                                    [ HA.style "margin-bottom" "10px"
-                                    , HA.style "color" "gray"
-                                    ]
+                                    [ HA.style "margin-bottom" "10px" ]
                                     [ H.text ("#" ++ String.fromInt (idx + 1))
                                     , H.button
                                         [ HA.style "margin-left" "10px"
