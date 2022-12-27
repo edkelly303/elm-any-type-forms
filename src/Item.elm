@@ -169,7 +169,7 @@ item =
         |> field .name "Name" nonEmptyString
         |> field .aliases "Aliases" (list nonEmptyString)
         |> field .emoji "Emoji" (maybe emoji)
-        |> readOnlyField .category "Category" category
+        |> field .category "Category" category
         |> hiddenField .purchaseHistory "Purchase History" (list purchaseHistory)
         |> hiddenField .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime)
         |> field .maybeVolume "Volume" (maybe volumeRecord)
