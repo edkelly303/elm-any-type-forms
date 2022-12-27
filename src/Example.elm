@@ -101,8 +101,8 @@ simpleRecordInput :
         SimpleRecord
 simpleRecordInput =
     record SimpleRecord
-        |> field i0 .name "name" string
-        |> field i1 .age "age" boundedInt
+        |> field .name "name" string
+        |> field .age "age" boundedInt
         |> endRecord
 
 
@@ -137,9 +137,9 @@ simpleCustomTypeInput :
         SimpleCustomType
 simpleCustomTypeInput =
     customType
-        |> tag1 i0 "red" Red boundedInt
-        |> tag2 i1 "green" Green "string" string "maybe int" (maybe int)
-        |> tag0 i2 "blue" Blue
+        |> tag1 "red" Red boundedInt
+        |> tag2 "green" Green "string" string "maybe int" (maybe int)
+        |> tag0 "blue" Blue
         |> endCustomType
             (\tag ->
                 case tag of
@@ -182,7 +182,7 @@ nestedRecordInput :
         NestedRecord
 nestedRecordInput =
     record NestedRecord
-        |> field i0 .titles "number list" (list boundedInt)
-        |> field i1 .record "record" simpleRecordInput
-        |> field i2 .custom "custom type" simpleCustomTypeInput
+        |> field .titles "number list" (list boundedInt)
+        |> field .record "record" simpleRecordInput
+        |> field .custom "custom type" simpleCustomTypeInput
         |> endRecord

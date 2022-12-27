@@ -165,17 +165,17 @@ type alias ItemDelta =
 item : Input ItemState ItemDelta Item
 item =
     record Item
-        |> field i0 .id "Id" (itemId |> readOnly)
-        |> field i1 .name "Name" nonEmptyString
-        |> field i2 .aliases "Aliases" (list nonEmptyString)
-        |> field i3 .emoji "Emoji" (maybe emoji)
-        |> field i4 .category "Category" category
-        |> field i5 .purchaseHistory "Purchase History" (list purchaseHistory |> readOnly)
-        |> field i6 .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime |> readOnly)
-        |> field i7 .maybeVolume "Volume" (maybe volumeRecord)
-        |> field i8 .maybeWhole "Whole" (maybe wholeRecord)
-        |> field i9 .custom "Custom" (list customRecord)
-        |> field i10 .maybeSeasonality "Seasonality" (maybe seasonality)
+        |> field .id "Id" (itemId |> readOnly)
+        |> field .name "Name" nonEmptyString
+        |> field .aliases "Aliases" (list nonEmptyString)
+        |> field .emoji "Emoji" (maybe emoji)
+        |> field .category "Category" category
+        |> field .purchaseHistory "Purchase History" (list purchaseHistory |> readOnly)
+        |> field .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime |> readOnly)
+        |> field .maybeVolume "Volume" (maybe volumeRecord)
+        |> field .maybeWhole "Whole" (maybe wholeRecord)
+        |> field .custom "Custom" (list customRecord)
+        |> field .maybeSeasonality "Seasonality" (maybe seasonality)
         |> endRecord
         |> initialise exampleItem
 
@@ -272,10 +272,10 @@ type alias MeasureDelta =
 measure : Input MeasureState MeasureDelta Measure
 measure =
     customType
-        |> tag0 i0 "Weight" Weight
-        |> tag0 i1 "Volume" Volume
-        |> tag0 i2 "Whole" Whole
-        |> tag1 i3 "Custom" Custom string
+        |> tag0 "Weight" Weight
+        |> tag0 "Volume" Volume
+        |> tag0 "Whole" Whole
+        |> tag1 "Custom" Custom string
         |> endCustomType
             (\output ->
                 case output of
@@ -376,9 +376,9 @@ type alias PurchaseHistoryDelta =
 purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
     record PurchaseHistory
-        |> field i0 .time "Time of purchase" datetime
-        |> field i1 .grams "Amount purchased (grams)" unit
-        |> field i2 .measure "Purchased by measure" measure
+        |> field .time "Time of purchase" datetime
+        |> field .grams "Amount purchased (grams)" unit
+        |> field .measure "Purchased by measure" measure
         |> endRecord
 
 
@@ -393,7 +393,7 @@ type alias VolumeRecordDelta =
 volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
-        |> field i0 .ratio "Density" (ratio "Grams" "Millilitre")
+        |> field .ratio "Density" (ratio "Grams" "Millilitre")
         |> endRecord
 
 
@@ -408,8 +408,8 @@ type alias WholeRecordDelta =
 wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
-        |> field i0 .singularName "Singular Name" nonEmptyString
-        |> field i1 .ratio "Weight" (ratio "Grams" "Item")
+        |> field .singularName "Singular Name" nonEmptyString
+        |> field .ratio "Weight" (ratio "Grams" "Item")
         |> endRecord
 
 
@@ -424,9 +424,9 @@ type alias CustomRecordDelta =
 customRecord : Input CustomRecordState CustomRecordDelta CustomRecord
 customRecord =
     record CustomRecord
-        |> field i0 .singularCollection "Singular Collection" nonEmptyString
-        |> field i1 .pluralCollection "Plural Collection" nonEmptyString
-        |> field i2 .ratio "Weight" (ratio "Grams" "Item")
+        |> field .singularCollection "Singular Collection" nonEmptyString
+        |> field .pluralCollection "Plural Collection" nonEmptyString
+        |> field .ratio "Weight" (ratio "Grams" "Item")
         |> endRecord
 
 
@@ -441,6 +441,6 @@ type alias SeasonalityDelta =
 seasonality : Input SeasonalityState SeasonalityDelta Seasonality
 seasonality =
     record Seasonality
-        |> field i0 .startsAt "Starts At" month
-        |> field i1 .endsAt "Ends At" (month |> initialise Time.Dec)
+        |> field .startsAt "Starts At" month
+        |> field .endsAt "Ends At" (month |> initialise Time.Dec)
         |> endRecord

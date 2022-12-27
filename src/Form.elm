@@ -785,7 +785,7 @@ wrapper wrap unwrap input =
             let
                 (Input toWrapped) =
                     record wrap
-                        |> field i0 unwrap id input
+                        |> field unwrap id input
                         |> endRecord
             in
             toWrapped id
@@ -826,8 +826,8 @@ maybe input =
             let
                 (Input toWrapped) =
                     customType
-                        |> tag0 i0 "Nothing" Nothing
-                        |> tag1 i1 "Just" Just input
+                        |> tag0 "Nothing" Nothing
+                        |> tag1 "Just" Just input
                         |> endCustomType
                             (\output ->
                                 case output of
@@ -990,8 +990,8 @@ tuple :
     -> Input (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
 tuple fstId fst sndId snd =
     record Tuple.pair
-        |> field i0 Tuple.first fstId fst
-        |> field i1 Tuple.second sndId snd
+        |> field Tuple.first fstId fst
+        |> field Tuple.second sndId snd
         |> endRecord
 
 
@@ -1125,7 +1125,6 @@ oldRecord toOutput =
     , ids = []
     , toOutput = toOutput
     , fields = identity
-    , deltas = identity
     , states = identity
     , updater = identity
     , viewer = identity
@@ -1146,8 +1145,7 @@ oldField sel id (Input input) rec =
     { index = rec.index + 1
     , ids = rec.ids ++ [ id ]
     , toOutput = rec.toOutput
-    , fields = rec.fields << Tuple.pair { field = { i | index = rec.index }, selector = instantiateSelector sel }
-    , deltas = rec.deltas << Tuple.pair Skip
+    , fields = rec.fields << Tuple.pair { field = { i | index = rec.index } }
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
@@ -1175,9 +1173,6 @@ oldEndRecord rec =
         fns =
             rec.fields End
 
-        emptyDeltas =
-            rec.deltas End
-
         inits =
             rec.states End
 
@@ -1192,7 +1187,7 @@ oldEndRecord rec =
                 ChangeState deltas ->
                     let
                         ( newState, cmd ) =
-                            updateRecordStates rec.updater emptyDeltas fns setters deltas state
+                            updateRecordStates rec.updater fns setters deltas state
                     in
                     ( State s newState
                     , Cmd.map ChangeState cmd
@@ -1202,7 +1197,7 @@ oldEndRecord rec =
                     ( State s state, Cmd.none )
 
         childViews config =
-            viewRecordStates rec.viewer emptyDeltas fns config.state
+            viewRecordStates rec.viewer fns setters config.state
 
         view childViews_ config =
             let
@@ -1254,7 +1249,6 @@ record toOutput =
     , ids = []
     , toOutput = toOutput
     , fields = identity
-    , deltas = identity
     , states = identity
     , updater = identity
     , viewer = identity
@@ -1268,7 +1262,7 @@ record toOutput =
     }
 
 
-field sel fromOutput id (Input input) rec =
+field fromOutput id (Input input) rec =
     let
         i =
             input id
@@ -1280,10 +1274,8 @@ field sel fromOutput id (Input input) rec =
         rec.fields
             << Tuple.pair
                 { field = { i | index = rec.index }
-                , selector = instantiateSelector sel
                 , fromOutput = fromOutput
                 }
-    , deltas = rec.deltas << Tuple.pair Skip
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
@@ -1302,9 +1294,6 @@ endRecord rec =
         fns =
             rec.fields End
 
-        emptyDeltas =
-            rec.deltas End
-
         inits =
             rec.states End
 
@@ -1319,7 +1308,7 @@ endRecord rec =
                 ChangeState deltas ->
                     let
                         ( newState, cmd ) =
-                            updateRecordStates rec.updater emptyDeltas fns setters deltas state
+                            updateRecordStates rec.updater fns setters deltas state
                     in
                     ( State s newState
                     , Cmd.map ChangeState cmd
@@ -1329,7 +1318,7 @@ endRecord rec =
                     ( State s state, Cmd.none )
 
         childViews config =
-            viewRecordStates rec.viewer emptyDeltas fns config.state
+            viewRecordStates rec.viewer fns setters config.state
 
         view childViews_ config =
             let
@@ -1430,27 +1419,24 @@ recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
         restStates
 
 
-viewRecordStates viewer emptyDeltas fns states =
-    viewer (\views _ End End -> views) [] emptyDeltas fns states
+viewRecordStates viewer fns setters states =
+    viewer (\views End End End -> views) [] fns setters states
         |> List.reverse
 
 
-recordStateViewer next views emptyDeltas ( fns, restFns ) ( State internalState state, restStates ) =
+recordStateViewer next views ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
         ((fns.field.view
             { state = state
             , status = statusFromInternalState fns.field.validate fns.field.notify (State internalState state)
             , id = fns.field.id
             }
-            |> H.map
-                (\delta ->
-                    ChangeState (fns.selector.set (\_ -> delta) emptyDeltas)
-                )
+            |> H.map (\delta -> ChangeState (setter delta))
          )
             :: views
         )
-        emptyDeltas
         restFns
+        restSetters
         restStates
 
 
@@ -1483,13 +1469,12 @@ statusFromInternalState validator notifier (State internalState state) =
             Idle (List.map Err errors ++ List.map Ok notes)
 
 
-updateRecordStates updater emptyDeltas fields setters deltas states =
+updateRecordStates updater fields setters deltas states =
     let
         { newStates, newCmds } =
             updater
-                (\output _ End End End End -> output)
+                (\output End End End End -> output)
                 { newStates = identity, newCmds = [] }
-                emptyDeltas
                 fields
                 setters
                 deltas
@@ -1498,7 +1483,7 @@ updateRecordStates updater emptyDeltas fields setters deltas states =
     ( newStates End, Cmd.batch newCmds )
 
 
-recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( setter, restSetters ) ( delta, restDeltas ) ( state, restStates ) =
+recordStateUpdater next { newStates, newCmds } ( fns, restFns ) ( setter, restSetters ) ( delta, restDeltas ) ( state, restStates ) =
     let
         ( newState, newCmd ) =
             fns.field.update delta state
@@ -1506,16 +1491,11 @@ recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( se
         cmd2 =
             newCmd
                 |> Cmd.map setter
-
-        -- (\d ->
-        --     fns.selector.set (\_ -> d) emptyDeltas
-        -- )
     in
     next
         { newStates = newStates << Tuple.pair newState
         , newCmds = cmd2 :: newCmds
         }
-        emptyDeltas
         restFns
         restSetters
         restDeltas
@@ -1548,7 +1528,6 @@ customType =
     { index = 0
     , names = []
     , fns = identity
-    , deltas = identity
     , states = identity
     , updater = identity
     , viewer = identity
@@ -1561,7 +1540,7 @@ customType =
     }
 
 
-variant sel id (Input input) rec =
+variant id (Input input) rec =
     let
         i =
             input id
@@ -1572,9 +1551,7 @@ variant sel id (Input input) rec =
         rec.fns
             << Tuple.pair
                 { field = { i | index = rec.index }
-                , selector = instantiateSelector sel
                 }
-    , deltas = rec.deltas << Tuple.pair Skip
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
@@ -1587,7 +1564,7 @@ variant sel id (Input input) rec =
     }
 
 
-tag0 sel id tag =
+tag0 id tag =
     let
         null =
             makeInput
@@ -1598,11 +1575,11 @@ tag0 sel id tag =
                 , parse = \_ -> Ok tag
                 }
     in
-    variant sel id null
+    variant id null
 
 
-tag1 sel id tag input =
-    variant sel
+tag1 id tag input =
+    variant
         id
         (oldRecord tag
             |> oldField i0 "" input
@@ -1610,8 +1587,8 @@ tag1 sel id tag input =
         )
 
 
-tag2 sel id tag id1 input1 id2 input2 =
-    variant sel
+tag2 id tag id1 input1 id2 input2 =
+    variant
         id
         (oldRecord tag
             |> oldField i0 id1 input1
@@ -1620,8 +1597,8 @@ tag2 sel id tag id1 input1 id2 input2 =
         )
 
 
-tag3 sel id tag id1 input1 id2 input2 id3 input3 =
-    variant sel
+tag3 id tag id1 input1 id2 input2 id3 input3 =
+    variant
         id
         (oldRecord tag
             |> oldField i0 id1 input1
@@ -1631,8 +1608,8 @@ tag3 sel id tag id1 input1 id2 input2 id3 input3 =
         )
 
 
-tag4 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 =
-    variant sel
+tag4 id tag id1 input1 id2 input2 id3 input3 id4 input4 =
+    variant
         id
         (oldRecord tag
             |> oldField i0 id1 input1
@@ -1643,8 +1620,8 @@ tag4 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 =
         )
 
 
-tag5 sel id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
-    variant sel
+tag5 id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
+    variant
         id
         (oldRecord tag
             |> oldField i0 id1 input1
@@ -1721,9 +1698,6 @@ endCustomType initialiser rec =
         fns =
             rec.fns End
 
-        emptyDeltas =
-            rec.deltas End
-
         inits =
             rec.states End
 
@@ -1745,7 +1719,7 @@ endCustomType initialiser rec =
                     ChangeState (TagDeltaReceived tagDelta) ->
                         let
                             ( newTagStates, cmd ) =
-                                updateRecordStates rec.updater emptyDeltas fns setters tagDelta state.tagStates
+                                updateRecordStates rec.updater fns setters tagDelta state.tagStates
                         in
                         ( State s { state | tagStates = newTagStates }
                         , Cmd.map (ChangeState << TagDeltaReceived) cmd
@@ -1755,7 +1729,7 @@ endCustomType initialiser rec =
                         ( State s state, Cmd.none )
 
         childViews config =
-            [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
+            [ viewSelectedTagState rec.viewer config.state.selectedTag fns setters config.state.tagStates ]
 
         view config =
             let
@@ -1821,13 +1795,13 @@ selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates )
         restStates
 
 
-viewSelectedTagState viewer selectedTag emptyDeltas fns states =
-    viewer (\maybeView _ _ End End -> maybeView) Nothing selectedTag emptyDeltas fns states
+viewSelectedTagState viewer selectedTag fns setters states =
+    viewer (\maybeView _ End End End -> maybeView) Nothing selectedTag fns setters states
         |> Maybe.map (H.map (ChangeState << TagDeltaReceived))
         |> Maybe.withDefault (H.text "ERROR!")
 
 
-selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( State s state, restStates ) =
+selectedTagViewer next maybeView selectedTag ( fns, restFns ) ( setter, restSetters ) ( State s state, restStates ) =
     next
         (if fns.field.index == selectedTag then
             Just
@@ -1836,18 +1810,15 @@ selectedTagViewer next maybeView selectedTag emptyDeltas ( fns, restFns ) ( Stat
                     , status = Intact
                     , id = fns.field.id
                     }
-                    |> H.map
-                        (\delta ->
-                            fns.selector.set (\_ -> delta) emptyDeltas
-                        )
+                    |> H.map setter
                 )
 
          else
             maybeView
         )
         selectedTag
-        emptyDeltas
         restFns
+        restSetters
         restStates
 
 
