@@ -138,7 +138,7 @@ type alias ItemState =
         String
         (ListState String)
         (MaybeState String)
-        CategoryState
+        Category
         (ListState PurchaseHistoryState)
         (MaybeState String)
         (MaybeState VolumeRecordState)
@@ -153,7 +153,7 @@ type alias ItemDelta =
         String
         (ListDelta String)
         (MaybeDelta String)
-        CategoryDelta
+        Category
         (ListDelta PurchaseHistoryDelta)
         (MaybeDelta String)
         (MaybeDelta VolumeRecordDelta)
@@ -294,15 +294,7 @@ measure =
             )
 
 
-type alias CategoryState =
-    EnumState Category
-
-
-type alias CategoryDelta =
-    EnumDelta Category
-
-
-category : Input CategoryState CategoryDelta Category
+category : Input Category Category Category
 category =
     enum
         ( "Miscellaneous", Miscellaneous )
@@ -322,15 +314,7 @@ category =
         ]
 
 
-type alias MonthState =
-    EnumState Time.Month
-
-
-type alias MonthDelta =
-    EnumDelta Time.Month
-
-
-month : Input MonthState MonthDelta Time.Month
+month : Input Time.Month Time.Month Time.Month
 month =
     enum
         ( "Jan", Time.Jan )
@@ -432,11 +416,11 @@ customRecord =
 
 
 type alias SeasonalityState =
-    States2 MonthState MonthState
+    States2 Time.Month Time.Month
 
 
 type alias SeasonalityDelta =
-    Deltas2 MonthDelta MonthDelta
+    Deltas2 Time.Month Time.Month
 
 
 seasonality : Input SeasonalityState SeasonalityDelta Seasonality

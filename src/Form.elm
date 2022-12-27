@@ -19,8 +19,6 @@ module Form exposing
     , Deltas8
     , Deltas9
     , End
-    , EnumDelta
-    , EnumState
     , Form
     , Input
     , ListDelta
@@ -63,6 +61,7 @@ module Form exposing
     , atField7
     , atField8
     , atField9
+    , bool
     , customType
     , datetime
     , debounce
@@ -713,19 +712,11 @@ datetime =
 -}
 
 
-type alias EnumState enum =
-    enum
-
-
-type alias EnumDelta enum =
-    enum
-
-
 enum :
-    ( String, EnumState enum )
-    -> ( String, EnumState enum )
-    -> List ( String, EnumState enum )
-    -> Input (EnumState enum) (EnumDelta enum) enum
+    ( String, enum )
+    -> ( String, enum )
+    -> List ( String, enum )
+    -> Input enum enum enum
 enum first second rest =
     makeInput
         { empty = Tuple.second first
@@ -734,6 +725,22 @@ enum first second rest =
         , view = enumView (first :: second :: rest)
         , parse = Ok
         }
+
+
+
+{-
+   d8888b.  .d88b.   .d88b.  db
+   88  `8D .8P  Y8. .8P  Y8. 88
+   88oooY' 88    88 88    88 88
+   88~~~b. 88    88 88    88 88
+   88   8D `8b  d8' `8b  d8' 88booo.
+   Y8888P'  `Y88P'   `Y88P'  Y88888P
+-}
+
+
+bool : String -> String -> Input Bool Bool Bool
+bool true false =
+    enum ( true, True ) ( false, False ) []
 
 
 
