@@ -165,13 +165,13 @@ type alias ItemDelta =
 item : Input ItemState ItemDelta Item
 item =
     record Item
-        |> field .id "Id" (itemId |> readOnly)
+        |> hiddenField .id "Id" itemId
         |> field .name "Name" nonEmptyString
         |> field .aliases "Aliases" (list nonEmptyString)
         |> field .emoji "Emoji" (maybe emoji)
-        |> field .category "Category" category
-        |> field .purchaseHistory "Purchase History" (list purchaseHistory |> readOnly)
-        |> field .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime |> readOnly)
+        |> readOnlyField .category "Category" category
+        |> hiddenField .purchaseHistory "Purchase History" (list purchaseHistory)
+        |> hiddenField .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime)
         |> field .maybeVolume "Volume" (maybe volumeRecord)
         |> field .maybeWhole "Whole" (maybe wholeRecord)
         |> field .custom "Custom" (list customRecord)

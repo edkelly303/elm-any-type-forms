@@ -71,6 +71,7 @@ module Form exposing
     , enum
     , failIf
     , field
+    , hiddenField
     , initWith0Args
     , initWith1Arg
     , initWith2Args
@@ -81,7 +82,7 @@ module Form exposing
     , makeInput
     , maybe
     , noteIf
-    , readOnly
+    , readOnlyField
     , record
     , string
     , tag0
@@ -627,29 +628,6 @@ initialise output (Input input) =
 
 
 {-
-   d8888b. d88888b  .d8b.  d8888b.  .d88b.  d8b   db db      db    db
-   88  `8D 88'     d8' `8b 88  `8D .8P  Y8. 888o  88 88      `8b  d8'
-   88oobY' 88ooooo 88ooo88 88   88 88    88 88V8o 88 88       `8bd8'
-   88`8b   88~~~~~ 88~~~88 88   88 88    88 88 V8o88 88         88
-   88 `88. 88.     88   88 88  .8D `8b  d8' 88  V888 88booo.    88
-   88   YD Y88888P YP   YP Y8888D'  `Y88P'  VP   V8P Y88888P    YP
--}
-
-
-readOnly : Input state delta output -> Input state delta output
-readOnly (Input input) =
-    let
-        locker i =
-            { i
-                | update = \_ state -> ( state, Cmd.none )
-                , view = \config -> H.div [ HA.style "opacity" "50%" ] [ i.view config ]
-            }
-    in
-    Input (input >> locker)
-
-
-
-{-
    d888888b d8b   db d888888b
      `88'   888o  88 `~~88~~'
       88    88V8o 88    88
@@ -1144,7 +1122,7 @@ oldField id (Input input) rec =
     { index = rec.index + 1
     , ids = rec.ids ++ [ id ]
     , toOutput = rec.toOutput
-    , fields = rec.fields << Tuple.pair { field = { i | index = rec.index } }
+    , fields = rec.fields << Tuple.pair { field = { i | index = rec.index }, access = Open }
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
@@ -1261,7 +1239,25 @@ record toOutput =
     }
 
 
-field fromOutput id (Input input) rec =
+field =
+    internalField Open
+
+
+hiddenField =
+    internalField Hidden
+
+
+readOnlyField =
+    internalField ReadOnly
+
+
+type Access
+    = Open
+    | ReadOnly
+    | Hidden
+
+
+internalField access fromOutput id (Input input) rec =
     let
         i =
             input id
@@ -1274,6 +1270,7 @@ field fromOutput id (Input input) rec =
             << Tuple.pair
                 { field = { i | index = rec.index }
                 , fromOutput = fromOutput
+                , access = access
                 }
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
@@ -1330,10 +1327,15 @@ endRecord rec =
                 combinedViews =
                     List.map2
                         (\idView fieldView ->
-                            H.div []
-                                [ idView
-                                , fieldView
-                                ]
+                            if fieldView == H.text "" then
+                                H.text ""
+                                --this is a bit of a hack!
+
+                            else
+                                H.div []
+                                    [ idView
+                                    , fieldView
+                                    ]
                         )
                         idViews
                         fieldViews
@@ -1424,13 +1426,31 @@ viewRecordStates viewer fns setters states =
 
 
 recordStateViewer next views ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
+    let
+        view =
+            fns.field.view
+                { state = state
+                , status = statusFromInternalState fns.field.validate fns.field.notify (State internalState state)
+                , id = fns.field.id
+                }
+                |> H.map (\delta -> ChangeState (setter delta))
+    in
     next
-        ((fns.field.view
-            { state = state
-            , status = statusFromInternalState fns.field.validate fns.field.notify (State internalState state)
-            , id = fns.field.id
-            }
-            |> H.map (\delta -> ChangeState (setter delta))
+        ((case fns.access of
+            Open ->
+                view
+
+            Hidden ->
+                H.text ""
+
+            ReadOnly ->
+                H.fieldset
+                    [ HA.disabled True
+                    , HA.style "border" "none"
+                    , HA.style "padding" "0px"
+                    , HA.style "margin" "0px"
+                    ]
+                    [ view ]
          )
             :: views
         )
