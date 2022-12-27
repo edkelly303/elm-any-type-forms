@@ -1951,7 +1951,13 @@ customTypeView id options selectedTag selectedTagView =
     H.div []
         (if List.length options > 1 then
             [ H.div []
-                [ radioView options id selectedTag (ChangeState << TagSelected)
+                [ radioView
+                    { options = options
+                    , id = id
+                    , selectedOption = selectedTag
+                    , toMsg = ChangeState << TagSelected
+                    , columns = 3
+                    }
                 , H.div [] selectedTagView
                 ]
             ]
@@ -2086,14 +2092,27 @@ borderedDiv content =
 
 enumView : List ( String, enum ) -> ViewConfig enum -> Html enum
 enumView tags config =
-    radioView (List.map (\( a, b ) -> ( b, a )) tags) config.id config.state identity
+    radioView
+        { options = List.map (\( a, b ) -> ( b, a )) tags
+        , id = config.id
+        , selectedOption = config.state
+        , toMsg = identity
+        , columns = 3
+        }
 
 
-radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
-radioView options id selectedOption toMsg =
+radioView :
+    { options : List ( state, String )
+    , id : String
+    , selectedOption : state
+    , toMsg : state -> msg
+    , columns : Int
+    }
+    -> Html msg
+radioView { options, id, selectedOption, toMsg, columns } =
     H.div
         [ HA.style "display" "grid"
-        , HA.style "grid-template-columns" "1fr 1fr 1fr"
+        , HA.style "grid-template-columns" (String.repeat columns "1fr ")
         ]
         (List.map
             (\( option, label ) ->
