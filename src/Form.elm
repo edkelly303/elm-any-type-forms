@@ -126,7 +126,7 @@ type alias Form state delta output msg =
     { init : State state
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
-    , submit : State state -> Result (List ( String, String )) output
+    , submit : State state -> Result (State state) output
     }
 
 
@@ -153,6 +153,7 @@ type Input state delta output
             , view : ViewConfig state -> Html (Delta delta)
             , baseValidate : State state -> Result (List ( String, String )) output
             , validate : State state -> Result (List ( String, String )) output
+            , submit : State state -> State state
             , notify : State state -> List ( String, String )
             }
         )
@@ -352,7 +353,7 @@ type alias Deltas15 a b c d e f g h i j k l m n o =
 toForm : String -> (Delta delta -> msg) -> Input state delta output -> Form state delta output msg
 toForm id toMsg (Input input) =
     let
-        { init, update, view, validate, notify } =
+        { init, update, view, validate, notify, submit } =
             input id
     in
     { init = init
@@ -373,7 +374,10 @@ toForm id toMsg (Input input) =
                         |> H.map toMsg
                     ]
                 ]
-    , submit = validate
+    , submit =
+        \state ->
+            validate state
+                |> Result.mapError (\_ -> submit state)
     }
 
 
@@ -397,7 +401,9 @@ makeInput config =
                     wrapUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none )))
 
                 validate =
-                    \(State _ state) -> config.parse state |> Result.mapError (List.map (Tuple.pair id))
+                    \(State _ state) ->
+                        config.parse state
+                            |> Result.mapError (List.map (Tuple.pair id))
             in
             { id = id
             , index = 0
@@ -409,6 +415,7 @@ makeInput config =
             , view = config.view >> H.map ChangeState
             , baseValidate = validate
             , validate = validate
+            , submit = \(State _ s) -> State Idle_ s
             , notify = \_ -> []
             }
         )
@@ -1087,6 +1094,7 @@ list (Input toInput) =
             , view = listView input.view input.validate input.notify
             , baseValidate = validate
             , validate = validate
+            , submit = \(State _ s) -> State Idle_ (List.map input.submit s)
             , notify = \_ -> []
             }
         )
@@ -1113,6 +1121,7 @@ oldRecord toOutput =
     , updater = identity
     , viewer = identity
     , parser = identity
+    , submitter = identity
     , before = identity
     , befores = identity
     , after = End
@@ -1133,7 +1142,8 @@ oldField id (Input input) rec =
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
-    , parser = rec.parser >> recordStateParser
+    , parser = rec.parser >> recordStateValidator
+    , submitter = rec.submitter >> recordStateSubmitter
     , before = rec.before << Tuple.pair Skip
     , befores = rec.befores << Tuple.pair rec.before
     , after = ( Skip, rec.after )
@@ -1198,6 +1208,11 @@ oldEndRecord :
         -> fns
         -> state
         -> Result (List ( String, String )) output
+    , submitter :
+        (End -> End -> End)
+        -> fns
+        -> state
+        -> state
     , toOutput : toOutput
     }
     -> Input state delta output
@@ -1258,7 +1273,10 @@ oldEndRecord rec =
                 H.div [] fieldViews
 
         validate (State _ state) =
-            parseRecordStates rec.parser rec.toOutput fns state
+            validateRecordStates rec.parser rec.toOutput fns state
+
+        submit (State _ state) =
+            State Idle_ (submitRecordStates rec.submitter fns state)
     in
     Input
         (\id ->
@@ -1272,6 +1290,7 @@ oldEndRecord rec =
             , view = \config -> view childViews config
             , baseValidate = validate
             , validate = validate
+            , submit = submit
             , notify = \_ -> []
             }
         )
@@ -1286,6 +1305,7 @@ record toOutput =
     , updater = identity
     , viewer = identity
     , parser = identity
+    , submitter = identity
     , initialiser = identity
     , before = identity
     , befores = identity
@@ -1331,7 +1351,8 @@ internalField access fromOutput id (Input input) rec =
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
-    , parser = rec.parser >> recordStateParser
+    , parser = rec.parser >> recordStateValidator
+    , submitter = rec.submitter >> recordStateSubmitter
     , initialiser = rec.initialiser >> recordStateInitialiser
     , before = rec.before << Tuple.pair Skip
     , befores = rec.befores << Tuple.pair rec.before
@@ -1403,10 +1424,10 @@ endRecord rec =
                 H.div [] fieldViews
 
         validate (State _ state) =
-            parseRecordStates rec.parser rec.toOutput fns state
+            validateRecordStates rec.parser rec.toOutput fns state
 
-        _ =
-            Debug.log "inits  :" inits
+        submit (State _ state) =
+            State Idle_ (submitRecordStates rec.submitter fns state)
     in
     Input
         (\id ->
@@ -1420,6 +1441,7 @@ endRecord rec =
             , view = \config -> view childViews config
             , baseValidate = validate
             , validate = validate
+            , submit = submit
             , notify = \_ -> []
             }
         )
@@ -1453,11 +1475,11 @@ recordStateInitialiser next output ( fns, restFns ) ( states, restStates ) =
             )
 
 
-parseRecordStates parser toOutput fns states =
+validateRecordStates parser toOutput fns states =
     parser (\output End End -> output) (Ok toOutput) fns states
 
 
-recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
+recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) =
     next
         (case ( toOutputResult, fns.field.validate state ) of
             ( Ok toOutput, Ok parsed ) ->
@@ -1474,6 +1496,16 @@ recordStateParser next toOutputResult ( fns, restFns ) ( state, restStates ) =
         )
         restFns
         restStates
+
+
+submitRecordStates submitter fns states =
+    submitter (\End End -> End) fns states
+
+
+recordStateSubmitter next ( fns, restFns ) ( state, restStates ) =
+    ( fns.field.submit state
+    , next restFns restStates
+    )
 
 
 viewRecordStates viewer fns setters states =
@@ -1607,6 +1639,7 @@ customType =
     , updater = identity
     , viewer = identity
     , parser = identity
+    , submitter = identity
     , before = identity
     , befores = identity
     , after = End
@@ -1631,6 +1664,7 @@ variant id (Input input) rec =
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
     , parser = rec.parser >> selectedTagParser
+    , submitter = rec.submitter >> selectedTagSubmitter
     , before = rec.before << Tuple.pair Skip
     , befores = rec.befores << Tuple.pair rec.before
     , after = ( Skip, rec.after )
@@ -1760,7 +1794,10 @@ endCustomType initialiser rec =
         (\id ->
             let
                 validate =
-                    \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
+                    \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
+
+                submit =
+                    \(State _ state) -> State Idle_ (submitSelectedTagState rec.submitter state.selectedTag fns state.tagStates)
             in
             { id = id
             , index = 0
@@ -1772,6 +1809,7 @@ endCustomType initialiser rec =
             , view = \config -> view config
             , baseValidate = validate
             , validate = validate
+            , submit = submit
             , notify = \_ -> []
             }
         )
@@ -1788,7 +1826,28 @@ endCustomType initialiser rec =
 -}
 
 
-parseSelectedTagState parser selectedTag fns states =
+submitSelectedTagState submitter selectedTag fns tagStates =
+    { selectedTag = selectedTag
+    , tagStates =
+        submitter
+            (\_ End End -> End)
+            selectedTag
+            fns
+            tagStates
+    }
+
+
+selectedTagSubmitter next selectedTag ( fns, restFns ) ( state, restStates ) =
+    ( if fns.field.index == selectedTag then
+        fns.field.submit state
+
+      else
+        state
+    , next selectedTag restFns restStates
+    )
+
+
+validateSelectedTagState parser selectedTag fns states =
     parser
         (\result _ End End -> result)
         (Err [ ( "FATAL ERROR", "tag index " ++ String.fromInt selectedTag ++ " not found" ) ])

@@ -4,6 +4,7 @@ import Browser
 import Form exposing (..)
 import Html as H exposing (Html)
 import Html.Attributes as HA
+import Html.Events as HE
 import Item
 
 
@@ -34,19 +35,26 @@ view model =
             , HA.style "padding" "20px"
             , HA.style "background-color" "white"
             ]
-            [ mainForm.view model ]
+            [ mainForm.view model
+            , H.button [ HE.onClick Submit ] [ H.text "Submit" ]
+            ]
         ]
 
 
 update msg model =
     case msg of
+        Submit ->
+            case mainForm.submit model of
+                Ok _ ->
+                    ( model, Cmd.none )
+
+                Err newModel ->
+                    ( newModel, Cmd.none )
+
         FormMsg formMsg ->
             let
                 ( newModel, cmd ) =
                     mainForm.update formMsg model
-
-                _ =
-                    Debug.log "output" (mainForm.submit newModel)
             in
             ( newModel, cmd )
 
@@ -58,6 +66,7 @@ type
     -- = FormMsg (Delta SimpleCustomTypeDelta)
     -- = FormMsg (Delta NestedRecordDelta)
     = FormMsg (Delta Item.ItemDelta)
+    | Submit
 
 
 mainForm =
