@@ -280,16 +280,17 @@ measure =
             (\output ->
                 case output of
                     Weight ->
-                        initTag0 i0
+                        initWith0Args atField0
 
                     Volume ->
-                        initTag0 i1
+                        initWith0Args atField1
 
                     Whole ->
-                        initTag0 i2
+                        initWith0Args atField2
 
                     Custom c ->
-                        initTag1 i3 string c
+                        initWith1Arg atField3
+                            ( string, c )
             )
 
 

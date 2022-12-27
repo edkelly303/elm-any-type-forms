@@ -144,13 +144,16 @@ simpleCustomTypeInput =
             (\tag ->
                 case tag of
                     Red x ->
-                        initTag1 i0 boundedInt x
+                        initWith1Arg atField0
+                            ( boundedInt, x )
 
                     Green x y ->
-                        initTag2 i1 string x (maybe int) y
+                        initWith2Args atField1
+                            ( string, x )
+                            ( maybe int, y )
 
                     Blue ->
-                        initTag0 i2
+                        initWith0Args atField2
             )
 
 

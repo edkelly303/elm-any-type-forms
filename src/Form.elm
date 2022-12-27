@@ -48,6 +48,21 @@ module Form exposing
     , TupleState
     , WrapperDelta
     , WrapperState
+    , atField0
+    , atField1
+    , atField11
+    , atField12
+    , atField13
+    , atField14
+    , atField15
+    , atField2
+    , atField3
+    , atField4
+    , atField5
+    , atField6
+    , atField7
+    , atField8
+    , atField9
     , customType
     , datetime
     , debounce
@@ -56,25 +71,9 @@ module Form exposing
     , enum
     , failIf
     , field
-    , i0
-    , i1
-    , i10
-    , i11
-    , i12
-    , i13
-    , i14
-    , i15
-    , i2
-    , i3
-    , i4
-    , i5
-    , i6
-    , i7
-    , i8
-    , i9
-    , initTag0
-    , initTag1
-    , initTag2
+    , initWith0Args
+    , initWith1Arg
+    , initWith2Args
     , initialise
     , int
     , layout
@@ -832,17 +831,17 @@ maybe input =
                             (\output ->
                                 case output of
                                     Nothing ->
-                                        initTag0 i0
+                                        initWith0Args atField0
 
                                     Just a ->
-                                        initTag1 i1 input a
+                                        initWith1Arg atField1 ( input, a )
                             )
             in
             toWrapped id
         )
 
 
-initTag0 sel fns init =
+initWith0Args sel fns init =
     let
         selector =
             instantiateSelector sel
@@ -857,7 +856,7 @@ initTag0 sel fns init =
     }
 
 
-initTag1 sel input output fns init =
+initWith1Arg sel ( input, output ) fns init =
     let
         (Input toInnerInput) =
             input
@@ -877,7 +876,7 @@ initTag1 sel input output fns init =
             tagSelector.set
 
         setArg0 =
-            instantiateSelector i0
+            instantiateSelector atField0
                 |> .set
     in
     case innerInput.initialise of
@@ -901,7 +900,7 @@ initTag1 sel input output fns init =
             }
 
 
-initTag2 sel input1 output1 input2 output2 fns init =
+initWith2Args sel ( input1, output1 ) ( input2, output2 ) fns init =
     let
         (Input toInnerInput1) =
             input1
@@ -927,11 +926,11 @@ initTag2 sel input1 output1 input2 output2 fns init =
             tagSelector.set
 
         setArg0 =
-            instantiateSelector i0
+            instantiateSelector atField0
                 |> .set
 
         setArg1 =
-            instantiateSelector i1
+            instantiateSelector atField1
                 |> .set
     in
     case ( innerInput1.initialise, innerInput2.initialise ) of
@@ -1137,7 +1136,7 @@ oldRecord toOutput =
     }
 
 
-oldField sel id (Input input) rec =
+oldField id (Input input) rec =
     let
         i =
             input id
@@ -1582,7 +1581,7 @@ tag1 id tag input =
     variant
         id
         (oldRecord tag
-            |> oldField i0 "" input
+            |> oldField "" input
             |> oldEndRecord
         )
 
@@ -1591,8 +1590,8 @@ tag2 id tag id1 input1 id2 input2 =
     variant
         id
         (oldRecord tag
-            |> oldField i0 id1 input1
-            |> oldField i1 id2 input2
+            |> oldField id1 input1
+            |> oldField id2 input2
             |> oldEndRecord
         )
 
@@ -1601,9 +1600,9 @@ tag3 id tag id1 input1 id2 input2 id3 input3 =
     variant
         id
         (oldRecord tag
-            |> oldField i0 id1 input1
-            |> oldField i1 id2 input2
-            |> oldField i2 id3 input3
+            |> oldField id1 input1
+            |> oldField id2 input2
+            |> oldField id3 input3
             |> oldEndRecord
         )
 
@@ -1612,10 +1611,10 @@ tag4 id tag id1 input1 id2 input2 id3 input3 id4 input4 =
     variant
         id
         (oldRecord tag
-            |> oldField i0 id1 input1
-            |> oldField i1 id2 input2
-            |> oldField i2 id3 input3
-            |> oldField i3 id4 input4
+            |> oldField id1 input1
+            |> oldField id2 input2
+            |> oldField id3 input3
+            |> oldField id4 input4
             |> oldEndRecord
         )
 
@@ -1624,73 +1623,13 @@ tag5 id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
     variant
         id
         (oldRecord tag
-            |> oldField i0 id1 input1
-            |> oldField i1 id2 input2
-            |> oldField i2 id3 input3
-            |> oldField i3 id4 input4
-            |> oldField i4 id5 input5
+            |> oldField id1 input1
+            |> oldField id2 input2
+            |> oldField id3 input3
+            |> oldField id4 input4
+            |> oldField id5 input5
             |> oldEndRecord
         )
-
-
-
--- oldEndCustomType rec =
---     let
---         fns =
---             rec.fns End
---         emptyDeltas =
---             rec.deltas End
---         inits =
---             rec.states End
---         names =
---             List.reverse rec.names
---         update =
---             \delta (State s state) ->
---                 case delta of
---                     Skip ->
---                         ( State s state, Cmd.none )
---                     ChangeState (TagSelected idx) ->
---                         ( State s { state | selectedTag = idx }, Cmd.none )
---                     ChangeState (TagDeltaReceived tagDelta) ->
---                         let
---                             ( newTagStates, cmd ) =
---                                 updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
---                         in
---                         ( State s { state | tagStates = newTagStates }
---                         , Cmd.map (ChangeState << TagDeltaReceived) cmd
---                         )
---                     _ ->
---                         ( State s state, Cmd.none )
---         childViews config =
---             [ viewSelectedTagState rec.viewer config.state.selectedTag emptyDeltas fns config.state.tagStates ]
---         view config =
---             let
---                 options =
---                     List.indexedMap Tuple.pair names
---                 childViews_ =
---                     childViews config
---             in
---             customTypeView config.id options config.state.selectedTag childViews_
---     in
---     Input
---         (\id ->
---             let
---                 validate =
---                     \(State _ state) -> parseSelectedTagState rec.parser state.selectedTag fns state.tagStates
---             in
---             { id = id
---             , index = 0
---             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
---             , initialise = Nothing
---             , baseUpdate = \_ -> update
---             , update = update
---             , childViews = \config -> childViews config
---             , view = \config -> view config
---             , baseValidate = validate
---             , validate = validate
---             , notify = \_ -> []
---             }
---         )
 
 
 endCustomType initialiser rec =
@@ -1833,68 +1772,68 @@ selectedTagViewer next maybeView selectedTag ( fns, restFns ) ( setter, restSett
 -}
 
 
-i0 =
+atField0 =
     composeSelectors { getFieldState = identity, getField = identity, set = identity }
 
 
-i1 =
+atField1 =
     composeSelectors { getFieldState = Tuple.second, getField = Tuple.second, set = Tuple.mapSecond }
 
 
-i2 =
-    i1 >> i1
+atField2 =
+    atField1 >> atField1
 
 
-i3 =
-    i2 >> i1
+atField3 =
+    atField2 >> atField1
 
 
-i4 =
-    i3 >> i1
+atField4 =
+    atField3 >> atField1
 
 
-i5 =
-    i4 >> i1
+atField5 =
+    atField4 >> atField1
 
 
-i6 =
-    i5 >> i1
+atField6 =
+    atField5 >> atField1
 
 
-i7 =
-    i6 >> i1
+atField7 =
+    atField6 >> atField1
 
 
-i8 =
-    i7 >> i1
+atField8 =
+    atField7 >> atField1
 
 
-i9 =
-    i8 >> i1
+atField9 =
+    atField8 >> atField1
 
 
-i10 =
-    i9 >> i1
+atField10 =
+    atField9 >> atField1
 
 
-i11 =
-    i10 >> i1
+atField11 =
+    atField10 >> atField1
 
 
-i12 =
-    i11 >> i1
+atField12 =
+    atField11 >> atField1
 
 
-i13 =
-    i12 >> i1
+atField13 =
+    atField12 >> atField1
 
 
-i14 =
-    i13 >> i1
+atField14 =
+    atField13 >> atField1
 
 
-i15 =
-    i14 >> i1
+atField15 =
+    atField14 >> atField1
 
 
 composeSelectors selector1 selector2 =
