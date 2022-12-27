@@ -2036,8 +2036,8 @@ enumView tags config =
 radioView : List ( state, String ) -> String -> state -> (state -> msg) -> Html msg
 radioView options id selectedOption toMsg =
     H.div
-        [ HA.style "display" "flex"
-        , HA.style "flex-wrap" "wrap"
+        [ HA.style "display" "grid"
+        , HA.style "grid-template-columns" "1fr 1fr 1fr"
         ]
         (List.map
             (\( option, label ) ->
