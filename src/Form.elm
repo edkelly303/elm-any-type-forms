@@ -1145,6 +1145,55 @@ setterMaker next ( before, befores ) ( after, afters ) =
     )
 
 
+oldEndRecord :
+    { index : Int
+    , fields : End -> fns
+    , states : End -> state
+    , makeSetters :
+        (End -> End -> End)
+        -> befores
+        -> afters
+        -> setters
+    , before : before
+    , befores : End -> befores
+    , after : after
+    , afters : afters
+    , updater :
+        ({ newStates : End -> state, newCmds : List (Cmd delta) }
+         -> End
+         -> End
+         -> End
+         -> End
+         -> { newStates : End -> state, newCmds : List (Cmd delta) }
+        )
+        -> { newStates : state -> state, newCmds : List (Cmd delta) }
+        -> fns
+        -> setters
+        -> delta
+        -> state
+        -> { newStates : End -> state, newCmds : List (Cmd delta) }
+    , viewer :
+        (List (Html (Delta delta))
+         -> End
+         -> End
+         -> End
+         -> List (Html (Delta delta))
+        )
+        -> List (Html (Delta delta))
+        -> fns
+        -> setters
+        -> state
+        -> List (Html (Delta delta))
+    , ids : List String
+    , parser :
+        (Result (List ( String, String )) output -> End -> End -> Result (List ( String, String )) output)
+        -> Result (List ( String, String )) toOutput
+        -> fns
+        -> state
+        -> Result (List ( String, String )) output
+    , toOutput : toOutput
+    }
+    -> Input state delta output
 oldEndRecord rec =
     let
         fns =
