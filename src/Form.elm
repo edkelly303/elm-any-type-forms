@@ -1130,6 +1130,11 @@ oldRecord toOutput =
     , updater = identity
     , viewer = identity
     , parser = identity
+    , before = identity
+    , befores = identity
+    , after = End
+    , afters = End
+    , makeSetters = identity
     }
 
 
@@ -1147,12 +1152,27 @@ oldField sel id (Input input) rec =
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
     , parser = rec.parser >> recordStateParser
+    , before = rec.before << Tuple.pair Skip
+    , befores = rec.befores << Tuple.pair rec.before
+    , after = ( Skip, rec.after )
+    , afters = ( rec.after, rec.afters )
+    , makeSetters = rec.makeSetters >> setterMaker
     }
+
+
+makeSetters makeSetters_ befores afters =
+    makeSetters_ (\End End -> End) (befores End) afters
+
+
+setterMaker next ( before, befores ) ( after, afters ) =
+    ( \value -> before ( value, after )
+    , next befores afters
+    )
 
 
 oldEndRecord rec =
     let
-        fields =
+        fns =
             rec.fields End
 
         emptyDeltas =
@@ -1160,6 +1180,9 @@ oldEndRecord rec =
 
         inits =
             rec.states End
+
+        setters =
+            makeSetters rec.makeSetters rec.befores rec.afters
 
         update delta (State s state) =
             case delta of
@@ -1169,7 +1192,7 @@ oldEndRecord rec =
                 ChangeState deltas ->
                     let
                         ( newState, cmd ) =
-                            updateRecordStates rec.updater emptyDeltas fields deltas state
+                            updateRecordStates rec.updater emptyDeltas fns setters deltas state
                     in
                     ( State s newState
                     , Cmd.map ChangeState cmd
@@ -1179,7 +1202,7 @@ oldEndRecord rec =
                     ( State s state, Cmd.none )
 
         childViews config =
-            viewRecordStates rec.viewer emptyDeltas fields config.state
+            viewRecordStates rec.viewer emptyDeltas fns config.state
 
         view childViews_ config =
             let
@@ -1207,7 +1230,7 @@ oldEndRecord rec =
                 H.div [] fieldViews
 
         validate (State _ state) =
-            parseRecordStates rec.parser rec.toOutput fields state
+            parseRecordStates rec.parser rec.toOutput fns state
     in
     Input
         (\id ->
@@ -1237,6 +1260,11 @@ record toOutput =
     , viewer = identity
     , parser = identity
     , initialiser = identity
+    , before = identity
+    , befores = identity
+    , after = End
+    , afters = End
+    , makeSetters = identity
     }
 
 
@@ -1261,6 +1289,11 @@ field sel fromOutput id (Input input) rec =
     , viewer = rec.viewer >> recordStateViewer
     , parser = rec.parser >> recordStateParser
     , initialiser = rec.initialiser >> recordStateInitialiser
+    , before = rec.before << Tuple.pair Skip
+    , befores = rec.befores << Tuple.pair rec.before
+    , after = ( Skip, rec.after )
+    , afters = ( rec.after, rec.afters )
+    , makeSetters = rec.makeSetters >> setterMaker
     }
 
 
@@ -1275,6 +1308,9 @@ endRecord rec =
         inits =
             rec.states End
 
+        setters =
+            makeSetters rec.makeSetters rec.befores rec.afters
+
         update delta (State s state) =
             case delta of
                 Skip ->
@@ -1283,7 +1319,7 @@ endRecord rec =
                 ChangeState deltas ->
                     let
                         ( newState, cmd ) =
-                            updateRecordStates rec.updater emptyDeltas fns deltas state
+                            updateRecordStates rec.updater emptyDeltas fns setters deltas state
                     in
                     ( State s newState
                     , Cmd.map ChangeState cmd
@@ -1447,31 +1483,33 @@ statusFromInternalState validator notifier (State internalState state) =
             Idle (List.map Err errors ++ List.map Ok notes)
 
 
-updateRecordStates updater emptyDeltas fields deltas states =
+updateRecordStates updater emptyDeltas fields setters deltas states =
     let
         { newStates, newCmds } =
             updater
-                (\output _ End End End -> output)
+                (\output _ End End End End -> output)
                 { newStates = identity, newCmds = [] }
                 emptyDeltas
                 fields
+                setters
                 deltas
                 states
     in
     ( newStates End, Cmd.batch newCmds )
 
 
-recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( delta, restDeltas ) ( state, restStates ) =
+recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( setter, restSetters ) ( delta, restDeltas ) ( state, restStates ) =
     let
         ( newState, newCmd ) =
             fns.field.update delta state
 
         cmd2 =
             newCmd
-                |> Cmd.map
-                    (\d ->
-                        fns.selector.set (\_ -> d) emptyDeltas
-                    )
+                |> Cmd.map setter
+
+        -- (\d ->
+        --     fns.selector.set (\_ -> d) emptyDeltas
+        -- )
     in
     next
         { newStates = newStates << Tuple.pair newState
@@ -1479,6 +1517,7 @@ recordStateUpdater next { newStates, newCmds } emptyDeltas ( fns, restFns ) ( de
         }
         emptyDeltas
         restFns
+        restSetters
         restDeltas
         restStates
 
@@ -1514,6 +1553,11 @@ customType =
     , updater = identity
     , viewer = identity
     , parser = identity
+    , before = identity
+    , befores = identity
+    , after = End
+    , afters = End
+    , makeSetters = identity
     }
 
 
@@ -1535,6 +1579,11 @@ variant sel id (Input input) rec =
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
     , parser = rec.parser >> selectedTagParser
+    , before = rec.before << Tuple.pair Skip
+    , befores = rec.befores << Tuple.pair rec.before
+    , after = ( Skip, rec.after )
+    , afters = ( rec.after, rec.afters )
+    , makeSetters = rec.makeSetters >> setterMaker
     }
 
 
@@ -1678,6 +1727,9 @@ endCustomType initialiser rec =
         inits =
             rec.states End
 
+        setters =
+            makeSetters rec.makeSetters rec.befores rec.afters
+
         names =
             List.reverse rec.names
 
@@ -1693,7 +1745,7 @@ endCustomType initialiser rec =
                     ChangeState (TagDeltaReceived tagDelta) ->
                         let
                             ( newTagStates, cmd ) =
-                                updateRecordStates rec.updater emptyDeltas fns tagDelta state.tagStates
+                                updateRecordStates rec.updater emptyDeltas fns setters tagDelta state.tagStates
                         in
                         ( State s { state | tagStates = newTagStates }
                         , Cmd.map (ChangeState << TagDeltaReceived) cmd
