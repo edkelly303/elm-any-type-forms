@@ -8,6 +8,7 @@ import Html.Events as HE
 import Item
 
 
+main : Program () (Form.State Item.ItemState) Msg
 main =
     Browser.element
         { init = \() -> ( mainForm.init, Cmd.none )
@@ -17,7 +18,7 @@ main =
         }
 
 
-view : State Item.ItemState -> Html Msg
+view : Form.State Item.ItemState -> Html Msg
 view model =
     H.div
         [ HA.style "width" "100%"
@@ -41,6 +42,7 @@ view model =
         ]
 
 
+update : Msg -> Form.State Item.ItemState -> ( Form.State Item.ItemState, Cmd Msg )
 update msg model =
     case msg of
         Submit ->
@@ -65,10 +67,11 @@ type
     -- = FormMsg (Delta SimpleRecordDelta)
     -- = FormMsg (Delta SimpleCustomTypeDelta)
     -- = FormMsg (Delta NestedRecordDelta)
-    = FormMsg (Delta Item.ItemDelta)
+    = FormMsg (Form.Delta Item.ItemDelta)
     | Submit
 
 
+mainForm : Form Item.ItemState Item.ItemDelta Item.Item Msg
 mainForm =
     -- boundedInt
     -- simpleRecordInput

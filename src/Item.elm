@@ -1,4 +1,11 @@
-module Item exposing (Item, ItemDelta, ItemState, exampleItem, item)
+module Item exposing
+    ( Category
+    , Item
+    , ItemDelta
+    , ItemState
+    , exampleItem
+    , item
+    )
 
 import Form exposing (..)
 import Html as H
@@ -127,42 +134,185 @@ exampleItem =
    88~~~   88    88 88`8b   88  88  88      8b      88    88 88   88 88~~~~~
    88      `8b  d8' 88 `88. 88  88  88      Y8b  d8 `8b  d8' 88  .8D 88.
    YP       `Y88P'  88   YD YP  YP  YP       `Y88P'  `Y88P'  Y8888D' Y88888P
-
-
 -}
 
 
-type alias ItemState =
-    States11
-        IdState
-        String
-        (ListState String)
-        (MaybeState String)
-        Category
-        (ListState PurchaseHistoryState)
-        (MaybeState String)
-        (MaybeState VolumeRecordState)
-        (MaybeState WholeRecordState)
-        (ListState CustomRecordState)
-        (MaybeState SeasonalityState)
-
-
 type alias ItemDelta =
-    Deltas11
-        IdDelta
-        String
-        (ListDelta String)
-        (MaybeDelta String)
-        Category
-        (ListDelta PurchaseHistoryDelta)
-        (MaybeDelta String)
-        (MaybeDelta VolumeRecordDelta)
-        (MaybeDelta WholeRecordDelta)
-        (ListDelta CustomRecordDelta)
-        (MaybeDelta SeasonalityDelta)
+    ( Delta (WrapperDelta String)
+    , ( Delta String
+      , ( Delta (ListDelta String)
+        , ( Delta (MaybeDelta String)
+          , ( Delta Category
+            , ( Delta
+                    (ListDelta
+                        ( Delta String
+                        , ( Delta (WrapperDelta String)
+                          , ( Delta
+                                (CustomTypeDelta
+                                    ( Delta ()
+                                    , ( Delta ()
+                                      , ( Delta ()
+                                        , ( Delta ( Delta String, End )
+                                          , End
+                                          )
+                                        )
+                                      )
+                                    )
+                                )
+                            , End
+                            )
+                          )
+                        )
+                    )
+              , ( Delta (MaybeDelta String)
+                , ( Delta
+                        (MaybeDelta
+                            ( Delta
+                                (TupleDelta
+                                    (WrapperDelta String)
+                                    (WrapperDelta String)
+                                )
+                            , End
+                            )
+                        )
+                  , ( Delta
+                        (MaybeDelta
+                            ( Delta String
+                            , ( Delta
+                                    (TupleDelta
+                                        (WrapperDelta String)
+                                        (WrapperDelta String)
+                                    )
+                              , End
+                              )
+                            )
+                        )
+                    , ( Delta
+                            (ListDelta
+                                ( Delta String
+                                , ( Delta String
+                                  , ( Delta
+                                        (TupleDelta
+                                            (WrapperDelta String)
+                                            (WrapperDelta String)
+                                        )
+                                    , End
+                                    )
+                                  )
+                                )
+                            )
+                      , ( Delta
+                            (MaybeDelta
+                                ( Delta Time.Month
+                                , ( Delta Time.Month, End )
+                                )
+                            )
+                        , End
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
 
 
-item : Input ItemState ItemDelta Item
+type alias ItemState =
+    ( State (WrapperState String)
+    , ( State String
+      , ( State (List (State String))
+        , ( State (MaybeState String)
+          , ( State Category
+            , ( State
+                    (List
+                        (State
+                            ( State String
+                            , ( State (WrapperState String)
+                              , ( State
+                                    { selectedTag : Int
+                                    , tagStates :
+                                        ( State States0
+                                        , ( State States0
+                                          , ( State States0
+                                            , ( State
+                                                    ( State String
+                                                    , End
+                                                    )
+                                              , End
+                                              )
+                                            )
+                                          )
+                                        )
+                                    }
+                                , End
+                                )
+                              )
+                            )
+                        )
+                    )
+              , ( State (MaybeState String)
+                , ( State
+                        (MaybeState
+                            ( State
+                                (TupleState
+                                    (WrapperState String)
+                                    (WrapperState String)
+                                )
+                            , End
+                            )
+                        )
+                  , ( State
+                        (MaybeState
+                            ( State String
+                            , ( State
+                                    (TupleState
+                                        (WrapperState String)
+                                        (WrapperState String)
+                                    )
+                              , End
+                              )
+                            )
+                        )
+                    , ( State
+                            (List
+                                (State
+                                    ( State String
+                                    , ( State String
+                                      , ( State
+                                            (TupleState
+                                                (WrapperState String)
+                                                (WrapperState String)
+                                            )
+                                        , End
+                                        )
+                                      )
+                                    )
+                                )
+                            )
+                      , ( State
+                            (MaybeState
+                                ( State Time.Month
+                                , ( State Time.Month, End )
+                                )
+                            )
+                        , End
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+
+
 item =
     record Item
         |> hiddenField .id "Id" itemId
@@ -180,49 +330,21 @@ item =
         |> initialise exampleItem
 
 
-type alias IdState =
-    WrapperState String
-
-
-type alias IdDelta =
-    WrapperDelta String
-
-
-itemId : Input IdState IdDelta (Id ItemId)
 itemId =
     wrapper Id (\(Id int) -> int) positiveInt
 
 
-type alias UnitState =
-    WrapperState String
-
-
-type alias UnitDelta =
-    WrapperDelta String
-
-
-positiveInt : Input String String Int
 positiveInt =
     int
         |> failIf (\x -> x < 1) "Must be greater than zero"
 
 
-unit : Input UnitState UnitDelta (Unit a)
 unit =
     positiveInt
         |> initialise 1
         |> wrapper Unit (\(Unit int) -> int)
 
 
-type alias RatioState =
-    TupleState UnitState UnitState
-
-
-type alias RatioDelta =
-    TupleDelta UnitDelta UnitDelta
-
-
-ratio : String -> String -> Input RatioState RatioDelta (Ratio a b)
 ratio fstId sndId =
     tuple fstId unit sndId unit
         |> layout
@@ -249,27 +371,6 @@ ratio fstId sndId =
             )
 
 
-type alias MeasureState =
-    CustomTypeState
-        (States4
-            States0
-            States0
-            States0
-            (States1 String)
-        )
-
-
-type alias MeasureDelta =
-    CustomTypeDelta
-        (Deltas4
-            Deltas0
-            Deltas0
-            Deltas0
-            (Deltas1 String)
-        )
-
-
-measure : Input MeasureState MeasureDelta Measure
 measure =
     customType
         |> tag0 "Weight" Weight
@@ -294,7 +395,6 @@ measure =
             )
 
 
-category : Input Category Category Category
 category =
     enum
         ( "Miscellaneous", Miscellaneous )
@@ -314,7 +414,6 @@ category =
         ]
 
 
-month : Input Time.Month Time.Month Time.Month
 month =
     enum
         ( "Jan", Time.Jan )
@@ -332,33 +431,16 @@ month =
         ]
 
 
-nonEmptyString : Input String String String
 nonEmptyString =
     string
         |> failIf String.isEmpty "Must not be blank"
 
 
-emoji : Input String String String
 emoji =
     string
         |> failIf (\x -> String.length x /= 1) "Must be exactly one character"
 
 
-type alias PurchaseHistoryState =
-    States3
-        String
-        UnitState
-        MeasureState
-
-
-type alias PurchaseHistoryDelta =
-    Deltas3
-        String
-        UnitDelta
-        MeasureDelta
-
-
-purchaseHistory : Input PurchaseHistoryState PurchaseHistoryDelta PurchaseHistory
 purchaseHistory =
     record PurchaseHistory
         |> field .time "Time of purchase" datetime
@@ -367,30 +449,12 @@ purchaseHistory =
         |> endRecord
 
 
-type alias VolumeRecordState =
-    States1 RatioState
-
-
-type alias VolumeRecordDelta =
-    Deltas1 RatioDelta
-
-
-volumeRecord : Input VolumeRecordState VolumeRecordDelta VolumeRecord
 volumeRecord =
     record VolumeRecord
         |> field .ratio "Density" (ratio "Grams" "Millilitre")
         |> endRecord
 
 
-type alias WholeRecordState =
-    States2 String RatioState
-
-
-type alias WholeRecordDelta =
-    Deltas2 String RatioDelta
-
-
-wholeRecord : Input WholeRecordState WholeRecordDelta WholeRecord
 wholeRecord =
     record WholeRecord
         |> field .singularName "Singular Name" nonEmptyString
@@ -398,15 +462,6 @@ wholeRecord =
         |> endRecord
 
 
-type alias CustomRecordState =
-    States3 String String RatioState
-
-
-type alias CustomRecordDelta =
-    Deltas3 String String RatioDelta
-
-
-customRecord : Input CustomRecordState CustomRecordDelta CustomRecord
 customRecord =
     record CustomRecord
         |> field .singularCollection "Singular Collection" nonEmptyString
@@ -415,15 +470,6 @@ customRecord =
         |> endRecord
 
 
-type alias SeasonalityState =
-    States2 Time.Month Time.Month
-
-
-type alias SeasonalityDelta =
-    Deltas2 Time.Month Time.Month
-
-
-seasonality : Input SeasonalityState SeasonalityDelta Seasonality
 seasonality =
     record Seasonality
         |> field .startsAt "Starts At" month

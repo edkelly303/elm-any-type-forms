@@ -63,6 +63,7 @@ module Form exposing
     , atField9
     , bool
     , checkDeltaType
+    , checkStateType
     , customType
     , datetime
     , debounce
@@ -93,7 +94,7 @@ module Form exposing
     , tag5
     , toForm
     , tuple
-    , wrapper
+    , wrapper, TypeCheck
     )
 
 import Html as H exposing (Html)
@@ -383,9 +384,18 @@ toForm id toMsg (Input input) =
     }
 
 
-checkDeltaType : Input state delta output -> Delta delta
+type TypeCheck type_
+    = TypeCheck
+
+
+checkDeltaType : Input state delta output -> TypeCheck delta
 checkDeltaType _ =
-    Skip
+    TypeCheck
+
+
+checkStateType : Input state delta output -> TypeCheck state
+checkStateType _ =
+    TypeCheck
 
 
 
