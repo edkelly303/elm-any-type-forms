@@ -62,6 +62,7 @@ module Form exposing
     , atField8
     , atField9
     , bool
+    , checkDeltaType
     , customType
     , datetime
     , debounce
@@ -146,6 +147,7 @@ type Input state delta output
             { id : String
             , index : Int
             , init : State state
+            , delta : Delta delta
             , initialise : Maybe (output -> state)
             , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
@@ -381,6 +383,11 @@ toForm id toMsg (Input input) =
     }
 
 
+checkDeltaType : Input state delta output -> Delta delta
+checkDeltaType _ =
+    Skip
+
+
 
 {-
    d888888b d8b   db d8888b. db    db d888888b .d8888.
@@ -408,6 +415,7 @@ makeInput config =
             { id = id
             , index = 0
             , init = State Intact_ config.empty
+            , delta = Skip
             , initialise = Just config.initialise
             , baseUpdate = preUpdate
             , update = preUpdate 0
@@ -1088,6 +1096,7 @@ list (Input toInput) =
             , initialise =
                 input.initialise |> Maybe.map (\i -> List.map (\item -> State Intact_ (i item)))
             , init = State Intact_ []
+            , delta = Skip
             , baseUpdate = update
             , update = update 0
             , childViews = \_ -> []
@@ -1283,6 +1292,7 @@ oldEndRecord rec =
             { id = id
             , index = 0
             , init = State Intact_ inits
+            , delta = Skip
             , initialise = Nothing
             , baseUpdate = \_ -> update
             , update = update
@@ -1434,6 +1444,7 @@ endRecord rec =
             { id = id
             , index = 0
             , init = State Intact_ inits
+            , delta = Skip
             , initialise = Just (\output -> initialiseRecordStates rec.initialiser output fns inits)
             , baseUpdate = \_ -> update
             , update = update
@@ -1802,6 +1813,7 @@ endCustomType initialiser rec =
             { id = id
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
+            , delta = Skip
             , initialise = Just (\output -> initialiser output fns inits)
             , baseUpdate = \_ -> update
             , update = update
