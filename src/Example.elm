@@ -85,7 +85,7 @@ mainForm =
         |> toForm "Creating an Item" FormMsg
 
 
-boundedInt : Input String String Int
+boundedInt : Control String String Int
 boundedInt =
     int
         |> failIf (\x -> x <= 0) "must be greater than 0"
@@ -111,7 +111,7 @@ type alias SimpleRecordState =
 
 
 simpleRecordInput :
-    Input
+    Control
         SimpleRecordState
         SimpleRecordDelta
         SimpleRecord
@@ -147,7 +147,7 @@ type alias SimpleCustomTypeState =
 
 
 simpleCustomTypeInput :
-    Input
+    Control
         SimpleCustomTypeState
         SimpleCustomTypeDelta
         SimpleCustomType
@@ -195,7 +195,7 @@ type alias NestedRecordState =
 
 
 nestedRecordInput :
-    Input
+    Control
         NestedRecordState
         NestedRecordDelta
         NestedRecord

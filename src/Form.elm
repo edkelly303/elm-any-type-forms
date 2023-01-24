@@ -1,5 +1,6 @@
 module Form exposing
-    ( CustomTypeDelta
+    ( Control
+    , CustomTypeDelta
     , CustomTypeState
     , Delta
     , Deltas0
@@ -20,7 +21,6 @@ module Form exposing
     , Deltas9
     , End
     , Form
-    , Input
     , ListDelta
     , ListState
     , MaybeDelta
@@ -91,8 +91,6 @@ module Form exposing
     , tag1
     , tag2
     , tag3
-    , tag4
-    , tag5
     , toForm
     , tuple
     , wrapper
@@ -134,7 +132,7 @@ type alias Form state delta output msg =
     }
 
 
-type alias InputConfig state delta output =
+type alias ControlConfig state delta output =
     { empty : state
     , initialise : output -> state
     , update : delta -> state -> state
@@ -143,8 +141,8 @@ type alias InputConfig state delta output =
     }
 
 
-type Input state delta output
-    = Input
+type Control state delta output
+    = Control
         (String
          ->
             { id : String
@@ -355,11 +353,11 @@ type alias Deltas15 a b c d e f g h i j k l m n o =
 -}
 
 
-toForm : String -> (Delta delta -> msg) -> Input state delta output -> Form state delta output msg
-toForm id toMsg (Input input) =
+toForm : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
+toForm id toMsg (Control control) =
     let
         { init, update, view, validate, notify, submit } =
-            input id
+            control id
     in
     { init = init
     , initFrom =
@@ -399,12 +397,12 @@ type TypeCheck type_
     = TypeCheck
 
 
-checkDeltaType : Input state delta output -> TypeCheck delta
+checkDeltaType : Control state delta output -> TypeCheck delta
 checkDeltaType _ =
     TypeCheck
 
 
-checkStateType : Input state delta output -> TypeCheck state
+checkStateType : Control state delta output -> TypeCheck state
 checkStateType _ =
     TypeCheck
 
@@ -420,9 +418,9 @@ checkStateType _ =
 -}
 
 
-makeInput : InputConfig state delta output -> Input state delta output
+makeInput : ControlConfig state delta output -> Control state delta output
 makeInput config =
-    Input
+    Control
         (\id ->
             let
                 preUpdate =
@@ -511,8 +509,8 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 -}
 
 
-failIf : (output -> Bool) -> String -> Input state delta output -> Input state delta output
-failIf check feedback (Input input) =
+failIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
+failIf check feedback (Control control) =
     let
         validate i =
             let
@@ -549,7 +547,7 @@ failIf check feedback (Input input) =
                                 Err (List.Extra.unique (errs1 ++ errs2))
             }
     in
-    Input (input >> validate)
+    Control (control >> validate)
 
 
 
@@ -563,8 +561,8 @@ failIf check feedback (Input input) =
 -}
 
 
-noteIf : (output -> Bool) -> String -> Input state delta output -> Input state delta output
-noteIf check feedback (Input input) =
+noteIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
+noteIf check feedback (Control control) =
     let
         show i =
             { i
@@ -589,7 +587,7 @@ noteIf check feedback (Input input) =
                         List.Extra.unique (existingNotes ++ newNotes)
             }
     in
-    Input (input >> show)
+    Control (control >> show)
 
 
 
@@ -603,13 +601,13 @@ noteIf check feedback (Input input) =
 -}
 
 
-debounce : Float -> Input state delta output -> Input state delta output
-debounce millis (Input input) =
+debounce : Float -> Control state delta output -> Control state delta output
+debounce millis (Control control) =
     let
         debouncer i =
             { i | update = i.baseUpdate millis }
     in
-    Input (input >> debouncer)
+    Control (control >> debouncer)
 
 
 
@@ -625,14 +623,14 @@ debounce millis (Input input) =
 
 layout :
     (List (Html (Delta delta)) -> ViewConfig state -> Html (Delta delta))
-    -> Input state delta output
-    -> Input state delta output
-layout v (Input input) =
+    -> Control state delta output
+    -> Control state delta output
+layout v (Control control) =
     let
         viewer i =
             { i | view = \config -> v (i.childViews config) config }
     in
-    Input (input >> viewer)
+    Control (control >> viewer)
 
 
 
@@ -647,8 +645,8 @@ layout v (Input input) =
 -}
 
 
-initialise : output -> Input state delta output -> Input state delta output
-initialise output (Input input) =
+initialise : output -> Control state delta output -> Control state delta output
+initialise output (Control control) =
     let
         initialiser i =
             case i.initialise of
@@ -658,7 +656,7 @@ initialise output (Input input) =
                 Just initialise_ ->
                     { i | init = State Intact_ (initialise_ output) }
     in
-    Input (input >> initialiser)
+    Control (control >> initialiser)
 
 
 
@@ -672,7 +670,7 @@ initialise output (Input input) =
 -}
 
 
-int : Input String String Int
+int : Control String String Int
 int =
     makeInput
         { empty = ""
@@ -680,8 +678,8 @@ int =
         , update = \delta _ -> delta
         , view = textInputView "number"
         , parse =
-            \input ->
-                case String.toInt input of
+            \state ->
+                case String.toInt state of
                     Just i ->
                         Ok i
 
@@ -702,7 +700,7 @@ int =
 -}
 
 
-string : Input String String String
+string : Control String String String
 string =
     makeInput
         { empty = ""
@@ -725,7 +723,7 @@ string =
 -}
 
 
-datetime : Input String String Time.Posix
+datetime : Control String String Time.Posix
 datetime =
     makeInput
         { empty = ""
@@ -752,7 +750,7 @@ enum :
     ( String, enum )
     -> ( String, enum )
     -> List ( String, enum )
-    -> Input enum enum enum
+    -> Control enum enum enum
 enum first second rest =
     makeInput
         { empty = Tuple.second first
@@ -774,7 +772,7 @@ enum first second rest =
 -}
 
 
-bool : String -> String -> Input Bool Bool Bool
+bool : String -> String -> Control Bool Bool Bool
 bool true false =
     enum ( true, True ) ( false, False ) []
 
@@ -798,14 +796,14 @@ type alias WrapperDelta delta =
     Deltas1 delta
 
 
-wrapper : (output -> wrapped) -> (wrapped -> output) -> Input state delta output -> Input (WrapperState state) (WrapperDelta delta) wrapped
-wrapper wrap unwrap input =
-    Input
+wrapper : (output -> wrapped) -> (wrapped -> output) -> Control state delta output -> Control (WrapperState state) (WrapperDelta delta) wrapped
+wrapper wrap unwrap control =
+    Control
         (\id ->
             let
-                (Input toWrapped) =
+                (Control toWrapped) =
                     record wrap
-                        |> field unwrap id input
+                        |> field unwrap id control
                         |> endRecord
             in
             toWrapped id
@@ -839,15 +837,15 @@ type alias MaybeDelta delta =
         )
 
 
-maybe : Input state delta output -> Input (MaybeState state) (MaybeDelta delta) (Maybe output)
-maybe input =
-    Input
+maybe : Control state delta output -> Control (MaybeState state) (MaybeDelta delta) (Maybe output)
+maybe control =
+    Control
         (\id ->
             let
-                (Input toWrapped) =
+                (Control toWrapped) =
                     customType
                         |> tag0 "Nothing" Nothing
-                        |> tag1 "Just" Just input
+                        |> tag1 "Just" Just control
                         |> endCustomType
                             (\output ->
                                 case output of
@@ -855,7 +853,7 @@ maybe input =
                                         initWith0Args atField0
 
                                     Just a ->
-                                        initWith1Arg atField1 ( input, a )
+                                        initWith1Arg atField1 ( control, a )
                             )
             in
             toWrapped id
@@ -877,10 +875,10 @@ initWith0Args sel fns init =
     }
 
 
-initWith1Arg sel ( input, output ) fns init =
+initWith1Arg sel ( control, output ) fns init =
     let
-        (Input toInnerInput) =
-            input
+        (Control toInnerInput) =
+            control
 
         innerInput =
             toInnerInput ""
@@ -921,19 +919,19 @@ initWith1Arg sel ( input, output ) fns init =
             }
 
 
-initWith2Args sel ( input1, output1 ) ( input2, output2 ) fns init =
+initWith2Args sel ( control1, output1 ) ( control2, output2 ) fns init =
     let
-        (Input toInnerInput1) =
-            input1
+        (Control toInnerControl1) =
+            control1
 
         innerInput1 =
-            toInnerInput1 ""
+            toInnerControl1 ""
 
-        (Input toInnerInput2) =
-            input2
+        (Control toInnerControl2) =
+            control2
 
         innerInput2 =
-            toInnerInput2 ""
+            toInnerControl2 ""
 
         tagSelector =
             instantiateSelector sel
@@ -1004,10 +1002,10 @@ type alias TupleDelta d1 d2 =
 
 tuple :
     String
-    -> Input state1 delta1 output1
+    -> Control state1 delta1 output1
     -> String
-    -> Input state2 delta2 output2
-    -> Input (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
+    -> Control state2 delta2 output2
+    -> Control (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
 tuple fstId fst sndId snd =
     record Tuple.pair
         |> field Tuple.first fstId fst
@@ -1036,13 +1034,13 @@ type ListDelta delta
     | ChangeItem Int (Delta delta)
 
 
-list : Input state delta output -> Input (List (State state)) (ListDelta delta) (List output)
-list (Input toInput) =
+list : Control state delta output -> Control (List (State state)) (ListDelta delta) (List output)
+list (Control toControl) =
     let
-        input =
-            toInput ""
+        control =
+            toControl ""
     in
-    Input
+    Control
         (\id ->
             let
                 update =
@@ -1058,7 +1056,7 @@ list (Input toInput) =
                                 after =
                                     List.drop idx state
                             in
-                            ( before ++ input.init :: after, Cmd.none )
+                            ( before ++ control.init :: after, Cmd.none )
 
                         ChangeItem idx itemDelta ->
                             let
@@ -1068,7 +1066,7 @@ list (Input toInput) =
                                             if i == idx then
                                                 let
                                                     ( newItem, newCmd ) =
-                                                        input.update itemDelta item
+                                                        control.update itemDelta item
                                                 in
                                                 ( newItem :: items, newCmd :: cmds_ )
 
@@ -1093,7 +1091,7 @@ list (Input toInput) =
                                 in
                                 case res of
                                     Ok outputs ->
-                                        case input.validate item of
+                                        case control.validate item of
                                             Ok output ->
                                                 Ok (output :: outputs)
 
@@ -1101,7 +1099,7 @@ list (Input toInput) =
                                                 Err (identifyErrors errs)
 
                                     Err errs ->
-                                        case input.validate item of
+                                        case control.validate item of
                                             Ok _ ->
                                                 Err errs
 
@@ -1115,16 +1113,16 @@ list (Input toInput) =
             { id = id
             , index = 0
             , initialise =
-                input.initialise |> Maybe.map (\i -> List.map (\item -> State Intact_ (i item)))
+                control.initialise |> Maybe.map (\i -> List.map (\item -> State Intact_ (i item)))
             , init = State Intact_ []
             , delta = Skip
             , baseUpdate = update
             , update = update 0
             , childViews = \_ -> []
-            , view = listView input.view input.validate input.notify
+            , view = listView control.view control.validate control.notify
             , baseValidate = validate
             , validate = validate
-            , submit = \(State _ s) -> State Idle_ (List.map input.submit s)
+            , submit = \(State _ s) -> State Idle_ (List.map control.submit s)
             , notify = \_ -> []
             }
         )
@@ -1160,10 +1158,10 @@ oldRecord toOutput =
     }
 
 
-oldField id (Input input) rec =
+oldField id (Control control) rec =
     let
         i =
-            input id
+            control id
     in
     { index = rec.index + 1
     , ids = rec.ids ++ [ id ]
@@ -1245,7 +1243,7 @@ oldEndRecord :
         -> state
     , toOutput : toOutput
     }
-    -> Input state delta output
+    -> Control state delta output
 oldEndRecord rec =
     let
         fns =
@@ -1308,7 +1306,7 @@ oldEndRecord rec =
         submit (State _ state) =
             State Idle_ (submitRecordStates rec.submitter fns state)
     in
-    Input
+    Control
         (\id ->
             { id = id
             , index = 0
@@ -1364,10 +1362,10 @@ type Access
     | Hidden
 
 
-internalField access fromOutput id (Input input) rec =
+internalField access fromOutput id (Control control) rec =
     let
         i =
-            input id
+            control id
     in
     { index = rec.index + 1
     , ids = rec.ids ++ [ id ]
@@ -1460,7 +1458,7 @@ endRecord rec =
         submit (State _ state) =
             State Idle_ (submitRecordStates rec.submitter fns state)
     in
-    Input
+    Control
         (\id ->
             { id = id
             , index = 0
@@ -1680,10 +1678,10 @@ customType =
     }
 
 
-variant id (Input input) rec =
+variant id (Control control) rec =
     let
         i =
-            input id
+            control id
     in
     { index = rec.index + 1
     , names = id :: rec.names
@@ -1719,57 +1717,32 @@ tag0 id tag =
     variant id null
 
 
-tag1 id tag input =
+tag1 id tag control =
     variant
         id
         (oldRecord tag
-            |> oldField "" input
+            |> oldField "" control
             |> oldEndRecord
         )
 
 
-tag2 id tag id1 input1 id2 input2 =
+tag2 id tag id1 control1 id2 control2 =
     variant
         id
         (oldRecord tag
-            |> oldField id1 input1
-            |> oldField id2 input2
+            |> oldField id1 control1
+            |> oldField id2 control2
             |> oldEndRecord
         )
 
 
-tag3 id tag id1 input1 id2 input2 id3 input3 =
+tag3 id tag id1 control1 id2 control2 id3 control3 =
     variant
         id
         (oldRecord tag
-            |> oldField id1 input1
-            |> oldField id2 input2
-            |> oldField id3 input3
-            |> oldEndRecord
-        )
-
-
-tag4 id tag id1 input1 id2 input2 id3 input3 id4 input4 =
-    variant
-        id
-        (oldRecord tag
-            |> oldField id1 input1
-            |> oldField id2 input2
-            |> oldField id3 input3
-            |> oldField id4 input4
-            |> oldEndRecord
-        )
-
-
-tag5 id tag id1 input1 id2 input2 id3 input3 id4 input4 id5 input5 =
-    variant
-        id
-        (oldRecord tag
-            |> oldField id1 input1
-            |> oldField id2 input2
-            |> oldField id3 input3
-            |> oldField id4 input4
-            |> oldField id5 input5
+            |> oldField id1 control1
+            |> oldField id2 control2
+            |> oldField id3 control3
             |> oldEndRecord
         )
 
@@ -1822,7 +1795,7 @@ endCustomType initialiser rec =
             in
             customTypeView config.id options config.state.selectedTag childViews_
     in
-    Input
+    Control
         (\id ->
             let
                 validate =
@@ -2065,7 +2038,7 @@ listView :
     -> (State state -> List ( String, String ))
     -> ViewConfig (List (State state))
     -> Html (Delta (ListDelta delta))
-listView inputView inputParse inputFeedback config =
+listView controlView controlParse controlFeedback config =
     H.div []
         [ if List.isEmpty config.state then
             H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
@@ -2090,9 +2063,9 @@ listView inputView inputParse inputFeedback config =
                                         ]
                                         [ H.text "➕" ]
                                     ]
-                                , inputView
+                                , controlView
                                     { state = state
-                                    , status = statusFromInternalState inputParse inputFeedback (State internalState state)
+                                    , status = statusFromInternalState controlParse controlFeedback (State internalState state)
                                     , id = config.id ++ "-item#" ++ String.fromInt (idx + 1)
                                     }
                                     |> H.map (ChangeItem idx)
