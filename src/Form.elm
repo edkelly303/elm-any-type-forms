@@ -126,6 +126,7 @@ type End
 
 type alias Form state delta output msg =
     { init : State state
+    , initFrom : output -> State state
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
     , submit : State state -> Result (State state) output
@@ -360,6 +361,15 @@ toForm id toMsg (Input input) =
             input id
     in
     { init = init
+    , initFrom = 
+        \output -> 
+            let 
+                initialisedInput = 
+                    input 
+                        |> initialise output
+            in
+            initialisedInput id 
+                |> .init 
     , update =
         \msg state ->
             update msg state
