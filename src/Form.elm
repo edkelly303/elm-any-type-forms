@@ -153,7 +153,7 @@ type ControlX input state delta output
             , index : Int
             , init : State state
             , delta : Delta delta
-            , initialise : Maybe (input -> state)
+            , initialise : input -> state
             , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , childViews : ViewConfig state -> List (Html (Delta delta))
@@ -439,7 +439,7 @@ makeControl config =
             , index = 0
             , init = State Intact_ config.empty
             , delta = Skip
-            , initialise = Just config.initialise
+            , initialise = config.initialise
             , baseUpdate = preUpdate
             , update = preUpdate 0
             , childViews = \_ -> []
@@ -652,12 +652,7 @@ initFrom : input -> ControlX input state delta output -> ControlX input state de
 initFrom input (Control control) =
     let
         initialiser i =
-            case i.initialise of
-                Nothing ->
-                    i
-
-                Just initialise_ ->
-                    { i | init = State Intact_ (initialise_ input) }
+            { i | init = State Intact_ (i.initialise input) }
     in
     Control (control >> initialiser)
 
@@ -799,7 +794,15 @@ type alias WrapperDelta delta =
     Deltas1 delta
 
 
-wrapper : (output -> wrapped) -> (wrapped -> output) -> Control state delta output -> Control (WrapperState state) (WrapperDelta delta) wrapped
+wrapper :
+    (output -> wrapped)
+    -> (wrapped -> output)
+    -> Control state delta output
+    ->
+        Control
+            (WrapperState state)
+            (WrapperDelta delta)
+            wrapped
 wrapper wrap unwrap control =
     Control
         (\id ->
@@ -901,25 +904,18 @@ initWith1Arg sel ( control, output ) fns init =
             instantiateSelector atField0
                 |> .set
     in
-    case innerControl.initialise of
-        Nothing ->
-            { selectedTag = 0
-            , tagStates = init
-            }
-
-        Just initialise_ ->
-            { selectedTag = selectedTag
-            , tagStates =
-                setTag
-                    (\(State _ inner) ->
-                        State Intact_
-                            (setArg0
-                                (\_ -> State Intact_ (initialise_ output))
-                                inner
-                            )
+    { selectedTag = selectedTag
+    , tagStates =
+        setTag
+            (\(State _ inner) ->
+                State Intact_
+                    (setArg0
+                        (\_ -> State Intact_ (innerControl.initialise output))
+                        inner
                     )
-                    init
-            }
+            )
+            init
+    }
 
 
 initWith2Args sel ( control1, output1 ) ( control2, output2 ) fns init =
@@ -955,33 +951,26 @@ initWith2Args sel ( control1, output1 ) ( control2, output2 ) fns init =
             instantiateSelector atField1
                 |> .set
     in
-    case ( innerControl1.initialise, innerControl2.initialise ) of
-        ( Just init1, Just init2 ) ->
-            { selectedTag = selectedTag
-            , tagStates =
-                init
-                    |> setTag
-                        (\(State _ inner) ->
-                            State Intact_
-                                (setArg0
-                                    (\_ -> State Intact_ (init1 output1))
-                                    inner
-                                )
+    { selectedTag = selectedTag
+    , tagStates =
+        init
+            |> setTag
+                (\(State _ inner) ->
+                    State Intact_
+                        (setArg0
+                            (\_ -> State Intact_ (innerControl1.initialise output1))
+                            inner
                         )
-                    |> setTag
-                        (\(State _ inner) ->
-                            State Intact_
-                                (setArg1
-                                    (\_ -> State Intact_ (init2 output2))
-                                    inner
-                                )
+                )
+            |> setTag
+                (\(State _ inner) ->
+                    State Intact_
+                        (setArg1
+                            (\_ -> State Intact_ (innerControl2.initialise output2))
+                            inner
                         )
-            }
-
-        _ ->
-            { selectedTag = 0
-            , tagStates = init
-            }
+                )
+    }
 
 
 
@@ -1115,8 +1104,7 @@ list (Control toControl) =
             in
             { id = id
             , index = 0
-            , initialise =
-                control.initialise |> Maybe.map (\i -> List.map (\item -> State Intact_ (i item)))
+            , initialise = List.map (\item -> State Intact_ (control.initialise item))
             , init = State Intact_ []
             , delta = Skip
             , baseUpdate = update
@@ -1282,7 +1270,7 @@ endRecord rec =
             , index = 0
             , init = State Intact_ inits
             , delta = Skip
-            , initialise = Just (\output -> initialiseRecordStates rec.initialiser output fns inits)
+            , initialise = \output -> initialiseRecordStates rec.initialiser output fns inits
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
@@ -1323,12 +1311,7 @@ makeStateSetters makeSetters_ fns befores afters =
 stateSetterMaker next ( fns, restFns ) ( before, befores ) ( after, afters ) =
     ( \input ->
         before
-            ( case fns.field.initialise of
-                Just initialise_ ->
-                    Just (initialise_ input)
-
-                Nothing ->
-                    Nothing
+            ( Just (fns.field.initialise input)
             , after
             )
     , next restFns befores afters
@@ -1340,16 +1323,9 @@ initialiseRecordStates initialiser output fns states =
 
 
 recordStateInitialiser next output ( fns, restFns ) ( states, restStates ) =
-    case fns.field.initialise of
-        Just initialise_ ->
-            ( State Intact_ (initialise_ (fns.fromOutput output))
-            , next output restFns restStates
-            )
-
-        Nothing ->
-            ( fns.field.init
-            , next output restFns restStates
-            )
+    ( State Intact_ (fns.field.initialise (fns.fromOutput output))
+    , next output restFns restStates
+    )
 
 
 validateRecordStates parser toOutput fns states =
@@ -1664,7 +1640,7 @@ endCustomType initialiser rec =
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
             , delta = Skip
-            , initialise = Just (\output -> initialiser output fns inits)
+            , initialise = \output -> initialiser output fns inits
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
