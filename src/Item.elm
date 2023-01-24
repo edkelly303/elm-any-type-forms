@@ -340,7 +340,7 @@ positiveInt =
 
 unit =
     positiveInt
-        |> initialise 1
+        |> initFrom 1
         |> wrapper Unit (\(Unit int) -> int)
 
 
@@ -472,5 +472,5 @@ customRecord =
 seasonality =
     record Seasonality
         |> field .startsAt "Starts At" month
-        |> field .endsAt "Ends At" (month |> initialise Time.Dec)
+        |> field .endsAt "Ends At" (month |> initFrom Time.Dec)
         |> endRecord

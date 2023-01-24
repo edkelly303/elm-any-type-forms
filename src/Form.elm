@@ -74,10 +74,10 @@ module Form exposing
     , failIf
     , field
     , hiddenField
+    , initFrom
     , initWith0Args
     , initWith1Arg
     , initWith2Args
-    , initialise
     , int
     , layout
     , list
@@ -365,7 +365,7 @@ toForm id toMsg (Control control) =
             let
                 (Control initialisedControl) =
                     Control control
-                        |> initialise output
+                        |> initFrom output
             in
             initialisedControl id
                 |> .init
@@ -645,8 +645,8 @@ layout v (Control control) =
 -}
 
 
-initialise : output -> Control state delta output -> Control state delta output
-initialise output (Control control) =
+initFrom : output -> Control state delta output -> Control state delta output
+initFrom output (Control control) =
     let
         initialiser i =
             case i.initialise of
