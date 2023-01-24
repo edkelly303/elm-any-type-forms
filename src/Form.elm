@@ -1143,191 +1143,6 @@ list (Control toControl) =
 -}
 
 
-oldRecord toOutput =
-    { index = 0
-    , ids = []
-    , toOutput = toOutput
-    , fields = identity
-    , states = identity
-    , updater = identity
-    , viewer = identity
-    , parser = identity
-    , submitter = identity
-    , before = identity
-    , befores = identity
-    , after = End
-    , afters = End
-    , makeSetters = identity
-    }
-
-
-oldField id (Control control) rec =
-    let
-        i =
-            control id
-    in
-    { index = rec.index + 1
-    , ids = rec.ids ++ [ id ]
-    , toOutput = rec.toOutput
-    , fields = rec.fields << Tuple.pair { field = { i | index = rec.index }, access = Open }
-    , states = rec.states << Tuple.pair i.init
-    , updater = rec.updater >> recordStateUpdater
-    , viewer = rec.viewer >> recordStateViewer
-    , parser = rec.parser >> recordStateValidator
-    , submitter = rec.submitter >> recordStateSubmitter
-    , before = rec.before << Tuple.pair Skip
-    , befores = rec.befores << Tuple.pair rec.before
-    , after = ( Skip, rec.after )
-    , afters = ( rec.after, rec.afters )
-    , makeSetters = rec.makeSetters >> setterMaker
-    }
-
-
-makeSetters makeSetters_ befores afters =
-    makeSetters_ (\End End -> End) (befores End) afters
-
-
-setterMaker next ( before, befores ) ( after, afters ) =
-    ( \value -> before ( value, after )
-    , next befores afters
-    )
-
-
-oldEndRecord :
-    { index : Int
-    , fields : End -> fns
-    , states : End -> state
-    , makeSetters :
-        (End -> End -> End)
-        -> befores
-        -> afters
-        -> setters
-    , before : before
-    , befores : End -> befores
-    , after : after
-    , afters : afters
-    , updater :
-        ({ newStates : End -> state, newCmds : List (Cmd delta) }
-         -> End
-         -> End
-         -> End
-         -> End
-         -> { newStates : End -> state, newCmds : List (Cmd delta) }
-        )
-        -> { newStates : state -> state, newCmds : List (Cmd delta) }
-        -> fns
-        -> setters
-        -> delta
-        -> state
-        -> { newStates : End -> state, newCmds : List (Cmd delta) }
-    , viewer :
-        (List (Html (Delta delta))
-         -> End
-         -> End
-         -> End
-         -> List (Html (Delta delta))
-        )
-        -> List (Html (Delta delta))
-        -> fns
-        -> setters
-        -> state
-        -> List (Html (Delta delta))
-    , ids : List String
-    , parser :
-        (Result (List ( String, String )) output -> End -> End -> Result (List ( String, String )) output)
-        -> Result (List ( String, String )) toOutput
-        -> fns
-        -> state
-        -> Result (List ( String, String )) output
-    , submitter :
-        (End -> End -> End)
-        -> fns
-        -> state
-        -> state
-    , toOutput : toOutput
-    }
-    -> Control state delta output
-oldEndRecord rec =
-    let
-        fns =
-            rec.fields End
-
-        inits =
-            rec.states End
-
-        setters =
-            makeSetters rec.makeSetters rec.befores rec.afters
-
-        update delta (State s state) =
-            case delta of
-                Skip ->
-                    ( State s state, Cmd.none )
-
-                ChangeState deltas ->
-                    let
-                        ( newState, cmd ) =
-                            updateRecordStates rec.updater fns setters deltas state
-                    in
-                    ( State s newState
-                    , Cmd.map ChangeState cmd
-                    )
-
-                _ ->
-                    ( State s state, Cmd.none )
-
-        childViews config =
-            viewRecordStates rec.viewer fns setters config.state
-
-        view childViews_ config =
-            let
-                fieldViews =
-                    childViews_ config
-
-                idViews =
-                    List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
-
-                combinedViews =
-                    List.map2
-                        (\idView fieldView ->
-                            H.div []
-                                [ idView
-                                , fieldView
-                                ]
-                        )
-                        idViews
-                        fieldViews
-            in
-            if List.length combinedViews > 1 then
-                borderedDiv combinedViews
-
-            else
-                H.div [] fieldViews
-
-        validate (State _ state) =
-            validateRecordStates rec.parser rec.toOutput fns state
-
-        submit (State _ state) =
-            State Idle_ (submitRecordStates rec.submitter fns state)
-    in
-    Control
-        (\id ->
-            { id = id
-            , index = 0
-            , init = State Intact_ inits
-            , delta = Skip
-            , initialise = Nothing
-            , baseUpdate = \_ -> update
-            , update = update
-            , childViews = \config -> childViews config
-            , view = \config -> view childViews config
-            , baseValidate = validate
-            , validate = validate
-            , submit = submit
-            , notify = \_ -> []
-            }
-        )
-
-
 record toOutput =
     { index = 0
     , ids = []
@@ -1489,6 +1304,16 @@ endRecord rec =
    88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
    88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+makeSetters makeSetters_ befores afters =
+    makeSetters_ (\End End -> End) (befores End) afters
+
+
+setterMaker next ( before, befores ) ( after, afters ) =
+    ( \value -> before ( value, after )
+    , next befores afters
+    )
 
 
 initialiseRecordStates initialiser output fns states =
@@ -1720,75 +1545,33 @@ tag0 id tag =
     variant id null
 
 
-tagOne :
-    (input -> output)
-    -> ControlX input state delta input
-    -> ControlX ( input, End ) ( State state, End ) ( Delta delta, End ) output
-tagOne tag control =
-    record tag
-        |> field Tuple.first "" control
-        |> endRecord
-
-
-type TwoArgs a b
-    = TwoArgs a b
-
-
-tagTwo :
-    (input1 -> input2 -> output)
-    -> ControlX input1 state1 delta1 input1
-    -> ControlX input2 state2 delta2 input2
-    ->
-        ControlX
-            ( input1, ( input2, End ) )
-            ( State state1, ( State state2, End ) )
-            ( Delta delta1, ( Delta delta2, End ) )
-            output
-tagTwo tag control1 control2 =
-    record tag
-        |> field Tuple.first "" control1
-        |> field (Tuple.second >> Tuple.first) "" control2
-        |> endRecord
-
-
-example :
-    ControlX
-        ( Int, ( String, End ) )
-        ( State String, ( State String, End ) )
-        ( Delta String, ( Delta String, End ) )
-        (TwoArgs Int String)
-example =
-    tagTwo TwoArgs int string
-        |> initFrom ( 1, ( "", End ) )
-
-
 tag1 id tag control =
     variant
         id
-        (oldRecord tag
-            |> oldField "" control
-            |> oldEndRecord
+        (record tag
+            |> field Tuple.first "" control
+            |> endRecord
         )
 
 
 tag2 id tag id1 control1 id2 control2 =
     variant
         id
-        (oldRecord tag
-            |> oldField id1 control1
-            |> oldField id2 control2
-            |> oldEndRecord
+        (record tag
+            |> field Tuple.first id1 control1
+            |> field (Tuple.second >> Tuple.first) id2 control2
+            |> endRecord
         )
 
 
 tag3 id tag id1 control1 id2 control2 id3 control3 =
     variant
         id
-        (oldRecord tag
-            |> oldField id1 control1
-            |> oldField id2 control2
-            |> oldField id3 control3
-            |> oldEndRecord
+        (record tag
+            |> field Tuple.first id1 control1
+            |> field (Tuple.second >> Tuple.first) id2 control2
+            |> field (Tuple.second >> Tuple.second >> Tuple.first) id3 control3
+            |> endRecord
         )
 
 
