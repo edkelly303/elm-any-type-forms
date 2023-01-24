@@ -81,7 +81,7 @@ module Form exposing
     , int
     , layout
     , list
-    , makeInput
+    , makeControl
     , maybe
     , noteIf
     , readOnlyField
@@ -409,17 +409,17 @@ checkStateType _ =
 
 
 {-
-   d888888b d8b   db d8888b. db    db d888888b .d8888.
-     `88'   888o  88 88  `8D 88    88 `~~88~~' 88'  YP
-      88    88V8o 88 88oodD' 88    88    88    `8bo.
-      88    88 V8o88 88~~~   88    88    88      `Y8b.
-     .88.   88  V888 88      88b  d88    88    db   8D
-   Y888888P VP   V8P 88      ~Y8888P'    YP    `8888Y'
+ .o88b.  .d88b.  d8b   db d888888b d8888b.  .d88b.  db      .d8888. 
+d8P  Y8 .8P  Y8. 888o  88 `~~88~~' 88  `8D .8P  Y8. 88      88'  YP 
+8P      88    88 88V8o 88    88    88oobY' 88    88 88      `8bo.   
+8b      88    88 88 V8o88    88    88`8b   88    88 88        `Y8b. 
+Y8b  d8 `8b  d8' 88  V888    88    88 `88. `8b  d8' 88booo. db   8D 
+ `Y88P'  `Y88P'  VP   V8P    YP    88   YD  `Y88P'  Y88888P `8888Y' 
 -}
 
 
-makeInput : ControlConfig state delta output -> Control state delta output
-makeInput config =
+makeControl : ControlConfig state delta output -> Control state delta output
+makeControl config =
     Control
         (\id ->
             let
@@ -635,13 +635,12 @@ layout v (Control control) =
 
 
 {-
-   d888888b d8b   db d888888b d888888b d888888b  .d8b.  db      d888888b .d8888. d88888b
-     `88'   888o  88   `88'   `~~88~~'   `88'   d8' `8b 88        `88'   88'  YP 88'
-      88    88V8o 88    88       88       88    88ooo88 88         88    `8bo.   88ooooo
-      88    88 V8o88    88       88       88    88~~~88 88         88      `Y8b. 88~~~~~
-     .88.   88  V888   .88.      88      .88.   88   88 88booo.   .88.   db   8D 88.
-   Y888888P VP   V8P Y888888P    YP    Y888888P YP   YP Y88888P Y888888P `8888Y' Y88888P
-
+   d888888b d8b   db d888888b d888888b      d88888b d8888b.  .d88b.  .88b  d88.
+     `88'   888o  88   `88'   `~~88~~'      88'     88  `8D .8P  Y8. 88'YbdP`88
+      88    88V8o 88    88       88         88ooo   88oobY' 88    88 88  88  88
+      88    88 V8o88    88       88         88~~~   88`8b   88    88 88  88  88
+     .88.   88  V888   .88.      88         88      88 `88. `8b  d8' 88  88  88
+   Y888888P VP   V8P Y888888P    YP         YP      88   YD  `Y88P'  YP  YP  YP
 -}
 
 
@@ -672,7 +671,7 @@ initFrom output (Control control) =
 
 int : Control String String Int
 int =
-    makeInput
+    makeControl
         { empty = ""
         , initialise = String.fromInt
         , update = \delta _ -> delta
@@ -702,7 +701,7 @@ int =
 
 string : Control String String String
 string =
-    makeInput
+    makeControl
         { empty = ""
         , initialise = identity
         , update = \delta _ -> delta
@@ -725,7 +724,7 @@ string =
 
 datetime : Control String String Time.Posix
 datetime =
-    makeInput
+    makeControl
         { empty = ""
         , initialise = Iso8601.fromTime >> String.replace "Z" ""
         , update = \delta _ -> delta
@@ -752,7 +751,7 @@ enum :
     -> List ( String, enum )
     -> Control enum enum enum
 enum first second rest =
-    makeInput
+    makeControl
         { empty = Tuple.second first
         , initialise = identity
         , update = \delta _ -> delta
@@ -1706,7 +1705,7 @@ variant id (Control control) rec =
 tag0 id tag =
     let
         null =
-            makeInput
+            makeControl
                 { empty = States0
                 , initialise = \_ -> States0
                 , update = \_ _ -> States0
