@@ -11,16 +11,18 @@ import Item
 main : Program () (Form.State Item.ItemState) Msg
 main =
     Browser.element
-        { init = init 
+        { init = init
         , view = view
         , update = update
         , subscriptions = \_ -> Sub.none
         }
 
-init () = 
+
+init () =
     ( mainForm.initFrom Item.exampleItem
-    , Cmd.none 
+    , Cmd.none
     )
+
 
 view : Form.State Item.ItemState -> Html Msg
 view model =

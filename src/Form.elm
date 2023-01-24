@@ -363,11 +363,11 @@ toForm id toMsg (Control control) =
     , initFrom =
         \output ->
             let
-                (Input initialisedInput) =
-                    Input input
+                (Control initialisedControl) =
+                    Control control
                         |> initialise output
             in
-            initialisedInput id
+            initialisedControl id
                 |> .init
     , update =
         \msg state ->
