@@ -44,6 +44,7 @@ module Form exposing
     , States9
     , TupleDelta
     , TupleState
+    , TypeCheck
     , WrapperDelta
     , WrapperState
     , atField0
@@ -94,7 +95,7 @@ module Form exposing
     , tag5
     , toForm
     , tuple
-    , wrapper, TypeCheck
+    , wrapper
     )
 
 import Html as H exposing (Html)
@@ -361,15 +362,15 @@ toForm id toMsg (Input input) =
             input id
     in
     { init = init
-    , initFrom = 
-        \output -> 
-            let 
-                initialisedInput = 
-                    input 
+    , initFrom =
+        \output ->
+            let
+                (Input initialisedInput) =
+                    Input input
                         |> initialise output
             in
-            initialisedInput id 
-                |> .init 
+            initialisedInput id
+                |> .init
     , update =
         \msg state ->
             update msg state
