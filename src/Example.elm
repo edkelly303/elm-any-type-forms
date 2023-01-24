@@ -80,9 +80,9 @@ type
 mainForm : Form Item.ItemState Item.ItemDelta Item.Item Msg
 mainForm =
     -- boundedInt
-    -- simpleRecordInput
-    -- simpleCustomTypeInput
-    -- nestedRecordInput
+    -- simpleRecordControl
+    -- simpleCustomTypeControl
+    -- nestedRecordControl
     Item.item
         |> toForm "Creating an Item" FormMsg
 
@@ -112,12 +112,12 @@ type alias SimpleRecordState =
         String
 
 
-simpleRecordInput :
+simpleRecordControl :
     Control
         SimpleRecordState
         SimpleRecordDelta
         SimpleRecord
-simpleRecordInput =
+simpleRecordControl =
     record SimpleRecord
         |> field .name "name" string
         |> field .age "age" boundedInt
@@ -148,12 +148,12 @@ type alias SimpleCustomTypeState =
         )
 
 
-simpleCustomTypeInput :
+simpleCustomTypeControl :
     Control
         SimpleCustomTypeState
         SimpleCustomTypeDelta
         SimpleCustomType
-simpleCustomTypeInput =
+simpleCustomTypeControl =
     customType
         |> tag1 "red" Red boundedInt
         |> tag2 "green" Green "string" string "maybe int" (maybe int)
@@ -196,14 +196,14 @@ type alias NestedRecordState =
         SimpleCustomTypeState
 
 
-nestedRecordInput :
+nestedRecordControl :
     Control
         NestedRecordState
         NestedRecordDelta
         NestedRecord
-nestedRecordInput =
+nestedRecordControl =
     record NestedRecord
         |> field .titles "number list" (list boundedInt)
-        |> field .record "record" simpleRecordInput
-        |> field .custom "custom type" simpleCustomTypeInput
+        |> field .record "record" simpleRecordControl
+        |> field .custom "custom type" simpleCustomTypeControl
         |> endRecord

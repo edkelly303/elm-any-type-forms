@@ -675,7 +675,7 @@ int =
         { empty = ""
         , initialise = String.fromInt
         , update = \delta _ -> delta
-        , view = textInputView "number"
+        , view = textControlView "number"
         , parse =
             \state ->
                 case String.toInt state of
@@ -705,7 +705,7 @@ string =
         { empty = ""
         , initialise = identity
         , update = \delta _ -> delta
-        , view = textInputView "text"
+        , view = textControlView "text"
         , parse = Ok
         }
         |> debounce 500
@@ -728,7 +728,7 @@ datetime =
         { empty = ""
         , initialise = Iso8601.fromTime >> String.replace "Z" ""
         , update = \delta _ -> delta
-        , view = textInputView "datetime-local"
+        , view = textControlView "datetime-local"
         , parse = Iso8601.toTime >> Result.mapError (\_ -> [ "Not a valid datetime" ])
         }
         |> debounce 500
@@ -876,11 +876,11 @@ initWith0Args sel fns init =
 
 initWith1Arg sel ( control, output ) fns init =
     let
-        (Control toInnerInput) =
+        (Control toInnerControl) =
             control
 
-        innerInput =
-            toInnerInput ""
+        innerControl =
+            toInnerControl ""
 
         tagSelector =
             instantiateSelector sel
@@ -897,7 +897,7 @@ initWith1Arg sel ( control, output ) fns init =
             instantiateSelector atField0
                 |> .set
     in
-    case innerInput.initialise of
+    case innerControl.initialise of
         Nothing ->
             { selectedTag = 0
             , tagStates = init
@@ -923,13 +923,13 @@ initWith2Args sel ( control1, output1 ) ( control2, output2 ) fns init =
         (Control toInnerControl1) =
             control1
 
-        innerInput1 =
+        innerControl1 =
             toInnerControl1 ""
 
         (Control toInnerControl2) =
             control2
 
-        innerInput2 =
+        innerControl2 =
             toInnerControl2 ""
 
         tagSelector =
@@ -951,7 +951,7 @@ initWith2Args sel ( control1, output1 ) ( control2, output2 ) fns init =
             instantiateSelector atField1
                 |> .set
     in
-    case ( innerInput1.initialise, innerInput2.initialise ) of
+    case ( innerControl1.initialise, innerControl2.initialise ) of
         ( Just init1, Just init2 ) ->
             { selectedTag = selectedTag
             , tagStates =
@@ -2077,8 +2077,8 @@ listView controlView controlParse controlFeedback config =
         |> H.map ChangeState
 
 
-textInputView : String -> ViewConfig String -> Html String
-textInputView type_ config =
+textControlView : String -> ViewConfig String -> Html String
+textControlView type_ config =
     H.div
         []
         [ H.input
