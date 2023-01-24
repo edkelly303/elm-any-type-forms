@@ -327,7 +327,6 @@ item =
         |> field .custom "Custom" (list customRecord)
         |> field .maybeSeasonality "Seasonality" (maybe seasonality)
         |> endRecord
-        |> initialise exampleItem
 
 
 itemId =
