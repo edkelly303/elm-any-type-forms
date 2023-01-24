@@ -141,7 +141,11 @@ type alias ControlConfig state delta output =
     }
 
 
-type Control state delta output
+type alias Control state delta output =
+    ControlX output state delta output
+
+
+type ControlX input state delta output
     = Control
         (String
          ->
@@ -149,7 +153,7 @@ type Control state delta output
             , index : Int
             , init : State state
             , delta : Delta delta
-            , initialise : Maybe (output -> state)
+            , initialise : Maybe (input -> state)
             , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , childViews : ViewConfig state -> List (Html (Delta delta))
@@ -409,12 +413,12 @@ checkStateType _ =
 
 
 {-
- .o88b.  .d88b.  d8b   db d888888b d8888b.  .d88b.  db      .d8888. 
-d8P  Y8 .8P  Y8. 888o  88 `~~88~~' 88  `8D .8P  Y8. 88      88'  YP 
-8P      88    88 88V8o 88    88    88oobY' 88    88 88      `8bo.   
-8b      88    88 88 V8o88    88    88`8b   88    88 88        `Y8b. 
-Y8b  d8 `8b  d8' 88  V888    88    88 `88. `8b  d8' 88booo. db   8D 
- `Y88P'  `Y88P'  VP   V8P    YP    88   YD  `Y88P'  Y88888P `8888Y' 
+    .o88b.  .d88b.  d8b   db d888888b d8888b.  .d88b.  db      .d8888.
+   d8P  Y8 .8P  Y8. 888o  88 `~~88~~' 88  `8D .8P  Y8. 88      88'  YP
+   8P      88    88 88V8o 88    88    88oobY' 88    88 88      `8bo.
+   8b      88    88 88 V8o88    88    88`8b   88    88 88        `Y8b.
+   Y8b  d8 `8b  d8' 88  V888    88    88 `88. `8b  d8' 88booo. db   8D
+    `Y88P'  `Y88P'  VP   V8P    YP    88   YD  `Y88P'  Y88888P `8888Y'
 -}
 
 
@@ -644,8 +648,8 @@ layout v (Control control) =
 -}
 
 
-initFrom : output -> Control state delta output -> Control state delta output
-initFrom output (Control control) =
+initFrom : input -> ControlX input state delta output -> ControlX input state delta output
+initFrom input (Control control) =
     let
         initialiser i =
             case i.initialise of
@@ -653,7 +657,7 @@ initFrom output (Control control) =
                     i
 
                 Just initialise_ ->
-                    { i | init = State Intact_ (initialise_ output) }
+                    { i | init = State Intact_ (initialise_ input) }
     in
     Control (control >> initialiser)
 
@@ -1714,6 +1718,48 @@ tag0 id tag =
                 }
     in
     variant id null
+
+
+tagOne :
+    (input -> output)
+    -> ControlX input state delta input
+    -> ControlX ( input, End ) ( State state, End ) ( Delta delta, End ) output
+tagOne tag control =
+    record tag
+        |> field Tuple.first "" control
+        |> endRecord
+
+
+type TwoArgs a b
+    = TwoArgs a b
+
+
+tagTwo :
+    (input1 -> input2 -> output)
+    -> ControlX input1 state1 delta1 input1
+    -> ControlX input2 state2 delta2 input2
+    ->
+        ControlX
+            ( input1, ( input2, End ) )
+            ( State state1, ( State state2, End ) )
+            ( Delta delta1, ( Delta delta2, End ) )
+            output
+tagTwo tag control1 control2 =
+    record tag
+        |> field Tuple.first "" control1
+        |> field (Tuple.second >> Tuple.first) "" control2
+        |> endRecord
+
+
+example :
+    ControlX
+        ( Int, ( String, End ) )
+        ( State String, ( State String, End ) )
+        ( Delta String, ( Delta String, End ) )
+        (TwoArgs Int String)
+example =
+    tagTwo TwoArgs int string
+        |> initFrom ( 1, ( "", End ) )
 
 
 tag1 id tag control =
