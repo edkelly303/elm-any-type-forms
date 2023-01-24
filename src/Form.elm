@@ -1205,7 +1205,7 @@ internalField access fromOutput id (Control control) rec =
     , befores = rec.befores << Tuple.pair rec.before
     , after = ( Skip, rec.after )
     , afters = ( rec.after, rec.afters )
-    , makeSetters = rec.makeSetters >> setterMaker
+    , makeSetters = rec.makeSetters >> deltaSetterMaker
     }
 
 
@@ -1217,8 +1217,8 @@ endRecord rec =
         inits =
             rec.states End
 
-        setters =
-            makeSetters rec.makeSetters rec.befores rec.afters
+        deltaSetters =
+            makeDeltaSetters rec.makeSetters rec.befores rec.afters
 
         update delta (State s state) =
             case delta of
@@ -1228,7 +1228,7 @@ endRecord rec =
                 ChangeState deltas ->
                     let
                         ( newState, cmd ) =
-                            updateRecordStates rec.updater fns setters deltas state
+                            updateRecordStates rec.updater fns deltaSetters deltas state
                     in
                     ( State s newState
                     , Cmd.map ChangeState cmd
@@ -1238,7 +1238,7 @@ endRecord rec =
                     ( State s state, Cmd.none )
 
         childViews config =
-            viewRecordStates rec.viewer fns setters config.state
+            viewRecordStates rec.viewer fns deltaSetters config.state
 
         view childViews_ config =
             let
@@ -1306,13 +1306,32 @@ endRecord rec =
 -}
 
 
-makeSetters makeSetters_ befores afters =
+makeDeltaSetters makeSetters_ befores afters =
     makeSetters_ (\End End -> End) (befores End) afters
 
 
-setterMaker next ( before, befores ) ( after, afters ) =
+deltaSetterMaker next ( before, befores ) ( after, afters ) =
     ( \value -> before ( value, after )
     , next befores afters
+    )
+
+
+makeStateSetters makeSetters_ fns befores afters =
+    makeSetters_ (\End End End -> End) fns (befores End) afters
+
+
+stateSetterMaker next ( fns, restFns ) ( before, befores ) ( after, afters ) =
+    ( \input ->
+        before
+            ( case fns.field.initialise of
+                Just initialise_ ->
+                    Just (initialise_ input)
+
+                Nothing ->
+                    Nothing
+            , after
+            )
+    , next restFns befores afters
     )
 
 
@@ -1498,11 +1517,16 @@ customType =
     , viewer = identity
     , parser = identity
     , submitter = identity
-    , before = identity
-    , befores = identity
-    , after = End
-    , afters = End
-    , makeSetters = identity
+    , deltaBefore = identity
+    , deltaBefores = identity
+    , deltaAfter = End
+    , deltaAfters = End
+    , makeDeltaSetters = identity
+    , stateBefore = identity
+    , stateBefores = identity
+    , stateAfter = End
+    , stateAfters = End
+    , makeStateSetters = identity
     }
 
 
@@ -1513,21 +1537,22 @@ variant id (Control control) rec =
     in
     { index = rec.index + 1
     , names = id :: rec.names
-    , fns =
-        rec.fns
-            << Tuple.pair
-                { field = { i | index = rec.index }
-                }
+    , fns = rec.fns << Tuple.pair { field = { i | index = rec.index } }
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
     , parser = rec.parser >> selectedTagParser
     , submitter = rec.submitter >> selectedTagSubmitter
-    , before = rec.before << Tuple.pair Skip
-    , befores = rec.befores << Tuple.pair rec.before
-    , after = ( Skip, rec.after )
-    , afters = ( rec.after, rec.afters )
-    , makeSetters = rec.makeSetters >> setterMaker
+    , deltaBefore = rec.deltaBefore << Tuple.pair Skip
+    , deltaBefores = rec.deltaBefores << Tuple.pair rec.deltaBefore
+    , deltaAfter = ( Skip, rec.deltaAfter )
+    , deltaAfters = ( rec.deltaAfter, rec.deltaAfters )
+    , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
+    , stateBefore = rec.stateBefore << Tuple.pair Nothing
+    , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
+    , stateAfter = ( Nothing, rec.stateAfter )
+    , stateAfters = ( rec.stateAfter, rec.stateAfters )
+    , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
     }
 
 
@@ -1583,8 +1608,11 @@ endCustomType initialiser rec =
         inits =
             rec.states End
 
-        setters =
-            makeSetters rec.makeSetters rec.befores rec.afters
+        deltaSetters =
+            makeDeltaSetters rec.makeDeltaSetters rec.deltaBefores rec.deltaAfters
+
+        stateSetters =
+            makeStateSetters rec.makeStateSetters fns rec.stateBefores rec.stateAfters
 
         names =
             List.reverse rec.names
@@ -1601,7 +1629,7 @@ endCustomType initialiser rec =
                     ChangeState (TagDeltaReceived tagDelta) ->
                         let
                             ( newTagStates, cmd ) =
-                                updateRecordStates rec.updater fns setters tagDelta state.tagStates
+                                updateRecordStates rec.updater fns deltaSetters tagDelta state.tagStates
                         in
                         ( State s { state | tagStates = newTagStates }
                         , Cmd.map (ChangeState << TagDeltaReceived) cmd
@@ -1611,7 +1639,7 @@ endCustomType initialiser rec =
                         ( State s state, Cmd.none )
 
         childViews config =
-            [ viewSelectedTagState rec.viewer config.state.selectedTag fns setters config.state.tagStates ]
+            [ viewSelectedTagState rec.viewer config.state.selectedTag fns deltaSetters config.state.tagStates ]
 
         view config =
             let
