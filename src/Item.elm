@@ -377,20 +377,19 @@ measure =
         |> tag0 "Whole" Whole
         |> tag1 "Custom" Custom string
         |> endCustomType
-            (\output ->
+            (\weight volume whole custom output ->
                 case output of
                     Weight ->
-                        initWith0Args atField0
+                        weight
 
                     Volume ->
-                        initWith0Args atField1
+                        volume
 
                     Whole ->
-                        initWith0Args atField2
+                        whole
 
-                    Custom c ->
-                        initWith1Arg atField3
-                            ( string, c )
+                    Custom str ->
+                        custom str
             )
 
 

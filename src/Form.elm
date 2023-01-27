@@ -4,21 +4,6 @@ module Form exposing
     , CustomTypeState
     , Delta
     , Deltas0
-    , Deltas1
-    , Deltas10
-    , Deltas11
-    , Deltas12
-    , Deltas13
-    , Deltas14
-    , Deltas15
-    , Deltas2
-    , Deltas3
-    , Deltas4
-    , Deltas5
-    , Deltas6
-    , Deltas7
-    , Deltas8
-    , Deltas9
     , End
     , Form
     , ListDelta
@@ -27,41 +12,12 @@ module Form exposing
     , MaybeState
     , State
     , States0
-    , States1
-    , States10
-    , States11
-    , States12
-    , States13
-    , States14
-    , States15
-    , States2
-    , States3
-    , States4
-    , States5
-    , States6
-    , States7
-    , States8
-    , States9
+    , Test(..)
     , TupleDelta
     , TupleState
     , TypeCheck
     , WrapperDelta
     , WrapperState
-    , atField0
-    , atField1
-    , atField11
-    , atField12
-    , atField13
-    , atField14
-    , atField15
-    , atField2
-    , atField3
-    , atField4
-    , atField5
-    , atField6
-    , atField7
-    , atField8
-    , atField9
     , bool
     , checkDeltaType
     , checkStateType
@@ -75,9 +31,6 @@ module Form exposing
     , field
     , hiddenField
     , initFrom
-    , initWith0Args
-    , initWith1Arg
-    , initWith2Args
     , int
     , layout
     , list
@@ -89,8 +42,7 @@ module Form exposing
     , string
     , tag0
     , tag1
-    , tag2
-    , tag3
+    , test
     , toForm
     , tuple
     , wrapper
@@ -212,58 +164,6 @@ type alias States2 a b =
     ( State a, States1 b )
 
 
-type alias States3 a b c =
-    ( State a, States2 b c )
-
-
-type alias States4 a b c d =
-    ( State a, States3 b c d )
-
-
-type alias States5 a b c d e =
-    ( State a, States4 b c d e )
-
-
-type alias States6 a b c d e f =
-    ( State a, States5 b c d e f )
-
-
-type alias States7 a b c d e f g =
-    ( State a, States6 b c d e f g )
-
-
-type alias States8 a b c d e f g h =
-    ( State a, States7 b c d e f g h )
-
-
-type alias States9 a b c d e f g h i =
-    ( State a, States8 b c d e f g h i )
-
-
-type alias States10 a b c d e f g h i j =
-    ( State a, States9 b c d e f g h i j )
-
-
-type alias States11 a b c d e f g h i j k =
-    ( State a, States10 b c d e f g h i j k )
-
-
-type alias States12 a b c d e f g h i j k l =
-    ( State a, States11 b c d e f g h i j k l )
-
-
-type alias States13 a b c d e f g h i j k l m =
-    ( State a, States12 b c d e f g h i j k l m )
-
-
-type alias States14 a b c d e f g h i j k l m n =
-    ( State a, States13 b c d e f g h i j k l m n )
-
-
-type alias States15 a b c d e f g h i j k l m n o =
-    ( State a, States14 b c d e f g h i j k l m n o )
-
-
 
 {-
    d8888b. d88888b db      d888888b  .d8b.  .d8888.
@@ -292,58 +192,6 @@ type alias Deltas1 a =
 
 type alias Deltas2 a b =
     ( Delta a, Deltas1 b )
-
-
-type alias Deltas3 a b c =
-    ( Delta a, Deltas2 b c )
-
-
-type alias Deltas4 a b c d =
-    ( Delta a, Deltas3 b c d )
-
-
-type alias Deltas5 a b c d e =
-    ( Delta a, Deltas4 b c d e )
-
-
-type alias Deltas6 a b c d e f =
-    ( Delta a, Deltas5 b c d e f )
-
-
-type alias Deltas7 a b c d e f g =
-    ( Delta a, Deltas6 b c d e f g )
-
-
-type alias Deltas8 a b c d e f g h =
-    ( Delta a, Deltas7 b c d e f g h )
-
-
-type alias Deltas9 a b c d e f g h i =
-    ( Delta a, Deltas8 b c d e f g h i )
-
-
-type alias Deltas10 a b c d e f g h i j =
-    ( Delta a, Deltas9 b c d e f g h i j )
-
-
-type alias Deltas11 a b c d e f g h i j k =
-    ( Delta a, Deltas10 b c d e f g h i j k )
-
-
-type alias Deltas12 a b c d e f g h i j k l =
-    ( Delta a, Deltas11 b c d e f g h i j k l )
-
-
-type alias Deltas13 a b c d e f g h i j k l m =
-    ( Delta a, Deltas12 b c d e f g h i j k l m )
-
-
-type alias Deltas14 a b c d e f g h i j k l m n =
-    ( Delta a, Deltas13 b c d e f g h i j k l m n )
-
-
-type alias Deltas15 a b c d e f g h i j k l m n o =
-    ( Delta a, Deltas14 b c d e f g h i j k l m n o )
 
 
 
@@ -853,124 +701,17 @@ maybe control =
                         |> tag0 "Nothing" Nothing
                         |> tag1 "Just" Just control
                         |> endCustomType
-                            (\output ->
-                                case output of
+                            (\nothing just m ->
+                                case m of
                                     Nothing ->
-                                        initWith0Args atField0
+                                        nothing
 
                                     Just a ->
-                                        initWith1Arg atField1 ( control, a )
+                                        just a
                             )
             in
             toWrapped id
         )
-
-
-initWith0Args sel fns init =
-    let
-        selector =
-            instantiateSelector sel
-
-        idx =
-            selector.getField fns
-                |> .field
-                |> .index
-    in
-    { selectedTag = idx
-    , tagStates = init
-    }
-
-
-initWith1Arg sel ( control, output ) fns init =
-    let
-        (Control toInnerControl) =
-            control
-
-        innerControl =
-            toInnerControl ""
-
-        tagSelector =
-            instantiateSelector sel
-
-        selectedTag =
-            tagSelector.getField fns
-                |> .field
-                |> .index
-
-        setTag =
-            tagSelector.set
-
-        setArg0 =
-            instantiateSelector atField0
-                |> .set
-    in
-    { selectedTag = selectedTag
-    , tagStates =
-        setTag
-            (\(State _ inner) ->
-                State Intact_
-                    (setArg0
-                        (\_ -> State Intact_ (innerControl.initialise output))
-                        inner
-                    )
-            )
-            init
-    }
-
-
-initWith2Args sel ( control1, output1 ) ( control2, output2 ) fns init =
-    let
-        (Control toInnerControl1) =
-            control1
-
-        innerControl1 =
-            toInnerControl1 ""
-
-        (Control toInnerControl2) =
-            control2
-
-        innerControl2 =
-            toInnerControl2 ""
-
-        tagSelector =
-            instantiateSelector sel
-
-        selectedTag =
-            tagSelector.getField fns
-                |> .field
-                |> .index
-
-        setTag =
-            tagSelector.set
-
-        setArg0 =
-            instantiateSelector atField0
-                |> .set
-
-        setArg1 =
-            instantiateSelector atField1
-                |> .set
-    in
-    { selectedTag = selectedTag
-    , tagStates =
-        init
-            |> setTag
-                (\(State _ inner) ->
-                    State Intact_
-                        (setArg0
-                            (\_ -> State Intact_ (innerControl1.initialise output1))
-                            inner
-                        )
-                )
-            |> setTag
-                (\(State _ inner) ->
-                    State Intact_
-                        (setArg1
-                            (\_ -> State Intact_ (innerControl2.initialise output2))
-                            inner
-                        )
-                )
-    }
 
 
 
@@ -1304,20 +1045,6 @@ deltaSetterMaker next ( before, befores ) ( after, afters ) =
     )
 
 
-makeStateSetters makeSetters_ fns befores afters =
-    makeSetters_ (\End End End -> End) fns (befores End) afters
-
-
-stateSetterMaker next ( fns, restFns ) ( before, befores ) ( after, afters ) =
-    ( \input ->
-        before
-            ( Just (fns.field.initialise input)
-            , after
-            )
-    , next restFns befores afters
-    )
-
-
 initialiseRecordStates initialiser output fns states =
     initialiser (\_ End End -> End) output fns states
 
@@ -1464,6 +1191,39 @@ recordStateUpdater next { newStates, newCmds } ( fns, restFns ) ( setter, restSe
 
 
 {-
+    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b      d888888b d88888b .d8888. d888888b .d8888.
+   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'          `~~88~~' 88'     88'  YP `~~88~~' 88'  YP
+   8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo         88    88ooooo `8bo.      88    `8bo.
+   8b      88    88   `Y8b.    88    88    88 88  88  88         88       88    88~~~   88~~~~~         88    88~~~~~   `Y8b.    88      `Y8b.
+   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.             88    88.     db   8D    88    db   8D
+    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P         YP    Y88888P `8888Y'    YP    `8888Y'
+
+
+-}
+
+
+type Test
+    = C1 Int Int
+    | C2 String
+
+
+test =
+    customType
+        |> tag2 "C1" C1 int int
+        |> tag1 "C2" C2 string
+        |> endCustomType
+            (\c1 c2 tag ->
+                case tag of
+                    C1 int1 int2 ->
+                        c1 int1 int2
+
+                    C2 str ->
+                        c2 str
+            )
+
+
+
+{-
     .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b
    d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'
    8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo
@@ -1500,13 +1260,16 @@ customType =
     , makeDeltaSetters = identity
     , stateBefore = identity
     , stateBefores = identity
+    , toArgStates = identity
     , stateAfter = End
     , stateAfters = End
     , makeStateSetters = identity
+    , stateInserter = identity
+    , applyInputs = identity
     }
 
 
-variant id (Control control) rec =
+variant id (Control control) toArgState rec =
     let
         i =
             control id
@@ -1526,9 +1289,12 @@ variant id (Control control) rec =
     , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
     , stateBefore = rec.stateBefore << Tuple.pair Nothing
     , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
+    , toArgStates = rec.toArgStates << Tuple.pair toArgState
     , stateAfter = ( Nothing, rec.stateAfter )
     , stateAfters = ( rec.stateAfter, rec.stateAfters )
     , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
+    , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
+    , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
     }
 
 
@@ -1543,7 +1309,12 @@ tag0 id tag =
                 , parse = \_ -> Ok tag
                 }
     in
-    variant id null
+    variant
+        id
+        null
+        (\insertArgStateIntoTagStates ->
+            insertArgStateIntoTagStates States0
+        )
 
 
 tag1 id tag control =
@@ -1553,26 +1324,21 @@ tag1 id tag control =
             |> field Tuple.first "" control
             |> endRecord
         )
-
-
-tag2 id tag id1 control1 id2 control2 =
-    variant
-        id
-        (record tag
-            |> field Tuple.first id1 control1
-            |> field (Tuple.second >> Tuple.first) id2 control2
-            |> endRecord
+        (\insertArgStateIntoTagStates arg1 ->
+            insertArgStateIntoTagStates ( arg1, End )
         )
 
 
-tag3 id tag id1 control1 id2 control2 id3 control3 =
+tag2 id tag control1 control2 =
     variant
         id
         (record tag
-            |> field Tuple.first id1 control1
-            |> field (Tuple.second >> Tuple.first) id2 control2
-            |> field (Tuple.second >> Tuple.second >> Tuple.first) id3 control3
+            |> field Tuple.first "" control1
+            |> field (Tuple.second >> Tuple.first) "" control2
             |> endRecord
+        )
+        (\insertArgStateIntoTagStates arg1 arg2 ->
+            insertArgStateIntoTagStates ( arg1, ( arg2, End ) )
         )
 
 
@@ -1588,7 +1354,7 @@ endCustomType initialiser rec =
             makeDeltaSetters rec.makeDeltaSetters rec.deltaBefores rec.deltaAfters
 
         stateSetters =
-            makeStateSetters rec.makeStateSetters fns rec.stateBefores rec.stateAfters
+            makeStateSetters rec.makeStateSetters rec.stateInserter inits fns rec.toArgStates rec.stateBefores rec.stateAfters
 
         names =
             List.reverse rec.names
@@ -1640,7 +1406,13 @@ endCustomType initialiser rec =
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
             , delta = Skip
-            , initialise = \output -> initialiser output fns inits
+            , initialise =
+                \tag ->
+                    let
+                        match =
+                            applyStateSettersToInitialiser rec.applyInputs initialiser stateSetters
+                    in
+                    { selectedTag = 0, tagStates = match tag }
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
@@ -1662,6 +1434,49 @@ endCustomType initialiser rec =
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+applyStateSettersToInitialiser stateSetterToInitialiserApplier_ initialiser stateSetters =
+    stateSetterToInitialiserApplier_
+        (\appliedInitialiser End -> appliedInitialiser)
+        initialiser
+        stateSetters
+
+
+stateSetterToInitialiserApplier next initialiser ( stateSetter, stateSetters ) =
+    next (initialiser stateSetter) stateSetters
+
+
+makeStateSetters makeSetters_ argStateIntoTagStateInserter_ inits fns toArgStates befores afters =
+    makeSetters_ (\_ _ End End End End -> End) argStateIntoTagStateInserter_ inits fns (toArgStates End) (befores End) afters
+
+
+stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toArgState, toArgStates ) ( before, befores ) ( after, afters ) =
+    ( toArgState
+        (\argState ->
+            let
+                maybes =
+                    before ( Just (fns.field.initialise argState), after )
+            in
+            insertArgStateIntoTagState argStateIntoTagStateInserter_ maybes inits
+        )
+    , next argStateIntoTagStateInserter_ inits restFns toArgStates befores afters
+    )
+
+
+insertArgStateIntoTagState stateInserter_ maybeArgStates inits =
+    stateInserter_ (\End End -> End) maybeArgStates inits
+
+
+argStateIntoTagStateInserter next ( maybeArgState, maybeArgStates ) ( init, inits ) =
+    ( case maybeArgState of
+        Just state ->
+            State Intact_ state
+
+        Nothing ->
+            init
+    , next maybeArgStates inits
+    )
 
 
 submitSelectedTagState submitter selectedTag fns tagStates =
@@ -1732,99 +1547,6 @@ selectedTagViewer next maybeView selectedTag ( fns, restFns ) ( setter, restSett
         restFns
         restSetters
         restStates
-
-
-
-{-
-   .d8888. d88888b db      d88888b  .o88b. d888888b  .d88b.  d8888b. .d8888.
-   88'  YP 88'     88      88'     d8P  Y8 `~~88~~' .8P  Y8. 88  `8D 88'  YP
-   `8bo.   88ooooo 88      88ooooo 8P         88    88    88 88oobY' `8bo.
-     `Y8b. 88~~~~~ 88      88~~~~~ 8b         88    88    88 88`8b     `Y8b.
-   db   8D 88.     88booo. 88.     Y8b  d8    88    `8b  d8' 88 `88. db   8D
-   `8888Y' Y88888P Y88888P Y88888P  `Y88P'    YP     `Y88P'  88   YD `8888Y'
--}
-
-
-atField0 =
-    composeSelectors { getFieldState = identity, getField = identity, set = identity }
-
-
-atField1 =
-    composeSelectors { getFieldState = Tuple.second, getField = Tuple.second, set = Tuple.mapSecond }
-
-
-atField2 =
-    atField1 >> atField1
-
-
-atField3 =
-    atField2 >> atField1
-
-
-atField4 =
-    atField3 >> atField1
-
-
-atField5 =
-    atField4 >> atField1
-
-
-atField6 =
-    atField5 >> atField1
-
-
-atField7 =
-    atField6 >> atField1
-
-
-atField8 =
-    atField7 >> atField1
-
-
-atField9 =
-    atField8 >> atField1
-
-
-atField10 =
-    atField9 >> atField1
-
-
-atField11 =
-    atField10 >> atField1
-
-
-atField12 =
-    atField11 >> atField1
-
-
-atField13 =
-    atField12 >> atField1
-
-
-atField14 =
-    atField13 >> atField1
-
-
-atField15 =
-    atField14 >> atField1
-
-
-composeSelectors selector1 selector2 =
-    { getFieldState = selector1.getFieldState >> selector2.getFieldState
-    , getField = selector1.getField >> selector2.getField
-    , set = selector1.set >> selector2.set
-    }
-
-
-instantiateSelector selector =
-    let
-        s =
-            selector { getFieldState = Tuple.first, getField = Tuple.first, set = identity }
-    in
-    { getFieldState = s.getFieldState
-    , getField = s.getField
-    , set = \updater state -> s.set (Tuple.mapFirst updater) state
-    }
 
 
 

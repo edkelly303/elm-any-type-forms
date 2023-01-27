@@ -5,10 +5,12 @@ import Form exposing (..)
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import Item
 
 
-main : Program () (Form.State Item.ItemState) Msg
+
+-- main : Program () (Form.State String) Msg
+
+
 main =
     Browser.element
         { init = init
@@ -19,12 +21,15 @@ main =
 
 
 init () =
-    ( mainForm.initFrom Item.exampleItem
+    ( mainForm.initFrom (C1 1 2)
     , Cmd.none
     )
 
 
-view : Form.State Item.ItemState -> Html Msg
+
+-- view : Form.State String -> Html Msg
+
+
 view model =
     H.div
         [ HA.style "width" "100%"
@@ -48,7 +53,10 @@ view model =
         ]
 
 
-update : Msg -> Form.State Item.ItemState -> ( Form.State Item.ItemState, Cmd Msg )
+
+-- update : Msg -> Form.State String -> ( Form.State String, Cmd Msg )
+
+
 update msg model =
     case msg of
         Submit ->
@@ -67,23 +75,24 @@ update msg model =
             ( newModel, cmd )
 
 
-type
-    Msg
-    -- = FormMsg (Delta String)
-    -- = FormMsg (Delta SimpleRecordDelta)
-    -- = FormMsg (Delta SimpleCustomTypeDelta)
-    -- = FormMsg (Delta NestedRecordDelta)
-    = FormMsg (Form.Delta Item.ItemDelta)
+type Msg
+    = FormMsg
+        (Form.Delta
+            (CustomTypeDelta
+                ( Delta ( Delta String, ( Delta String, End ) )
+                , ( Delta ( Delta String, End ), End )
+                )
+            )
+        )
     | Submit
 
 
-mainForm : Form Item.ItemState Item.ItemDelta Item.Item Msg
+
+-- mainForm : Form String String Int Msg
+
+
 mainForm =
-    -- boundedInt
-    -- simpleRecordControl
-    -- simpleCustomTypeControl
-    -- nestedRecordControl
-    Item.item
+    test
         |> toForm "Creating an Item" FormMsg
 
 
@@ -92,118 +101,3 @@ boundedInt =
     int
         |> failIf (\x -> x <= 0) "must be greater than 0"
         |> failIf (\x -> x > 120) "maximum is 120"
-
-
-type alias SimpleRecord =
-    { name : String
-    , age : Int
-    }
-
-
-type alias SimpleRecordDelta =
-    Deltas2
-        String
-        String
-
-
-type alias SimpleRecordState =
-    States2
-        String
-        String
-
-
-simpleRecordControl :
-    Control
-        SimpleRecordState
-        SimpleRecordDelta
-        SimpleRecord
-simpleRecordControl =
-    record SimpleRecord
-        |> field .name "name" string
-        |> field .age "age" boundedInt
-        |> endRecord
-
-
-type SimpleCustomType
-    = Red Int
-    | Green String (Maybe Int)
-    | Blue
-
-
-type alias SimpleCustomTypeDelta =
-    CustomTypeDelta
-        (Deltas3
-            (Deltas1 String)
-            (Deltas2 String (MaybeDelta String))
-            Deltas0
-        )
-
-
-type alias SimpleCustomTypeState =
-    CustomTypeState
-        (States3
-            (States1 String)
-            (States2 String (MaybeState String))
-            States0
-        )
-
-
-simpleCustomTypeControl :
-    Control
-        SimpleCustomTypeState
-        SimpleCustomTypeDelta
-        SimpleCustomType
-simpleCustomTypeControl =
-    customType
-        |> tag1 "red" Red boundedInt
-        |> tag2 "green" Green "string" string "maybe int" (maybe int)
-        |> tag0 "blue" Blue
-        |> endCustomType
-            (\tag ->
-                case tag of
-                    Red x ->
-                        initWith1Arg atField0
-                            ( boundedInt, x )
-
-                    Green x y ->
-                        initWith2Args atField1
-                            ( string, x )
-                            ( maybe int, y )
-
-                    Blue ->
-                        initWith0Args atField2
-            )
-
-
-type alias NestedRecord =
-    { titles : List Int
-    , record : SimpleRecord
-    , custom : SimpleCustomType
-    }
-
-
-type alias NestedRecordDelta =
-    Deltas3
-        (ListDelta String)
-        SimpleRecordDelta
-        SimpleCustomTypeDelta
-
-
-type alias NestedRecordState =
-    States3
-        (ListState String)
-        SimpleRecordState
-        SimpleCustomTypeState
-
-
-nestedRecordControl :
-    Control
-        NestedRecordState
-        NestedRecordDelta
-        NestedRecord
-nestedRecordControl =
-    record NestedRecord
-        |> field .titles "number list" (list boundedInt)
-        |> field .record "record" simpleRecordControl
-        |> field .custom "custom type" simpleCustomTypeControl
-        |> endRecord
