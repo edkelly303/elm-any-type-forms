@@ -1708,7 +1708,7 @@ radioView { options, label, selectedOption, toMsg, columns } =
                         [ HA.for (label ++ "-" ++ optionLabel)
                         , HA.style "margin-left" "4px"
                         ]
-                        [ H.text label ]
+                        [ H.text optionLabel ]
                     ]
             )
             options
