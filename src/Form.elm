@@ -98,7 +98,7 @@ type ControlX input state delta output
     = Control
         (String
          ->
-            { id : String
+            { label : String
             , index : Int
             , init : State state
             , delta : Delta delta
@@ -116,7 +116,7 @@ type ControlX input state delta output
 
 
 type alias ViewConfig state =
-    { id : String
+    { label : String
     , state : state
     , status : Status
     }
@@ -195,10 +195,10 @@ type alias Deltas2 a b =
 
 
 toForm : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
-toForm id toMsg (Control control) =
+toForm label toMsg (Control control) =
     let
         { init, update, view, validate, notify, submit } =
-            control id
+            control label
     in
     { init = init
     , initWith =
@@ -208,7 +208,7 @@ toForm id toMsg (Control control) =
                     Control control
                         |> initFrom output
             in
-            initialisedControl id
+            initialisedControl label
                 |> .init
     , update =
         \msg state ->
@@ -217,12 +217,12 @@ toForm id toMsg (Control control) =
     , view =
         \(State internalState state) ->
             H.div []
-                [ H.h1 [] [ H.text id ]
+                [ H.h1 [] [ H.text label ]
                 , H.div []
                     [ view
                         { state = state
                         , status = statusFromInternalState validate notify (State internalState state)
-                        , id = id
+                        , label = label
                         }
                         |> H.map toMsg
                     ]
@@ -262,7 +262,7 @@ checkStateType _ =
 makeControl : ControlConfig state delta output -> Control state delta output
 makeControl config =
     Control
-        (\id ->
+        (\label ->
             let
                 preUpdate =
                     wrapUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none )))
@@ -270,9 +270,9 @@ makeControl config =
                 validate =
                     \(State _ state) ->
                         config.parse state
-                            |> Result.mapError (List.map (Tuple.pair id))
+                            |> Result.mapError (List.map (Tuple.pair label))
             in
-            { id = id
+            { label = label
             , index = 0
             , init = State Intact_ config.empty
             , delta = Skip
@@ -360,7 +360,7 @@ failIf check feedback (Control control) =
                         case i.baseValidate state of
                             Ok output ->
                                 if check output then
-                                    Err [ ( i.id, feedback ) ]
+                                    Err [ ( i.label, feedback ) ]
 
                                 else
                                     Ok output
@@ -417,7 +417,7 @@ noteIf check feedback (Control control) =
                                 case i.baseValidate state of
                                     Ok output ->
                                         if check output then
-                                            [ ( i.id, feedback ) ]
+                                            [ ( i.label, feedback ) ]
 
                                         else
                                             []
@@ -642,14 +642,14 @@ wrapper :
             wrapped
 wrapper wrap unwrap control =
     Control
-        (\id ->
+        (\label ->
             let
                 (Control toWrapped) =
                     record wrap
-                        |> field unwrap id control
+                        |> field unwrap label control
                         |> endRecord
             in
-            toWrapped id
+            toWrapped label
         )
 
 
@@ -683,7 +683,7 @@ type alias MaybeDelta delta =
 maybe : Control state delta output -> Control (MaybeState state) (MaybeDelta delta) (Maybe output)
 maybe control =
     Control
-        (\id ->
+        (\label ->
             let
                 (Control toWrapped) =
                     customType
@@ -699,7 +699,7 @@ maybe control =
                                         just a
                             )
             in
-            toWrapped id
+            toWrapped label
         )
 
 
@@ -728,10 +728,10 @@ tuple :
     -> String
     -> Control state2 delta2 output2
     -> Control (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
-tuple fstId fst sndId snd =
+tuple fstLabel fst sndLabel snd =
     record Tuple.pair
-        |> field Tuple.first fstId fst
-        |> field Tuple.second sndId snd
+        |> field Tuple.first fstLabel fst
+        |> field Tuple.second sndLabel snd
         |> endRecord
 
 
@@ -763,7 +763,7 @@ list (Control toControl) =
             toControl ""
     in
     Control
-        (\id ->
+        (\label ->
             let
                 update =
                     wrapUpdate listUpdate
@@ -830,9 +830,9 @@ list (Control toControl) =
                             )
                             (Ok [])
                             (List.indexedMap Tuple.pair state)
-                            |> Result.mapError (List.map (\feedback -> ( id, feedback )))
+                            |> Result.mapError (List.map (\feedback -> ( label, feedback )))
             in
-            { id = id
+            { label = label
             , index = 0
             , initialise = List.map (\item -> State Intact_ (control.initialise item))
             , init = State Intact_ []
@@ -863,7 +863,7 @@ list (Control toControl) =
 
 record toOutput =
     { index = 0
-    , ids = []
+    , labels = []
     , toOutput = toOutput
     , fields = identity
     , states = identity
@@ -898,13 +898,13 @@ type Access
     | Hidden
 
 
-internalField access fromOutput id (Control control) rec =
+internalField access fromOutput label (Control control) rec =
     let
         i =
-            control id
+            control label
     in
     { index = rec.index + 1
-    , ids = rec.ids ++ [ id ]
+    , labels = rec.labels ++ [ label ]
     , toOutput = rec.toOutput
     , fields =
         rec.fields
@@ -964,7 +964,7 @@ endRecord rec =
                     childViews_ config
 
                 idViews =
-                    List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.ids
+                    List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.labels
 
                 combinedViews =
                     List.map2
@@ -995,8 +995,8 @@ endRecord rec =
             State Idle_ (submitRecordStates rec.submitter fns state)
     in
     Control
-        (\id ->
-            { id = id
+        (\label ->
+            { label = label
             , index = 0
             , init = State Intact_ inits
             , delta = Skip
@@ -1088,7 +1088,7 @@ recordStateViewer next views ( fns, restFns ) ( setter, restSetters ) ( State in
             fns.field.view
                 { state = state
                 , status = statusFromInternalState fns.field.validate fns.field.notify (State internalState state)
-                , id = fns.field.id
+                , label = fns.field.label
                 }
                 |> H.map (\delta -> ChangeState (setter delta))
     in
@@ -1202,7 +1202,7 @@ type CustomTypeDelta variants
 
 customType =
     { index = 0
-    , names = []
+    , labels = []
     , fns = identity
     , states = identity
     , updater = identity
@@ -1225,13 +1225,13 @@ customType =
     }
 
 
-variant id (Control control) toArgState rec =
+variant label (Control control) toArgState rec =
     let
         i =
-            control id
+            control label
     in
     { index = rec.index + 1
-    , names = id :: rec.names
+    , labels = label :: rec.labels
     , fns = rec.fns << Tuple.pair { field = { i | index = rec.index } }
     , states = rec.states << Tuple.pair i.init
     , updater = rec.updater >> recordStateUpdater
@@ -1254,7 +1254,7 @@ variant id (Control control) toArgState rec =
     }
 
 
-tag0 id tag =
+tag0 label tag =
     let
         null =
             makeControl
@@ -1266,16 +1266,16 @@ tag0 id tag =
                 }
     in
     variant
-        id
+        label
         null
         (\insertArgStateIntoTagStates ->
             insertArgStateIntoTagStates tag
         )
 
 
-tag1 id tag control =
+tag1 label tag control =
     variant
-        id
+        label
         (record tag
             |> field Tuple.first "" control
             |> endRecord
@@ -1285,9 +1285,9 @@ tag1 id tag control =
         )
 
 
-tag2 id tag control1 control2 =
+tag2 label tag control1 control2 =
     variant
-        id
+        label
         (record tag
             |> field Tuple.first "" control1
             |> field (Tuple.second >> Tuple.first) "" control2
@@ -1312,8 +1312,8 @@ endCustomType initialiser rec =
         stateSetters =
             makeStateSetters rec.makeStateSetters rec.stateInserter inits fns rec.toArgStates rec.stateBefores rec.stateAfters
 
-        names =
-            List.reverse rec.names
+        labels =
+            List.reverse rec.labels
 
         update =
             \delta (State s state) ->
@@ -1342,15 +1342,15 @@ endCustomType initialiser rec =
         view config =
             let
                 options =
-                    List.indexedMap Tuple.pair names
+                    List.indexedMap Tuple.pair labels
 
                 childViews_ =
                     childViews config
             in
-            customTypeView config.id options config.state.selectedTag childViews_
+            customTypeView config.label options config.state.selectedTag childViews_
     in
     Control
-        (\id ->
+        (\label ->
             let
                 validate =
                     \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
@@ -1358,7 +1358,7 @@ endCustomType initialiser rec =
                 submit =
                     \(State _ state) -> State Idle_ (submitSelectedTagState rec.submitter state.selectedTag fns state.tagStates)
             in
-            { id = id
+            { label = label
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
             , delta = Skip
@@ -1491,7 +1491,7 @@ selectedTagViewer next maybeView selectedTag ( fns, restFns ) ( setter, restSett
                 (fns.field.view
                     { state = state
                     , status = Intact
-                    , id = fns.field.id
+                    , label = fns.field.label
                     }
                     |> H.map setter
                 )
@@ -1522,13 +1522,13 @@ customTypeView :
     -> Int
     -> List (Html (Delta (CustomTypeDelta variants)))
     -> Html (Delta (CustomTypeDelta variants))
-customTypeView id options selectedTag selectedTagView =
+customTypeView label options selectedTag selectedTagView =
     H.div []
         (if List.length options > 1 then
             [ H.div []
                 [ radioView
                     { options = options
-                    , id = id
+                    , label = label
                     , selectedOption = selectedTag
                     , toMsg = ChangeState << TagSelected
                     , columns = 3
@@ -1576,7 +1576,7 @@ listView controlView controlParse controlFeedback config =
                                 , controlView
                                     { state = state
                                     , status = statusFromInternalState controlParse controlFeedback (State internalState state)
-                                    , id = config.id ++ "-item#" ++ String.fromInt (idx + 1)
+                                    , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                     }
                                     |> H.map (ChangeItem idx)
                                 ]
@@ -1595,7 +1595,7 @@ textControlView type_ config =
         [ H.input
             [ HE.onInput identity
             , HA.type_ type_
-            , HA.id config.id
+            , HA.id config.label
             , HA.value config.state
             , HA.style "background-color"
                 (case config.status of
@@ -1669,7 +1669,7 @@ enumView : List ( String, enum ) -> ViewConfig enum -> Html enum
 enumView tags config =
     radioView
         { options = List.map (\( a, b ) -> ( b, a )) tags
-        , id = config.id
+        , label = config.label
         , selectedOption = config.state
         , toMsg = identity
         , columns = 3
@@ -1678,34 +1678,34 @@ enumView tags config =
 
 radioView :
     { options : List ( state, String )
-    , id : String
+    , label : String
     , selectedOption : state
     , toMsg : state -> msg
     , columns : Int
     }
     -> Html msg
-radioView { options, id, selectedOption, toMsg, columns } =
+radioView { options, label, selectedOption, toMsg, columns } =
     H.div
         [ HA.style "display" "grid"
         , HA.style "grid-template-columns" (String.repeat columns "1fr ")
         ]
         (List.map
-            (\( option, label ) ->
+            (\( option, optionLabel ) ->
                 H.div
                     [ HA.style "margin-right" "15px"
                     , HA.style "margin-bottom" "10px"
                     ]
                     [ H.input
                         [ HA.type_ "radio"
-                        , HA.id (id ++ "-" ++ label)
-                        , HA.name id
-                        , HA.value label
+                        , HA.id (label ++ "-" ++ optionLabel)
+                        , HA.name label
+                        , HA.value optionLabel
                         , HA.checked (selectedOption == option)
                         , onChecked (toMsg option)
                         ]
                         []
                     , H.label
-                        [ HA.for (id ++ "-" ++ label)
+                        [ HA.for (label ++ "-" ++ optionLabel)
                         , HA.style "margin-left" "4px"
                         ]
                         [ H.text label ]
