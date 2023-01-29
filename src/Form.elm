@@ -221,7 +221,7 @@ toForm label toMsg (Control control) =
                 , H.div []
                     [ view
                         { state = state
-                        , status = statusFromInternalState validate notify (State internalState state)
+                        , status = getStatus validate notify (State internalState state)
                         , label = label
                         }
                         |> H.map toMsg
@@ -1087,7 +1087,7 @@ recordStateViewer next views ( fns, restFns ) ( setter, restSetters ) ( State in
         view =
             fns.field.view
                 { state = state
-                , status = statusFromInternalState fns.field.validate fns.field.notify (State internalState state)
+                , status = getStatus fns.field.validate fns.field.notify (State internalState state)
                 , label = fns.field.label
                 }
                 |> H.map (\delta -> ChangeState (setter delta))
@@ -1116,12 +1116,12 @@ recordStateViewer next views ( fns, restFns ) ( setter, restSetters ) ( State in
         restStates
 
 
-statusFromInternalState :
+getStatus :
     (State state -> Result (List ( String, String )) output)
     -> (State state -> List ( String, String ))
     -> State state
     -> Status
-statusFromInternalState validator notifier (State internalState state) =
+getStatus validator notifier (State internalState state) =
     case internalState of
         Intact_ ->
             Intact
@@ -1578,7 +1578,7 @@ listView controlView controlParse controlFeedback config =
                                     ]
                                 , controlView
                                     { state = state
-                                    , status = statusFromInternalState controlParse controlFeedback (State internalState state)
+                                    , status = getStatus controlParse controlFeedback (State internalState state)
                                     , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                     }
                                     |> H.map (ChangeItem idx)
