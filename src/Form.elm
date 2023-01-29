@@ -77,7 +77,7 @@ type alias Form state delta output msg =
     , initWith : output -> State state
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
-    , submit : State state -> Result (State state) output
+    , submit : State state -> Result { errors : List ( String, String ), state : State state } output
     }
 
 
@@ -230,7 +230,7 @@ toForm label toMsg (Control control) =
     , submit =
         \state ->
             validate state
-                |> Result.mapError (\_ -> submit state)
+                |> Result.mapError (\errors -> { errors = errors, state = submit state })
     }
 
 
@@ -1286,12 +1286,12 @@ tag1 label tag control =
         )
 
 
-tag2 label tag control1 control2 =
+tag2 label tag ( label1, control1 ) ( label2, control2 ) =
     variant
         label
         (record tag
-            |> field Tuple.first "" control1
-            |> field (Tuple.second >> Tuple.first) "" control2
+            |> field Tuple.first label1 control1
+            |> field (Tuple.second >> Tuple.first) label2 control2
             |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->
@@ -1561,29 +1561,27 @@ listView controlView controlParse controlFeedback config =
             H.div []
                 (List.indexedMap
                     (\idx (State internalState state) ->
-                        H.div []
-                            [ H.details []
-                                [ H.summary
-                                    [ HA.style "margin-bottom" "10px" ]
-                                    [ H.text ("#" ++ String.fromInt (idx + 1))
-                                    , H.button
-                                        [ HA.style "margin-left" "10px"
-                                        , HE.onClick (DeleteItem idx)
-                                        ]
-                                        [ H.text "❌" ]
-                                    , H.button
-                                        [ HA.style "margin-left" "10px"
-                                        , HE.onClick (InsertItem (idx + 1))
-                                        ]
-                                        [ H.text "➕" ]
+                        H.div [ HA.style "margin-top" "10px" ]
+                            [ H.summary
+                                [ HA.style "margin-bottom" "10px" ]
+                                [ H.text ("#" ++ String.fromInt (idx + 1))
+                                , H.button
+                                    [ HA.style "margin-left" "10px"
+                                    , HE.onClick (DeleteItem idx)
                                     ]
-                                , controlView
-                                    { state = state
-                                    , status = getStatus controlParse controlFeedback (State internalState state)
-                                    , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
-                                    }
-                                    |> H.map (ChangeItem idx)
+                                    [ H.text "❌" ]
+                                , H.button
+                                    [ HA.style "margin-left" "10px"
+                                    , HE.onClick (InsertItem (idx + 1))
+                                    ]
+                                    [ H.text "➕" ]
                                 ]
+                            , controlView
+                                { state = state
+                                , status = getStatus controlParse controlFeedback (State internalState state)
+                                , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
+                                }
+                                |> H.map (ChangeItem idx)
                             ]
                     )
                     config.state
