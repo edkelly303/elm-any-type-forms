@@ -1255,22 +1255,23 @@ variant label (Control control) toArgState rec =
 
 
 tag0 label tag =
-    let
-        null =
-            makeControl
-                { empty = ()
-                , initialise = \_ -> ()
-                , update = \_ _ -> ()
-                , view = \_ -> H.text ""
-                , parse = \_ -> Ok tag
-                }
-    in
     variant
         label
-        null
+        (null tag)
         (\insertArgStateIntoTagStates ->
             insertArgStateIntoTagStates tag
         )
+
+
+null : tag -> Control () () tag
+null tag =
+    makeControl
+        { empty = ()
+        , initialise = \_ -> ()
+        , update = \() () -> ()
+        , view = \_ -> H.text ""
+        , parse = \() -> Ok tag
+        }
 
 
 tag1 label tag control =
