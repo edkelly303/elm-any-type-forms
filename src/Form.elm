@@ -608,8 +608,8 @@ enum first second rest =
 
 
 bool : String -> String -> Control Bool Bool Bool
-bool true false =
-    enum ( true, True ) ( false, False ) []
+bool trueId falseId =
+    enum ( trueId, True ) ( falseId, False ) []
 
 
 
