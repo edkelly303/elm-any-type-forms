@@ -325,8 +325,8 @@ item =
         |> field .aliases "Aliases" (list nonEmptyString)
         |> field .emoji "Emoji" (maybe emoji)
         |> field .category "Category" category
-        |> hiddenField .purchaseHistory "Purchase History" (list purchaseHistory)
-        |> hiddenField .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime)
+        |> field .purchaseHistory "Purchase History" (list purchaseHistory)
+        |> field .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime)
         |> field .maybeVolume "Volume" (maybe volumeRecord)
         |> field .maybeWhole "Whole" (maybe wholeRecord)
         |> field .custom "Custom" (list customRecord)
