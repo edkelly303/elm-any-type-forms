@@ -18,20 +18,20 @@ main =
 
 
 init () =
-    ( -- userForm.init
-      itemForm.initWith Item.exampleItem
+    ( mainForm.init
     , Cmd.none
     )
 
 
 view model =
     H.div
-        [ HA.style "width" "100%"
-        , HA.style "height" "100%"
+        [ HA.style "width" "100vw"
+        , HA.style "height" "100vh"
         , HA.style "display" "flex"
         , HA.style "justify-content" "center"
         , HA.style "font-family" "sans"
         , HA.style "background-color" "gray"
+        , HA.style "margin" "-8px"
         ]
         [ H.div
             [ HA.style "width" "600px"
@@ -40,8 +40,9 @@ view model =
             , HA.style "margin" "10px"
             , HA.style "padding" "20px"
             , HA.style "background-color" "white"
+            , HA.style "overflow" "scroll"
             ]
-            [ itemForm.view model
+            [ mainForm.view model
             , H.button [ HE.onClick Submit ] [ H.text "Submit" ]
             ]
         ]
@@ -50,35 +51,37 @@ view model =
 update msg model =
     case msg of
         Submit ->
-            case itemForm.submit model of
+            case
+                mainForm.submit model
+            of
                 Ok _ ->
                     ( model, Cmd.none )
 
-                Err newModel ->
-                    ( newModel, Cmd.none )
+                Err { state, errors } ->
+                    let
+                        _ =
+                            Debug.log "Errors" errors
+                    in
+                    ( state, Cmd.none )
 
         FormMsg formMsg ->
             let
                 ( newModel, cmd ) =
-                    itemForm.update formMsg model
+                    mainForm.update formMsg model
             in
             ( newModel, cmd )
 
 
 type
     Msg
-    --= FormMsg (Form.Delta UserDelta)
-    = FormMsg (Form.Delta Item.ItemDelta)
+    -- = FormMsg (Form.Delta Item.ItemDelta)
+    = FormMsg (Form.Delta UserDelta)
     | Submit
 
 
-itemForm =
-    Item.form FormMsg
-
-
-
--- userForm =
---     toForm "Create a User" FormMsg user
+mainForm =
+    -- Item.form FormMsg
+    user |> toForm "Create a User" FormMsg
 
 
 type alias User =
@@ -126,7 +129,7 @@ user =
 role =
     customType
         |> tag0 "Guest" Guest
-        |> tag2 "Registered" Registered string string
+        |> tag2 "Registered" Registered ( "Username", string ) ( "Password", string )
         |> endCustomType
             (\guest registered tag ->
                 case tag of
