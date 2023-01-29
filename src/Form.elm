@@ -42,6 +42,7 @@ module Form exposing
     , string
     , tag0
     , tag1
+    , tag2
     , test
     , toForm
     , tuple
@@ -701,8 +702,8 @@ maybe control =
                         |> tag0 "Nothing" Nothing
                         |> tag1 "Just" Just control
                         |> endCustomType
-                            (\nothing just m ->
-                                case m of
+                            (\nothing just tag ->
+                                case tag of
                                     Nothing ->
                                         nothing
 
@@ -1204,21 +1205,21 @@ recordStateUpdater next { newStates, newCmds } ( fns, restFns ) ( setter, restSe
 
 type Test
     = C1 Int Int
-    | C2 String
+    | C2
 
 
 test =
     customType
         |> tag2 "C1" C1 int int
-        |> tag1 "C2" C2 string
+        |> tag0 "C2" C2
         |> endCustomType
             (\c1 c2 tag ->
                 case tag of
                     C1 int1 int2 ->
                         c1 int1 int2
 
-                    C2 str ->
-                        c2 str
+                    C2 ->
+                        c2
             )
 
 
@@ -1313,7 +1314,7 @@ tag0 id tag =
         id
         null
         (\insertArgStateIntoTagStates ->
-            insertArgStateIntoTagStates States0
+            insertArgStateIntoTagStates tag
         )
 
 
