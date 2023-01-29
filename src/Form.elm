@@ -3,7 +3,6 @@ module Form exposing
     , CustomTypeDelta
     , CustomTypeState
     , Delta
-    , Deltas0
     , End
     , Form
     , ListDelta
@@ -11,8 +10,6 @@ module Form exposing
     , MaybeDelta
     , MaybeState
     , State
-    , States0
-    , Test(..)
     , TupleDelta
     , TupleState
     , TypeCheck
@@ -43,7 +40,6 @@ module Form exposing
     , tag0
     , tag1
     , tag2
-    , test
     , toForm
     , tuple
     , wrapper
@@ -78,7 +74,7 @@ type End
 
 type alias Form state delta output msg =
     { init : State state
-    , initFrom : output -> State state
+    , initWith : output -> State state
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
     , submit : State state -> Result (State state) output
@@ -153,10 +149,6 @@ type InternalState
     | Idle_
 
 
-type States0
-    = States0
-
-
 type alias States1 a =
     ( State a, End )
 
@@ -181,10 +173,6 @@ type Delta delta
     | ChangeState delta
     | StartDebouncing Time.Posix
     | CheckDebouncer Time.Posix
-
-
-type Deltas0
-    = Deltas0
 
 
 type alias Deltas1 a =
@@ -213,7 +201,7 @@ toForm id toMsg (Control control) =
             control id
     in
     { init = init
-    , initFrom =
+    , initWith =
         \output ->
             let
                 (Control initialisedControl) =
@@ -679,7 +667,7 @@ wrapper wrap unwrap control =
 type alias MaybeState state =
     CustomTypeState
         (States2
-            States0
+            ()
             (States1 state)
         )
 
@@ -687,7 +675,7 @@ type alias MaybeState state =
 type alias MaybeDelta delta =
     CustomTypeDelta
         (Deltas2
-            Deltas0
+            ()
             (Deltas1 delta)
         )
 
@@ -1192,39 +1180,6 @@ recordStateUpdater next { newStates, newCmds } ( fns, restFns ) ( setter, restSe
 
 
 {-
-    .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b      d888888b d88888b .d8888. d888888b .d8888.
-   d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'          `~~88~~' 88'     88'  YP `~~88~~' 88'  YP
-   8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo         88    88ooooo `8bo.      88    `8bo.
-   8b      88    88   `Y8b.    88    88    88 88  88  88         88       88    88~~~   88~~~~~         88    88~~~~~   `Y8b.    88      `Y8b.
-   Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.             88    88.     db   8D    88    db   8D
-    `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P         YP    Y88888P `8888Y'    YP    `8888Y'
-
-
--}
-
-
-type Test
-    = C1 Int Int
-    | C2
-
-
-test =
-    customType
-        |> tag2 "C1" C1 int int
-        |> tag0 "C2" C2
-        |> endCustomType
-            (\c1 c2 tag ->
-                case tag of
-                    C1 int1 int2 ->
-                        c1 int1 int2
-
-                    C2 ->
-                        c2
-            )
-
-
-
-{-
     .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b db    db d8888b. d88888b
    d8P  Y8 88    88 88'  YP `~~88~~' .8P  Y8. 88'YbdP`88      `~~88~~' `8b  d8' 88  `8D 88'
    8P      88    88 `8bo.      88    88    88 88  88  88         88     `8bd8'  88oodD' 88ooooo
@@ -1303,9 +1258,9 @@ tag0 id tag =
     let
         null =
             makeControl
-                { empty = States0
-                , initialise = \_ -> States0
-                , update = \_ _ -> States0
+                { empty = ()
+                , initialise = \_ -> ()
+                , update = \_ _ -> ()
                 , view = \_ -> H.text ""
                 , parse = \_ -> Ok tag
                 }

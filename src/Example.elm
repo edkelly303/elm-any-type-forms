@@ -2,13 +2,10 @@ module Example exposing (..)
 
 import Browser
 import Form exposing (..)
-import Html as H exposing (Html)
+import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
-
-
-
--- main : Program () (Form.State String) Msg
+import Item
 
 
 main =
@@ -21,13 +18,10 @@ main =
 
 
 init () =
-    ( mainForm.initFrom (C1 1 2)
+    ( -- userForm.init
+      itemForm.initWith Item.exampleItem
     , Cmd.none
     )
-
-
-
--- view : Form.State String -> Html Msg
 
 
 view model =
@@ -47,20 +41,16 @@ view model =
             , HA.style "padding" "20px"
             , HA.style "background-color" "white"
             ]
-            [ mainForm.view model
+            [ itemForm.view model
             , H.button [ HE.onClick Submit ] [ H.text "Submit" ]
             ]
         ]
 
 
-
--- update : Msg -> Form.State String -> ( Form.State String, Cmd Msg )
-
-
 update msg model =
     case msg of
         Submit ->
-            case mainForm.submit model of
+            case itemForm.submit model of
                 Ok _ ->
                     ( model, Cmd.none )
 
@@ -70,30 +60,82 @@ update msg model =
         FormMsg formMsg ->
             let
                 ( newModel, cmd ) =
-                    mainForm.update formMsg model
+                    itemForm.update formMsg model
             in
             ( newModel, cmd )
 
 
-type Msg
-    = FormMsg
-        (Form.Delta
-            (CustomTypeDelta
-                ( Delta ( Delta String, ( Delta String, End ) )
-                , ( Delta ( Delta String, End ), End )
-                )
-            )
-        )
+type
+    Msg
+    --= FormMsg (Form.Delta UserDelta)
+    = FormMsg (Form.Delta Item.ItemDelta)
     | Submit
 
 
+itemForm =
+    Item.form FormMsg
 
--- mainForm : Form String String Int Msg
 
 
-mainForm =
-    test
-        |> toForm "Creating an Item" FormMsg
+-- userForm =
+--     toForm "Create a User" FormMsg user
+
+
+type alias User =
+    { name : String
+    , age : Int
+    , role : Role
+    }
+
+
+type alias UserDelta =
+    ( Delta String
+    , ( Delta String
+      , ( Delta
+            (CustomTypeDelta
+                ( Delta ()
+                , ( Delta
+                        ( Delta String
+                        , ( Delta String
+                          , End
+                          )
+                        )
+                  , End
+                  )
+                )
+            )
+        , End
+        )
+      )
+    )
+
+
+type Role
+    = Guest
+    | Registered String String
+
+
+user =
+    record User
+        |> field .name "Name" string
+        |> field .age "Age" boundedInt
+        |> field .role "Role" role
+        |> endRecord
+
+
+role =
+    customType
+        |> tag0 "Guest" Guest
+        |> tag2 "Registered" Registered string string
+        |> endCustomType
+            (\guest registered tag ->
+                case tag of
+                    Guest ->
+                        guest
+
+                    Registered username password ->
+                        registered username password
+            )
 
 
 boundedInt : Control String String Int

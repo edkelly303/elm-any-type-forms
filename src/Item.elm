@@ -4,6 +4,7 @@ module Item exposing
     , ItemDelta
     , ItemState
     , exampleItem
+    , form
     , item
     )
 
@@ -235,9 +236,9 @@ type alias ItemState =
                               , ( State
                                     { selectedTag : Int
                                     , tagStates :
-                                        ( State States0
-                                        , ( State States0
-                                          , ( State States0
+                                        ( State ()
+                                        , ( State ()
+                                          , ( State ()
                                             , ( State
                                                     ( State String
                                                     , End
@@ -311,6 +312,10 @@ type alias ItemState =
         )
       )
     )
+
+
+form msg =
+    toForm "Create an Item" msg item
 
 
 item =
