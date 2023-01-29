@@ -91,10 +91,10 @@ type alias ControlConfig state delta output =
 
 
 type alias Control state delta output =
-    ControlX output state delta output
+    InternalControl output state delta output
 
 
-type ControlX input state delta output
+type InternalControl input state delta output
     = Control
         (String
          ->
@@ -485,7 +485,7 @@ layout v (Control control) =
 -}
 
 
-initFrom : input -> ControlX input state delta output -> ControlX input state delta output
+initFrom : input -> InternalControl input state delta output -> InternalControl input state delta output
 initFrom input (Control control) =
     let
         initialiser i =
