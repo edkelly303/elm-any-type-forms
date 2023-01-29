@@ -1362,13 +1362,7 @@ endCustomType initialiser rec =
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
             , delta = Skip
-            , initialise =
-                \tag ->
-                    let
-                        match =
-                            applyStateSettersToInitialiser rec.applyInputs initialiser stateSetters
-                    in
-                    { selectedTag = 0, tagStates = match tag }
+            , initialise = applyStateSettersToInitialiser rec.applyInputs initialiser stateSetters
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
@@ -1392,11 +1386,12 @@ endCustomType initialiser rec =
 -}
 
 
-applyStateSettersToInitialiser stateSetterToInitialiserApplier_ initialiser stateSetters =
+applyStateSettersToInitialiser stateSetterToInitialiserApplier_ initialiser stateSetters tag =
     stateSetterToInitialiserApplier_
         (\appliedInitialiser End -> appliedInitialiser)
         initialiser
         stateSetters
+        tag
 
 
 stateSetterToInitialiserApplier next initialiser ( stateSetter, stateSetters ) =
@@ -1421,18 +1416,26 @@ stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toA
 
 
 insertArgStateIntoTagState stateInserter_ maybeArgStates inits =
-    stateInserter_ (\End End -> End) maybeArgStates inits
+    stateInserter_
+        (\_ selectedTag tagStates End End -> { selectedTag = selectedTag, tagStates = tagStates End })
+        0
+        0
+        identity
+        maybeArgStates
+        inits
 
 
-argStateIntoTagStateInserter next ( maybeArgState, maybeArgStates ) ( init, inits ) =
-    ( case maybeArgState of
-        Just state ->
-            State Intact_ state
+argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStates ( maybeArgState, maybeArgStates ) ( init, inits ) =
+    let
+        ( selectedTag, tagArgState ) =
+            case maybeArgState of
+                Just state ->
+                    ( thisTagIndex, State Intact_ state )
 
-        Nothing ->
-            init
-    , next maybeArgStates inits
-    )
+                Nothing ->
+                    ( currentlySelectedTagIndex, init )
+    in
+    next (thisTagIndex + 1) selectedTag (tagStates << Tuple.pair tagArgState) maybeArgStates inits
 
 
 submitSelectedTagState submitter selectedTag fns tagStates =

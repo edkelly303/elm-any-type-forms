@@ -11,7 +11,7 @@ module Item exposing
 import Form exposing (..)
 import Html as H
 import Html.Attributes as HA
-import Time
+import Time exposing (millisToPosix)
 
 
 type alias Item =
@@ -118,7 +118,7 @@ exampleItem =
     , aliases = [ "sourdough" ]
     , emoji = Just "🥖"
     , category = Baking
-    , purchaseHistory = []
+    , purchaseHistory = [ { grams = Unit 100, measure = Custom "box", time = millisToPosix 0 } ]
     , doNotSuggestUntil = Nothing
     , maybeVolume = Nothing
     , maybeWhole = Nothing
