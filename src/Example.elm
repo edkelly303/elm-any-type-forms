@@ -98,10 +98,8 @@ type alias UserDelta =
             (CustomTypeDelta
                 ( Delta ()
                 , ( Delta
-                        ( Delta String
-                        , ( Delta String
-                          , End
-                          )
+                        ( Delta ( Delta String, ( Delta String, End ) )
+                        , End
                         )
                   , End
                   )
@@ -115,7 +113,7 @@ type alias UserDelta =
 
 type Role
     = Guest
-    | Registered String String
+    | Registered Password
 
 
 user =
@@ -129,16 +127,35 @@ user =
 role =
     customType
         |> tag0 "Guest" Guest
-        |> tag2 "Registered" Registered ( "Username", string ) ( "Password", string )
+        |> tag1 "Registered" Registered password
         |> endCustomType
             (\guest registered tag ->
                 case tag of
                     Guest ->
                         guest
 
-                    Registered username password ->
-                        registered username password
+                    Registered pwd ->
+                        registered pwd
             )
+
+
+type alias Password =
+    { password : String
+    , confirmPassword : String
+    }
+
+
+password :
+    Control
+        ( State String, ( State String, End ) )
+        ( Delta String, ( Delta String, End ) )
+        Password
+password =
+    record Password
+        |> field .password "Enter password" string
+        |> field .confirmPassword "Confirm password" string
+        |> endRecord
+        |> failIf (\rec -> rec.password /= rec.confirmPassword) "Passwords don't match"
 
 
 boundedInt : Control String String Int

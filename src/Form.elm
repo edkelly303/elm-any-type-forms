@@ -982,11 +982,14 @@ endRecord rec =
                         idViews
                         fieldViews
             in
-            if List.length combinedViews > 1 then
-                borderedDiv combinedViews
+            H.div []
+                [ if List.length combinedViews > 1 then
+                    borderedDiv combinedViews
 
-            else
-                H.div [] fieldViews
+                  else
+                    H.div [] fieldViews
+                , statusView config.status
+                ]
 
         validate (State _ state) =
             validateRecordStates rec.parser rec.toOutput fns state
