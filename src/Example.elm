@@ -152,10 +152,20 @@ password :
         Password
 password =
     record Password
-        |> field .password "Enter password" string
-        |> field .confirmPassword "Confirm password" string
+        |> field .password
+            "Enter password"
+            (string
+                |> failOnFlag "password-matcher" "Must match confirm password field"
+                |> flagIf (\str -> str == "") "password-empty"
+                |> failOnFlag "password-empty" "Passwords can't be empty"
+            )
+        |> field .confirmPassword
+            "Confirm password"
+            (string
+                |> failOnFlag "password-matcher" "Must match password field"
+            )
         |> endRecord
-        |> failIf (\rec -> rec.password /= rec.confirmPassword) "Passwords don't match"
+        |> flagIf (\rec -> rec.password /= rec.confirmPassword) "password-matcher"
 
 
 boundedInt : Control String String Int

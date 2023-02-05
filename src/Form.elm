@@ -25,7 +25,9 @@ module Form exposing
     , endRecord
     , enum
     , failIf
+    , failOnFlag
     , field
+    , flagIf
     , hiddenField
     , initFrom
     , int
@@ -109,8 +111,10 @@ type InternalControl input state delta output
             , view : ViewConfig state -> Html (Delta delta)
             , baseValidate : State state -> Result (List ( String, String )) output
             , validate : State state -> Result (List ( String, String )) output
-            , submit : State state -> State state
             , notify : State state -> List ( String, String )
+            , submit : State state -> State state
+            , emitFlags : State state -> List String
+            , receiveFlags : List String -> List String
             }
         )
 
@@ -119,6 +123,7 @@ type alias ViewConfig state =
     { label : String
     , state : state
     , status : Status
+    , flags : List String
     }
 
 
@@ -197,7 +202,7 @@ type alias Deltas2 a b =
 toForm : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
 toForm label toMsg (Control control) =
     let
-        { init, update, view, validate, notify, submit } =
+        { init, update, view, validate, notify, submit, emitFlags, receiveFlags } =
             control label
     in
     { init = init
@@ -215,14 +220,21 @@ toForm label toMsg (Control control) =
             update msg state
                 |> Tuple.mapSecond (Cmd.map toMsg)
     , view =
-        \(State internalState state) ->
+        \((State internalState state) as s) ->
+            let
+                flags =
+                    emitFlags s |> Debug.log "flags"
+            in
             H.div []
                 [ H.h1 [] [ H.text label ]
                 , H.div []
                     [ view
                         { state = state
-                        , status = getStatus validate notify (State internalState state)
+                        , status =
+                            -- getStatus validate notify (State internalState state)
+                            getStatus2 flags receiveFlags (State internalState state)
                         , label = label
+                        , flags = flags
                         }
                         |> H.map toMsg
                     ]
@@ -285,6 +297,8 @@ makeControl config =
             , validate = validate
             , submit = \(State _ s) -> State Idle_ s
             , notify = \_ -> []
+            , emitFlags = \_ -> []
+            , receiveFlags = \_ -> []
             }
         )
 
@@ -339,6 +353,59 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
                     )
 
 
+flagIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
+flagIf check flag (Control control) =
+    let
+        emitFlags_ ctrl =
+            { ctrl
+                | emitFlags =
+                    \state ->
+                        let
+                            oldFlags =
+                                ctrl.emitFlags state
+
+                            newFlags =
+                                case ctrl.baseValidate state of
+                                    Ok output ->
+                                        if check output then
+                                            [ flag ]
+
+                                        else
+                                            []
+
+                                    Err _ ->
+                                        []
+                        in
+                        List.Extra.unique (oldFlags ++ newFlags)
+            }
+    in
+    Control (control >> emitFlags_)
+
+
+failOnFlag : String -> String -> Control state delta output -> Control state delta output
+failOnFlag flag message (Control control) =
+    let
+        flagReceiver ctrl =
+            { ctrl
+                | receiveFlags =
+                    \flags ->
+                        let
+                            oldReceiver =
+                                ctrl.receiveFlags flags
+
+                            newReceiver =
+                                if List.member flag flags then
+                                    [ message ]
+
+                                else
+                                    []
+                        in
+                        List.Extra.unique (oldReceiver ++ newReceiver)
+            }
+    in
+    Control (control >> flagReceiver)
+
+
 
 {-
    d88888b  .d8b.  d888888b db           d888888b d88888b
@@ -353,14 +420,14 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 failIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
 failIf check feedback (Control control) =
     let
-        validate i =
+        validate ctrl =
             let
                 newValidator =
                     \state ->
-                        case i.baseValidate state of
+                        case ctrl.baseValidate state of
                             Ok output ->
                                 if check output then
-                                    Err [ ( i.label, feedback ) ]
+                                    Err [ ( ctrl.label, feedback ) ]
 
                                 else
                                     Ok output
@@ -369,9 +436,9 @@ failIf check feedback (Control control) =
                                 Err errs
 
                 existingValidator =
-                    i.validate
+                    ctrl.validate
             in
-            { i
+            { ctrl
                 | validate =
                     \state ->
                         case ( newValidator state, existingValidator state ) of
@@ -405,19 +472,19 @@ failIf check feedback (Control control) =
 noteIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
 noteIf check feedback (Control control) =
     let
-        show i =
-            { i
+        notify ctrl =
+            { ctrl
                 | notify =
                     \state ->
                         let
                             existingNotes =
-                                i.notify state
+                                ctrl.notify state
 
                             newNotes =
-                                case i.baseValidate state of
+                                case ctrl.baseValidate state of
                                     Ok output ->
                                         if check output then
-                                            [ ( i.label, feedback ) ]
+                                            [ ( ctrl.label, feedback ) ]
 
                                         else
                                             []
@@ -428,7 +495,7 @@ noteIf check feedback (Control control) =
                         List.Extra.unique (existingNotes ++ newNotes)
             }
     in
-    Control (control >> show)
+    Control (control >> notify)
 
 
 
@@ -845,6 +912,8 @@ list (Control toControl) =
             , validate = validate
             , submit = \(State _ s) -> State Idle_ (List.map control.submit s)
             , notify = \_ -> []
+            , emitFlags = \_ -> []
+            , receiveFlags = \_ -> []
             }
         )
 
@@ -877,6 +946,7 @@ record toOutput =
     , after = End
     , afters = End
     , makeSetters = identity
+    , flagEmitter = identity
     }
 
 
@@ -924,6 +994,7 @@ internalField access fromOutput label (Control control) rec =
     , after = ( Skip, rec.after )
     , afters = ( rec.after, rec.afters )
     , makeSetters = rec.makeSetters >> deltaSetterMaker
+    , flagEmitter = rec.flagEmitter >> recordFlagEmitter
     }
 
 
@@ -956,7 +1027,7 @@ endRecord rec =
                     ( State s state, Cmd.none )
 
         childViews config =
-            viewRecordStates rec.viewer fns deltaSetters config.state
+            viewRecordStates rec.viewer config.flags fns deltaSetters config.state
 
         view childViews_ config =
             let
@@ -996,6 +1067,9 @@ endRecord rec =
 
         submit (State _ state) =
             State Idle_ (submitRecordStates rec.submitter fns state)
+
+        emitFlags (State _ state) =
+            emitFlagsForRecord rec.flagEmitter fns state
     in
     Control
         (\label ->
@@ -1012,6 +1086,8 @@ endRecord rec =
             , validate = validate
             , submit = submit
             , notify = \_ -> []
+            , emitFlags = emitFlags
+            , receiveFlags = \_ -> []
             }
         )
 
@@ -1025,6 +1101,18 @@ endRecord rec =
    88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
    88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+emitFlagsForRecord flagEmitter_ fns states =
+    flagEmitter_ (\flags End End -> flags) [] fns states
+
+
+recordFlagEmitter next flags ( fns, restFns ) ( state, restStates ) =
+    let
+        newFlags =
+            fns.field.emitFlags state
+    in
+    next (flags ++ newFlags) restFns restStates
 
 
 makeDeltaSetters makeSetters_ befores afters =
@@ -1080,18 +1168,21 @@ recordStateSubmitter next ( fns, restFns ) ( state, restStates ) =
     )
 
 
-viewRecordStates viewer fns setters states =
-    viewer (\views End End End -> views) [] fns setters states
+viewRecordStates viewer flags fns setters states =
+    viewer (\views _ End End End -> views) [] flags fns setters states
         |> List.reverse
 
 
-recordStateViewer next views ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
+recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     let
         view =
             fns.field.view
                 { state = state
-                , status = getStatus fns.field.validate fns.field.notify (State internalState state)
+                , status =
+                    -- getStatus fns.field.validate fns.field.notify (State internalState state)
+                    getStatus2 flags fns.field.receiveFlags (State internalState state)
                 , label = fns.field.label
+                , flags = flags
                 }
                 |> H.map (\delta -> ChangeState (setter delta))
     in
@@ -1114,6 +1205,7 @@ recordStateViewer next views ( fns, restFns ) ( setter, restSetters ) ( State in
          )
             :: views
         )
+        flags
         restFns
         restSetters
         restStates
@@ -1124,7 +1216,7 @@ getStatus :
     -> (State state -> List ( String, String ))
     -> State state
     -> Status
-getStatus validator notifier (State internalState state) =
+getStatus validator notifier ((State internalState _) as state) =
     case internalState of
         Intact_ ->
             Intact
@@ -1135,7 +1227,7 @@ getStatus validator notifier (State internalState state) =
         Idle_ ->
             let
                 errors =
-                    case validator (State internalState state) of
+                    case validator state of
                         Ok _ ->
                             []
 
@@ -1143,9 +1235,27 @@ getStatus validator notifier (State internalState state) =
                             errs
 
                 notes =
-                    notifier (State internalState state)
+                    notifier state
             in
             Idle (List.map Err errors ++ List.map Ok notes)
+
+
+getStatus2 flags flagReceiver_ (State internalState _) =
+    case internalState of
+        Intact_ ->
+            Intact
+
+        DebouncingSince _ ->
+            Debouncing
+
+        Idle_ ->
+            let
+                errors =
+                    flags
+                        |> flagReceiver_
+                        |> List.map (Tuple.pair "")
+            in
+            Idle (List.map Err errors)
 
 
 updateRecordStates updater fields setters deltas states =
@@ -1225,6 +1335,7 @@ customType =
     , makeStateSetters = identity
     , stateInserter = identity
     , applyInputs = identity
+    , flagEmitter = identity
     }
 
 
@@ -1254,6 +1365,7 @@ variant label (Control control) toArgState rec =
     , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
     , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
     , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
+    , flagEmitter = rec.flagEmitter >> recordFlagEmitter
     }
 
 
@@ -1341,7 +1453,7 @@ endCustomType initialiser rec =
                         ( State s state, Cmd.none )
 
         childViews config =
-            [ viewSelectedTagState rec.viewer config.state.selectedTag fns deltaSetters config.state.tagStates ]
+            [ viewSelectedTagState rec.viewer config.flags config.state.selectedTag fns deltaSetters config.state.tagStates ]
 
         view config =
             let
@@ -1352,16 +1464,18 @@ endCustomType initialiser rec =
                     childViews config
             in
             customTypeView config.label options config.state.selectedTag childViews_
+
+        validate =
+            \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
+
+        submit =
+            \(State _ state) -> State Idle_ (submitSelectedTagState rec.submitter state.selectedTag fns state.tagStates)
+
+        emitFlags (State _ state) =
+            emitFlagsForRecord rec.flagEmitter fns state.tagStates
     in
     Control
         (\label ->
-            let
-                validate =
-                    \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
-
-                submit =
-                    \(State _ state) -> State Idle_ (submitSelectedTagState rec.submitter state.selectedTag fns state.tagStates)
-            in
             { label = label
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
@@ -1375,6 +1489,8 @@ endCustomType initialiser rec =
             , validate = validate
             , submit = submit
             , notify = \_ -> []
+            , emitFlags = emitFlags
+            , receiveFlags = \_ -> []
             }
         )
 
@@ -1485,13 +1601,13 @@ selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates )
         restStates
 
 
-viewSelectedTagState viewer selectedTag fns setters states =
-    viewer (\maybeView _ End End End -> maybeView) Nothing selectedTag fns setters states
+viewSelectedTagState viewer flags selectedTag fns setters states =
+    viewer (\maybeView _ _ End End End -> maybeView) Nothing flags selectedTag fns setters states
         |> Maybe.map (H.map (ChangeState << TagDeltaReceived))
         |> Maybe.withDefault (H.text "ERROR!")
 
 
-selectedTagViewer next maybeView selectedTag ( fns, restFns ) ( setter, restSetters ) ( State s state, restStates ) =
+selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, restSetters ) ( State s state, restStates ) =
     next
         (if fns.field.index == selectedTag then
             Just
@@ -1499,6 +1615,7 @@ selectedTagViewer next maybeView selectedTag ( fns, restFns ) ( setter, restSett
                     { state = state
                     , status = Intact
                     , label = fns.field.label
+                    , flags = flags
                     }
                     |> H.map setter
                 )
@@ -1506,6 +1623,7 @@ selectedTagViewer next maybeView selectedTag ( fns, restFns ) ( setter, restSett
          else
             maybeView
         )
+        flags
         selectedTag
         restFns
         restSetters
@@ -1583,6 +1701,7 @@ listView controlView controlParse controlFeedback config =
                                 { state = state
                                 , status = getStatus controlParse controlFeedback (State internalState state)
                                 , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
+                                , flags = config.flags
                                 }
                                 |> H.map (ChangeItem idx)
                             ]
