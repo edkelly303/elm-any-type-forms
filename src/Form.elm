@@ -112,7 +112,7 @@ type InternalControl input state delta output
             , baseValidate : State state -> Result (List ( String, String )) output
             , validate : State state -> Result (List ( String, String )) output
             , notify : State state -> List ( String, String )
-            , submit : State state -> State state
+            , setAllIdle : State state -> State state
             , emitFlags : State state -> List String
             , receiveFlags : List String -> List String
             }
@@ -202,7 +202,7 @@ type alias Deltas2 a b =
 toForm : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
 toForm label toMsg (Control control) =
     let
-        { init, update, view, validate, notify, submit, emitFlags, receiveFlags } =
+        { init, update, view, validate, notify, setAllIdle, emitFlags, receiveFlags } =
             control label
     in
     { init = init
@@ -242,7 +242,7 @@ toForm label toMsg (Control control) =
     , submit =
         \state ->
             validate state
-                |> Result.mapError (\errors -> { errors = errors, state = submit state })
+                |> Result.mapError (\errors -> { errors = errors, state = setAllIdle state })
     }
 
 
@@ -295,7 +295,7 @@ makeControl config =
             , view = config.view >> H.map ChangeState
             , baseValidate = validate
             , validate = validate
-            , submit = \(State _ s) -> State Idle_ s
+            , setAllIdle = \(State _ s) -> State Idle_ s
             , notify = \_ -> []
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
@@ -910,7 +910,7 @@ list (Control toControl) =
             , view = listView control.view control.validate control.notify
             , baseValidate = validate
             , validate = validate
-            , submit = \(State _ s) -> State Idle_ (List.map control.submit s)
+            , setAllIdle = \(State _ s) -> State Idle_ (List.map control.setAllIdle s)
             , notify = \_ -> []
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
@@ -939,7 +939,7 @@ record toOutput =
     , updater = identity
     , viewer = identity
     , parser = identity
-    , submitter = identity
+    , idleSetter = identity
     , initialiser = identity
     , before = identity
     , befores = identity
@@ -987,7 +987,7 @@ internalField access fromOutput label (Control control) rec =
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> recordStateViewer
     , parser = rec.parser >> recordStateValidator
-    , submitter = rec.submitter >> recordStateSubmitter
+    , idleSetter = rec.idleSetter >> recordStateIdleSetter
     , initialiser = rec.initialiser >> recordStateInitialiser
     , before = rec.before << Tuple.pair Skip
     , befores = rec.befores << Tuple.pair rec.before
@@ -1065,8 +1065,8 @@ endRecord rec =
         validate (State _ state) =
             validateRecordStates rec.parser rec.toOutput fns state
 
-        submit (State _ state) =
-            State Idle_ (submitRecordStates rec.submitter fns state)
+        setAllIdle (State _ state) =
+            State Idle_ (setAllRecordStatesToIdle rec.idleSetter fns state)
 
         emitFlags (State _ state) =
             emitFlagsForRecord rec.flagEmitter fns state
@@ -1084,7 +1084,7 @@ endRecord rec =
             , view = \config -> view childViews config
             , baseValidate = validate
             , validate = validate
-            , submit = submit
+            , setAllIdle = setAllIdle
             , notify = \_ -> []
             , emitFlags = emitFlags
             , receiveFlags = \_ -> []
@@ -1158,12 +1158,12 @@ recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) 
         restStates
 
 
-submitRecordStates submitter fns states =
-    submitter (\End End -> End) fns states
+setAllRecordStatesToIdle idleSetter_ fns states =
+    idleSetter_ (\End End -> End) fns states
 
 
-recordStateSubmitter next ( fns, restFns ) ( state, restStates ) =
-    ( fns.field.submit state
+recordStateIdleSetter next ( fns, restFns ) ( state, restStates ) =
+    ( fns.field.setAllIdle state
     , next restFns restStates
     )
 
@@ -1321,7 +1321,7 @@ customType =
     , updater = identity
     , viewer = identity
     , parser = identity
-    , submitter = identity
+    , idleSetter = identity
     , deltaBefore = identity
     , deltaBefores = identity
     , deltaAfter = End
@@ -1351,7 +1351,7 @@ variant label (Control control) toArgState rec =
     , updater = rec.updater >> recordStateUpdater
     , viewer = rec.viewer >> selectedTagViewer
     , parser = rec.parser >> selectedTagParser
-    , submitter = rec.submitter >> selectedTagSubmitter
+    , idleSetter = rec.idleSetter >> selectedTagIdleSetter
     , deltaBefore = rec.deltaBefore << Tuple.pair Skip
     , deltaBefores = rec.deltaBefores << Tuple.pair rec.deltaBefore
     , deltaAfter = ( Skip, rec.deltaAfter )
@@ -1468,8 +1468,8 @@ endCustomType initialiser rec =
         validate =
             \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
 
-        submit =
-            \(State _ state) -> State Idle_ (submitSelectedTagState rec.submitter state.selectedTag fns state.tagStates)
+        setAllIdle =
+            \(State _ state) -> State Idle_ (setSelectedTagStateIdle rec.idleSetter state.selectedTag fns state.tagStates)
 
         emitFlags (State _ state) =
             emitFlagsForRecord rec.flagEmitter fns state.tagStates
@@ -1487,7 +1487,7 @@ endCustomType initialiser rec =
             , view = \config -> view config
             , baseValidate = validate
             , validate = validate
-            , submit = submit
+            , setAllIdle = setAllIdle
             , notify = \_ -> []
             , emitFlags = emitFlags
             , receiveFlags = \_ -> []
@@ -1558,10 +1558,10 @@ argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStat
     next (thisTagIndex + 1) selectedTag (tagStates << Tuple.pair tagArgState) maybeArgStates inits
 
 
-submitSelectedTagState submitter selectedTag fns tagStates =
+setSelectedTagStateIdle idleSetter_ selectedTag fns tagStates =
     { selectedTag = selectedTag
     , tagStates =
-        submitter
+        idleSetter_
             (\_ End End -> End)
             selectedTag
             fns
@@ -1569,9 +1569,9 @@ submitSelectedTagState submitter selectedTag fns tagStates =
     }
 
 
-selectedTagSubmitter next selectedTag ( fns, restFns ) ( state, restStates ) =
+selectedTagIdleSetter next selectedTag ( fns, restFns ) ( state, restStates ) =
     ( if fns.field.index == selectedTag then
-        fns.field.submit state
+        fns.field.setAllIdle state
 
       else
         state
