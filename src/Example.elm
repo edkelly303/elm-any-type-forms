@@ -54,7 +54,11 @@ update msg model =
             case
                 mainForm.submit model
             of
-                Ok _ ->
+                Ok output ->
+                    let
+                        _ =
+                            Debug.log "Success" output
+                    in
                     ( model, Cmd.none )
 
                 Err { state, errors } ->
