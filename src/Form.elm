@@ -241,8 +241,19 @@ toForm label toMsg (Control control) =
                 ]
     , submit =
         \state ->
-            validate state
-                |> Result.mapError (\errors -> { errors = errors, state = setAllIdle state })
+            case
+                state
+                    |> emitFlags
+                    |> receiveFlags
+                    -- there needs to be a way to collect all errors from all nested controls, not just the top level control
+                    |> Debug.log "Flags at submission"
+            of
+                [] ->
+                    validate state
+                        |> Result.mapError (\errors -> { errors = errors, state = setAllIdle state })
+
+                errs ->
+                    Err { errors = List.map (Tuple.pair "") errs, state = setAllIdle state }
     }
 
 
