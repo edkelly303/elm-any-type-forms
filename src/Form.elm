@@ -115,7 +115,7 @@ type InternalControl input state delta output
             , notify : State state -> List ( String, String )
             , setAllIdle : State state -> State state
             , emitFlags : State state -> List Flag
-            , receiveFlags : List Flag -> List String
+            , receiveFlags : List Flag -> List ( String, String )
             , receiverCount : Int
             }
         )
@@ -237,9 +237,7 @@ fromControl label toMsg (Control control) =
                 , H.div []
                     [ view
                         { state = state
-                        , status =
-                            -- getStatus validate notify (State internalState state)
-                            getStatus flags receiveFlags (State internalState state)
+                        , status = getStatus validate receiveFlags Path.root flags (State internalState state)
                         , label = label
                         , flags = flags
                         }
@@ -260,7 +258,7 @@ fromControl label toMsg (Control control) =
                         |> Result.mapError (\errors -> { errors = errors, state = setAllIdle state })
 
                 errs ->
-                    Err { errors = List.map (Tuple.pair "") errs, state = setAllIdle state }
+                    Err { errors = errs, state = setAllIdle state }
     }
 
 
@@ -416,7 +414,7 @@ flagReceiver flag message ctrl =
 
                     newReceiver =
                         if List.member flag flags then
-                            [ message ]
+                            [ ( Path.toString ctrl.path, message ) ]
 
                         else
                             []
@@ -1202,7 +1200,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
         view =
             fns.field.view
                 { state = state
-                , status = getStatus flags fns.field.receiveFlags (State internalState state)
+                , status = getStatus fns.field.validate fns.field.receiveFlags fns.field.path flags (State internalState state)
                 , label = Path.last fns.field.path
                 , flags = flags
                 }
@@ -1259,7 +1257,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
 --             Idle (List.map Err errors ++ List.map Ok notes)
 
 
-getStatus flags flagReceiver_ (State internalState _) =
+getStatus parse receiveFlags path flags ((State internalState _) as state) =
     case internalState of
         Intact_ ->
             Intact
@@ -1269,12 +1267,19 @@ getStatus flags flagReceiver_ (State internalState _) =
 
         Idle_ ->
             let
-                errors =
+                parsedErrors =
+                    case parse state of
+                        Ok _ ->
+                            []
+
+                        Err errs ->
+                            errs
+
+                flaggedErrors =
                     flags
-                        |> flagReceiver_
-                        |> List.map (Tuple.pair "")
+                        |> receiveFlags
             in
-            Idle (List.map Err errors)
+            Idle (List.map Err (parsedErrors ++ flaggedErrors))
 
 
 updateRecordStates updater fields setters deltas states =
@@ -1740,7 +1745,7 @@ listView path ctrl config =
                                 ]
                             , control.view
                                 { state = state
-                                , status = getStatus config.flags control.receiveFlags (State internalState state)
+                                , status = getStatus control.validate control.receiveFlags control.path config.flags (State internalState state)
                                 , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                 , flags = config.flags
                                 }
