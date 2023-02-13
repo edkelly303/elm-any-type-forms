@@ -94,16 +94,26 @@ mainForm =
 type alias User =
     { name : String
     , age : Int
-    , password : Password
-
-    -- , role : Role
+    , role : Role
     }
 
 
 type alias UserDelta =
     ( Delta String
     , ( Delta String
-      , ( Delta ( Delta String, ( Delta String, End ) ), End )
+      , ( Delta
+            (CustomTypeDelta
+                ( Delta ()
+                , ( Delta
+                        ( Delta ( Delta String, ( Delta String, End ) )
+                        , End
+                        )
+                  , End
+                  )
+                )
+            )
+        , End
+        )
       )
     )
 
@@ -117,23 +127,23 @@ user =
     record User
         |> field .name "Name" string
         |> field .age "Age" boundedInt
-        |> field .password "Password" password
+        |> field .role "Role" role
         |> endRecord
 
 
+role =
+    customType
+        |> tag0 "Guest" Guest
+        |> tag1 "Registered" Registered password
+        |> endCustomType
+            (\guest registered tag ->
+                case tag of
+                    Guest ->
+                        guest
 
--- role =
---     customType
---         |> tag0 "Guest" Guest
---         |> tag1 "Registered" Registered password
---         |> endCustomType
---             (\guest registered tag ->
---                 case tag of
---                     Guest ->
---                         guest
---                     Registered pwd ->
---                         registered pwd
---             )
+                    Registered pwd ->
+                        registered pwd
+            )
 
 
 type alias Password =
@@ -168,5 +178,5 @@ password =
 boundedInt : Control String String Int
 boundedInt =
     int
-        |> failIf (\x -> x <= 0) "must be greater than 0"
-        |> failIf (\x -> x > 120) "maximum is 120"
+        |> failIf2 (\x -> x <= 0) "must be greater than 0"
+        |> failIf2 (\x -> x > 120) "maximum is 120"
