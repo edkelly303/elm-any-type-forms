@@ -109,7 +109,7 @@ type InternalControl input state delta output
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , childViews : ViewConfig state -> List (Html (Delta delta))
             , view : ViewConfig state -> Html (Delta delta)
-            , validate : State state -> Result (List ( String, String )) output
+            , parse : State state -> Result (List ( String, String )) output
             , notify : State state -> List ( String, String )
             , setAllIdle : State state -> State state
             , emitFlags : State state -> List Flag
@@ -207,7 +207,7 @@ type alias Deltas2 a b =
 fromControl : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
 fromControl label toMsg (Control control) =
     let
-        { init, update, view, validate, notify, setAllIdle, emitFlags, receiveFlags } =
+        { init, update, view, parse, setAllIdle, emitFlags, receiveFlags } =
             control Path.root
     in
     { init = init
@@ -235,7 +235,7 @@ fromControl label toMsg (Control control) =
                 , H.div []
                     [ view
                         { state = state
-                        , status = getStatus validate receiveFlags Path.root flags (State internalState state)
+                        , status = getStatus parse receiveFlags flags (State internalState state)
                         , label = label
                         , flags = flags
                         }
@@ -252,7 +252,7 @@ fromControl label toMsg (Control control) =
                     |> Debug.log "Flags at submission"
             of
                 [] ->
-                    validate state
+                    parse state
                         |> Result.mapError (\errors -> { errors = errors, state = setAllIdle state })
 
                 errs ->
@@ -293,7 +293,7 @@ makeControl config =
                 preUpdate =
                     wrapUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none )))
 
-                validate =
+                parse =
                     \(State _ state) ->
                         config.parse state
                             |> Result.mapError (List.map (Tuple.pair (Path.toString path)))
@@ -307,7 +307,7 @@ makeControl config =
             , update = preUpdate 0
             , childViews = \_ -> []
             , view = config.view >> H.map ChangeState
-            , validate = validate
+            , parse = parse
             , setAllIdle = \(State _ s) -> State Idle_ s
             , notify = \_ -> []
             , emitFlags = \_ -> []
@@ -381,7 +381,7 @@ flagEmitter check flag ctrl =
                         ctrl.emitFlags state
 
                     newFlags =
-                        case ctrl.validate state of
+                        case ctrl.parse state of
                             Ok output ->
                                 if check output then
                                     [ flag ]
@@ -824,7 +824,7 @@ list (Control ctrl) =
                         DeleteItem idx ->
                             ( List.Extra.removeAt idx state, Cmd.none )
 
-                validate =
+                parse =
                     \(State _ state) ->
                         List.foldr
                             (\( idx, item ) res ->
@@ -837,7 +837,7 @@ list (Control ctrl) =
                                 in
                                 case res of
                                     Ok outputs ->
-                                        case itemControl.validate item of
+                                        case itemControl.parse item of
                                             Ok output ->
                                                 Ok (output :: outputs)
 
@@ -845,7 +845,7 @@ list (Control ctrl) =
                                                 Err (identifyErrors errs)
 
                                     Err errs ->
-                                        case itemControl.validate item of
+                                        case itemControl.parse item of
                                             Ok _ ->
                                                 Err errs
 
@@ -873,7 +873,7 @@ list (Control ctrl) =
             , update = update 0
             , childViews = \_ -> []
             , view = listView path ctrl
-            , validate = validate
+            , parse = parse
             , setAllIdle =
                 \(State _ s) ->
                     State Idle_
@@ -1041,7 +1041,7 @@ endRecord rec =
                         , statusView config.status
                         ]
 
-                validate (State _ state) =
+                parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
 
                 setAllIdle (State _ state) =
@@ -1059,7 +1059,7 @@ endRecord rec =
             , update = update
             , childViews = \config -> childViews config
             , view = \config -> view childViews config
-            , validate = validate
+            , parse = parse
             , setAllIdle = setAllIdle
             , notify = \_ -> []
             , emitFlags = emitFlags
@@ -1118,7 +1118,7 @@ validateRecordStates parser toOutput fns states =
 
 recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) =
     next
-        (case ( toOutputResult, fns.field.validate state ) of
+        (case ( toOutputResult, fns.field.parse state ) of
             ( Ok toOutput, Ok parsed ) ->
                 Ok (toOutput parsed)
 
@@ -1155,7 +1155,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
         view =
             fns.field.view
                 { state = state
-                , status = getStatus fns.field.validate fns.field.receiveFlags fns.field.path flags (State internalState state)
+                , status = getStatus fns.field.parse fns.field.receiveFlags flags (State internalState state)
                 , label = Path.last fns.field.path
                 , flags = flags
                 }
@@ -1212,7 +1212,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
 --             Idle (List.map Err errors ++ List.map Ok notes)
 
 
-getStatus parse receiveFlags path flags ((State internalState _) as state) =
+getStatus parse receiveFlags flags ((State internalState _) as state) =
     case internalState of
         Intact_ ->
             Intact
@@ -1453,7 +1453,7 @@ endCustomType initialiser rec =
                     in
                     customTypeView config.label options config.state.selectedTag childViews_
 
-                validate =
+                parse =
                     \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
 
                 setAllIdle =
@@ -1471,7 +1471,7 @@ endCustomType initialiser rec =
             , update = update
             , childViews = \config -> childViews config
             , view = \config -> view config
-            , validate = validate
+            , parse = parse
             , setAllIdle = setAllIdle
             , notify = \_ -> []
             , emitFlags = emitFlags
@@ -1593,7 +1593,7 @@ validateSelectedTagState parser selectedTag fns states =
 selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
     next
         (if fns.field.index == selectedTag then
-            fns.field.validate state
+            fns.field.parse state
 
          else
             result
@@ -1699,7 +1699,7 @@ listView path ctrl config =
                                 ]
                             , control.view
                                 { state = state
-                                , status = getStatus control.validate control.receiveFlags control.path config.flags (State internalState state)
+                                , status = getStatus control.parse control.receiveFlags config.flags (State internalState state)
                                 , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                 , flags = config.flags
                                 }
