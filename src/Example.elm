@@ -163,8 +163,7 @@ password =
             "Enter password"
             (string
                 |> failOnFlag "password-matcher" "Must match confirm password field"
-                |> flagIf (\str -> str == "") "password-empty"
-                |> failOnFlag "password-empty" "Passwords can't be empty"
+                |> failIf2 (\str -> str == "") "Passwords can't be empty"
             )
         |> field .confirmPassword
             "Confirm password"
