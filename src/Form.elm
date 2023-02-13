@@ -31,6 +31,7 @@ module Form exposing
     , initFrom
     , int
     , layout
+    , list
     , makeControl
     , noteIf
     , readOnlyField
@@ -824,91 +825,127 @@ type ListDelta delta
     | ChangeItem Int (Delta delta)
 
 
+list : Control state delta output -> Control (List (State state)) (ListDelta delta) (List output)
+list (Control ctrl) =
+    Control
+        (\path ->
+            let
+                update =
+                    wrapUpdate listUpdate
 
--- list : Control state delta output -> Control (List (State state)) (ListDelta delta) (List output)
--- list (Control toControl) =
---     let
---         control =
---             toControl ""
---     in
---     Control
---         (\label ->
---             let
---                 update =
---                     wrapUpdate listUpdate
---                 listUpdate delta state =
---                     case delta of
---                         InsertItem idx ->
---                             let
---                                 before =
---                                     List.take idx state
---                                 after =
---                                     List.drop idx state
---                             in
---                             ( before ++ control.init :: after, Cmd.none )
---                         ChangeItem idx itemDelta ->
---                             let
---                                 ( newState, cmds ) =
---                                     List.foldr
---                                         (\( i, item ) ( items, cmds_ ) ->
---                                             if i == idx then
---                                                 let
---                                                     ( newItem, newCmd ) =
---                                                         control.update itemDelta item
---                                                 in
---                                                 ( newItem :: items, newCmd :: cmds_ )
---                                             else
---                                                 ( item :: items, cmds_ )
---                                         )
---                                         ( [], [] )
---                                         (List.indexedMap Tuple.pair state)
---                             in
---                             ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
---                         DeleteItem idx ->
---                             ( List.Extra.removeAt idx state, Cmd.none )
---                 validate =
---                     \(State _ state) ->
---                         List.foldr
---                             (\( idx, item ) res ->
---                                 let
---                                     identifyErrors e =
---                                         List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
---                                 in
---                                 case res of
---                                     Ok outputs ->
---                                         case control.validate item of
---                                             Ok output ->
---                                                 Ok (output :: outputs)
---                                             Err errs ->
---                                                 Err (identifyErrors errs)
---                                     Err errs ->
---                                         case control.validate item of
---                                             Ok _ ->
---                                                 Err errs
---                                             Err newErrs ->
---                                                 Err (identifyErrors newErrs ++ errs)
---                             )
---                             (Ok [])
---                             (List.indexedMap Tuple.pair state)
---                             |> Result.mapError (List.map (\feedback -> ( label, feedback )))
---             in
---             { label = label
---             , index = 0
---             , initialise = List.map (\item -> State Intact_ (control.initialise item))
---             , init = State Intact_ []
---             , delta = Skip
---             , baseUpdate = update
---             , update = update 0
---             , childViews = \_ -> []
---             , view = listView control.view control.validate control.notify
---             , baseValidate = validate
---             , validate = validate
---             , setAllIdle = \(State _ s) -> State Idle_ (List.map control.setAllIdle s)
---             , notify = \_ -> []
---             , emitFlags = \_ -> []
---             , receiveFlags = \_ -> []
---             }
---         )
+                listUpdate delta state =
+                    case delta of
+                        InsertItem idx ->
+                            let
+                                itemControl =
+                                    ctrl path
+
+                                before =
+                                    List.take idx state
+
+                                after =
+                                    List.drop idx state
+                            in
+                            ( before ++ itemControl.init :: after, Cmd.none )
+
+                        ChangeItem idx itemDelta ->
+                            let
+                                ( newState, cmds ) =
+                                    List.foldr
+                                        (\( i, item ) ( items, cmds_ ) ->
+                                            if i == idx then
+                                                let
+                                                    itemControl =
+                                                        ctrl (Path.add (String.fromInt i) path)
+
+                                                    ( newItem, newCmd ) =
+                                                        itemControl.update itemDelta item
+                                                in
+                                                ( newItem :: items, newCmd :: cmds_ )
+
+                                            else
+                                                ( item :: items, cmds_ )
+                                        )
+                                        ( [], [] )
+                                        (List.indexedMap Tuple.pair state)
+                            in
+                            ( newState, Cmd.batch cmds |> Cmd.map (ChangeItem idx) )
+
+                        DeleteItem idx ->
+                            ( List.Extra.removeAt idx state, Cmd.none )
+
+                validate =
+                    \(State _ state) ->
+                        List.foldr
+                            (\( idx, item ) res ->
+                                let
+                                    identifyErrors e =
+                                        List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
+
+                                    itemControl =
+                                        ctrl (Path.add (String.fromInt idx) path)
+                                in
+                                case res of
+                                    Ok outputs ->
+                                        case itemControl.validate item of
+                                            Ok output ->
+                                                Ok (output :: outputs)
+
+                                            Err errs ->
+                                                Err (identifyErrors errs)
+
+                                    Err errs ->
+                                        case itemControl.validate item of
+                                            Ok _ ->
+                                                Err errs
+
+                                            Err newErrs ->
+                                                Err (identifyErrors newErrs ++ errs)
+                            )
+                            (Ok [])
+                            (List.indexedMap Tuple.pair state)
+                            |> Result.mapError (List.map (\feedback -> ( Path.toString path, feedback )))
+            in
+            { path = path
+            , index = 0
+            , initialise =
+                List.indexedMap
+                    (\idx item ->
+                        let
+                            itemControl =
+                                ctrl (Path.add (String.fromInt idx) path)
+                        in
+                        State Intact_ (itemControl.initialise item)
+                    )
+            , init = State Intact_ []
+            , delta = Skip
+            , baseUpdate = update
+            , update = update 0
+            , childViews = \_ -> []
+            , view = listView path ctrl
+            , baseValidate = validate
+            , validate = validate
+            , setAllIdle =
+                \(State _ s) ->
+                    State Idle_
+                        (List.indexedMap
+                            (\idx item ->
+                                let
+                                    itemControl =
+                                        ctrl (Path.add (String.fromInt idx) path)
+                                in
+                                itemControl.setAllIdle item
+                            )
+                            s
+                        )
+            , notify = \_ -> []
+            , emitFlags = \_ -> []
+            , receiveFlags = \_ -> []
+            }
+        )
+
+
+
 {-
    d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b.
    88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D
@@ -1637,13 +1674,7 @@ customTypeView label options selectedTag selectedTagView =
         )
 
 
-listView :
-    (ViewConfig state -> Html (Delta delta))
-    -> (State state -> Result (List ( String, String )) output)
-    -> (State state -> List ( String, String ))
-    -> ViewConfig (List (State state))
-    -> Html (Delta (ListDelta delta))
-listView controlView controlParse controlFeedback config =
+listView path ctrl config =
     H.div []
         [ if List.isEmpty config.state then
             H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
@@ -1652,6 +1683,10 @@ listView controlView controlParse controlFeedback config =
             H.div []
                 (List.indexedMap
                     (\idx (State internalState state) ->
+                        let
+                            control =
+                                ctrl (Path.add (String.fromInt idx) path)
+                        in
                         H.div [ HA.style "margin-top" "10px" ]
                             [ H.summary
                                 [ HA.style "margin-bottom" "10px" ]
@@ -1667,9 +1702,9 @@ listView controlView controlParse controlFeedback config =
                                     ]
                                     [ H.text "➕" ]
                                 ]
-                            , controlView
+                            , control.view
                                 { state = state
-                                , status = getStatus controlParse controlFeedback (State internalState state)
+                                , status = getStatus control.validate control.notify (State internalState state)
                                 , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                 , flags = config.flags
                                 }
