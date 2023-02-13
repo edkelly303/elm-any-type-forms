@@ -162,13 +162,13 @@ password =
         |> field .password
             "Enter password"
             (string
-                |> failOnFlag "password-matcher" "Must match confirm password field"
-                |> failIf2 (\str -> str == "") "Passwords can't be empty"
+                |> onFlag "password-matcher" "Must match confirm password field"
+                |> failIf (\str -> str == "") "Passwords can't be empty"
             )
         |> field .confirmPassword
             "Confirm password"
             (string
-                |> failOnFlag "password-matcher" "Must match password field"
+                |> onFlag "password-matcher" "Must match password field"
             )
         |> endRecord
         |> flagIf (\rec -> rec.password /= rec.confirmPassword) "password-matcher"
@@ -177,5 +177,5 @@ password =
 boundedInt : Control String String Int
 boundedInt =
     int
-        |> failIf2 (\x -> x <= 0) "must be greater than 0"
-        |> failIf2 (\x -> x > 120) "maximum is 120"
+        |> failIf (\x -> x <= 0) "must be greater than 0"
+        |> failIf (\x -> x > 120) "maximum is 120"

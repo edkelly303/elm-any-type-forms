@@ -25,8 +25,6 @@ module Form exposing
     , endRecord
     , enum
     , failIf
-    , failIf2
-    , failOnFlag
     , field
     , flagIf
     , hiddenField
@@ -37,6 +35,7 @@ module Form exposing
     , makeControl
     , maybe
     , noteIf
+    , onFlag
     , readOnlyField
     , record
     , string
@@ -115,17 +114,23 @@ type InternalControl input state delta output
             , validate : State state -> Result (List ( String, String )) output
             , notify : State state -> List ( String, String )
             , setAllIdle : State state -> State state
-            , emitFlags : State state -> List String
-            , receiveFlags : List String -> List String
+            , emitFlags : State state -> List Flag
+            , receiveFlags : List Flag -> List String
+            , receiverCount : Int
             }
         )
+
+
+type Flag
+    = FlagLabel String
+    | FlagPath Path.Path Int
 
 
 type alias ViewConfig state =
     { label : String
     , state : state
     , status : Status
-    , flags : List String
+    , flags : List Flag
     }
 
 
@@ -312,6 +317,7 @@ makeControl config =
             , notify = \_ -> []
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
+            , receiverCount = 0
             }
         )
 
@@ -368,7 +374,7 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 
 flagIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
 flagIf check flag (Control control) =
-    Control (control >> flagEmitter check flag)
+    Control (control >> flagEmitter check (FlagLabel flag))
 
 
 flagEmitter check flag ctrl =
@@ -395,9 +401,9 @@ flagEmitter check flag ctrl =
     }
 
 
-failOnFlag : String -> String -> Control state delta output -> Control state delta output
-failOnFlag flag message (Control control) =
-    Control (control >> flagReceiver flag message)
+onFlag : String -> String -> Control state delta output -> Control state delta output
+onFlag flag message (Control control) =
+    Control (control >> flagReceiver (FlagLabel flag) message)
 
 
 flagReceiver flag message ctrl =
@@ -419,19 +425,6 @@ flagReceiver flag message ctrl =
     }
 
 
-failIf2 check message (Control control) =
-    Control
-        (\path ->
-            let
-                flag =
-                    Path.toString path
-            in
-            control path
-                |> flagEmitter check flag
-                |> flagReceiver flag message
-        )
-
-
 
 {-
    d88888b  .d8b.  d888888b db           d888888b d88888b
@@ -443,45 +436,23 @@ failIf2 check message (Control control) =
 -}
 
 
-failIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
-failIf check feedback (Control control) =
-    let
-        validate ctrl =
+failIf check message (Control c) =
+    Control
+        (\path ->
             let
-                newValidator =
-                    \state ->
-                        case ctrl.baseValidate state of
-                            Ok output ->
-                                if check output then
-                                    Err [ ( Path.toString ctrl.path, feedback ) ]
+                control =
+                    c path
 
-                                else
-                                    Ok output
+                newReceiverCount =
+                    control.receiverCount + 1
 
-                            Err errs ->
-                                Err errs
-
-                existingValidator =
-                    ctrl.validate
+                flag =
+                    FlagPath path newReceiverCount
             in
-            { ctrl
-                | validate =
-                    \state ->
-                        case ( newValidator state, existingValidator state ) of
-                            ( Ok _, Ok output ) ->
-                                Ok output
-
-                            ( Ok _, Err errs ) ->
-                                Err errs
-
-                            ( Err errs, Ok _ ) ->
-                                Err errs
-
-                            ( Err errs1, Err errs2 ) ->
-                                Err (List.Extra.unique (errs1 ++ errs2))
-            }
-    in
-    Control (control >> validate)
+            { control | receiverCount = newReceiverCount }
+                |> flagEmitter check flag
+                |> flagReceiver flag message
+        )
 
 
 
@@ -965,6 +936,7 @@ list (Control ctrl) =
             , notify = \_ -> []
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
+            , receiverCount = 0
             }
         )
 
@@ -1139,6 +1111,7 @@ endRecord rec =
             , notify = \_ -> []
             , emitFlags = emitFlags
             , receiveFlags = \_ -> []
+            , receiverCount = 0
             }
         )
 
@@ -1549,6 +1522,7 @@ endCustomType initialiser rec =
             , notify = \_ -> []
             , emitFlags = emitFlags
             , receiveFlags = \_ -> []
+            , receiverCount = 0
             }
         )
 
