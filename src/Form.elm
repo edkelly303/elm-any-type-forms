@@ -239,7 +239,7 @@ fromControl label toMsg (Control control) =
                         { state = state
                         , status =
                             -- getStatus validate notify (State internalState state)
-                            getStatus2 flags receiveFlags (State internalState state)
+                            getStatus flags receiveFlags (State internalState state)
                         , label = label
                         , flags = flags
                         }
@@ -1202,9 +1202,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
         view =
             fns.field.view
                 { state = state
-                , status =
-                    -- getStatus fns.field.validate fns.field.notify (State internalState state)
-                    getStatus2 flags fns.field.receiveFlags (State internalState state)
+                , status = getStatus flags fns.field.receiveFlags (State internalState state)
                 , label = Path.last fns.field.path
                 , flags = flags
                 }
@@ -1235,36 +1233,33 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
         restStates
 
 
-getStatus :
-    (State state -> Result (List ( String, String )) output)
-    -> (State state -> List ( String, String ))
-    -> State state
-    -> Status
-getStatus validator notifier ((State internalState _) as state) =
-    case internalState of
-        Intact_ ->
-            Intact
 
-        DebouncingSince _ ->
-            Debouncing
-
-        Idle_ ->
-            let
-                errors =
-                    case validator state of
-                        Ok _ ->
-                            []
-
-                        Err errs ->
-                            errs
-
-                notes =
-                    notifier state
-            in
-            Idle (List.map Err errors ++ List.map Ok notes)
+-- getStatus :
+--     (State state -> Result (List ( String, String )) output)
+--     -> (State state -> List ( String, String ))
+--     -> State state
+--     -> Status
+-- getStatus validator notifier ((State internalState _) as state) =
+--     case internalState of
+--         Intact_ ->
+--             Intact
+--         DebouncingSince _ ->
+--             Debouncing
+--         Idle_ ->
+--             let
+--                 errors =
+--                     case validator state of
+--                         Ok _ ->
+--                             []
+--                         Err errs ->
+--                             errs
+--                 notes =
+--                     notifier state
+--             in
+--             Idle (List.map Err errors ++ List.map Ok notes)
 
 
-getStatus2 flags flagReceiver_ (State internalState _) =
+getStatus flags flagReceiver_ (State internalState _) =
     case internalState of
         Intact_ ->
             Intact
@@ -1745,7 +1740,7 @@ listView path ctrl config =
                                 ]
                             , control.view
                                 { state = state
-                                , status = getStatus control.validate control.notify (State internalState state)
+                                , status = getStatus config.flags control.receiveFlags (State internalState state)
                                 , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                 , flags = config.flags
                                 }
