@@ -27,6 +27,7 @@ module Form exposing
     , failIf
     , field
     , flagIf
+    , fromControl
     , hiddenField
     , initFrom
     , int
@@ -42,7 +43,6 @@ module Form exposing
     , tag0
     , tag1
     , tag2
-    , toForm
     , tuple
     , wrapper
     )
@@ -206,8 +206,8 @@ type alias Deltas2 a b =
 -}
 
 
-toForm : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
-toForm label toMsg (Control control) =
+fromControl : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
+fromControl label toMsg (Control control) =
     let
         { init, update, view, validate, notify, setAllIdle, emitFlags, receiveFlags } =
             control Path.root

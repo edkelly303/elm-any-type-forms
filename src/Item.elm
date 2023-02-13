@@ -315,7 +315,7 @@ type alias ItemState =
 
 
 form msg =
-    toForm "Create an Item" msg item
+    fromControl "Create an Item" msg item
 
 
 item =

@@ -58,9 +58,7 @@ view model =
 update msg model =
     case msg of
         Submit ->
-            case
-                mainForm.submit model
-            of
+            case mainForm.submit model of
                 Ok output ->
                     let
                         _ =
@@ -87,8 +85,7 @@ type
 
 
 mainForm =
-    -- Item.form FormMsg
-    user |> toForm "Create a User" FormMsg
+    Form.fromControl "Create a User" FormMsg user
 
 
 type alias User =
@@ -163,7 +160,7 @@ password =
             "Enter password"
             (string
                 |> onFlag "password-matcher" "Must match confirm password field"
-                |> failIf (\str -> str == "") "Passwords can't be empty"
+                |> failIf (\str -> str == "") "Password can't be blank"
             )
         |> field .confirmPassword
             "Confirm password"
