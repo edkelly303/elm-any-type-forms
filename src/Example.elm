@@ -46,7 +46,11 @@ view model =
             , HA.style "overflow" "scroll"
             ]
             [ mainForm.view model
-            , H.button [ HE.onClick Submit ] [ H.text "Submit" ]
+            , H.button
+                [ HA.style "margin-top" "10px"
+                , HE.onClick Submit
+                ]
+                [ H.text "Submit" ]
             ]
         ]
 
@@ -72,11 +76,7 @@ update msg model =
                     ( state, Cmd.none )
 
         FormMsg formMsg ->
-            let
-                ( newModel, cmd ) =
-                    mainForm.update formMsg model
-            in
-            ( newModel, cmd )
+            mainForm.update formMsg model
 
 
 type
