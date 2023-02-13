@@ -35,7 +35,6 @@ module Form exposing
     , list
     , makeControl
     , maybe
-    , noteIf
     , onFlag
     , readOnlyField
     , record
@@ -110,7 +109,6 @@ type InternalControl input state delta output
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , childViews : ViewConfig state -> List (Html (Delta delta))
             , view : ViewConfig state -> Html (Delta delta)
-            , baseValidate : State state -> Result (List ( String, String )) output
             , validate : State state -> Result (List ( String, String )) output
             , notify : State state -> List ( String, String )
             , setAllIdle : State state -> State state
@@ -309,7 +307,6 @@ makeControl config =
             , update = preUpdate 0
             , childViews = \_ -> []
             , view = config.view >> H.map ChangeState
-            , baseValidate = validate
             , validate = validate
             , setAllIdle = \(State _ s) -> State Idle_ s
             , notify = \_ -> []
@@ -384,7 +381,7 @@ flagEmitter check flag ctrl =
                         ctrl.emitFlags state
 
                     newFlags =
-                        case ctrl.baseValidate state of
+                        case ctrl.validate state of
                             Ok output ->
                                 if check output then
                                     [ flag ]
@@ -451,46 +448,6 @@ failIf check message (Control c) =
                 |> flagEmitter check flag
                 |> flagReceiver flag message
         )
-
-
-
-{-
-   d8b   db  .d88b.  d888888b d88888b      d888888b d88888b
-   888o  88 .8P  Y8. `~~88~~' 88'            `88'   88'
-   88V8o 88 88    88    88    88ooooo         88    88ooo
-   88 V8o88 88    88    88    88~~~~~         88    88~~~
-   88  V888 `8b  d8'    88    88.            .88.   88
-   VP   V8P  `Y88P'     YP    Y88888P      Y888888P YP
--}
-
-
-noteIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
-noteIf check feedback (Control control) =
-    let
-        notify ctrl =
-            { ctrl
-                | notify =
-                    \state ->
-                        let
-                            existingNotes =
-                                ctrl.notify state
-
-                            newNotes =
-                                case ctrl.baseValidate state of
-                                    Ok output ->
-                                        if check output then
-                                            [ ( Path.toString ctrl.path, feedback ) ]
-
-                                        else
-                                            []
-
-                                    Err _ ->
-                                        []
-                        in
-                        List.Extra.unique (existingNotes ++ newNotes)
-            }
-    in
-    Control (control >> notify)
 
 
 
@@ -916,7 +873,6 @@ list (Control ctrl) =
             , update = update 0
             , childViews = \_ -> []
             , view = listView path ctrl
-            , baseValidate = validate
             , validate = validate
             , setAllIdle =
                 \(State _ s) ->
@@ -1103,7 +1059,6 @@ endRecord rec =
             , update = update
             , childViews = \config -> childViews config
             , view = \config -> view childViews config
-            , baseValidate = validate
             , validate = validate
             , setAllIdle = setAllIdle
             , notify = \_ -> []
@@ -1516,7 +1471,6 @@ endCustomType initialiser rec =
             , update = update
             , childViews = \config -> childViews config
             , view = \config -> view config
-            , baseValidate = validate
             , validate = validate
             , setAllIdle = setAllIdle
             , notify = \_ -> []
