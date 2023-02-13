@@ -80,7 +80,26 @@ update msg model =
 type
     Msg
     -- = FormMsg (Form.Delta Item.ItemDelta)
-    = FormMsg (Form.Delta UserDelta)
+    = FormMsg
+        (Delta
+            ( Delta String
+            , ( Delta String
+              , ( Delta
+                    (CustomTypeDelta
+                        ( Delta ()
+                        , ( Delta
+                                ( Delta ( Delta String, ( Delta String, End ) )
+                                , End
+                                )
+                          , End
+                          )
+                        )
+                    )
+                , End
+                )
+              )
+            )
+        )
     | Submit
 
 
@@ -93,26 +112,6 @@ type alias User =
     , age : Int
     , role : Role
     }
-
-
-type alias UserDelta =
-    ( Delta String
-    , ( Delta String
-      , ( Delta
-            (CustomTypeDelta
-                ( Delta ()
-                , ( Delta
-                        ( Delta ( Delta String, ( Delta String, End ) )
-                        , End
-                        )
-                  , End
-                  )
-                )
-            )
-        , End
-        )
-      )
-    )
 
 
 type Role

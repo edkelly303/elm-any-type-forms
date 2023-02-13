@@ -15,7 +15,7 @@ module Form exposing
     , WrapperDelta
     , WrapperState
     , bool
-    , checkDeltaType
+    , checkMsgType
     , customType
     , datetime
     , debounce
@@ -258,8 +258,8 @@ fromControl label toMsg (Control control) =
     }
 
 
-checkDeltaType : Control state delta output -> Delta delta
-checkDeltaType _ =
+checkMsgType : Control state delta output -> Delta delta
+checkMsgType _ =
     Skip
 
 
