@@ -5,7 +5,10 @@ import Form exposing (..)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
-import Item
+
+
+
+-- import Item
 
 
 main =
@@ -91,26 +94,16 @@ mainForm =
 type alias User =
     { name : String
     , age : Int
-    , role : Role
+    , password : Password
+
+    -- , role : Role
     }
 
 
 type alias UserDelta =
     ( Delta String
     , ( Delta String
-      , ( Delta
-            (CustomTypeDelta
-                ( Delta ()
-                , ( Delta
-                        ( Delta ( Delta String, ( Delta String, End ) )
-                        , End
-                        )
-                  , End
-                  )
-                )
-            )
-        , End
-        )
+      , ( Delta ( Delta String, ( Delta String, End ) ), End )
       )
     )
 
@@ -124,23 +117,23 @@ user =
     record User
         |> field .name "Name" string
         |> field .age "Age" boundedInt
-        |> field .role "Role" role
+        |> field .password "Password" password
         |> endRecord
 
 
-role =
-    customType
-        |> tag0 "Guest" Guest
-        |> tag1 "Registered" Registered password
-        |> endCustomType
-            (\guest registered tag ->
-                case tag of
-                    Guest ->
-                        guest
 
-                    Registered pwd ->
-                        registered pwd
-            )
+-- role =
+--     customType
+--         |> tag0 "Guest" Guest
+--         |> tag1 "Registered" Registered password
+--         |> endCustomType
+--             (\guest registered tag ->
+--                 case tag of
+--                     Guest ->
+--                         guest
+--                     Registered pwd ->
+--                         registered pwd
+--             )
 
 
 type alias Password =
