@@ -1423,7 +1423,7 @@ variant label (Control control) toArgState rec =
     , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
     , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
     , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
-    , flagEmitter = rec.flagEmitter >> recordFlagEmitter
+    , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
     }
 
 
@@ -1532,7 +1532,7 @@ endCustomType initialiser rec =
                     \(State _ state) -> State Idle_ (setSelectedTagStateIdle rec.idleSetter state.selectedTag fns state.tagStates)
 
                 emitFlags (State _ state) =
-                    emitFlagsForRecord rec.flagEmitter fns state.tagStates
+                    emitFlagsForCustomType rec.flagEmitter state.selectedTag fns state.tagStates
             in
             { path = path
             , index = 0
@@ -1562,6 +1562,22 @@ endCustomType initialiser rec =
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+emitFlagsForCustomType flagEmitter_ selectedTag fns tagStates =
+    flagEmitter_ (\flags _ End End -> flags) [] selectedTag fns tagStates
+
+
+customTypeFlagEmitter next flags selectedTag ( fns, restFns ) ( tagState, restTagStates ) =
+    let
+        newFlags =
+            if fns.field.index == selectedTag then
+                fns.field.emitFlags tagState
+
+            else
+                []
+    in
+    next (flags ++ newFlags) selectedTag restFns restTagStates
 
 
 applyStateSettersToInitialiser stateSetterToInitialiserApplier_ initialiser stateSetters tag =
