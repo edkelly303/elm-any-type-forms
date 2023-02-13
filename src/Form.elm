@@ -12,12 +12,10 @@ module Form exposing
     , State
     , TupleDelta
     , TupleState
-    , TypeCheck
     , WrapperDelta
     , WrapperState
     , bool
     , checkDeltaType
-    , checkStateType
     , customType
     , datetime
     , debounce
@@ -260,18 +258,9 @@ fromControl label toMsg (Control control) =
     }
 
 
-type TypeCheck type_
-    = TypeCheck
-
-
-checkDeltaType : Control state delta output -> TypeCheck delta
+checkDeltaType : Control state delta output -> Delta delta
 checkDeltaType _ =
-    TypeCheck
-
-
-checkStateType : Control state delta output -> TypeCheck state
-checkStateType _ =
-    TypeCheck
+    Skip
 
 
 
