@@ -654,7 +654,7 @@ wrapper wrap unwrap control =
             let
                 (Control toWrapped) =
                     record wrap
-                        |> field unwrap "" control
+                        |> field "" unwrap control
                         |> endRecord
             in
             toWrapped path
@@ -738,8 +738,8 @@ tuple :
     -> Control (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
 tuple fstLabel fst sndLabel snd =
     record Tuple.pair
-        |> field Tuple.first fstLabel fst
-        |> field Tuple.second sndLabel snd
+        |> field fstLabel Tuple.first fst
+        |> field sndLabel Tuple.second snd
         |> endRecord
 
 
@@ -934,7 +934,7 @@ type Access
     | Hidden
 
 
-internalField access fromOutput label (Control control) rec =
+internalField access label fromOutput (Control control) rec =
     { index = rec.index + 1
     , labels = rec.labels ++ [ label ]
     , toOutput = rec.toOutput
@@ -1370,7 +1370,7 @@ tag1 label tag control =
     variant
         label
         (record tag
-            |> field Tuple.first "" control
+            |> field "" Tuple.first control
             |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 ->
@@ -1382,8 +1382,8 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
     variant
         label
         (record tag
-            |> field Tuple.first label1 control1
-            |> field (Tuple.second >> Tuple.first) label2 control2
+            |> field label1 Tuple.first control1
+            |> field label2 (Tuple.second >> Tuple.first) control2
             |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->

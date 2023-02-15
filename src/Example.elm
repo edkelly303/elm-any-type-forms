@@ -121,9 +121,9 @@ type Role
 
 user =
     record User
-        |> field .name "Name" string
-        |> field .age "Age" boundedInt
-        |> field .role "Role" role
+        |> field "Name" .name string
+        |> field "Age" .age boundedInt
+        |> field "Role" .role role
         |> endRecord
 
 
@@ -155,14 +155,14 @@ password :
         Password
 password =
     record Password
-        |> field .password
-            "Enter password"
+        |> field "Enter password"
+            .password
             (string
                 |> onFlag "password-matcher" "Must match confirm password field"
                 |> failIf (\str -> str == "") "Password can't be blank"
             )
-        |> field .confirmPassword
-            "Confirm password"
+        |> field "Confirm password"
+            .confirmPassword
             (string
                 |> onFlag "password-matcher" "Must match password field"
             )

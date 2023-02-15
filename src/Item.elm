@@ -320,17 +320,17 @@ form msg =
 
 item =
     record Item
-        |> hiddenField .id "Id" itemId
-        |> field .name "Name" nonEmptyString
-        |> field .aliases "Aliases" (list nonEmptyString)
-        |> field .emoji "Emoji" (maybe emoji)
-        |> field .category "Category" category
-        |> field .purchaseHistory "Purchase History" (list purchaseHistory)
-        |> field .doNotSuggestUntil "Do Not Suggest Until" (maybe datetime)
-        |> field .maybeVolume "Volume" (maybe volumeRecord)
-        |> field .maybeWhole "Whole" (maybe wholeRecord)
-        |> field .custom "Custom" (list customRecord)
-        |> field .maybeSeasonality "Seasonality" (maybe seasonality)
+        |> hiddenField "Id" .id itemId
+        |> field "Name" .name nonEmptyString
+        |> field "Aliases" .aliases (list nonEmptyString)
+        |> field "Emoji" .emoji (maybe emoji)
+        |> field "Category" .category category
+        |> field "Purchase History " .purchaseHistory (list purchaseHistory)
+        |> field "Do Not  Suggest Until" .doNotSuggestUntil (maybe datetime)
+        |> field "Volume" .maybeVolume (maybe volumeRecord)
+        |> field "Whole" .maybeWhole (maybe wholeRecord)
+        |> field "Custom" .custom (list customRecord)
+        |> field "Seasonality" .maybeSeasonality (maybe seasonality)
         |> endRecord
 
 
@@ -446,35 +446,35 @@ emoji =
 
 purchaseHistory =
     record PurchaseHistory
-        |> field .time "Time of purchase" datetime
-        |> field .grams "Amount purchased (grams)" unit
-        |> field .measure "Purchased by measure" measure
+        |> field "Time of purchase" .time datetime
+        |> field "Amount purchased (grams)" .grams unit
+        |> field "Purchased by measure" .measure measure
         |> endRecord
 
 
 volumeRecord =
     record VolumeRecord
-        |> field .ratio "Density" (ratio "Grams" "Millilitre")
+        |> field "Density" .ratio (ratio "Grams" "Millilitre")
         |> endRecord
 
 
 wholeRecord =
     record WholeRecord
-        |> field .singularName "Singular Name" nonEmptyString
-        |> field .ratio "Weight" (ratio "Grams" "Item")
+        |> field "Singular Name" .singularName nonEmptyString
+        |> field "Weight" .ratio (ratio "Grams" "Item")
         |> endRecord
 
 
 customRecord =
     record CustomRecord
-        |> field .singularCollection "Singular Collection" nonEmptyString
-        |> field .pluralCollection "Plural Collection" nonEmptyString
-        |> field .ratio "Weight" (ratio "Grams" "Item")
+        |> field "Singular Collection" .singularCollection nonEmptyString
+        |> field "Plural Collection" .pluralCollection nonEmptyString
+        |> field "Weight" .ratio (ratio "Grams" "Item")
         |> endRecord
 
 
 seasonality =
     record Seasonality
-        |> field .startsAt "Starts At" month
-        |> field .endsAt "Ends At" (month |> initFrom Time.Dec)
+        |> field "Starts At" .startsAt month
+        |> field "Ends At" .endsAt (month |> initFrom Time.Dec)
         |> endRecord
