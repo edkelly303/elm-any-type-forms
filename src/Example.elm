@@ -129,17 +129,17 @@ user =
 
 role =
     customType
+        (\guest registered tag ->
+            case tag of
+                Guest ->
+                    guest
+
+                Registered pwd ->
+                    registered pwd
+        )
         |> tag0 "Guest" Guest
         |> tag1 "Registered" Registered password
         |> endCustomType
-            (\guest registered tag ->
-                case tag of
-                    Guest ->
-                        guest
-
-                    Registered pwd ->
-                        registered pwd
-            )
 
 
 type alias Password =

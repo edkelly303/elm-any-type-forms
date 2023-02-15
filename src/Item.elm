@@ -377,25 +377,25 @@ ratio fstId sndId =
 
 measure =
     customType
+        (\weight volume whole custom output ->
+            case output of
+                Weight ->
+                    weight
+
+                Volume ->
+                    volume
+
+                Whole ->
+                    whole
+
+                Custom str ->
+                    custom str
+        )
         |> tag0 "Weight" Weight
         |> tag0 "Volume" Volume
         |> tag0 "Whole" Whole
         |> tag1 "Custom" Custom string
         |> endCustomType
-            (\weight volume whole custom output ->
-                case output of
-                    Weight ->
-                        weight
-
-                    Volume ->
-                        volume
-
-                    Whole ->
-                        whole
-
-                    Custom str ->
-                        custom str
-            )
 
 
 category =

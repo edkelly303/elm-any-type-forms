@@ -695,17 +695,17 @@ maybe control =
             let
                 (Control toWrapped) =
                     customType
+                        (\nothing just tag ->
+                            case tag of
+                                Nothing ->
+                                    nothing
+
+                                Just a ->
+                                    just a
+                        )
                         |> tag0 "Nothing" Nothing
                         |> tag1 "Just" Just control
                         |> endCustomType
-                            (\nothing just tag ->
-                                case tag of
-                                    Nothing ->
-                                        nothing
-
-                                    Just a ->
-                                        just a
-                            )
             in
             toWrapped label
         )
@@ -1281,7 +1281,7 @@ type CustomTypeDelta variants
     | TagDeltaReceived variants
 
 
-customType =
+customType destructor =
     { index = 0
     , labels = []
     , fns = \_ x -> x
@@ -1304,6 +1304,7 @@ customType =
     , stateInserter = identity
     , applyInputs = identity
     , flagEmitter = identity
+    , destructor = destructor
     }
 
 
@@ -1341,6 +1342,7 @@ variant label (Control control) toArgState rec =
     , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
     , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
     , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
+    , destructor = rec.destructor
     }
 
 
@@ -1389,7 +1391,7 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
         )
 
 
-endCustomType initialiser rec =
+endCustomType rec =
     Control
         (\path ->
             let
@@ -1455,7 +1457,7 @@ endCustomType initialiser rec =
             , index = 0
             , init = State Intact_ { tagStates = inits, selectedTag = 0 }
             , delta = Skip
-            , initialise = applyStateSettersToInitialiser rec.applyInputs initialiser stateSetters
+            , initialise = applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
