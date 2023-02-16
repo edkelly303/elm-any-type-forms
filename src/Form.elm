@@ -161,14 +161,6 @@ type InternalStatus
     | Idle_
 
 
-type alias States1 a =
-    ( State a, End )
-
-
-type alias States2 a b =
-    ( State a, States1 b )
-
-
 
 {-
    d8888b. d88888b db      d888888b  .d8b.  .d8888.
@@ -186,14 +178,6 @@ type Delta delta
     | StartDebouncing Time.Posix
     | CheckDebouncer Time.Posix
     | TagSelected Int
-
-
-type alias Deltas1 a =
-    ( Delta a, End )
-
-
-type alias Deltas2 a b =
-    ( Delta a, Deltas1 b )
 
 
 
@@ -643,11 +627,11 @@ bool trueId falseId =
 
 
 type alias WrapperState state =
-    States1 state
+    ( State state, End )
 
 
 type alias WrapperDelta delta =
-    Deltas1 delta
+    ( Delta delta, End )
 
 
 wrapper :
@@ -684,15 +668,11 @@ wrapper wrap unwrap control =
 
 
 type alias MaybeState state =
-    States2
-        ()
-        (States1 state)
+    ( State (), ( State ( State state, End ), End ) )
 
 
 type alias MaybeDelta delta =
-    Deltas2
-        ()
-        (Deltas1 delta)
+    ( Delta (), ( Delta ( Delta delta, End ), End ) )
 
 
 maybe : Control state delta output -> Control (MaybeState state) (MaybeDelta delta) (Maybe output)
@@ -730,11 +710,11 @@ maybe control =
 
 
 type alias TupleState s1 s2 =
-    States2 s1 s2
+    ( State s1, ( State s2, End ) )
 
 
 type alias TupleDelta d1 d2 =
-    Deltas2 d1 d2
+    ( Delta d1, ( Delta d2, End ) )
 
 
 tuple :
