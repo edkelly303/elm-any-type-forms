@@ -102,7 +102,7 @@ type InternalControl input state delta output
             , index : Int
             , init : State state
             , delta : Delta delta
-            , initialise : input -> state
+            , initialise : input -> State state
             , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
             , childViews : ViewConfig state -> List (Html (Delta delta))
@@ -151,7 +151,13 @@ type State state
     = State InternalState state
 
 
-type InternalState
+type alias InternalState =
+    { status : InternalStatus
+    , selected : Int
+    }
+
+
+type InternalStatus
     = Intact_
     | DebouncingSince Time.Posix
     | Idle_
@@ -289,15 +295,15 @@ makeControl config =
             in
             { path = path
             , index = 0
-            , init = State Intact_ config.empty
+            , init = State { status = Intact_, selected = 0 } config.empty
             , delta = Skip
-            , initialise = config.initialise
+            , initialise = \input -> State { status = Intact_, selected = 0 } (config.initialise input)
             , baseUpdate = preUpdate
             , update = preUpdate 0
             , childViews = \_ -> []
             , view = config.view >> H.map ChangeState
             , parse = parse
-            , setAllIdle = \(State _ s) -> State Idle_ s
+            , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , notify = \_ -> []
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
@@ -328,20 +334,20 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
                 )
 
             else
-                ( State Idle_ newState
+                ( State { internalState | status = Idle_ } newState
                 , Cmd.map ChangeState cmd
                 )
 
         StartDebouncing now ->
-            ( State (DebouncingSince now) state
+            ( State { internalState | status = DebouncingSince now } state
             , Task.perform (\() -> CheckDebouncer now) (Process.sleep debounce_)
             )
 
         CheckDebouncer now ->
-            case internalState of
+            case internalState.status of
                 DebouncingSince startTime ->
                     if now == startTime then
-                        ( State Idle_ state
+                        ( State { internalState | status = Idle_ } state
                         , Cmd.none
                         )
 
@@ -497,7 +503,7 @@ initFrom : input -> InternalControl input state delta output -> InternalControl 
 initFrom input (Control control) =
     let
         initialiser i =
-            { i | init = State Intact_ (i.initialise input) }
+            { i | init = i.initialise input }
     in
     Control (control >> initialiser)
 
@@ -848,15 +854,18 @@ list (Control ctrl) =
             { path = path
             , index = 0
             , initialise =
-                List.indexedMap
-                    (\idx item ->
-                        let
-                            itemControl =
-                                ctrl (Path.add (String.fromInt idx) path)
-                        in
-                        State Intact_ (itemControl.initialise item)
-                    )
-            , init = State Intact_ []
+                \input ->
+                    List.indexedMap
+                        (\idx item ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.initialise item
+                        )
+                        input
+                        |> State { status = Intact_, selected = 0 }
+            , init = State { status = Intact_, selected = 0 } []
             , delta = Skip
             , baseUpdate = update
             , update = update 0
@@ -864,8 +873,8 @@ list (Control ctrl) =
             , view = listView path ctrl
             , parse = parse
             , setAllIdle =
-                \(State _ s) ->
-                    State Idle_
+                \(State i s) ->
+                    State { i | status = Idle_ }
                         (List.indexedMap
                             (\idx item ->
                                 let
@@ -1033,15 +1042,15 @@ endRecord rec =
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
 
-                setAllIdle (State _ state) =
-                    State Idle_ (setAllRecordStatesToIdle rec.idleSetter fns state)
+                setAllIdle (State i state) =
+                    State { i | status = Idle_ } (setAllRecordStatesToIdle rec.idleSetter fns state)
 
                 emitFlags (State _ state) =
                     emitFlagsForRecord rec.flagEmitter fns state
             in
             { path = path
             , index = 0
-            , init = State Intact_ inits
+            , init = State { status = Intact_, selected = 0 } inits
             , delta = Skip
             , initialise = \output -> initialiseRecordStates rec.initialiser output fns inits
             , baseUpdate = \_ -> update
@@ -1093,10 +1102,11 @@ deltaSetterMaker next ( before, befores ) ( after, afters ) =
 
 initialiseRecordStates initialiser output fns states =
     initialiser (\_ End End -> End) output fns states
+        |> State { status = Intact_, selected = 0 }
 
 
 recordStateInitialiser next output ( fns, restFns ) ( states, restStates ) =
-    ( State Intact_ (fns.field.initialise (fns.fromOutput output))
+    ( fns.field.initialise (fns.fromOutput output)
     , next output restFns restStates
     )
 
@@ -1202,7 +1212,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
 
 
 getStatus parse receiveFlags flags ((State internalState _) as state) =
-    case internalState of
+    case internalState.status of
         Intact_ ->
             Intact
 
@@ -1448,14 +1458,14 @@ endCustomType rec =
                     \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
 
                 setAllIdle =
-                    \(State _ state) -> State Idle_ (setSelectedTagStateIdle rec.idleSetter state.selectedTag fns state.tagStates)
+                    \(State i state) -> State { i | status = Idle_ } (setSelectedTagStateIdle rec.idleSetter state.selectedTag fns state.tagStates)
 
                 emitFlags (State _ state) =
                     emitFlagsForCustomType rec.flagEmitter state.selectedTag fns state.tagStates
             in
             { path = path
             , index = 0
-            , init = State Intact_ { tagStates = inits, selectedTag = 0 }
+            , init = State { status = Intact_, selected = 0 } { tagStates = inits, selectedTag = 0 }
             , delta = Skip
             , initialise = applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters
             , baseUpdate = \_ -> update
@@ -1530,7 +1540,7 @@ stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toA
 
 insertArgStateIntoTagState stateInserter_ maybeArgStates inits =
     stateInserter_
-        (\_ selectedTag tagStates End End -> { selectedTag = selectedTag, tagStates = tagStates End })
+        (\_ selectedTag tagStates End End -> State { status = Intact_, selected = selectedTag } { selectedTag = selectedTag, tagStates = tagStates End })
         0
         0
         identity
@@ -1543,7 +1553,7 @@ argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStat
         ( selectedTag, tagArgState ) =
             case maybeArgState of
                 Just state ->
-                    ( thisTagIndex, State Intact_ state )
+                    ( thisTagIndex, state )
 
                 Nothing ->
                     ( currentlySelectedTagIndex, init )
