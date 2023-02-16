@@ -5,13 +5,7 @@ module Form exposing
     , Form
     , ListDelta
     , ListState
-    , MaybeDelta
-    , MaybeState
     , State
-    , TupleDelta
-    , TupleState
-    , WrapperDelta
-    , WrapperState
     , bool
     , checkMsgType
     , customType
@@ -626,22 +620,14 @@ bool trueId falseId =
 -}
 
 
-type alias WrapperState state =
-    ( State state, End )
-
-
-type alias WrapperDelta delta =
-    ( Delta delta, End )
-
-
 wrapper :
     (output -> wrapped)
     -> (wrapped -> output)
     -> Control state delta output
     ->
         Control
-            (WrapperState state)
-            (WrapperDelta delta)
+            ( State state, End )
+            ( Delta delta, End )
             wrapped
 wrapper wrap unwrap control =
     Control
@@ -667,15 +653,13 @@ wrapper wrap unwrap control =
 -}
 
 
-type alias MaybeState state =
-    ( State (), ( State ( State state, End ), End ) )
-
-
-type alias MaybeDelta delta =
-    ( Delta (), ( Delta ( Delta delta, End ), End ) )
-
-
-maybe : Control state delta output -> Control (MaybeState state) (MaybeDelta delta) (Maybe output)
+maybe :
+    Control state delta output
+    ->
+        Control
+            ( State (), ( State ( State state, End ), End ) )
+            ( Delta (), ( Delta ( Delta delta, End ), End ) )
+            (Maybe output)
 maybe control =
     Control
         (\label ->
@@ -709,20 +693,12 @@ maybe control =
 -}
 
 
-type alias TupleState s1 s2 =
-    ( State s1, ( State s2, End ) )
-
-
-type alias TupleDelta d1 d2 =
-    ( Delta d1, ( Delta d2, End ) )
-
-
 tuple :
     String
     -> Control state1 delta1 output1
     -> String
     -> Control state2 delta2 output2
-    -> Control (TupleState state1 state2) (TupleDelta delta1 delta2) ( output1, output2 )
+    -> Control ( State state1, ( State state2, End ) ) ( Delta delta1, ( Delta delta2, End ) ) ( output1, output2 )
 tuple fstLabel fst sndLabel snd =
     record Tuple.pair
         |> field fstLabel Tuple.first fst
