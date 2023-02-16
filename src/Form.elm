@@ -1,7 +1,6 @@
 module Form exposing
     ( Control
     , CustomTypeDelta
-    , CustomTypeState
     , Delta
     , End
     , Form
@@ -127,6 +126,7 @@ type alias ViewConfig state =
     , state : state
     , status : Status
     , flags : List Flag
+    , selected : Int
     }
 
 
@@ -242,6 +242,7 @@ fromControl label toMsg (Control control) =
                         , status = getStatus parse receiveFlags flags (State internalState state)
                         , label = label
                         , flags = flags
+                        , selected = 0
                         }
                         |> H.map toMsg
                     ]
@@ -679,11 +680,9 @@ wrapper wrap unwrap control =
 
 
 type alias MaybeState state =
-    CustomTypeState
-        (States2
-            ()
-            (States1 state)
-        )
+    States2
+        ()
+        (States1 state)
 
 
 type alias MaybeDelta delta =
@@ -1157,6 +1156,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
                 , status = getStatus fns.field.parse fns.field.receiveFlags flags (State internalState state)
                 , label = Path.last fns.field.path
                 , flags = flags
+                , selected = internalState.selected
                 }
                 |> H.map (\delta -> ChangeState (setter delta))
     in
@@ -1278,12 +1278,6 @@ recordStateUpdater next { newStates, newCmds } ( fns, restFns ) ( setter, restSe
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88         88       88    88      88.
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP         YP       YP    88      Y88888P
 -}
-
-
-type alias CustomTypeState variants =
-    { tagStates : variants
-    , selectedTag : Int
-    }
 
 
 type CustomTypeDelta variants
@@ -1421,28 +1415,28 @@ endCustomType rec =
                     List.reverse rec.labels
 
                 update =
-                    \delta (State s state) ->
+                    \delta (State i state) ->
                         case delta of
                             Skip ->
-                                ( State s state, Cmd.none )
+                                ( State i state, Cmd.none )
 
                             ChangeState (TagSelected idx) ->
-                                ( State s { state | selectedTag = idx }, Cmd.none )
+                                ( State { i | selected = idx } state, Cmd.none )
 
                             ChangeState (TagDeltaReceived tagDelta) ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateRecordStates rec.updater fns deltaSetters tagDelta state.tagStates
+                                        updateRecordStates rec.updater fns deltaSetters tagDelta state
                                 in
-                                ( State s { state | tagStates = newTagStates }
+                                ( State i newTagStates
                                 , Cmd.map (ChangeState << TagDeltaReceived) cmd
                                 )
 
                             _ ->
-                                ( State s state, Cmd.none )
+                                ( State i state, Cmd.none )
 
                 childViews config =
-                    [ viewSelectedTagState rec.viewer config.flags config.state.selectedTag fns deltaSetters config.state.tagStates ]
+                    [ viewSelectedTagState rec.viewer config.flags config.selected fns deltaSetters config.state ]
 
                 view config =
                     let
@@ -1452,20 +1446,20 @@ endCustomType rec =
                         childViews_ =
                             childViews config
                     in
-                    customTypeView config.label options config.state.selectedTag childViews_
+                    customTypeView config.label options config.selected childViews_
 
                 parse =
-                    \(State _ state) -> validateSelectedTagState rec.parser state.selectedTag fns state.tagStates
+                    \(State i state) -> validateSelectedTagState rec.parser i.selected fns state
 
                 setAllIdle =
-                    \(State i state) -> State { i | status = Idle_ } (setSelectedTagStateIdle rec.idleSetter state.selectedTag fns state.tagStates)
+                    \(State i state) -> State { i | status = Idle_ } (setSelectedTagStateIdle rec.idleSetter i.selected fns state)
 
-                emitFlags (State _ state) =
-                    emitFlagsForCustomType rec.flagEmitter state.selectedTag fns state.tagStates
+                emitFlags (State i state) =
+                    emitFlagsForCustomType rec.flagEmitter i.selected fns state
             in
             { path = path
             , index = 0
-            , init = State { status = Intact_, selected = 0 } { tagStates = inits, selectedTag = 0 }
+            , init = State { status = Intact_, selected = 0 } inits
             , delta = Skip
             , initialise = applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters
             , baseUpdate = \_ -> update
@@ -1540,7 +1534,7 @@ stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toA
 
 insertArgStateIntoTagState stateInserter_ maybeArgStates inits =
     stateInserter_
-        (\_ selectedTag tagStates End End -> State { status = Intact_, selected = selectedTag } { selectedTag = selectedTag, tagStates = tagStates End })
+        (\_ selectedTag tagStates End End -> State { status = Intact_, selected = selectedTag } (tagStates End))
         0
         0
         identity
@@ -1562,14 +1556,11 @@ argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStat
 
 
 setSelectedTagStateIdle idleSetter_ selectedTag fns tagStates =
-    { selectedTag = selectedTag
-    , tagStates =
-        idleSetter_
-            (\_ End End -> End)
-            selectedTag
-            fns
-            tagStates
-    }
+    idleSetter_
+        (\_ End End -> End)
+        selectedTag
+        fns
+        tagStates
 
 
 selectedTagIdleSetter next selectedTag ( fns, restFns ) ( state, restStates ) =
@@ -1610,7 +1601,7 @@ viewSelectedTagState viewer flags selectedTag fns setters states =
         |> Maybe.withDefault (H.text "ERROR!")
 
 
-selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, restSetters ) ( State s state, restStates ) =
+selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
         (if fns.field.index == selectedTag then
             Just
@@ -1619,6 +1610,7 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
                     , status = Intact
                     , label = Path.toString fns.field.path
                     , flags = flags
+                    , selected = internalState.selected
                     }
                     |> H.map setter
                 )
@@ -1703,6 +1695,7 @@ listView path ctrl config =
                                 , status = getStatus control.parse control.receiveFlags config.flags (State internalState state)
                                 , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                 , flags = config.flags
+                                , selected = config.selected
                                 }
                                 |> H.map (ChangeItem idx)
                             ]
