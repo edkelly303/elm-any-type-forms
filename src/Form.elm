@@ -3,10 +3,12 @@ module Form exposing
     , ControlConfig
     , Delta
     , End
+    , Flag
     , Form
     , ListDelta
     , ListState
     , State
+    , Status
     , ViewConfig
     , bool
     , checkMsgType
@@ -33,7 +35,7 @@ module Form exposing
     , tag1
     , tag2
     , tuple
-    , wrapper, Flag, Status
+    , wrapper
     )
 
 import Html as H exposing (Html)
