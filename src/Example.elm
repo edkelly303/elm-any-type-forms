@@ -1,7 +1,8 @@
 module Example exposing (main)
 
 import Browser
-import Form exposing (..)
+import Control exposing (..)
+import Form
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
