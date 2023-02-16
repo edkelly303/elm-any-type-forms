@@ -117,11 +117,35 @@ type alias User =
     }
 
 
-type Role
-    = Guest
-    | Registered Password
-
-
+user :
+    Control
+        ( State String
+        , ( State String
+          , ( State
+                ( State ()
+                , ( State
+                        ( State ( State String, ( State String, End ) ), End )
+                  , End
+                  )
+                )
+            , End
+            )
+          )
+        )
+        ( Delta String
+        , ( Delta String
+          , ( Delta
+                ( Delta ()
+                , ( Delta
+                        ( Delta ( Delta String, ( Delta String, End ) ), End )
+                  , End
+                  )
+                )
+            , End
+            )
+          )
+        )
+        User
 user =
     record User
         |> field "Name" .name string
@@ -130,6 +154,20 @@ user =
         |> end
 
 
+type Role
+    = Guest
+    | Registered Password
+
+
+role :
+    Control
+        ( State ()
+        , ( State ( State ( State String, ( State String, End ) ), End ), End )
+        )
+        ( Delta ()
+        , ( Delta ( Delta ( Delta String, ( Delta String, End ) ), End ), End )
+        )
+        Role
 role =
     customType
         (\guest registered tag ->

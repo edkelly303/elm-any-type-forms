@@ -24,7 +24,7 @@ module Form exposing
     , flagIf
     , fromControl
     , hiddenField
-    , initFrom
+    , initWith
     , int
     , layout
     , list
@@ -219,7 +219,7 @@ fromControl label toMsg (Control control) =
             let
                 (Control initialisedControl) =
                     Control control
-                        |> initFrom output
+                        |> initWith output
             in
             initialisedControl Path.root
                 |> .init
@@ -504,8 +504,8 @@ layout v (Control control) =
 -}
 
 
-initFrom : input -> InternalControl input state delta output -> InternalControl input state delta output
-initFrom input (Control control) =
+initWith : input -> InternalControl input state delta output -> InternalControl input state delta output
+initWith input (Control control) =
     let
         initialiser i =
             { i | init = i.initialise input }
