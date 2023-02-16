@@ -1,14 +1,10 @@
-module Example exposing (..)
+module Example exposing (main)
 
 import Browser
 import Form exposing (..)
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
-
-
-
--- import Item
 
 
 main =
@@ -77,9 +73,7 @@ update msg model =
             mainForm.update formMsg model
 
 
-type
-    Msg
-    -- = FormMsg (Form.Delta Item.ItemDelta)
+type Msg
     = FormMsg
         (Delta
             ( Delta String

@@ -1,4 +1,4 @@
-module Path exposing (..)
+module Path exposing (Path, add, last, root, toString)
 
 
 type Path

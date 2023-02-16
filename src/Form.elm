@@ -1,15 +1,16 @@
 module Form exposing
     ( Control
+    , ControlConfig
     , Delta
     , End
     , Form
     , ListDelta
     , ListState
     , State
+    , ViewConfig
     , bool
     , checkMsgType
     , customType
-    , datetime
     , debounce
     , end
     , enum
@@ -32,13 +33,12 @@ module Form exposing
     , tag1
     , tag2
     , tuple
-    , wrapper
+    , wrapper, Flag, Status
     )
 
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
-import Iso8601
 import Json.Decode
 import List.Extra
 import Path
@@ -546,29 +546,6 @@ string =
 
 
 {-
-   d8888b.  .d8b.  d888888b d88888b d888888b d888888b .88b  d88. d88888b
-   88  `8D d8' `8b `~~88~~' 88'     `~~88~~'   `88'   88'YbdP`88 88'
-   88   88 88ooo88    88    88ooooo    88       88    88  88  88 88ooooo
-   88   88 88~~~88    88    88~~~~~    88       88    88  88  88 88~~~~~
-   88  .8D 88   88    88    88.        88      .88.   88  88  88 88.
-   Y8888D' YP   YP    YP    Y88888P    YP    Y888888P YP  YP  YP Y88888P
--}
-
-
-datetime : Control String String Time.Posix
-datetime =
-    makeControl
-        { empty = ""
-        , initialise = Iso8601.fromTime >> String.replace "Z" ""
-        , update = \delta _ -> delta
-        , view = textControlView "datetime-local"
-        , parse = Iso8601.toTime >> Result.mapError (\_ -> [ "Not a valid datetime" ])
-        }
-        |> debounce 500
-
-
-
-{-
    d88888b d8b   db db    db .88b  d88.
    88'     888o  88 88    88 88'YbdP`88
    88ooooo 88V8o 88 88    88 88  88  88
@@ -1030,7 +1007,7 @@ endRecord rec =
             , index = 0
             , init = State { status = Intact_, selected = 0 } inits
             , delta = Skip
-            , initialise = \output -> initialiseRecordStates rec.initialiser output fns inits
+            , initialise = \output -> initialiseRecordStates rec.initialiser output fns
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
@@ -1078,14 +1055,14 @@ deltaSetterMaker next ( before, befores ) ( after, afters ) =
     )
 
 
-initialiseRecordStates initialiser output fns states =
-    initialiser (\_ End End -> End) output fns states
+initialiseRecordStates initialiser output fns =
+    initialiser (\_ End -> End) output fns
         |> State { status = Intact_, selected = 0 }
 
 
-recordStateInitialiser next output ( fns, restFns ) ( states, restStates ) =
+recordStateInitialiser next output ( fns, restFns ) =
     ( fns.field.initialise (fns.fromOutput output)
-    , next output restFns restStates
+    , next output restFns
     )
 
 
@@ -1162,32 +1139,6 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
         restFns
         restSetters
         restStates
-
-
-
--- getStatus :
---     (State state -> Result (List ( String, String )) output)
---     -> (State state -> List ( String, String ))
---     -> State state
---     -> Status
--- getStatus validator notifier ((State internalState _) as state) =
---     case internalState of
---         Intact_ ->
---             Intact
---         DebouncingSince _ ->
---             Debouncing
---         Idle_ ->
---             let
---                 errors =
---                     case validator state of
---                         Ok _ ->
---                             []
---                         Err errs ->
---                             errs
---                 notes =
---                     notifier state
---             in
---             Idle (List.map Err errors ++ List.map Ok notes)
 
 
 getStatus parse receiveFlags flags ((State internalState _) as state) =
