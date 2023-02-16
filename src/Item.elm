@@ -149,16 +149,14 @@ type alias ItemDelta =
                         ( Delta String
                         , ( Delta (WrapperDelta String)
                           , ( Delta
-                                (CustomTypeDelta
-                                    ( Delta ()
-                                    , ( Delta ()
-                                      , ( Delta ()
-                                        , ( Delta ( Delta String, End )
-                                          , End
-                                          )
-                                        )
+                                ( Delta ()
+                                , ( Delta ()
+                                  , ( Delta ()
+                                    , ( Delta ( Delta String, End )
+                                      , End
                                       )
                                     )
+                                  )
                                 )
                             , End
                             )
@@ -331,7 +329,7 @@ item =
         |> field "Whole" .maybeWhole (maybe wholeRecord)
         |> field "Custom" .custom (list customRecord)
         |> field "Seasonality" .maybeSeasonality (maybe seasonality)
-        |> endRecord
+        |> end
 
 
 itemId =
@@ -395,7 +393,7 @@ measure =
         |> tag0 "Volume" Volume
         |> tag0 "Whole" Whole
         |> tag1 "Custom" Custom string
-        |> endCustomType
+        |> end
 
 
 category =
@@ -449,20 +447,20 @@ purchaseHistory =
         |> field "Time of purchase" .time datetime
         |> field "Amount purchased (grams)" .grams unit
         |> field "Purchased by measure" .measure measure
-        |> endRecord
+        |> end
 
 
 volumeRecord =
     record VolumeRecord
         |> field "Density" .ratio (ratio "Grams" "Millilitre")
-        |> endRecord
+        |> end
 
 
 wholeRecord =
     record WholeRecord
         |> field "Singular Name" .singularName nonEmptyString
         |> field "Weight" .ratio (ratio "Grams" "Item")
-        |> endRecord
+        |> end
 
 
 customRecord =
@@ -470,11 +468,11 @@ customRecord =
         |> field "Singular Collection" .singularCollection nonEmptyString
         |> field "Plural Collection" .pluralCollection nonEmptyString
         |> field "Weight" .ratio (ratio "Grams" "Item")
-        |> endRecord
+        |> end
 
 
 seasonality =
     record Seasonality
         |> field "Starts At" .startsAt month
         |> field "Ends At" .endsAt (month |> initFrom Time.Dec)
-        |> endRecord
+        |> end

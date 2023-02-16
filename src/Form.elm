@@ -1,6 +1,5 @@
 module Form exposing
     ( Control
-    , CustomTypeDelta
     , Delta
     , End
     , Form
@@ -18,8 +17,7 @@ module Form exposing
     , customType
     , datetime
     , debounce
-    , endCustomType
-    , endRecord
+    , end
     , enum
     , failIf
     , field
@@ -187,6 +185,7 @@ type Delta delta
     | ChangeState delta
     | StartDebouncing Time.Posix
     | CheckDebouncer Time.Posix
+    | TagSelected Int
 
 
 type alias Deltas1 a =
@@ -361,6 +360,11 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
                     ( State internalState state
                     , Cmd.none
                     )
+
+        TagSelected idx ->
+            ( State { internalState | selected = idx } state
+            , Cmd.none
+            )
 
 
 flagIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
@@ -662,7 +666,7 @@ wrapper wrap unwrap control =
                 (Control toWrapped) =
                     record wrap
                         |> field "" unwrap control
-                        |> endRecord
+                        |> end
             in
             toWrapped path
         )
@@ -686,11 +690,9 @@ type alias MaybeState state =
 
 
 type alias MaybeDelta delta =
-    CustomTypeDelta
-        (Deltas2
-            ()
-            (Deltas1 delta)
-        )
+    Deltas2
+        ()
+        (Deltas1 delta)
 
 
 maybe : Control state delta output -> Control (MaybeState state) (MaybeDelta delta) (Maybe output)
@@ -710,7 +712,7 @@ maybe control =
                         )
                         |> tag0 "Nothing" Nothing
                         |> tag1 "Just" Just control
-                        |> endCustomType
+                        |> end
             in
             toWrapped label
         )
@@ -745,7 +747,7 @@ tuple fstLabel fst sndLabel snd =
     record Tuple.pair
         |> field fstLabel Tuple.first fst
         |> field sndLabel Tuple.second snd
-        |> endRecord
+        |> end
 
 
 
@@ -904,24 +906,39 @@ list (Control ctrl) =
 -}
 
 
+end builder =
+    case builder of
+        Rec r ->
+            endRecord r
+
+        Cus c ->
+            endCustomType c
+
+
+type Builder r c
+    = Rec r
+    | Cus c
+
+
 record toOutput =
-    { index = 0
-    , labels = []
-    , toOutput = toOutput
-    , fields = \_ x -> x
-    , states = \_ x -> x
-    , updater = identity
-    , viewer = identity
-    , parser = identity
-    , idleSetter = identity
-    , initialiser = identity
-    , before = identity
-    , befores = identity
-    , after = End
-    , afters = End
-    , makeSetters = identity
-    , flagEmitter = identity
-    }
+    Rec
+        { index = 0
+        , labels = []
+        , toOutput = toOutput
+        , fields = \_ x -> x
+        , states = \_ x -> x
+        , updater = identity
+        , viewer = identity
+        , parser = identity
+        , idleSetter = identity
+        , initialiser = identity
+        , before = identity
+        , befores = identity
+        , after = End
+        , afters = End
+        , makeSetters = identity
+        , flagEmitter = identity
+        }
 
 
 field =
@@ -942,34 +959,40 @@ type Access
     | Hidden
 
 
-internalField access label fromOutput (Control control) rec =
-    { index = rec.index + 1
-    , labels = rec.labels ++ [ label ]
-    , toOutput = rec.toOutput
-    , fields =
-        \path ->
-            rec.fields path
-                << Tuple.pair
-                    { field = control (Path.add label path)
-                    , fromOutput = fromOutput
-                    , access = access
-                    }
-    , states =
-        \path ->
-            rec.states path
-                << Tuple.pair (control (Path.add label path) |> .init)
-    , updater = rec.updater >> recordStateUpdater
-    , viewer = rec.viewer >> recordStateViewer
-    , parser = rec.parser >> recordStateValidator
-    , idleSetter = rec.idleSetter >> recordStateIdleSetter
-    , initialiser = rec.initialiser >> recordStateInitialiser
-    , before = rec.before << Tuple.pair Skip
-    , befores = rec.befores << Tuple.pair rec.before
-    , after = ( Skip, rec.after )
-    , afters = ( rec.after, rec.afters )
-    , makeSetters = rec.makeSetters >> deltaSetterMaker
-    , flagEmitter = rec.flagEmitter >> recordFlagEmitter
-    }
+internalField access label fromOutput (Control control) builder =
+    case builder of
+        Cus c ->
+            Cus c
+
+        Rec rec ->
+            Rec
+                { index = rec.index + 1
+                , labels = rec.labels ++ [ label ]
+                , toOutput = rec.toOutput
+                , fields =
+                    \path ->
+                        rec.fields path
+                            << Tuple.pair
+                                { field = control (Path.add label path)
+                                , fromOutput = fromOutput
+                                , access = access
+                                }
+                , states =
+                    \path ->
+                        rec.states path
+                            << Tuple.pair (control (Path.add label path) |> .init)
+                , updater = rec.updater >> recordStateUpdater
+                , viewer = rec.viewer >> recordStateViewer
+                , parser = rec.parser >> recordStateValidator
+                , idleSetter = rec.idleSetter >> recordStateIdleSetter
+                , initialiser = rec.initialiser >> recordStateInitialiser
+                , before = rec.before << Tuple.pair Skip
+                , befores = rec.befores << Tuple.pair rec.before
+                , after = ( Skip, rec.after )
+                , afters = ( rec.after, rec.afters )
+                , makeSetters = rec.makeSetters >> deltaSetterMaker
+                , flagEmitter = rec.flagEmitter >> recordFlagEmitter
+                }
 
 
 endRecord rec =
@@ -1280,74 +1303,76 @@ recordStateUpdater next { newStates, newCmds } ( fns, restFns ) ( setter, restSe
 -}
 
 
-type CustomTypeDelta variants
-    = TagSelected Int
-    | TagDeltaReceived variants
-
-
 customType destructor =
-    { index = 0
-    , labels = []
-    , fns = \_ x -> x
-    , states = \_ x -> x
-    , updater = identity
-    , viewer = identity
-    , parser = identity
-    , idleSetter = identity
-    , deltaBefore = identity
-    , deltaBefores = identity
-    , deltaAfter = End
-    , deltaAfters = End
-    , makeDeltaSetters = identity
-    , stateBefore = identity
-    , stateBefores = identity
-    , toArgStates = identity
-    , stateAfter = End
-    , stateAfters = End
-    , makeStateSetters = identity
-    , stateInserter = identity
-    , applyInputs = identity
-    , flagEmitter = identity
-    , destructor = destructor
-    }
+    Cus
+        { index = 0
+        , labels = []
+        , fns = \_ x -> x
+        , states = \_ x -> x
+        , updater = identity
+        , viewer = identity
+        , parser = identity
+        , idleSetter = identity
+        , deltaBefore = identity
+        , deltaBefores = identity
+        , deltaAfter = End
+        , deltaAfters = End
+        , makeDeltaSetters = identity
+        , stateBefore = identity
+        , stateBefores = identity
+        , toArgStates = identity
+        , stateAfter = End
+        , stateAfters = End
+        , makeStateSetters = identity
+        , stateInserter = identity
+        , applyInputs = identity
+        , flagEmitter = identity
+        , destructor = destructor
+        }
 
 
-variant label (Control control) toArgState rec =
-    { index = rec.index + 1
-    , labels = label :: rec.labels
-    , fns =
-        \path ->
-            let
-                control_ =
-                    control (Path.add label path)
-            in
-            rec.fns path
-                << Tuple.pair
-                    { field = { control_ | index = rec.index } }
-    , states =
-        \path ->
-            rec.states path
-                << Tuple.pair (control (Path.add label path) |> .init)
-    , updater = rec.updater >> recordStateUpdater
-    , viewer = rec.viewer >> selectedTagViewer
-    , parser = rec.parser >> selectedTagParser
-    , idleSetter = rec.idleSetter >> selectedTagIdleSetter
-    , deltaBefore = rec.deltaBefore << Tuple.pair Skip
-    , deltaBefores = rec.deltaBefores << Tuple.pair rec.deltaBefore
-    , deltaAfter = ( Skip, rec.deltaAfter )
-    , deltaAfters = ( rec.deltaAfter, rec.deltaAfters )
-    , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
-    , stateBefore = rec.stateBefore << Tuple.pair Nothing
-    , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
-    , toArgStates = rec.toArgStates << Tuple.pair toArgState
-    , stateAfter = ( Nothing, rec.stateAfter )
-    , stateAfters = ( rec.stateAfter, rec.stateAfters )
-    , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
-    , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
-    , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
-    , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
-    , destructor = rec.destructor
-    }
+variant label (Control control) toArgState builder =
+    case builder of
+        Rec r ->
+            Rec r
+
+        Cus rec ->
+            Cus
+                { index = rec.index + 1
+                , labels = label :: rec.labels
+                , fns =
+                    \path ->
+                        let
+                            control_ =
+                                control (Path.add label path)
+                        in
+                        rec.fns path
+                            << Tuple.pair
+                                { field = { control_ | index = rec.index } }
+                , states =
+                    \path ->
+                        rec.states path
+                            << Tuple.pair (control (Path.add label path) |> .init)
+                , updater = rec.updater >> recordStateUpdater
+                , viewer = rec.viewer >> selectedTagViewer
+                , parser = rec.parser >> selectedTagParser
+                , idleSetter = rec.idleSetter >> selectedTagIdleSetter
+                , deltaBefore = rec.deltaBefore << Tuple.pair Skip
+                , deltaBefores = rec.deltaBefores << Tuple.pair rec.deltaBefore
+                , deltaAfter = ( Skip, rec.deltaAfter )
+                , deltaAfters = ( rec.deltaAfter, rec.deltaAfters )
+                , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
+                , stateBefore = rec.stateBefore << Tuple.pair Nothing
+                , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
+                , toArgStates = rec.toArgStates << Tuple.pair toArgState
+                , stateAfter = ( Nothing, rec.stateAfter )
+                , stateAfters = ( rec.stateAfter, rec.stateAfters )
+                , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
+                , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
+                , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
+                , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
+                , destructor = rec.destructor
+                }
 
 
 tag0 label tag =
@@ -1375,7 +1400,7 @@ tag1 label tag control =
         label
         (record tag
             |> field "" Tuple.first control
-            |> endRecord
+            |> end
         )
         (\insertArgStateIntoTagStates arg1 ->
             insertArgStateIntoTagStates ( arg1, End )
@@ -1388,7 +1413,7 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
         (record tag
             |> field label1 Tuple.first control1
             |> field label2 (Tuple.second >> Tuple.first) control2
-            |> endRecord
+            |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, End ) )
@@ -1420,16 +1445,16 @@ endCustomType rec =
                             Skip ->
                                 ( State i state, Cmd.none )
 
-                            ChangeState (TagSelected idx) ->
+                            TagSelected idx ->
                                 ( State { i | selected = idx } state, Cmd.none )
 
-                            ChangeState (TagDeltaReceived tagDelta) ->
+                            ChangeState tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
                                         updateRecordStates rec.updater fns deltaSetters tagDelta state
                                 in
                                 ( State i newTagStates
-                                , Cmd.map (ChangeState << TagDeltaReceived) cmd
+                                , Cmd.map ChangeState cmd
                                 )
 
                             _ ->
@@ -1597,7 +1622,7 @@ selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates )
 
 viewSelectedTagState viewer flags selectedTag fns setters states =
     viewer (\maybeView _ _ End End End -> maybeView) Nothing flags selectedTag fns setters states
-        |> Maybe.map (H.map (ChangeState << TagDeltaReceived))
+        |> Maybe.map (H.map ChangeState)
         |> Maybe.withDefault (H.text "ERROR!")
 
 
@@ -1640,8 +1665,8 @@ customTypeView :
     String
     -> List ( Int, String )
     -> Int
-    -> List (Html (Delta (CustomTypeDelta variants)))
-    -> Html (Delta (CustomTypeDelta variants))
+    -> List (Html (Delta variants))
+    -> Html (Delta variants)
 customTypeView label options selectedTag selectedTagView =
     H.div []
         (if List.length options > 1 then
@@ -1650,7 +1675,7 @@ customTypeView label options selectedTag selectedTagView =
                     { options = options
                     , label = label
                     , selectedOption = selectedTag
-                    , toMsg = ChangeState << TagSelected
+                    , toMsg = TagSelected
                     , columns = 3
                     }
                 , H.div [] selectedTagView

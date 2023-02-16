@@ -85,15 +85,18 @@ type
             ( Delta String
             , ( Delta String
               , ( Delta
-                    (CustomTypeDelta
-                        ( Delta ()
-                        , ( Delta
-                                ( Delta ( Delta String, ( Delta String, End ) )
-                                , End
+                    ( Delta ()
+                    , ( Delta
+                            ( Delta
+                                ( Delta String
+                                , ( Delta String
+                                  , End
+                                  )
                                 )
-                          , End
-                          )
-                        )
+                            , End
+                            )
+                      , End
+                      )
                     )
                 , End
                 )
@@ -124,7 +127,7 @@ user =
         |> field "Name" .name string
         |> field "Age" .age boundedInt
         |> field "Role" .role role
-        |> endRecord
+        |> end
 
 
 role =
@@ -139,7 +142,7 @@ role =
         )
         |> tag0 "Guest" Guest
         |> tag1 "Registered" Registered password
-        |> endCustomType
+        |> end
 
 
 type alias Password =
@@ -166,7 +169,7 @@ password =
             (string
                 |> onFlag "password-matcher" "Must match password field"
             )
-        |> endRecord
+        |> end
         |> flagIf (\rec -> rec.password /= rec.confirmPassword) "password-matcher"
 
 
