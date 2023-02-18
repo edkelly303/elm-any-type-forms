@@ -215,7 +215,7 @@ fromControl label toMsg (Control control) =
         \((State internalState state) as s) ->
             let
                 flags =
-                    emitFlags s |> Debug.log "flags"
+                    emitFlags s
             in
             H.div []
                 [ H.h1 [] [ H.text label ]
@@ -232,19 +232,24 @@ fromControl label toMsg (Control control) =
                 ]
     , submit =
         \state ->
-            case
-                state
-                    |> emitFlags
-                    |> receiveFlags
-                    -- there needs to be a way to collect all errors from all nested controls, not just the top level control
-                    |> Debug.log "Flags at submission"
-            of
-                [] ->
+            let
+                parsingResult =
                     parse state
-                        |> Result.mapError (\errors -> { errors = errors, state = setAllIdle state })
 
-                errs ->
-                    Err { errors = errs, state = setAllIdle state }
+                validationErrors =
+                    state
+                        |> emitFlags
+                        |> receiveFlags
+            in
+            case ( parsingResult, validationErrors ) of
+                ( Ok output, [] ) ->
+                    Ok output
+
+                ( Ok _, vErrs ) ->
+                    Err { state = setAllIdle state, errors = vErrs }
+
+                ( Err pErrs, vErrs ) ->
+                    Err { state = setAllIdle state, errors = pErrs ++ vErrs }
     }
 
 
@@ -660,16 +665,9 @@ wrapper :
             ( Delta delta, End )
             wrapped
 wrapper wrap unwrap control =
-    Control
-        (\path ->
-            let
-                (Control toWrapped) =
-                    record wrap
-                        |> field "" unwrap control
-                        |> end
-            in
-            toWrapped path
-        )
+    record wrap
+        |> field "Wrapper" unwrap control
+        |> end
 
 
 
@@ -888,167 +886,6 @@ list (Control ctrl) =
 -}
 
 
--- end :
---     Builder
---         { rec
---             | after : ( Delta delta3, End )
---             , afters : ( End, End )
---             , before : a8 -> ( Delta delta2, a8 )
---             , befores : End -> ( ( Delta delta2, a8 ) -> ( Delta delta2, a8 ), a7 )
---             , fields :
---                 Path.Path
---                 -> End
---                 ->
---                     ( { access : Access
---                       , field : ControlRecord output state delta1 output
---                       , fromOutput : wrapped -> output
---                       }
---                     , a6
---                     )
---             , flagEmitter :
---                 (List Flag -> End -> End -> List Flag)
---                 -> List Flag
---                 -> ( { i | field : { h | emitFlags : State state -> List Flag } }, End )
---                 -> ( g, e )
---                 -> f
---             , idleSetter :
---                 (j -> k -> l)
---                 -> ( { p | field : { o | setAllIdle : m -> n } }, j )
---                 -> ( m, k )
---                 -> ( n, l )
---             , index : number
---             , initialiser :
---                 (q -> r -> s)
---                 -> q
---                 ->
---                     ( { w
---                         | field : { v | initialise : t -> u }
---                         , fromOutput : q -> t
---                       }
---                     , r
---                     )
---                 -> ( u, s )
---             , labels : List String
---             , makeSetters :
---                 (x -> y -> z)
---                 -> ( ( b1, c1 ) -> d1, x )
---                 -> ( c1, y )
---                 -> ( b1 -> d1, z )
---             , parser :
---                 (Result (List ( String, String )) value2 -> e1 -> f1 -> g1)
---                 -> Result (List ( String, String )) (value1 -> value2)
---                 ->
---                     ( { j1
---                         | field : { i1 | parse : h1 -> Result (List ( String, String )) value1 }
---                       }
---                     , e1
---                     )
---                 -> ( h1, f1 )
---                 -> g1
---             , states : Path.Path -> a5 -> ( State state, a5 )
---             , toOutput : output -> wrapped
---             , updater :
---                 ({ newCmds : List (Cmd msg), newStates : a4 -> c }
---                  -> k1
---                  -> l1
---                  -> m1
---                  -> n1
---                  -> o1
---                 )
---                 -> { p1 | newCmds : List (Cmd msg), newStates : ( a3, a4 ) -> c }
---                 ->
---                     ( { t1 | field : { s1 | update : q1 -> r1 -> ( a3, Cmd a2 ) } }
---                     , k1
---                     )
---                 -> ( a2 -> msg, l1 )
---                 -> ( q1, m1 )
---                 -> ( r1, n1 )
---                 -> o1
---             , viewer :
---                 (List (Html (Delta delta)) -> a1 -> u1 -> v1 -> w1 -> x1)
---                 -> List (Html (Delta delta))
---                 -> a1
---                 ->
---                     ( { z1
---                         | access : Access
---                         , field :
---                             { y1
---                                 | parse :
---                                     State state
---                                     -> Result (List ( String, String )) value
---                                 , path : Path.Path
---                                 , receiveFlags : a1 -> List ( String, String )
---                                 , view :
---                                     { flags : a1
---                                     , label : String
---                                     , selected : Int
---                                     , state : state
---                                     , status : Status
---                                     }
---                                     -> Html a
---                             }
---                       }
---                     , u1
---                     )
---                 -> ( a -> delta, v1 )
---                 -> ( State state, w1 )
---                 -> x1
---         }
---         { applyInputs : (b -> End -> b) -> c -> End -> input -> State state
---             , deltaAfters : e
---             , deltaBefores : End -> f
---             , destructor : c
---             , flagEmitter :
---                 (g -> h -> End -> End -> g)
---                 -> List i
---                 -> Int
---                 -> j
---                 -> state
---                 -> List Flag
---             , fns : Path.Path -> End -> j
---             , idleSetter : (k -> End -> End -> End) -> Int -> j -> state -> state
---             , labels : List String
---             , makeDeltaSetters : (End -> End -> End) -> f -> e -> l
---             , makeStateSetters :
---                 (m -> n -> End -> End -> End -> End -> End)
---                 -> o
---                 -> state
---                 -> j
---                 -> p
---                 -> q
---                 -> r
---                 -> End
---             , parser :
---                 (s -> t -> End -> End -> s)
---                 -> Result (List ( String, String )) value
---                 -> Int
---                 -> j
---                 -> state
---                 -> Result (List ( String, String )) output
---             , stateAfters : r
---             , stateBefores : End -> q
---             , stateInserter : o
---             , states : Path.Path -> End -> state
---             , toArgStates : End -> p
---             , updater :
---                 (u -> End -> End -> End -> End -> u)
---                 -> { newCmds : List v, newStates : a1 -> a1 }
---                 -> j
---                 -> l
---                 -> delta
---                 -> state
---                 -> { w | newCmds : List (Cmd delta), newStates : End -> state }
---             , viewer :
---                 (x -> y -> z -> End -> End -> End -> x)
---                 -> Maybe a
---                 -> List Flag
---                 -> Int
---                 -> j
---                 -> l
---                 -> state
---                 -> Maybe (Html delta)
---         }
---     -> AdvancedControl input state delta output
 end builder =
     case builder of
         Rec r ->
@@ -1081,6 +918,7 @@ record toOutput =
         , afters = End
         , makeSetters = identity
         , flagEmitter = identity
+        , flagReceiver = identity
         }
 
 
@@ -1135,6 +973,7 @@ internalField access label fromOutput (Control control) builder =
                 , afters = ( rec.after, rec.afters )
                 , makeSetters = rec.makeSetters >> deltaSetterMaker
                 , flagEmitter = rec.flagEmitter >> recordFlagEmitter
+                , flagReceiver = rec.flagReceiver >> recordFlagReceiver
                 }
 
 
@@ -1201,7 +1040,6 @@ endRecord rec =
 
                           else
                             H.div [] fieldViews
-                        , statusView config.status
                         ]
 
                 parse (State _ state) =
@@ -1226,7 +1064,7 @@ endRecord rec =
             , setAllIdle = setAllIdle
             , notify = \_ -> []
             , emitFlags = emitFlags
-            , receiveFlags = \_ -> []
+            , receiveFlags = \flags -> receiveFlagsForRecord rec.flagReceiver flags fns
             , receiverCount = 0
             }
         )
@@ -1241,6 +1079,14 @@ endRecord rec =
    88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
    88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+receiveFlagsForRecord flagReceiver_ flags fns =
+    flagReceiver_ (\_ errors End -> errors) flags [] fns
+
+
+recordFlagReceiver next flags errors ( fns, restFns ) =
+    next flags (errors ++ fns.field.receiveFlags flags) restFns
 
 
 emitFlagsForRecord flagEmitter_ fns states =
@@ -1444,11 +1290,12 @@ customType destructor =
         , stateInserter = identity
         , applyInputs = identity
         , flagEmitter = identity
+        , flagReceiver = identity
         , destructor = destructor
         }
 
 
-variant label (Control control) toArgState builder =
+tagHelper label (Control control) toArgState builder =
     case builder of
         Rec r ->
             Rec r
@@ -1488,12 +1335,13 @@ variant label (Control control) toArgState builder =
                 , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
                 , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
                 , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
+                , flagReceiver = rec.flagReceiver >> customTypeFlagReceiver
                 , destructor = rec.destructor
                 }
 
 
 tag0 label tag =
-    variant
+    tagHelper
         label
         (null tag)
         (\insertArgStateIntoTagStates ->
@@ -1513,10 +1361,10 @@ null tag =
 
 
 tag1 label tag control =
-    variant
+    tagHelper
         label
         (record tag
-            |> field "" Tuple.first control
+            |> field "Tag" Tuple.first control
             |> end
         )
         (\insertArgStateIntoTagStates arg1 ->
@@ -1525,7 +1373,7 @@ tag1 label tag control =
 
 
 tag2 label tag ( label1, control1 ) ( label2, control2 ) =
-    variant
+    tagHelper
         label
         (record tag
             |> field label1 Tuple.first control1
@@ -1612,7 +1460,7 @@ endCustomType rec =
             , setAllIdle = setAllIdle
             , notify = \_ -> []
             , emitFlags = emitFlags
-            , receiveFlags = \_ -> []
+            , receiveFlags = \flags -> receiveFlagsForCustomType rec.flagReceiver flags fns
             , receiverCount = 0
             }
         )
@@ -1627,6 +1475,14 @@ endCustomType rec =
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+receiveFlagsForCustomType =
+    receiveFlagsForRecord
+
+
+customTypeFlagReceiver =
+    recordFlagReceiver
 
 
 emitFlagsForCustomType flagEmitter_ selectedTag fns tagStates =
