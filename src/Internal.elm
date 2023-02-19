@@ -92,25 +92,24 @@ type AdvancedControl input state delta output
 
 
 type alias ControlRecord input state delta output =
-    { baseUpdate :
+    { delta : Delta delta
+    , index : Int
+    , init : State state
+    , initialise : input -> State state
+    , baseUpdate :
         Float
         -> Delta delta
         -> State state
         -> ( State state, Cmd (Delta delta) )
+    , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
+    , view : ViewConfig state -> Html (Delta delta)
     , childViews : ViewConfig state -> List (Html (Delta delta))
-    , delta : Delta delta
-    , emitFlags : State state -> List Flag
-    , index : Int
-    , init : State state
-    , initialise : input -> State state
-    , notify : State state -> List ( String, String )
     , parse : State state -> Result (List ( String, String )) output
     , path : Path.Path
+    , emitFlags : State state -> List Flag
     , receiveFlags : List Flag -> List ( String, String )
     , receiverCount : Int
     , setAllIdle : State state -> State state
-    , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
-    , view : ViewConfig state -> Html (Delta delta)
     }
 
 
@@ -306,7 +305,6 @@ makeControl config =
             , view = config.view >> H.map ChangeState
             , parse = parse
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
-            , notify = \_ -> []
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
             , receiverCount = 0
@@ -866,7 +864,6 @@ list (Control ctrl) =
                             )
                             s
                         )
-            , notify = \_ -> []
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
             , receiverCount = 0
@@ -1062,7 +1059,6 @@ endRecord rec =
             , view = \config -> view childViews config
             , parse = parse
             , setAllIdle = setAllIdle
-            , notify = \_ -> []
             , emitFlags = emitFlags
             , receiveFlags = \flags -> receiveFlagsForRecord rec.flagReceiver flags fns
             , receiverCount = 0
@@ -1458,7 +1454,6 @@ endCustomType rec =
             , view = \config -> view config
             , parse = parse
             , setAllIdle = setAllIdle
-            , notify = \_ -> []
             , emitFlags = emitFlags
             , receiveFlags = \flags -> receiveFlagsForCustomType rec.flagReceiver flags fns
             , receiverCount = 0
