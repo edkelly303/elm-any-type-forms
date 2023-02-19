@@ -216,6 +216,7 @@ fromControl label toMsg (Control control) =
             let
                 emittedFlags =
                     emitFlags s
+                        |> Debug.log "emitted flags"
 
                 debouncingReceivers =
                     collectDebouncingReceivers s
@@ -223,6 +224,7 @@ fromControl label toMsg (Control control) =
 
                 flags =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
+                        |> Debug.log "flags"
             in
             H.div []
                 [ H.h1 [] [ H.text label ]
@@ -1105,12 +1107,12 @@ collectDebouncingReceiversForRecord receiverCollector_ fns states =
     receiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
-recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( State internalState _, restStates ) =
+recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( State internalState state, restStates ) =
     let
         newReceivers =
             case internalState.status of
                 DebouncingSince _ ->
-                    fns.field.receiverCount
+                    fns.field.collectDebouncingReceivers (State internalState state)
 
                 _ ->
                     []
