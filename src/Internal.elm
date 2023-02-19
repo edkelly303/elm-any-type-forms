@@ -287,7 +287,12 @@ makeControl config =
         (\path ->
             let
                 preUpdate =
-                    wrapUpdate (\d s -> config.update d s |> (\ns -> ( ns, Cmd.none )))
+                    wrapUpdate
+                        (\delta state ->
+                            ( config.update delta state
+                            , Cmd.none
+                            )
+                        )
 
                 parse =
                     \(State _ state) ->
