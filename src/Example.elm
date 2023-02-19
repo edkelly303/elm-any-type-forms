@@ -143,10 +143,11 @@ user :
         User
 user =
     record User
-        |> field "Name" .name string
-        |> field "Age" .age boundedInt
+        |> field "Name" .name (string |> onFlag "na" "Boo!")
+        |> field "Age" .age (boundedInt |> onFlag "na" "Boo!")
         |> field "Role" .role role
         |> end
+        |> flagIf (\{ name, age } -> name == String.fromInt age) "na"
 
 
 type Role

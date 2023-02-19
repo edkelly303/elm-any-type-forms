@@ -107,6 +107,7 @@ type alias ControlRecord input state delta output =
     , parse : State state -> Result (List ( String, String )) output
     , path : Path.Path
     , emitFlags : State state -> List Flag
+    , collectDebouncingReceivers : State state -> List Flag
     , receiveFlags : List Flag -> List ( String, String )
     , receiverCount : List Flag
     , setAllIdle : State state -> State state
@@ -193,7 +194,7 @@ type Delta delta
 fromControl : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
 fromControl label toMsg (Control control) =
     let
-        { init, update, view, parse, setAllIdle, emitFlags, receiveFlags } =
+        { init, update, view, parse, setAllIdle, emitFlags, receiveFlags, collectDebouncingReceivers } =
             control Path.root
     in
     { init = init
@@ -213,8 +214,15 @@ fromControl label toMsg (Control control) =
     , view =
         \((State internalState state) as s) ->
             let
-                flags =
+                emittedFlags =
                     emitFlags s
+
+                debouncingReceivers =
+                    collectDebouncingReceivers s
+                        |> Debug.log "debouncing receivers"
+
+                flags =
+                    List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
             in
             H.div []
                 [ H.h1 [] [ H.text label ]
@@ -311,6 +319,7 @@ makeControl config =
             , parse = parse
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , emitFlags = \_ -> []
+            , collectDebouncingReceivers = \_ -> []
             , receiveFlags = \_ -> []
             , receiverCount = []
             }
@@ -435,6 +444,15 @@ flagReceiver flag message ctrl =
                             []
                 in
                 List.Extra.unique (oldReceiver ++ newReceiver)
+        , receiverCount = flag :: ctrl.receiverCount
+        , collectDebouncingReceivers =
+            \((State internalState _) as state) ->
+                case internalState.status of
+                    DebouncingSince _ ->
+                        flag :: ctrl.collectDebouncingReceivers state
+
+                    _ ->
+                        ctrl.collectDebouncingReceivers state
     }
 
 
@@ -448,11 +466,8 @@ failIf check message (Control c) =
 
                 flag =
                     FlagPath path (List.length control.receiverCount)
-
-                newReceiverCount =
-                    flag :: control.receiverCount
             in
-            { control | receiverCount = newReceiverCount }
+            control
                 |> flagEmitter check flag
                 |> flagReceiver flag message
         )
@@ -872,6 +887,7 @@ list (Control ctrl) =
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
             , receiverCount = []
+            , collectDebouncingReceivers = \_ -> []
             }
         )
 
@@ -921,6 +937,7 @@ record toOutput =
         , makeSetters = identity
         , flagEmitter = identity
         , flagReceiver = identity
+        , receiverCollector = identity
         }
 
 
@@ -976,6 +993,7 @@ internalField access label fromOutput (Control control) builder =
                 , makeSetters = rec.makeSetters >> deltaSetterMaker
                 , flagEmitter = rec.flagEmitter >> recordFlagEmitter
                 , flagReceiver = rec.flagReceiver >> recordFlagReceiver
+                , receiverCollector = rec.receiverCollector >> recordDebouncingReceiverCollector
                 }
 
 
@@ -1067,6 +1085,7 @@ endRecord rec =
             , emitFlags = emitFlags
             , receiveFlags = \flags -> receiveFlagsForRecord rec.flagReceiver flags fns
             , receiverCount = []
+            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.receiverCollector fns states
             }
         )
 
@@ -1080,6 +1099,23 @@ endRecord rec =
    88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
    88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+collectDebouncingReceiversForRecord receiverCollector_ fns states =
+    receiverCollector_ (\receivers End End -> receivers) [] fns states
+
+
+recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( State internalState _, restStates ) =
+    let
+        newReceivers =
+            case internalState.status of
+                DebouncingSince _ ->
+                    fns.field.receiverCount
+
+                _ ->
+                    []
+    in
+    next (receivers ++ newReceivers) restFns restStates
 
 
 receiveFlagsForRecord flagReceiver_ flags fns =
@@ -1292,6 +1328,7 @@ customType destructor =
         , applyInputs = identity
         , flagEmitter = identity
         , flagReceiver = identity
+        , receiverCollector = identity
         , destructor = destructor
         }
 
@@ -1337,6 +1374,7 @@ tagHelper label (Control control) toArgState builder =
                 , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
                 , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
                 , flagReceiver = rec.flagReceiver >> customTypeFlagReceiver
+                , receiverCollector = rec.receiverCollector >> recordDebouncingReceiverCollector
                 , destructor = rec.destructor
                 }
 
@@ -1462,6 +1500,7 @@ endCustomType rec =
             , emitFlags = emitFlags
             , receiveFlags = \flags -> receiveFlagsForCustomType rec.flagReceiver flags fns
             , receiverCount = []
+            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.receiverCollector fns states
             }
         )
 
