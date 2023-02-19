@@ -108,7 +108,7 @@ type alias ControlRecord input state delta output =
     , path : Path.Path
     , emitFlags : State state -> List Flag
     , receiveFlags : List Flag -> List ( String, String )
-    , receiverCount : Int
+    , receiverCount : List Flag
     , setAllIdle : State state -> State state
     }
 
@@ -312,7 +312,7 @@ makeControl config =
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
-            , receiverCount = 0
+            , receiverCount = []
             }
         )
 
@@ -372,6 +372,17 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
             )
 
 
+
+{-
+   db    db  .d8b.  db      d888888b d8888b.  .d8b.  d888888b d888888b  .d88b.  d8b   db
+   88    88 d8' `8b 88        `88'   88  `8D d8' `8b `~~88~~'   `88'   .8P  Y8. 888o  88
+   Y8    8P 88ooo88 88         88    88   88 88ooo88    88       88    88    88 88V8o 88
+   `8b  d8' 88~~~88 88         88    88   88 88~~~88    88       88    88    88 88 V8o88
+    `8bd8'  88   88 88booo.   .88.   88  .8D 88   88    88      .88.   `8b  d8' 88  V888
+      YP    YP   YP Y88888P Y888888P Y8888D' YP   YP    YP    Y888888P  `Y88P'  VP   V8P
+-}
+
+
 flagIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
 flagIf check flag (Control control) =
     Control (control >> flagEmitter check (FlagLabel flag))
@@ -427,17 +438,6 @@ flagReceiver flag message ctrl =
     }
 
 
-
-{-
-   d88888b  .d8b.  d888888b db           d888888b d88888b
-   88'     d8' `8b   `88'   88             `88'   88'
-   88ooo   88ooo88    88    88              88    88ooo
-   88~~~   88~~~88    88    88              88    88~~~
-   88      88   88   .88.   88booo.        .88.   88
-   YP      YP   YP Y888888P Y88888P      Y888888P YP
--}
-
-
 failIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
 failIf check message (Control c) =
     Control
@@ -446,11 +446,11 @@ failIf check message (Control c) =
                 control =
                     c path
 
-                newReceiverCount =
-                    control.receiverCount + 1
-
                 flag =
-                    FlagPath path newReceiverCount
+                    FlagPath path (List.length control.receiverCount)
+
+                newReceiverCount =
+                    flag :: control.receiverCount
             in
             { control | receiverCount = newReceiverCount }
                 |> flagEmitter check flag
@@ -871,7 +871,7 @@ list (Control ctrl) =
                         )
             , emitFlags = \_ -> []
             , receiveFlags = \_ -> []
-            , receiverCount = 0
+            , receiverCount = []
             }
         )
 
@@ -1066,7 +1066,7 @@ endRecord rec =
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
             , receiveFlags = \flags -> receiveFlagsForRecord rec.flagReceiver flags fns
-            , receiverCount = 0
+            , receiverCount = []
             }
         )
 
@@ -1461,7 +1461,7 @@ endCustomType rec =
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
             , receiveFlags = \flags -> receiveFlagsForCustomType rec.flagReceiver flags fns
-            , receiverCount = 0
+            , receiverCount = []
             }
         )
 
