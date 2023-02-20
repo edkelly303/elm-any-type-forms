@@ -7,7 +7,8 @@ import Html.Events
 
 
 
--- Defining a form for a complex Elm type with multi-field validations and debouncing
+-- Here's how we define a form for a complex Elm type 
+-- with multi-field validations and debouncing for free
 
 
 exampleForm =
@@ -61,12 +62,25 @@ bazControl =
         |> Control.failIf (String.contains "?") "Baz must not contain a '?'"
 
 
+quxControl =
+    counterControl
+        |> Control.onFlag "baz=qux" "Qux must not equal Baz"
+        |> Control.failIf (\n -> n < 1) "Qux must be greater than zero"
+
+
+-- The package includes basic controls for all the core Elm types (Control.int,
+-- Control.float, Control.string, Control.list, Control.maybe, Control.tuple, etc.)
+--
+-- You can also make your own custom controls, with arbitrary state and msg types.
+-- Here's an example that may look a bit familiar:
+
+
 type CounterDelta
     = Increment
     | Decrement
 
 
-quxControl =
+counterControl =     
     Control.create
         { empty = 0
         , initialise = identity
@@ -88,12 +102,9 @@ quxControl =
                     ]
         , parse = Ok
         }
-        |> Control.onFlag "baz=qux" "Qux must not equal Baz"
-        |> Control.failIf (\n -> n < 1) "Qux must be greater than zero"
 
 
-
--- Initialising, updating and viewing a form
+-- And here's how we initialise, update and view a form:
 
 
 main : Program () Model Msg
