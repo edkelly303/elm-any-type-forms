@@ -216,15 +216,12 @@ fromControl label toMsg (Control control) =
             let
                 emittedFlags =
                     emitFlags s
-                        |> Debug.log "emitted flags"
 
                 debouncingReceivers =
                     collectDebouncingReceivers s
-                        |> Debug.log "debouncing receivers"
 
                 flags =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
-                        |> Debug.log "flags"
             in
             H.div []
                 [ H.h1 [] [ H.text label ]
