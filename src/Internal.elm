@@ -34,6 +34,9 @@ module Internal exposing
     , tag0
     , tag1
     , tag2
+    , tag3
+    , tag4
+    , tag5
     , tuple
     , wrapper
     )
@@ -1403,6 +1406,51 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, End ) )
+        )
+
+
+tag3 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
+    tagHelper
+        label
+        (record tag
+            |> field label1 Tuple.first control1
+            |> field label2 (Tuple.second >> Tuple.first) control2
+            |> field label3 (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> end
+        )
+        (\insertArgStateIntoTagStates arg1 arg2 arg3 ->
+            insertArgStateIntoTagStates ( arg1, ( arg2, (arg3, End ) ) )
+        )
+
+
+tag4 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( label4, control4 ) =
+    tagHelper
+        label
+        (record tag
+            |> field label1 Tuple.first control1
+            |> field label2 (Tuple.second >> Tuple.first) control2
+            |> field label3 (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> field label4 (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> end
+        )
+        (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 ->
+            insertArgStateIntoTagStates ( arg1, ( arg2, (arg3, (arg4, End ) ) ) )
+        )
+
+
+tag5 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( label4, control4 ) ( label5, control5 ) =
+    tagHelper
+        label
+        (record tag
+            |> field label1 Tuple.first control1
+            |> field label2 (Tuple.second >> Tuple.first) control2
+            |> field label3 (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> field label4 (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> field label5 (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
+            |> end
+        )
+        (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 arg5 ->
+            insertArgStateIntoTagStates ( arg1, ( arg2, (arg3, (arg4, (arg5, End ) ) ) ) )
         )
 
 
