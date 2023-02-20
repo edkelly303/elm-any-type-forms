@@ -709,26 +709,18 @@ maybe :
             ( Delta (), ( Delta ( Delta delta, End ), End ) )
             (Maybe output)
 maybe control =
-    Control
-        (\label ->
-            let
-                (Control toWrapped) =
-                    customType
-                        (\nothing just tag ->
-                            case tag of
-                                Nothing ->
-                                    nothing
+    customType
+        (\nothing just tag ->
+            case tag of
+                Nothing ->
+                    nothing
 
-                                Just a ->
-                                    just a
-                        )
-                        |> tag0 "Nothing" Nothing
-                        |> tag1 "Just" Just control
-                        |> end
-            in
-            toWrapped label
+                Just a ->
+                    just a
         )
-
+        |> tag0 "Nothing" Nothing
+        |> tag1 "Just" Just control
+        |> end
 
 
 {-
