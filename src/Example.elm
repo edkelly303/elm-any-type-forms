@@ -61,9 +61,33 @@ bazControl =
         |> Control.failIf (String.contains "?") "Baz must not contain a '?'"
 
 
+type CounterDelta
+    = Increment
+    | Decrement
+
+
 quxControl =
-    Control.int
-        |> Control.debounce 500
+    Control.create
+        { empty = 0
+        , initialise = identity
+        , update =
+            \delta state ->
+                case delta of
+                    Increment ->
+                        state + 1
+
+                    Decrement ->
+                        state - 1
+        , view =
+            \{ state, status } ->
+                Html.div []
+                    [ Html.button [ Html.Events.onClick Increment ] [ Html.text "+1" ]
+                    , Html.div [] [ Html.text <| String.fromInt state ]
+                    , Html.button [ Html.Events.onClick Decrement ] [ Html.text "-1" ]
+                    , Control.statusView status
+                    ]
+        , parse = Ok
+        }
         |> Control.onFlag "baz=qux" "Qux must not equal Baz"
         |> Control.failIf (\n -> n < 1) "Qux must be greater than zero"
 
@@ -147,7 +171,7 @@ type alias FormState =
         , ( Control.State
                 ( Control.State
                     ( Control.State String
-                    , ( Control.State String, Control.End )
+                    , ( Control.State Int, Control.End )
                     )
                 , Control.End
                 )
@@ -162,7 +186,7 @@ type alias FormDelta =
         , ( Control.Delta
                 ( Control.Delta
                     ( Control.Delta String
-                    , ( Control.Delta String, Control.End )
+                    , ( Control.Delta CounterDelta, Control.End )
                     )
                 , Control.End
                 )

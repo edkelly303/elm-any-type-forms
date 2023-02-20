@@ -30,6 +30,7 @@ module Internal exposing
     , onFlag
     , readOnlyField
     , record
+    , statusView
     , string
     , tag0
     , tag1
