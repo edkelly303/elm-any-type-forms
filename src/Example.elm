@@ -76,7 +76,7 @@ update msg model =
 
 type Msg
     = FormMsg
-        ( Delta String
+        (Delta ( Delta String
         , ( Delta String
           , ( Delta (ListDelta String)
             , ( Delta
@@ -91,7 +91,7 @@ type Msg
               )
             )
           )
-        )
+        ))
     | Submit
 
 
