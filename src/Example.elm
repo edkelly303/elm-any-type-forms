@@ -5,67 +5,12 @@ import Control
 import Html
 import Html.Events
 
-main =
-    Browser.element
-        { init = \() -> ( form.init, Cmd.none )
-        , view = view
-        , update = update
-        , subscriptions = \_ -> Sub.none
-        }
 
 
-type Msg
-    = FormUpdated FormUpdated
-    | FormSubmitted
+-- Defining a form for a complex Elm type with multi-field validations and debouncing
 
 
-update msg model =
-    case msg of
-        FormUpdated delta ->
-            form.update delta model
-
-        FormSubmitted ->
-            case form.submit model of
-                Ok { state, output } ->
-                    let
-                        _ =
-                            Debug.log "Success!" output
-                    in
-                    ( state, Cmd.none )
-
-                Err { state, errors } ->
-                    let
-                        _ =
-                            Debug.log "Failure!" errors
-                    in
-                    ( state, Cmd.none )
-
-
-view model =
-    Html.div []
-        [ form.view model
-        , Html.button
-            [ Html.Events.onClick FormSubmitted ]
-            [ Html.text "Submit" ]
-        ]
-
-
-type alias FormUpdated =
-    Control.Delta
-        ( Control.Delta ( Control.Delta String, Control.End )
-        , ( Control.Delta
-                ( Control.Delta
-                    ( Control.Delta String
-                    , ( Control.Delta String, Control.End )
-                    )
-                , Control.End
-                )
-          , Control.End
-          )
-        )
-
-
-form =
+exampleForm =
     Control.toForm "My Lovely Form" FormUpdated exampleControl
 
 
@@ -87,13 +32,13 @@ exampleControl =
         |> Control.tag1 "Foo" Foo fooControl
         |> Control.tag1 "Bar" Bar barControl
         |> Control.end
-        |> Control.initWith (Bar { baz = "hello", qux = 1 })
 
 
 fooControl =
     Control.string
         |> Control.debounce 500
         |> Control.failIf String.isEmpty "Foo must not be blank"
+        |> Control.initWith "Hello world"
 
 
 barControl =
@@ -121,3 +66,106 @@ quxControl =
         |> Control.debounce 500
         |> Control.onFlag "baz=qux" "Qux must not equal Baz"
         |> Control.failIf (\n -> n < 1) "Qux must greater than zero"
+
+
+
+-- Initialising, updating and viewing a form
+
+
+main : Program () Model Msg
+main =
+    Browser.element
+        { init = init
+        , view = view
+        , update = update
+        , subscriptions = \_ -> Sub.none
+        }
+
+
+type alias Model =
+    { form : FormState }
+
+
+type Msg
+    = FormUpdated FormDelta
+    | FormSubmitted
+
+
+init : () -> ( Model, Cmd Msg )
+init () =
+    ( { form = exampleForm.init }
+    , Cmd.none
+    )
+
+
+update : Msg -> Model -> ( Model, Cmd Msg )
+update msg model =
+    case msg of
+        FormUpdated delta ->
+            let
+                ( state, cmd ) =
+                    exampleForm.update delta model.form
+            in
+            ( { form = state }, cmd )
+
+        FormSubmitted ->
+            case exampleForm.submit model.form of
+                Ok { state, output } ->
+                    let
+                        _ =
+                            Debug.log "Success!" output
+                    in
+                    ( { form = state }, Cmd.none )
+
+                Err { state, errors } ->
+                    let
+                        _ =
+                            Debug.log "Failure!" errors
+                    in
+                    ( { form = state }, Cmd.none )
+
+
+view : Model -> Html.Html Msg
+view model =
+    Html.div []
+        [ exampleForm.view model.form
+        , Html.button
+            [ Html.Events.onClick FormSubmitted ]
+            [ Html.text "Submit" ]
+        ]
+
+
+
+-- The ugly secret! The internal model and msg types for forms are a bit nasty.
+-- Fortunately the Elm compiler can tell us what they should be, so we don't have
+-- to work them out for ourselves.
+
+
+type alias FormState =
+    Control.State
+        ( Control.State ( Control.State String, Control.End )
+        , ( Control.State
+                ( Control.State
+                    ( Control.State String
+                    , ( Control.State String, Control.End )
+                    )
+                , Control.End
+                )
+          , Control.End
+          )
+        )
+
+
+type alias FormDelta =
+    Control.Delta
+        ( Control.Delta ( Control.Delta String, Control.End )
+        , ( Control.Delta
+                ( Control.Delta
+                    ( Control.Delta String
+                    , ( Control.Delta String, Control.End )
+                    )
+                , Control.End
+                )
+          , Control.End
+          )
+        )
