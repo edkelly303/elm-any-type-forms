@@ -1099,21 +1099,8 @@ collectDebouncingReceiversForRecord receiverCollector_ fns states =
     receiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
-recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( State internalState state, restStates ) =
-    let
-        newReceivers =
-            case internalState.status of
-                DebouncingSince _ ->
-                    fns.field.collectDebouncingReceivers (State internalState state)
-
-                _ ->
-                    [] 
-                    -- TODO: this is the problem; even if this child of the record isn't debouncing, 
-                    -- we should still collect the debouncing receivers from *its* children, 
-                    -- if it has any. We should only exclude the receivers from the child itself, 
-                    -- not those from the grandchildren (and so on).
-    in
-    next (receivers ++ newReceivers) restFns restStates
+recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
+    next (receivers ++ fns.field.collectDebouncingReceivers state) restFns restStates
 
 
 receiveFlagsForRecord flagReceiver_ flags fns =
