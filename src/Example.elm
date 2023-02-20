@@ -58,6 +58,7 @@ bazControl =
     Control.string
         |> Control.debounce 500
         |> Control.onFlag "baz=qux" "Baz must not equal Qux"
+        |> Control.failIf (String.isEmpty) "Baz must not be blank"
         |> Control.failIf (String.contains "?") "Baz must not contain a '?'"
 
 
