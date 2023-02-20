@@ -76,27 +76,21 @@ update msg model =
 
 type Msg
     = FormMsg
-        (Delta
-            ( Delta String
-            , ( Delta String
-              , ( Delta
+        ( Delta String
+        , ( Delta String
+          , ( Delta (ListDelta String)
+            , ( Delta
                     ( Delta ()
                     , ( Delta
-                            ( Delta
-                                ( Delta String
-                                , ( Delta String
-                                  , End
-                                  )
-                                )
-                            , End
+                            ( Delta ( Delta String, ( Delta String, End ) ), End
                             )
                       , End
                       )
                     )
-                , End
-                )
+              , End
               )
             )
+          )
         )
     | Submit
 
