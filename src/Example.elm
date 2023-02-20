@@ -65,7 +65,7 @@ quxControl =
     Control.int
         |> Control.debounce 500
         |> Control.onFlag "baz=qux" "Qux must not equal Baz"
-        |> Control.failIf (\n -> n < 1) "Qux must greater than zero"
+        |> Control.failIf (\n -> n < 1) "Qux must be greater than zero"
 
 
 
