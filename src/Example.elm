@@ -71,8 +71,8 @@ quxControl =
 -- The package includes basic controls for all the core Elm types (Control.int,
 -- Control.float, Control.string, Control.list, Control.maybe, Control.tuple, etc.)
 --
--- You can also make your own custom controls, with arbitrary state and msg types.
--- Here's an example that may look a bit familiar:
+-- You can also make your own custom controls, with arbitrary state (i.e. model) 
+-- and delta (i.e. msg) types. Here's an example that may look a bit familiar:
 
 
 type CounterDelta
