@@ -73,7 +73,12 @@ type alias Form state delta output msg =
     , initWith : output -> State state
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
-    , submit : State state -> Result { errors : List ( String, String ), state : State state } output
+    , submit :
+        State state
+        ->
+            Result
+                { errors : List ( String, String ), state : State state }
+                { output : output, state : State state }
     }
 
 
@@ -252,7 +257,7 @@ fromControl label toMsg (Control control) =
             in
             case ( parsingResult, validationErrors ) of
                 ( Ok output, [] ) ->
-                    Ok output
+                    Ok { state = setAllIdle state, output = output }
 
                 ( Ok _, vErrs ) ->
                     Err { state = setAllIdle state, errors = vErrs }
