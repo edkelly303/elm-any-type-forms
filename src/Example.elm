@@ -108,43 +108,16 @@ mainForm =
 type alias User =
     { name : String
     , age : Int
+    , interests : List String
     , role : Role
     }
 
 
-user :
-    Control
-        ( State String
-        , ( State String
-          , ( State
-                ( State ()
-                , ( State
-                        ( State ( State String, ( State String, End ) ), End )
-                  , End
-                  )
-                )
-            , End
-            )
-          )
-        )
-        ( Delta String
-        , ( Delta String
-          , ( Delta
-                ( Delta ()
-                , ( Delta
-                        ( Delta ( Delta String, ( Delta String, End ) ), End )
-                  , End
-                  )
-                )
-            , End
-            )
-          )
-        )
-        User
 user =
     record User
         |> field "Name" .name (string |> onFlag "na" "Boo!")
         |> field "Age" .age (boundedInt |> onFlag "na" "Boo!")
+        |> field "Interests" .interests (list (string |> flagIf String.isEmpty "Must not be blank"))
         |> field "Role" .role role
         |> end
         |> flagIf (\{ name, age } -> name == String.fromInt age) "na"
