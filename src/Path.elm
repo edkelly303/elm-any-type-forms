@@ -19,6 +19,7 @@ toString : Path -> String
 toString (Path path) =
     path
         |> List.reverse
+        |> List.filter (not << String.isEmpty)
         |> String.join " > "
 
 
