@@ -43,6 +43,10 @@ type alias ViewConfig state =
     Internal.ViewConfig state
 
 
+toForm =
+    Internal.fromControl
+
+
 bool =
     Internal.bool
 
