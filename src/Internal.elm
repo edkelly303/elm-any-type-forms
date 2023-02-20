@@ -723,6 +723,7 @@ maybe control =
         |> end
 
 
+
 {-
    d888888b db    db d8888b. db      d88888b
    `~~88~~' 88    88 88  `8D 88      88'
@@ -1419,7 +1420,7 @@ tag3 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
             |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 ->
-            insertArgStateIntoTagStates ( arg1, ( arg2, (arg3, End ) ) )
+            insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, End ) ) )
         )
 
 
@@ -1434,7 +1435,7 @@ tag4 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( 
             |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 ->
-            insertArgStateIntoTagStates ( arg1, ( arg2, (arg3, (arg4, End ) ) ) )
+            insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, End ) ) ) )
         )
 
 
@@ -1450,7 +1451,7 @@ tag5 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( 
             |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 arg5 ->
-            insertArgStateIntoTagStates ( arg1, ( arg2, (arg3, (arg4, (arg5, End ) ) ) ) )
+            insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, ( arg5, End ) ) ) ) )
         )
 
 
