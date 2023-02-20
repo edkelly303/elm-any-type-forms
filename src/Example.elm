@@ -2,19 +2,71 @@ module Example exposing (main)
 
 import Browser
 import Control
-
+import Html
+import Html.Events
 
 main =
     Browser.element
         { init = \() -> ( form.init, Cmd.none )
-        , view = form.view
-        , update = form.update
+        , view = view
+        , update = update
         , subscriptions = \_ -> Sub.none
         }
 
 
+type Msg
+    = FormUpdated FormUpdated
+    | FormSubmitted
+
+
+update msg model =
+    case msg of
+        FormUpdated delta ->
+            form.update delta model
+
+        FormSubmitted ->
+            case form.submit model of
+                Ok { state, output } ->
+                    let
+                        _ =
+                            Debug.log "Success!" output
+                    in
+                    ( state, Cmd.none )
+
+                Err { state, errors } ->
+                    let
+                        _ =
+                            Debug.log "Failure!" errors
+                    in
+                    ( state, Cmd.none )
+
+
+view model =
+    Html.div []
+        [ form.view model
+        , Html.button
+            [ Html.Events.onClick FormSubmitted ]
+            [ Html.text "Submit" ]
+        ]
+
+
+type alias FormUpdated =
+    Control.Delta
+        ( Control.Delta ( Control.Delta String, Control.End )
+        , ( Control.Delta
+                ( Control.Delta
+                    ( Control.Delta String
+                    , ( Control.Delta String, Control.End )
+                    )
+                , Control.End
+                )
+          , Control.End
+          )
+        )
+
+
 form =
-    Control.toForm "My Lovely Form" identity exampleControl
+    Control.toForm "My Lovely Form" FormUpdated exampleControl
 
 
 type Example
@@ -35,7 +87,7 @@ exampleControl =
         |> Control.tag1 "Foo" Foo fooControl
         |> Control.tag1 "Bar" Bar barControl
         |> Control.end
-        |> Control.initWith (Bar {baz = "hello", qux = 1})
+        |> Control.initWith (Bar { baz = "hello", qux = 1 })
 
 
 fooControl =
