@@ -885,8 +885,19 @@ list (Control ctrl) =
                             )
                             s
                         )
-            , emitFlags = \_ -> []
-            , receiveFlags = \_ -> []
+            , emitFlags =
+                \(State _ s) ->
+                    List.indexedMap
+                        (\idx item ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.emitFlags item
+                        )
+                        s
+                        |> List.concat
+            , receiveFlags = \flags -> [] -- we may need to pass `State state` to this function as well as flags... otherwise not sure how to iterate over the correct number of list items to receive flags
             , receiverCount = []
             , collectDebouncingReceivers = \_ -> []
             }

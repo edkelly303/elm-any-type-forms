@@ -7,7 +7,7 @@ import Html.Events
 
 
 
--- Here's how we define a form for a complex Elm type 
+-- Here's how we define a form for a complex Elm type
 -- with multi-field validations and debouncing for free
 
 
@@ -16,7 +16,7 @@ exampleForm =
 
 
 type Example
-    = Foo String
+    = Foo (List String)
     | Bar { baz : String, qux : Int }
 
 
@@ -24,8 +24,8 @@ exampleControl =
     Control.customType
         (\foo bar tag ->
             case tag of
-                Foo str ->
-                    foo str
+                Foo list ->
+                    foo list
 
                 Bar record ->
                     bar record
@@ -36,10 +36,9 @@ exampleControl =
 
 
 fooControl =
-    Control.string
+    Control.list (Control.string |> Control.failIf String.isEmpty "Item cannot be blank")
         |> Control.debounce 500
-        |> Control.failIf String.isEmpty "Foo must not be blank"
-        |> Control.initWith "Hello world"
+        |> Control.initWith [ "Hello", "World", "" ]
 
 
 barControl =
@@ -68,10 +67,11 @@ quxControl =
         |> Control.failIf (\n -> n < 1) "Qux must be greater than zero"
 
 
+
 -- The package includes basic controls for all the core Elm types (Control.int,
 -- Control.float, Control.string, Control.list, Control.maybe, Control.tuple, etc.)
 --
--- You can also make your own custom controls, with arbitrary state (i.e. model) 
+-- You can also make your own custom controls, with arbitrary state (i.e. model)
 -- and delta (i.e. msg) types. Here's an example that may look a bit familiar:
 
 
@@ -80,7 +80,7 @@ type CounterDelta
     | Decrement
 
 
-counterControl =     
+counterControl =
     Control.create
         { empty = 0
         , initialise = identity
@@ -102,6 +102,7 @@ counterControl =
                     ]
         , parse = Ok
         }
+
 
 
 -- And here's how we initialise, update and view a form:
@@ -178,7 +179,7 @@ view model =
 
 type alias FormState =
     Control.State
-        ( Control.State ( Control.State String, Control.End )
+        ( Control.State ( Control.State (List (Control.State String)), Control.End )
         , ( Control.State
                 ( Control.State
                     ( Control.State String
@@ -193,7 +194,7 @@ type alias FormState =
 
 type alias FormDelta =
     Control.Delta
-        ( Control.Delta ( Control.Delta String, Control.End )
+        ( Control.Delta ( Control.Delta (Control.ListDelta String), Control.End )
         , ( Control.Delta
                 ( Control.Delta
                     ( Control.Delta String
