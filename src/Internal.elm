@@ -1107,7 +1107,11 @@ recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( State intern
                     fns.field.collectDebouncingReceivers (State internalState state)
 
                 _ ->
-                    []
+                    [] 
+                    -- TODO: this is the problem; even if this child of the record isn't debouncing, 
+                    -- we should still collect the debouncing receivers from *its* children, 
+                    -- if it has any. We should only exclude the receivers from the child itself, 
+                    -- not those from the grandchildren (and so on).
     in
     next (receivers ++ newReceivers) restFns restStates
 
