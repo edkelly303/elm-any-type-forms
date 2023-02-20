@@ -234,7 +234,7 @@ fromControl label toMsg (Control control) =
                         , status = getStatus parse receiveFlags flags (State internalState state)
                         , label = label
                         , flags = flags
-                        , selected = 0
+                        , selected = internalState.selected
                         }
                         |> H.map toMsg
                     ]
