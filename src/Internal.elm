@@ -971,7 +971,7 @@ type Access
     | Hidden
 
 
-fieldHelper access label fromOutput (Control control) builder =
+fieldHelper access label fromInput (Control control) builder =
     case builder of
         Cus c ->
             Cus c
@@ -986,7 +986,7 @@ fieldHelper access label fromOutput (Control control) builder =
                         rec.fields path
                             << Tuple.pair
                                 { field = control (Path.add label path)
-                                , fromOutput = fromOutput
+                                , fromInput = fromInput
                                 , access = access
                                 }
                 , states =
@@ -1113,26 +1113,98 @@ endRecord rec =
 -}
 
 
+collectDebouncingReceiversForRecord :
+    ((List Flag
+      -> End
+      -> End
+      -> List Flag
+     )
+     -> List Flag
+     -> fns
+     -> states
+     -> List Flag
+    )
+    -> fns
+    -> states
+    -> List Flag
 collectDebouncingReceiversForRecord receiverCollector_ fns states =
     receiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
+recordDebouncingReceiverCollector :
+    (List Flag
+     -> restFns
+     -> restStates
+     -> List Flag
+    )
+    -> List Flag
+    -> ( { fns | field : { field | collectDebouncingReceivers : State state -> List Flag } }, restFns )
+    -> ( State state, restStates )
+    -> List Flag
 recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
     next (receivers ++ fns.field.collectDebouncingReceivers state) restFns restStates
 
 
+receiveFlagsForRecord :
+    ((List Flag
+      -> List ( String, String )
+      -> End
+      -> List ( String, String )
+     )
+     -> List Flag
+     -> List ( String, String )
+     -> fns
+     -> List ( String, String )
+    )
+    -> List Flag
+    -> fns
+    -> List ( String, String )
 receiveFlagsForRecord flagReceiver_ flags fns =
     flagReceiver_ (\_ errors End -> errors) flags [] fns
 
 
+recordFlagReceiver :
+    (List Flag
+     -> List ( String, String )
+     -> restFns
+     -> List ( String, String )
+    )
+    -> List Flag
+    -> List ( String, String )
+    -> ( { fns | field : { field | receiveFlags : List Flag -> List ( String, String ) } }, restFns )
+    -> List ( String, String )
 recordFlagReceiver next flags errors ( fns, restFns ) =
     next flags (errors ++ fns.field.receiveFlags flags) restFns
 
 
+emitFlagsForRecord :
+    ((List Flag
+      -> End
+      -> End
+      -> List Flag
+     )
+     -> List Flag
+     -> fns
+     -> states
+     -> List Flag
+    )
+    -> fns
+    -> states
+    -> List Flag
 emitFlagsForRecord flagEmitter_ fns states =
     flagEmitter_ (\flags End End -> flags) [] fns states
 
 
+recordFlagEmitter :
+    (List Flag
+     -> restFns
+     -> restStates
+     -> List Flag
+    )
+    -> List Flag
+    -> ( { fns | field : { field | emitFlags : State state -> List Flag } }, restFns )
+    -> ( State state, restStates )
+    -> List Flag
 recordFlagEmitter next flags ( fns, restFns ) ( state, restStates ) =
     let
         newFlags =
@@ -1141,31 +1213,96 @@ recordFlagEmitter next flags ( fns, restFns ) ( state, restStates ) =
     next (flags ++ newFlags) restFns restStates
 
 
+makeDeltaSetters :
+    ((End -> End -> End)
+     -> befores
+     -> afters
+     -> deltaSetters
+    )
+    -> (End -> befores)
+    -> afters
+    -> deltaSetters
 makeDeltaSetters makeSetters_ befores afters =
     makeSetters_ (\End End -> End) (befores End) afters
 
 
+deltaSetterMaker :
+    (befores
+     -> afters
+     -> next
+    )
+    -> ( ( value, after ) -> delta, befores )
+    -> ( after, afters )
+    -> ( value -> delta, next )
 deltaSetterMaker next ( before, befores ) ( after, afters ) =
     ( \value -> before ( value, after )
     , next befores afters
     )
 
 
-initialiseRecordStates initialiser output fns =
-    initialiser (\_ End -> End) output fns
+initialiseRecordStates :
+    ((input -> End -> End)
+     -> input
+     -> fns
+     -> state
+    )
+    -> input
+    -> fns
+    -> State state
+initialiseRecordStates initialiser input fns =
+    initialiser (\_ End -> End) input fns
         |> State { status = Intact_, selected = 0 }
 
 
-recordStateInitialiser next output ( fns, restFns ) =
-    ( fns.field.initialise (fns.fromOutput output)
-    , next output restFns
+recordStateInitialiser :
+    (record
+     -> restFns
+     -> restStates
+    )
+    -> record
+    ->
+        ( { fns
+            | field : { field | initialise : input -> State state }
+            , fromInput : record -> input
+          }
+        , restFns
+        )
+    -> ( State state, restStates )
+recordStateInitialiser next record_ ( fns, restFns ) =
+    ( fns.field.initialise (fns.fromInput record_)
+    , next record_ restFns
     )
 
 
+validateRecordStates :
+    ((Result (List ( String, String )) output1
+      -> End
+      -> End
+      -> Result (List ( String, String )) output1
+     )
+     -> Result (List ( String, String )) output0
+     -> fns
+     -> states
+     -> Result (List ( String, String )) output1
+    )
+    -> output0
+    -> fns
+    -> states
+    -> Result (List ( String, String )) output1
 validateRecordStates parser toOutput fns states =
     parser (\output End End -> output) (Ok toOutput) fns states
 
 
+recordStateValidator :
+    (Result (List ( String, String )) output0
+     -> restFns
+     -> restStates
+     -> Result (List ( String, String )) output1
+    )
+    -> Result (List ( String, String )) (value -> output0)
+    -> ( { fns | field : { field | parse : State state -> Result (List ( String, String )) value } }, restFns )
+    -> ( State state, restStates )
+    -> Result (List ( String, String )) output1
 recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) =
     next
         (case ( toOutputResult, fns.field.parse state ) of
@@ -1185,10 +1322,27 @@ recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) 
         restStates
 
 
+setAllRecordStatesToIdle :
+    ((End -> End -> End)
+     -> fns
+     -> states
+     -> states
+    )
+    -> fns
+    -> states
+    -> states
 setAllRecordStatesToIdle idleSetter_ fns states =
     idleSetter_ (\End End -> End) fns states
 
 
+recordStateIdleSetter :
+    (restFns
+     -> restStates
+     -> restStates
+    )
+    -> ( { fns | field : { field | setAllIdle : State state -> State state } }, restFns )
+    -> ( State state, restStates )
+    -> ( State state, restStates )
 recordStateIdleSetter next ( fns, restFns ) ( state, restStates ) =
     ( fns.field.setAllIdle state
     , next restFns restStates
