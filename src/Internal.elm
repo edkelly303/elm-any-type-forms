@@ -954,15 +954,15 @@ record toOutput =
 
 
 field =
-    internalField Open
+    fieldHelper Open
 
 
 hiddenField =
-    internalField Hidden
+    fieldHelper Hidden
 
 
 readOnlyField =
-    internalField ReadOnly
+    fieldHelper ReadOnly
 
 
 type Access
@@ -971,7 +971,7 @@ type Access
     | Hidden
 
 
-internalField access label fromOutput (Control control) builder =
+fieldHelper access label fromOutput (Control control) builder =
     case builder of
         Cus c ->
             Cus c
