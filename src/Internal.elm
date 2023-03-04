@@ -1388,14 +1388,7 @@ viewRecordStates :
         ( { fns
             | field :
                 { field
-                    | view :
-                        { state : state
-                        , status : Status
-                        , label : String
-                        , flags : List Flag
-                        , selected : Int
-                        }
-                        -> Html fieldDelta
+                    | view : ViewConfig state -> Html fieldDelta
                     , parse : State state -> Result (List ( String, String )) output
                     , receiveFlags : List Flag -> List ( String, String )
                     , path : Path.Path
@@ -1426,14 +1419,7 @@ recordStateViewer :
         ( { fns
             | field :
                 { field
-                    | view :
-                        { state : state
-                        , status : Status
-                        , label : String
-                        , flags : List Flag
-                        , selected : Int
-                        }
-                        -> Html fieldDelta
+                    | view : ViewConfig state -> Html fieldDelta
                     , parse : State state -> Result (List ( String, String )) output
                     , receiveFlags : List Flag -> List ( String, String )
                     , path : Path.Path
@@ -1873,10 +1859,39 @@ customTypeFlagReceiver =
     recordFlagReceiver
 
 
+emitFlagsForCustomType :
+    ((List Flag
+      -> Int
+      -> End
+      -> End
+      -> List Flag
+     )
+     -> List Flag
+     -> Int
+     -> ( { fns | field : { field | index : Int, emitFlags : State state -> List Flag } }, restFns )
+     -> ( State state, restStates )
+     -> List Flag
+    )
+    -> Int
+    -> ( { fns | field : { field | index : Int, emitFlags : State state -> List Flag } }, restFns )
+    -> ( State state, restStates )
+    -> List Flag
 emitFlagsForCustomType flagEmitter_ selectedTag fns tagStates =
     flagEmitter_ (\flags _ End End -> flags) [] selectedTag fns tagStates
 
 
+customTypeFlagEmitter :
+    (List Flag
+     -> Int
+     -> restFns
+     -> restStates
+     -> List Flag
+    )
+    -> List Flag
+    -> Int
+    -> ( { fns | field : { field | index : Int, emitFlags : State state -> List Flag } }, restFns )
+    -> ( State state, restStates )
+    -> List Flag
 customTypeFlagEmitter next flags selectedTag ( fns, restFns ) ( tagState, restTagStates ) =
     let
         newFlags =
@@ -1889,6 +1904,20 @@ customTypeFlagEmitter next flags selectedTag ( fns, restFns ) ( tagState, restTa
     next (flags ++ newFlags) selectedTag restFns restTagStates
 
 
+applyStateSettersToInitialiser :
+    ((state1
+      -> End
+      -> state1
+     )
+     -> (stateSetter -> state0)
+     -> ( stateSetter, restStateSetters )
+     -> tag
+     -> state2
+    )
+    -> (stateSetter -> state0)
+    -> ( stateSetter, restStateSetters )
+    -> tag
+    -> state2
 applyStateSettersToInitialiser stateSetterToInitialiserApplier_ initialiser stateSetters tag =
     stateSetterToInitialiserApplier_
         (\appliedInitialiser End -> appliedInitialiser)
@@ -1897,15 +1926,90 @@ applyStateSettersToInitialiser stateSetterToInitialiserApplier_ initialiser stat
         tag
 
 
+stateSetterToInitialiserApplier :
+    (state0
+     -> restStateSetters
+     -> state1
+    )
+    -> (stateSetter -> state0)
+    -> ( stateSetter, restStateSetters )
+    -> state1
 stateSetterToInitialiserApplier next initialiser ( stateSetter, stateSetters ) =
     next (initialiser stateSetter) stateSetters
 
 
+makeStateSetters :
+    ((a
+      -> b
+      -> End
+      -> End
+      -> End
+      -> End
+      -> End
+     )
+     -> c
+     -> d
+     -> e
+     -> f
+     -> g
+     -> h
+     -> i
+    )
+    -> c
+    -> d
+    -> e
+    -> (End -> f)
+    -> (End -> g)
+    -> h
+    -> i
 makeStateSetters makeSetters_ argStateIntoTagStateInserter_ inits fns toArgStates befores afters =
     makeSetters_ (\_ _ End End End End -> End) argStateIntoTagStateInserter_ inits fns (toArgStates End) (befores End) afters
 
 
-stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toArgState, toArgStates ) ( before, befores ) ( after, afters ) =
+stateSetterMaker :
+    (((Int
+       -> Int
+       -> (End -> state)
+       -> End
+       -> End
+       -> State state
+      )
+      -> Int
+      -> Int
+      -> (c -> c)
+      -> ( Maybe (State argState), restMaybeArgStates )
+      -> ( State argState, restInits )
+      -> State tagStates
+     )
+     -> ( State argState, restInits )
+     -> restFns
+     -> restToArgStates
+     -> befores
+     -> afters
+     -> restStateSetters
+    )
+    ->
+        ((Int
+          -> Int
+          -> (End -> state)
+          -> End
+          -> End
+          -> State state
+         )
+         -> Int
+         -> Int
+         -> (c -> c)
+         -> ( Maybe (State argState), restMaybeArgStates )
+         -> ( State argState, restInits )
+         -> State tagStates
+        )
+    -> ( State argState, restInits )
+    -> ( { fns | field : { field | initialise : fieldInput -> State fieldState } }, restFns )
+    -> ( (fieldInput -> State tagStates) -> stateSetter, restToArgStates )
+    -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState), restMaybeArgStates ), befores )
+    -> ( after, afters )
+    -> ( stateSetter, restStateSetters )
+stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toArgState, restToArgStates ) ( before, befores ) ( after, afters ) =
     ( toArgState
         (\argState ->
             let
@@ -1914,10 +2018,28 @@ stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toA
             in
             insertArgStateIntoTagState argStateIntoTagStateInserter_ maybes inits
         )
-    , next argStateIntoTagStateInserter_ inits restFns toArgStates befores afters
+    , next argStateIntoTagStateInserter_ inits restFns restToArgStates befores afters
     )
 
 
+insertArgStateIntoTagState :
+    ((Int
+      -> Int
+      -> (End -> argStates)
+      -> End
+      -> End
+      -> State argStates
+     )
+     -> Int
+     -> Int
+     -> (c -> c)
+     -> ( Maybe (State argState), restMaybeArgStates )
+     -> ( State argState, restInits )
+     -> State tagStates
+    )
+    -> ( Maybe (State argState), restMaybeArgStates )
+    -> ( State argState, restInits )
+    -> State tagStates
 insertArgStateIntoTagState stateInserter_ maybeArgStates inits =
     stateInserter_
         (\_ selectedTag tagStates End End -> State { status = Intact_, selected = selectedTag } (tagStates End))
@@ -1928,7 +2050,21 @@ insertArgStateIntoTagState stateInserter_ maybeArgStates inits =
         inits
 
 
-argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStates ( maybeArgState, maybeArgStates ) ( init, inits ) =
+argStateIntoTagStateInserter :
+    (Int
+     -> Int
+     -> (restArgStates -> tagStates)
+     -> restMaybeArgStates
+     -> restArgStates
+     -> State tagStates
+    )
+    -> Int
+    -> Int
+    -> (( State argState, restArgStates ) -> tagStates)
+    -> ( Maybe (State argState), restMaybeArgStates )
+    -> ( State argState, restArgStates )
+    -> State tagStates
+argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStates ( maybeArgState, restMaybeArgStates ) ( init, restInits ) =
     let
         ( selectedTag, tagArgState ) =
             case maybeArgState of
@@ -1938,7 +2074,7 @@ argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStat
                 Nothing ->
                     ( currentlySelectedTagIndex, init )
     in
-    next (thisTagIndex + 1) selectedTag (tagStates << Tuple.pair tagArgState) maybeArgStates inits
+    next (thisTagIndex + 1) selectedTag (tagStates << Tuple.pair tagArgState) restMaybeArgStates restInits
 
 
 setSelectedTagStateIdle idleSetter_ selectedTag fns tagStates =
