@@ -971,6 +971,55 @@ type Access
     | Hidden
 
 
+fieldHelper :
+    Access
+    -> String
+    -> (recordInput -> input)
+    -> AdvancedControl input state delta output
+    ->
+        Builder
+            { index : Int
+            , labels : List String
+            , toOutput : d
+            , fields : Path.Path -> ( { field : ControlFns input state delta output, fromInput : recordInput -> input, access : Access }, e ) -> f
+            , states : Path.Path -> ( State state, g ) -> h
+            , updater : i -> { newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) } -> restFns -> restDeltaSetters -> restDeltas -> restStates -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+            , viewer : j -> List (Html (Delta k)) -> List Flag -> l -> m -> n -> List (Html (Delta k))
+            , parser : o -> Result (List ( String, String )) output1 -> p -> q -> Result (List ( String, String )) output2
+            , idleSetter : r -> s -> t -> t
+            , initialiser : u -> recordInput -> v -> w
+            , before : ( Delta delta, y ) -> z
+            , befores : ( ( Delta delta, y ) -> z, a1 ) -> b1
+            , after : c1
+            , afters : d1
+            , makeSetters : e1 -> befores -> afters -> next
+            , flagEmitter : f1 -> List Flag -> g1 -> h1 -> List Flag
+            , flagReceiver : i1 -> List Flag -> List ( String, String ) -> j1 -> List ( String, String )
+            , receiverCollector : k1 -> List Flag -> l1 -> m1 -> List Flag
+            }
+            cus
+    ->
+        Builder
+            { index : Int
+            , labels : List String
+            , toOutput : d
+            , fields : Path.Path -> e -> f
+            , states : Path.Path -> g -> h
+            , updater : i -> { newStates : ( State o1, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) } -> ( { fns | field : ControlFns p1 o1 q1 r1 }, restFns ) -> ( Delta q1 -> recordDelta, restDeltaSetters ) -> ( Delta q1, restDeltas ) -> ( State o1, restStates ) -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+            , viewer : j -> List (Html (Delta k)) -> List Flag -> ( { s1 | field : ControlFns t1 u1 v1 w1, access : Access }, l ) -> ( Delta v1 -> k, m ) -> ( State u1, n ) -> List (Html (Delta k))
+            , parser : o -> Result (List ( String, String )) (output0 -> output1) -> ( { x1 | field : ControlFns y1 z1 a2 output0 }, p ) -> ( State z1, q ) -> Result (List ( String, String )) output2
+            , idleSetter : r -> ( { b2 | field : ControlFns c2 d2 e2 f2 }, s ) -> ( State d2, t ) -> ( State d2, t )
+            , initialiser : u -> recordInput -> ( { g2 | field : ControlFns fieldInput h2 i2 j2, fromInput : recordInput -> fieldInput }, v ) -> ( State h2, w )
+            , before : y -> z
+            , befores : a1 -> b1
+            , after : ( Delta k2, c1 )
+            , afters : ( c1, d1 )
+            , makeSetters : e1 -> ( ( value, after ) -> l2, befores ) -> ( after, afters ) -> ( value -> l2, next )
+            , flagEmitter : f1 -> List Flag -> ( { m2 | field : ControlFns n2 o2 p2 q2 }, g1 ) -> ( State o2, h1 ) -> List Flag
+            , flagReceiver : i1 -> List Flag -> List ( String, String ) -> ( { r2 | field : ControlFns s2 t2 u2 v2 }, j1 ) -> List ( String, String )
+            , receiverCollector : k1 -> List Flag -> ( { w2 | field : ControlFns x2 y2 z2 a3 }, l1 ) -> ( State y2, m1 ) -> List Flag
+            }
+            cus
 fieldHelper access label fromInput (Control control) builder =
     case builder of
         Cus c ->
