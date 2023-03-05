@@ -930,6 +930,30 @@ type Builder r c
     | Cus c
 
 
+record :
+    constructor
+    ->
+        Builder
+            { index : Int
+            , labels : List String
+            , toOutput : constructor
+            , fields : c -> d -> d
+            , states : e -> f -> f
+            , updater : g -> g
+            , viewer : h -> h
+            , parser : i -> i
+            , idleSetter : j -> j
+            , initialiser : k -> k
+            , before : l -> l
+            , befores : m -> m
+            , after : End
+            , afters : End
+            , makeSetters : n -> n
+            , flagEmitter : o -> o
+            , flagReceiver : p -> p
+            , receiverCollector : q -> q
+            }
+            cus
 record toOutput =
     Rec
         { index = 0
@@ -983,7 +1007,14 @@ fieldHelper :
             , toOutput : d
             , fields : Path.Path -> ( { field : ControlFns input state delta output, fromInput : recordInput -> input, access : Access }, e ) -> f
             , states : Path.Path -> ( State state, g ) -> h
-            , updater : i -> { newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) } -> restFns -> restDeltaSetters -> restDeltas -> restStates -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+            , updater :
+                i
+                -> { newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) }
+                -> restFns
+                -> restDeltaSetters
+                -> restDeltas
+                -> restStates
+                -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
             , viewer : j -> List (Html (Delta k)) -> List Flag -> l -> m -> n -> List (Html (Delta k))
             , parser : o -> Result (List ( String, String )) output1 -> p -> q -> Result (List ( String, String )) output2
             , idleSetter : r -> s -> t -> t
