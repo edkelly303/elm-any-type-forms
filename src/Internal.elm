@@ -97,10 +97,10 @@ type alias Control state delta output =
 
 
 type AdvancedControl input state delta output
-    = Control (Path.Path -> ControlRecord input state delta output)
+    = Control (Path.Path -> ControlFns input state delta output)
 
 
-type alias ControlRecord input state delta output =
+type alias ControlFns input state delta output =
     { delta : Delta delta
     , index : Int
     , init : State state
@@ -405,7 +405,7 @@ flagIf check flag (Control control) =
     Control (control >> flagEmitter check (FlagLabel flag))
 
 
-flagEmitter : (output -> Bool) -> Flag -> ControlRecord input state delta output -> ControlRecord input state delta output
+flagEmitter : (output -> Bool) -> Flag -> ControlFns input state delta output -> ControlFns input state delta output
 flagEmitter check flag ctrl =
     { ctrl
         | emitFlags =
@@ -435,7 +435,7 @@ onFlag flag message (Control control) =
     Control (control >> flagReceiver (FlagLabel flag) message)
 
 
-flagReceiver : Flag -> String -> ControlRecord input state delta output -> ControlRecord input state delta output
+flagReceiver : Flag -> String -> ControlFns input state delta output -> ControlFns input state delta output
 flagReceiver flag message ctrl =
     { ctrl
         | receiveFlags =
@@ -1120,11 +1120,11 @@ collectDebouncingReceiversForRecord :
       -> List Flag
      )
      -> List Flag
-     -> ( { fns | field : { field | collectDebouncingReceivers : State state -> List Flag } }, restFns )
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> ( State state, restStates )
      -> List Flag
     )
-    -> ( { fns | field : { field | collectDebouncingReceivers : State state -> List Flag } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> List Flag
 collectDebouncingReceiversForRecord receiverCollector_ fns states =
@@ -1138,7 +1138,7 @@ recordDebouncingReceiverCollector :
      -> List Flag
     )
     -> List Flag
-    -> ( { fns | field : { field | collectDebouncingReceivers : State state -> List Flag } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> List Flag
 recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
@@ -1153,11 +1153,11 @@ receiveFlagsForRecord :
      )
      -> List Flag
      -> List ( String, String )
-     -> ( { fns | field : { field | receiveFlags : List Flag -> List ( String, String ) } }, restFns )
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> List ( String, String )
     )
     -> List Flag
-    -> ( { fns | field : { field | receiveFlags : List Flag -> List ( String, String ) } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> List ( String, String )
 receiveFlagsForRecord flagReceiver_ flags fns =
     flagReceiver_ (\_ errors End -> errors) flags [] fns
@@ -1171,7 +1171,7 @@ recordFlagReceiver :
     )
     -> List Flag
     -> List ( String, String )
-    -> ( { fns | field : { field | receiveFlags : List Flag -> List ( String, String ) } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> List ( String, String )
 recordFlagReceiver next flags errors ( fns, restFns ) =
     next flags (errors ++ fns.field.receiveFlags flags) restFns
@@ -1184,11 +1184,11 @@ emitFlagsForRecord :
       -> List Flag
      )
      -> List Flag
-     -> ( { fns | field : { field | emitFlags : State state -> List Flag } }, restFns )
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> ( State state, restStates )
      -> List Flag
     )
-    -> ( { fns | field : { field | emitFlags : State state -> List Flag } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> List Flag
 emitFlagsForRecord flagEmitter_ fns states =
@@ -1202,7 +1202,7 @@ recordFlagEmitter :
      -> List Flag
     )
     -> List Flag
-    -> ( { fns | field : { field | emitFlags : State state -> List Flag } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> List Flag
 recordFlagEmitter next flags ( fns, restFns ) ( state, restStates ) =
@@ -1262,7 +1262,7 @@ recordStateInitialiser :
     -> recordInput
     ->
         ( { fns
-            | field : { field | initialise : fieldInput -> State state }
+            | field : ControlFns fieldInput state delta output
             , fromInput : recordInput -> fieldInput
           }
         , restFns
@@ -1275,34 +1275,34 @@ recordStateInitialiser next recordInput ( fns, restFns ) =
 
 
 validateRecordStates :
-    ((Result (List ( String, String )) output1
+    ((Result (List ( String, String )) output2
       -> End
       -> End
-      -> Result (List ( String, String )) output1
+      -> Result (List ( String, String )) output2
      )
-     -> Result (List ( String, String )) output0
-     -> ( { fns | field : { field | parse : State state -> Result (List ( String, String )) value } }, restFns )
-     -> ( State state, restStates )
      -> Result (List ( String, String )) output1
+     -> ( { fns | field : ControlFns input state delta output0 }, restFns )
+     -> ( State state, restStates )
+     -> Result (List ( String, String )) output2
     )
-    -> output0
-    -> ( { fns | field : { field | parse : State state -> Result (List ( String, String )) value } }, restFns )
+    -> output1
+    -> ( { fns | field : ControlFns input state delta output0 }, restFns )
     -> ( State state, restStates )
-    -> Result (List ( String, String )) output1
+    -> Result (List ( String, String )) output2
 validateRecordStates parser toOutput fns states =
     parser (\output End End -> output) (Ok toOutput) fns states
 
 
 recordStateValidator :
-    (Result (List ( String, String )) output0
+    (Result (List ( String, String )) output1
      -> restFns
      -> restStates
-     -> Result (List ( String, String )) output1
+     -> Result (List ( String, String )) output2
     )
-    -> Result (List ( String, String )) (value -> output0)
-    -> ( { fns | field : { field | parse : State state -> Result (List ( String, String )) value } }, restFns )
+    -> Result (List ( String, String )) (output0 -> output1)
+    -> ( { fns | field : ControlFns input state delta output0 }, restFns )
     -> ( State state, restStates )
-    -> Result (List ( String, String )) output1
+    -> Result (List ( String, String )) output2
 recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) =
     next
         (case ( toOutputResult, fns.field.parse state ) of
@@ -1324,11 +1324,11 @@ recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) 
 
 setAllRecordStatesToIdle :
     ((End -> End -> End)
-     -> ( { fns | field : { field | setAllIdle : State state -> State state } }, restFns )
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> ( State state, restStates )
      -> ( State state, restStates )
     )
-    -> ( { fns | field : { field | setAllIdle : State state -> State state } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> ( State state, restStates )
 setAllRecordStatesToIdle idleSetter_ fns states =
@@ -1340,7 +1340,7 @@ recordStateIdleSetter :
      -> restStates
      -> restStates
     )
-    -> ( { fns | field : { field | setAllIdle : State state -> State state } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> ( State state, restStates )
 recordStateIdleSetter next ( fns, restFns ) ( state, restStates ) =
@@ -1361,43 +1361,24 @@ viewRecordStates :
      -> List Flag
      ->
         ( { fns
-            | field :
-                { field
-                    | view :
-                        { state : state
-                        , status : Status
-                        , label : String
-                        , flags : List Flag
-                        , selected : Int
-                        }
-                        -> Html fieldDelta
-                    , parse : State state -> Result (List ( String, String )) output
-                    , receiveFlags : List Flag -> List ( String, String )
-                    , path : Path.Path
-                }
+            | field : ControlFns input state delta output
             , access : Access
           }
         , restFns
         )
-     -> ( fieldDelta -> recordDelta, restDeltaSetters )
+     -> ( Delta delta -> recordDelta, restDeltaSetters )
      -> ( State state, restStates )
      -> List (Html msg)
     )
     -> List Flag
     ->
         ( { fns
-            | field :
-                { field
-                    | view : ViewConfig state -> Html fieldDelta
-                    , parse : State state -> Result (List ( String, String )) output
-                    , receiveFlags : List Flag -> List ( String, String )
-                    , path : Path.Path
-                }
+            | field : ControlFns input state delta output
             , access : Access
           }
         , restFns
         )
-    -> ( fieldDelta -> recordDelta, restDeltaSetters )
+    -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( State state, restStates )
     -> List (Html msg)
 viewRecordStates viewer flags fns setters states =
@@ -1417,18 +1398,12 @@ recordStateViewer :
     -> List Flag
     ->
         ( { fns
-            | field :
-                { field
-                    | view : ViewConfig state -> Html fieldDelta
-                    , parse : State state -> Result (List ( String, String )) output
-                    , receiveFlags : List Flag -> List ( String, String )
-                    , path : Path.Path
-                }
+            | field : ControlFns input state delta output
             , access : Access
           }
         , restFns
         )
-    -> ( fieldDelta -> recordDelta, restDeltaSetters )
+    -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( State state, restStates )
     -> List (Html (Delta recordDelta))
 recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
@@ -1508,13 +1483,13 @@ updateRecordStates :
       -> { newStates : End -> states, newCmds : List (Cmd msg) }
      )
      -> { newStates : states -> states, newCmds : List (Cmd msg) }
-     -> ( fns, restFns )
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> ( setter, restSetters )
      -> ( Delta delta, restDeltas )
      -> ( State state, restStates )
      -> { newStates : End -> states, newCmds : List (Cmd msg) }
     )
-    -> ( fns, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( setter, restSetters )
     -> ( Delta delta, restDeltas )
     -> ( State state, restStates )
@@ -1542,7 +1517,7 @@ recordStateUpdater :
      -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
     )
     -> { newStates : ( State state, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) }
-    -> ( { fns | field : { field | update : Delta delta -> State state -> ( State state, Cmd (Delta delta) ) } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( Delta delta, restDeltas )
     -> ( State state, restStates )
@@ -1839,11 +1814,11 @@ receiveFlagsForCustomType :
     ((List Flag -> List ( String, String ) -> End -> List ( String, String ))
      -> List Flag
      -> List ( String, String )
-     -> ( { fns | field : { field | receiveFlags : List Flag -> List ( String, String ) } }, restFns )
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> List ( String, String )
     )
     -> List Flag
-    -> ( { fns | field : { field | receiveFlags : List Flag -> List ( String, String ) } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> List ( String, String )
 receiveFlagsForCustomType =
     receiveFlagsForRecord
@@ -1853,7 +1828,7 @@ customTypeFlagReceiver :
     (List Flag -> List ( String, String ) -> restFns -> List ( String, String ))
     -> List Flag
     -> List ( String, String )
-    -> ( { fns | field : { field | receiveFlags : List Flag -> List ( String, String ) } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> List ( String, String )
 customTypeFlagReceiver =
     recordFlagReceiver
@@ -1868,12 +1843,12 @@ emitFlagsForCustomType :
      )
      -> List Flag
      -> Int
-     -> ( { fns | field : { field | index : Int, emitFlags : State state -> List Flag } }, restFns )
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> ( State state, restStates )
      -> List Flag
     )
     -> Int
-    -> ( { fns | field : { field | index : Int, emitFlags : State state -> List Flag } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> List Flag
 emitFlagsForCustomType flagEmitter_ selectedTag fns tagStates =
@@ -1889,7 +1864,7 @@ customTypeFlagEmitter :
     )
     -> List Flag
     -> Int
-    -> ( { fns | field : { field | index : Int, emitFlags : State state -> List Flag } }, restFns )
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
     -> List Flag
 customTypeFlagEmitter next flags selectedTag ( fns, restFns ) ( tagState, restTagStates ) =
@@ -2004,7 +1979,7 @@ stateSetterMaker :
          -> State tagStates
         )
     -> ( State argState, restInits )
-    -> ( { fns | field : { field | initialise : fieldInput -> State fieldState } }, restFns )
+    -> ( { fns | field : ControlFns fieldInput fieldState delta output }, restFns )
     -> ( (fieldInput -> State tagStates) -> stateSetter, restToArgStates )
     -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState), restMaybeArgStates ), befores )
     -> ( after, afters )
@@ -2077,6 +2052,21 @@ argStateIntoTagStateInserter next thisTagIndex currentlySelectedTagIndex tagStat
     next (thisTagIndex + 1) selectedTag (tagStates << Tuple.pair tagArgState) restMaybeArgStates restInits
 
 
+setSelectedTagStateIdle :
+    ((Int
+      -> End
+      -> End
+      -> End
+     )
+     -> Int
+     -> ( { fns | field : ControlFns input state delta output }, restFns )
+     -> ( State state, restStates )
+     -> ( State state, restStates )
+    )
+    -> Int
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( State state, restStates )
+    -> ( State state, restStates )
 setSelectedTagStateIdle idleSetter_ selectedTag fns tagStates =
     idleSetter_
         (\_ End End -> End)
@@ -2085,6 +2075,16 @@ setSelectedTagStateIdle idleSetter_ selectedTag fns tagStates =
         tagStates
 
 
+selectedTagIdleSetter :
+    (Int
+     -> restFns
+     -> restStates
+     -> restStates
+    )
+    -> Int
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( State state, restStates )
+    -> ( State state, restStates )
 selectedTagIdleSetter next selectedTag ( fns, restFns ) ( state, restStates ) =
     ( if fns.field.index == selectedTag then
         fns.field.setAllIdle state
@@ -2095,6 +2095,23 @@ selectedTagIdleSetter next selectedTag ( fns, restFns ) ( state, restStates ) =
     )
 
 
+validateSelectedTagState :
+    ((a
+      -> b
+      -> End
+      -> End
+      -> a
+     )
+     -> Result (List ( String, String )) value
+     -> Int
+     -> c
+     -> d
+     -> e
+    )
+    -> Int
+    -> c
+    -> d
+    -> e
 validateSelectedTagState parser selectedTag fns states =
     parser
         (\result _ End End -> result)
@@ -2104,6 +2121,18 @@ validateSelectedTagState parser selectedTag fns states =
         states
 
 
+selectedTagParser :
+    (Result (List ( String, String )) output
+     -> Int
+     -> restFns
+     -> restStates
+     -> Result (List ( String, String )) output
+    )
+    -> Result (List ( String, String )) output
+    -> Int
+    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( State state, restStates )
+    -> Result (List ( String, String )) output
 selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
     next
         (if fns.field.index == selectedTag then
@@ -2117,12 +2146,51 @@ selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates )
         restStates
 
 
+viewSelectedTagState :
+    ((Maybe (Html delta1)
+      -> List Flag
+      -> Int
+      -> End
+      -> End
+      -> End
+      -> Maybe (Html delta1)
+     )
+     -> Maybe (Html delta1)
+     -> List Flag
+     -> Int
+     -> ( { fns | field : ControlFns input state delta0 output }, restFns )
+     -> ( Delta delta0 -> delta1, restSetters )
+     -> ( State state, restStates )
+     -> Maybe (Html delta1)
+    )
+    -> List Flag
+    -> Int
+    -> ( { fns | field : ControlFns input state delta0 output }, restFns )
+    -> ( Delta delta0 -> delta1, restSetters )
+    -> ( State state, restStates )
+    -> Html (Delta delta1)
 viewSelectedTagState viewer flags selectedTag fns setters states =
     viewer (\maybeView _ _ End End End -> maybeView) Nothing flags selectedTag fns setters states
         |> Maybe.map (H.map ChangeState)
         |> Maybe.withDefault (H.text "ERROR!")
 
 
+selectedTagViewer :
+    (Maybe (Html delta1)
+     -> List Flag
+     -> Int
+     -> restFns
+     -> restSetters
+     -> restStates
+     -> Maybe (Html delta1)
+    )
+    -> Maybe (Html delta1)
+    -> List Flag
+    -> Int
+    -> ( { fns | field : ControlFns input state delta0 output }, restFns )
+    -> ( Delta delta0 -> delta1, restSetters )
+    -> ( State state, restStates )
+    -> Maybe (Html delta1)
 selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
         (if fns.field.index == selectedTag then
@@ -2186,7 +2254,7 @@ customTypeView label options selectedTag selectedTagView =
 
 listView :
     Path.Path
-    -> (Path.Path -> ControlRecord input state delta output)
+    -> (Path.Path -> ControlFns input state delta output)
     -> ViewConfig (List (State state))
     -> Html (Delta (ListDelta delta))
 listView path ctrl config =
