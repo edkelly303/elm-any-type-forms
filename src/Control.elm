@@ -149,7 +149,3 @@ onFlag =
 
 layout =
     Internal.layout
-
-
-statusView =
-    Internal.statusView

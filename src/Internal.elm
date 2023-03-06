@@ -30,7 +30,6 @@ module Internal exposing
     , onFlag
     , readOnlyField
     , record
-    , statusView
     , string
     , tag0
     , tag1
@@ -324,10 +323,8 @@ makeControl config =
             , childViews = \_ -> []
             , view =
                 \{ state, status } ->
-                    H.div []
-                        [ config.view state
-                        , statusView status
-                        ]
+                    config.view state
+                        |> wrappedView status
                         |> H.map ChangeState
             , parse = parse
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
@@ -1108,7 +1105,8 @@ endRecord rec =
                     in
                     H.div []
                         [ if List.length combinedViews > 1 then
-                            borderedDiv combinedViews
+                            --borderedDiv
+                            H.div [] combinedViews
 
                           else
                             H.div [] fieldViews
@@ -2283,6 +2281,53 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
 -}
 
 
+wrappedView : Status -> Html delta -> Html delta
+wrappedView status innerView =
+    H.div
+        [ HA.style "background-color"
+            (case status of
+                Idle (e :: es) ->
+                    "rgba(255, 0, 0, 0.1)"
+
+                _ ->
+                    ""
+            )
+        , HA.style "padding" "5px"
+        ]
+        [ innerView
+        , case status of
+            Idle [] ->
+                H.div
+                    [ HA.style "margin-top" "10px"
+                    , HA.style "margin-bottom" "10px"
+                    ]
+                    [ H.text "✅ Looking good!" ]
+
+            Idle feedback ->
+                H.div [ HA.style "margin-top" "10px" ]
+                    (List.map
+                        (\f ->
+                            let
+                                ( icon, txt ) =
+                                    case f of
+                                        Ok ( _, t ) ->
+                                            ( "💬", t )
+
+                                        Err ( _, t ) ->
+                                            ( "❌", t )
+                            in
+                            H.div
+                                [ HA.style "margin-bottom" "10px" ]
+                                [ H.text (icon ++ " " ++ txt) ]
+                        )
+                        feedback
+                    )
+
+            _ ->
+                H.text ""
+        ]
+
+
 customTypeView :
     String
     -> List ( Int, String )
@@ -2365,40 +2410,6 @@ textControlView type_ state =
         , HA.value state
         ]
         [ H.text state ]
-
-
-statusView : Status -> Html msg
-statusView status =
-    case status of
-        Idle [] ->
-            H.div
-                [ HA.style "margin-top" "10px"
-                , HA.style "margin-bottom" "10px"
-                ]
-                [ H.text "✅ Looking good!" ]
-
-        Idle feedback ->
-            H.div [ HA.style "margin-top" "10px" ]
-                (List.map
-                    (\f ->
-                        let
-                            ( icon, txt ) =
-                                case f of
-                                    Ok ( _, t ) ->
-                                        ( "💬", t )
-
-                                    Err ( _, t ) ->
-                                        ( "❌", t )
-                        in
-                        H.div
-                            [ HA.style "margin-bottom" "10px" ]
-                            [ H.text (icon ++ " " ++ txt) ]
-                    )
-                    feedback
-                )
-
-        _ ->
-            H.text ""
 
 
 borderedDiv : List (Html msg) -> Html msg
