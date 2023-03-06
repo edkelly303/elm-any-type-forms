@@ -51,14 +51,14 @@ barControl =
         |> Control.field "Baz" .baz bazControl
         |> Control.field "Qux" .qux quxControl
         |> Control.end
-        |> Control.flagIf (\record -> record.baz == String.fromInt record.qux) "baz=qux"
+        |> Control.flagIf (\record -> String.toInt record.baz == Just record.qux) "baz=qux"
 
 
 bazControl =
     Control.string
         |> Control.debounce 500
         |> Control.onFlag "baz=qux" "Baz must not equal Qux"
-        |> Control.failIf (String.isEmpty) "Baz must not be blank"
+        |> Control.failIf String.isEmpty "Baz must not be blank"
         |> Control.failIf (String.contains "?") "Baz must not contain a '?'"
 
 
@@ -94,12 +94,11 @@ counterControl =
                     Decrement ->
                         state - 1
         , view =
-            \{ state, status } ->
+            \state ->
                 Html.div []
                     [ Html.button [ Html.Events.onClick Increment ] [ Html.text "+1" ]
                     , Html.div [] [ Html.text <| String.fromInt state ]
                     , Html.button [ Html.Events.onClick Decrement ] [ Html.text "-1" ]
-                    , Control.statusView status
                     ]
         , parse = Ok
         }
@@ -180,11 +179,16 @@ view model =
 
 type alias FormState =
     Control.State
-        ( Control.State ( Control.State (List (Control.State String)), Control.End )
+        ( Control.State
+            ( Control.State (List (Control.State String))
+            , Control.End
+            )
         , ( Control.State
                 ( Control.State
                     ( Control.State String
-                    , ( Control.State Int, Control.End )
+                    , ( Control.State Int
+                      , Control.End
+                      )
                     )
                 , Control.End
                 )
@@ -195,11 +199,16 @@ type alias FormState =
 
 type alias FormDelta =
     Control.Delta
-        ( Control.Delta ( Control.Delta (Control.ListDelta String), Control.End )
+        ( Control.Delta
+            ( Control.Delta (Control.ListDelta String)
+            , Control.End
+            )
         , ( Control.Delta
                 ( Control.Delta
                     ( Control.Delta String
-                    , ( Control.Delta CounterDelta, Control.End )
+                    , ( Control.Delta CounterDelta
+                      , Control.End
+                      )
                     )
                 , Control.End
                 )
