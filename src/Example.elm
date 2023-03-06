@@ -37,7 +37,6 @@ exampleControl =
 
 fooControl =
     Control.list (Control.string |> Control.failIf String.isEmpty "Item cannot be blank")
-        |> Control.debounce 500
         |> Control.initWith [ "Hello", "World", "" ]
 
 
