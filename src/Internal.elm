@@ -87,7 +87,7 @@ type alias ControlConfig state delta output =
     { empty : state
     , initialise : output -> state
     , update : delta -> state -> state
-    , view : ViewConfig state -> Html delta
+    , view : state -> Html delta
     , parse : state -> Result (List String) output
     }
 
@@ -322,7 +322,13 @@ makeControl config =
             , baseUpdate = preUpdate
             , update = preUpdate 0
             , childViews = \_ -> []
-            , view = config.view >> H.map ChangeState
+            , view =
+                \{ state, status } ->
+                    H.div []
+                        [ config.view state
+                        , statusView status
+                        ]
+                        |> H.map ChangeState
             , parse = parse
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , emitFlags = \_ -> []
@@ -2289,7 +2295,6 @@ customTypeView label options selectedTag selectedTagView =
             [ H.div []
                 [ radioView
                     { options = options
-                    , label = label
                     , selectedOption = selectedTag
                     , toMsg = TagSelected
                     , columns = 3
@@ -2352,34 +2357,14 @@ listView path ctrl config =
         |> H.map ChangeState
 
 
-textControlView : String -> ViewConfig String -> Html String
-textControlView type_ config =
-    H.div
-        []
-        [ H.input
-            [ HE.onInput identity
-            , HA.type_ type_
-            , HA.id config.label
-            , HA.value config.state
-            , HA.style "background-color"
-                (case config.status of
-                    Intact ->
-                        "white"
-
-                    Debouncing ->
-                        "lightYellow"
-
-                    Idle feedback ->
-                        if List.any Result.Extra.isErr feedback then
-                            "pink"
-
-                        else
-                            "paleGreen"
-                )
-            ]
-            [ H.text config.state ]
-        , statusView config.status
+textControlView : String -> String -> Html String
+textControlView type_ state =
+    H.input
+        [ HE.onInput identity
+        , HA.type_ type_
+        , HA.value state
         ]
+        [ H.text state ]
 
 
 statusView : Status -> Html msg
@@ -2429,12 +2414,11 @@ borderedDiv content =
         ]
 
 
-enumView : List ( String, enum ) -> ViewConfig enum -> Html enum
+enumView : List ( String, enum ) -> enum -> Html enum
 enumView tags config =
     radioView
         { options = List.map (\( a, b ) -> ( b, a )) tags
-        , label = config.label
-        , selectedOption = config.state
+        , selectedOption = config
         , toMsg = identity
         , columns = 3
         }
@@ -2442,13 +2426,12 @@ enumView tags config =
 
 radioView :
     { options : List ( state, String )
-    , label : String
     , selectedOption : state
     , toMsg : state -> msg
     , columns : Int
     }
     -> Html msg
-radioView { options, label, selectedOption, toMsg, columns } =
+radioView { options, selectedOption, toMsg, columns } =
     H.div
         [ HA.style "display" "grid"
         , HA.style "grid-template-columns" (String.repeat columns "1fr ")
@@ -2461,15 +2444,14 @@ radioView { options, label, selectedOption, toMsg, columns } =
                     ]
                     [ H.input
                         [ HA.type_ "radio"
-                        , HA.id (label ++ "-" ++ optionLabel)
-                        , HA.name label
+                        , HA.id optionLabel
                         , HA.value optionLabel
                         , HA.checked (selectedOption == option)
                         , onChecked (toMsg option)
                         ]
                         []
                     , H.label
-                        [ HA.for (label ++ "-" ++ optionLabel)
+                        [ HA.for optionLabel
                         , HA.style "margin-left" "4px"
                         ]
                         [ H.text optionLabel ]
