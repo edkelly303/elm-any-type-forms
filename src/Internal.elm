@@ -117,7 +117,7 @@ type alias ControlFns input state delta output =
     , path : Path.Path
     , emitFlags : State state -> List Flag
     , collectDebouncingReceivers : State state -> List Flag
-    , receiveFlags : List Flag -> List ( String, String )
+    , receiveFlags : State state -> List Flag -> List ( String, String )
     , receiverCount : List Flag
     , setAllIdle : State state -> State state
     }
@@ -252,9 +252,8 @@ fromControl label toMsg (Control control) =
                     parse state
 
                 validationErrors =
-                    state
-                        |> emitFlags
-                        |> receiveFlags
+                    emitFlags state
+                        |> receiveFlags state
             in
             case ( parsingResult, validationErrors ) of
                 ( Ok output, [] ) ->
@@ -328,7 +327,7 @@ makeControl config =
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , emitFlags = \_ -> []
             , collectDebouncingReceivers = \_ -> []
-            , receiveFlags = \_ -> []
+            , receiveFlags = \_ _ -> []
             , receiverCount = []
             }
         )
@@ -439,10 +438,10 @@ flagReceiver : Flag -> String -> ControlFns input state delta output -> ControlF
 flagReceiver flag message ctrl =
     { ctrl
         | receiveFlags =
-            \flags ->
+            \state flags ->
                 let
                     oldReceiver =
-                        ctrl.receiveFlags flags
+                        ctrl.receiveFlags state flags
 
                     newReceiver =
                         if List.member flag flags then
@@ -897,7 +896,18 @@ list (Control ctrl) =
                         )
                         s
                         |> List.concat
-            , receiveFlags = \flags -> [] -- we may need to pass `State state` to this function as well as flags... otherwise not sure how to iterate over the correct number of list items to receive flags
+            , receiveFlags =
+                \(State _ listState) flags ->
+                    List.indexedMap
+                        (\idx item ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.receiveFlags item flags
+                        )
+                        listState
+                        |> List.concat
             , receiverCount = []
             , collectDebouncingReceivers = \_ -> []
             }
@@ -995,62 +1005,6 @@ type Access
     | Hidden
 
 
-fieldHelper :
-    Access
-    -> String
-    -> (recordInput -> input)
-    -> AdvancedControl input state delta output
-    ->
-        Builder
-            { index : Int
-            , labels : List String
-            , toOutput : d
-            , fields : Path.Path -> ( { field : ControlFns input state delta output, fromInput : recordInput -> input, access : Access }, e ) -> f
-            , states : Path.Path -> ( State state, g ) -> h
-            , updater :
-                i
-                -> { newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) }
-                -> restFns
-                -> restDeltaSetters
-                -> restDeltas
-                -> restStates
-                -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
-            , viewer : j -> List (Html (Delta k)) -> List Flag -> l -> m -> n -> List (Html (Delta k))
-            , parser : o -> Result (List ( String, String )) output1 -> p -> q -> Result (List ( String, String )) output2
-            , idleSetter : r -> s -> t -> t
-            , initialiser : u -> recordInput -> v -> w
-            , before : ( Delta delta, y ) -> z
-            , befores : ( ( Delta delta, y ) -> z, a1 ) -> b1
-            , after : c1
-            , afters : d1
-            , makeSetters : e1 -> befores -> afters -> next
-            , flagEmitter : f1 -> List Flag -> g1 -> h1 -> List Flag
-            , flagReceiver : i1 -> List Flag -> List ( String, String ) -> j1 -> List ( String, String )
-            , receiverCollector : k1 -> List Flag -> l1 -> m1 -> List Flag
-            }
-            cus
-    ->
-        Builder
-            { index : Int
-            , labels : List String
-            , toOutput : d
-            , fields : Path.Path -> e -> f
-            , states : Path.Path -> g -> h
-            , updater : i -> { newStates : ( State o1, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) } -> ( { fns | field : ControlFns p1 o1 q1 r1 }, restFns ) -> ( Delta q1 -> recordDelta, restDeltaSetters ) -> ( Delta q1, restDeltas ) -> ( State o1, restStates ) -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
-            , viewer : j -> List (Html (Delta k)) -> List Flag -> ( { s1 | field : ControlFns t1 u1 v1 w1, access : Access }, l ) -> ( Delta v1 -> k, m ) -> ( State u1, n ) -> List (Html (Delta k))
-            , parser : o -> Result (List ( String, String )) (output0 -> output1) -> ( { x1 | field : ControlFns y1 z1 a2 output0 }, p ) -> ( State z1, q ) -> Result (List ( String, String )) output2
-            , idleSetter : r -> ( { b2 | field : ControlFns c2 d2 e2 f2 }, s ) -> ( State d2, t ) -> ( State d2, t )
-            , initialiser : u -> recordInput -> ( { g2 | field : ControlFns fieldInput h2 i2 j2, fromInput : recordInput -> fieldInput }, v ) -> ( State h2, w )
-            , before : y -> z
-            , befores : a1 -> b1
-            , after : ( Delta k2, c1 )
-            , afters : ( c1, d1 )
-            , makeSetters : e1 -> ( ( value, after ) -> l2, befores ) -> ( after, afters ) -> ( value -> l2, next )
-            , flagEmitter : f1 -> List Flag -> ( { m2 | field : ControlFns n2 o2 p2 q2 }, g1 ) -> ( State o2, h1 ) -> List Flag
-            , flagReceiver : i1 -> List Flag -> List ( String, String ) -> ( { r2 | field : ControlFns s2 t2 u2 v2 }, j1 ) -> List ( String, String )
-            , receiverCollector : k1 -> List Flag -> ( { w2 | field : ControlFns x2 y2 z2 a3 }, l1 ) -> ( State y2, m1 ) -> List Flag
-            }
-            cus
 fieldHelper access label fromInput (Control control) builder =
     case builder of
         Cus c ->
@@ -1175,7 +1129,7 @@ endRecord rec =
             , parse = parse
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
-            , receiveFlags = \flags -> receiveFlagsForRecord rec.flagReceiver flags fns
+            , receiveFlags = \(State _ states) flags -> receiveFlagsForRecord rec.flagReceiver flags fns states
             , receiverCount = []
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.receiverCollector fns states
             }
@@ -1229,32 +1183,37 @@ receiveFlagsForRecord :
     ((List Flag
       -> List ( String, String )
       -> End
+      -> End
       -> List ( String, String )
      )
      -> List Flag
      -> List ( String, String )
      -> ( { fns | field : ControlFns input state delta output }, restFns )
+     -> ( State state, restStates )
      -> List ( String, String )
     )
     -> List Flag
     -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( State state, restStates )
     -> List ( String, String )
-receiveFlagsForRecord flagReceiver_ flags fns =
-    flagReceiver_ (\_ errors End -> errors) flags [] fns
+receiveFlagsForRecord flagReceiver_ flags fns states =
+    flagReceiver_ (\_ errors End End -> errors) flags [] fns states
 
 
 recordFlagReceiver :
     (List Flag
      -> List ( String, String )
      -> restFns
+     -> restStates
      -> List ( String, String )
     )
     -> List Flag
     -> List ( String, String )
     -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( State state, restStates )
     -> List ( String, String )
-recordFlagReceiver next flags errors ( fns, restFns ) =
-    next flags (errors ++ fns.field.receiveFlags flags) restFns
+recordFlagReceiver next flags errors ( fns, restFns ) ( state, restStates ) =
+    next flags (errors ++ fns.field.receiveFlags state flags) restFns restStates
 
 
 emitFlagsForRecord :
@@ -1525,7 +1484,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
 
 getStatus :
     (State state -> Result (List ( String, String )) output)
-    -> (List Flag -> List ( String, String ))
+    -> (State state -> List Flag -> List ( String, String ))
     -> List Flag
     -> State state
     -> Status
@@ -1548,8 +1507,7 @@ getStatus parse receiveFlags flags ((State internalState _) as state) =
                             errs
 
                 flaggedErrors =
-                    flags
-                        |> receiveFlags
+                    receiveFlags state flags
             in
             Idle (List.map Err (parsedErrors ++ flaggedErrors))
 
@@ -1872,7 +1830,7 @@ endCustomType rec =
             , parse = parse
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
-            , receiveFlags = \flags -> receiveFlagsForCustomType rec.flagReceiver flags fns
+            , receiveFlags = \(State _ states) flags -> receiveFlagsForCustomType rec.flagReceiver flags fns states
             , receiverCount = []
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.receiverCollector fns states
             }
@@ -1891,24 +1849,37 @@ endCustomType rec =
 
 
 receiveFlagsForCustomType :
-    ((List Flag -> List ( String, String ) -> End -> List ( String, String ))
+    ((List Flag
+      -> List ( String, String )
+      -> End
+      -> End
+      -> List ( String, String )
+     )
      -> List Flag
      -> List ( String, String )
      -> ( { fns | field : ControlFns input state delta output }, restFns )
+     -> ( State state, restStates )
      -> List ( String, String )
     )
     -> List Flag
     -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( State state, restStates )
     -> List ( String, String )
 receiveFlagsForCustomType =
     receiveFlagsForRecord
 
 
 customTypeFlagReceiver :
-    (List Flag -> List ( String, String ) -> restFns -> List ( String, String ))
+    (List Flag
+     -> List ( String, String )
+     -> restFns
+     -> restStates
+     -> List ( String, String )
+    )
     -> List Flag
     -> List ( String, String )
     -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( State state, restStates )
     -> List ( String, String )
 customTypeFlagReceiver =
     recordFlagReceiver
