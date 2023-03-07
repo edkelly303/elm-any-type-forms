@@ -48,7 +48,6 @@ import Json.Decode
 import List.Extra
 import Path
 import Process
-import Result.Extra
 import Task
 import Time
 
@@ -123,8 +122,7 @@ type Flag
 
 
 type alias ViewConfig state =
-    { label : String
-    , state : state
+    { state : state
     , status : Status
     , flags : List Flag
     , selected : Int
@@ -232,7 +230,6 @@ fromControl label toMsg (Control control) =
                     [ view
                         { state = state
                         , status = getStatus parse receiveFlags flags (State internalState state)
-                        , label = label
                         , flags = flags
                         , selected = internalState.selected
                         }
@@ -1452,7 +1449,6 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
             fns.field.view
                 { state = state
                 , status = getStatus fns.field.parse fns.field.receiveFlags flags (State internalState state)
-                , label = Path.last fns.field.path
                 , flags = flags
                 , selected = internalState.selected
                 }
@@ -1808,7 +1804,7 @@ endCustomType rec =
                         childViews_ =
                             childViews config
                     in
-                    customTypeView config.label options config.selected childViews_
+                    customTypeView options config.selected childViews_
 
                 parse =
                     \(State i state) -> validateSelectedTagState rec.parser i.selected fns state
@@ -2250,7 +2246,6 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
                 (fns.field.view
                     { state = state
                     , status = Intact
-                    , label = Path.toString fns.field.path
                     , flags = flags
                     , selected = internalState.selected
                     }
@@ -2283,7 +2278,7 @@ wrappedView status innerView =
     H.div
         [ HA.style "background-color"
             (case status of
-                Idle (e :: es) ->
+                Idle (_ :: _) ->
                     "rgba(255, 0, 0, 0.1)"
 
                 _ ->
@@ -2326,12 +2321,11 @@ wrappedView status innerView =
 
 
 customTypeView :
-    String
-    -> List ( Int, String )
+    List ( Int, String )
     -> Int
     -> List (Html (Delta variants))
     -> Html (Delta variants)
-customTypeView label options selectedTag selectedTagView =
+customTypeView options selectedTag selectedTagView =
     H.div []
         (if List.length options > 1 then
             [ H.div []
@@ -2387,7 +2381,6 @@ listView path ctrl config =
                                 , control.view
                                     { state = state
                                     , status = getStatus control.parse control.receiveFlags config.flags (State internalState state)
-                                    , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
                                     , flags = config.flags
                                     , selected = config.selected
                                     }
@@ -2409,19 +2402,6 @@ textControlView type_ state =
         , HA.value state
         ]
         [ H.text state ]
-
-
-borderedDiv : List (Html msg) -> Html msg
-borderedDiv content =
-    H.div
-        [ HA.style "border-width" "1px"
-        , HA.style "border-color" "lightGray"
-        , HA.style "border-style" "solid"
-        ]
-        [ H.div
-            [ HA.style "margin" "10px" ]
-            content
-        ]
 
 
 enumView : List ( String, enum ) -> enum -> Html enum
