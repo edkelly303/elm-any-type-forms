@@ -73,12 +73,7 @@ type alias Form state delta output msg =
     , initWith : output -> State state
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
-    , submit :
-        State state
-        ->
-            Result
-                { errors : List ( String, String ), state : State state }
-                { output : output, state : State state }
+    , submit : State state -> ( State state, Result (List ( String, String )) output )
     }
 
 
@@ -254,15 +249,17 @@ fromControl label toMsg (Control control) =
                     emitFlags state
                         |> receiveFlags state
             in
-            case ( parsingResult, validationErrors ) of
+            ( setAllIdle state
+            , case ( parsingResult, validationErrors ) of
                 ( Ok output, [] ) ->
-                    Ok { state = setAllIdle state, output = output }
+                    Ok output
 
                 ( Ok _, vErrs ) ->
-                    Err { state = setAllIdle state, errors = vErrs }
+                    Err vErrs
 
                 ( Err pErrs, vErrs ) ->
-                    Err { state = setAllIdle state, errors = pErrs ++ vErrs }
+                    Err (pErrs ++ vErrs)
+            )
     }
 
 
@@ -2359,46 +2356,48 @@ listView :
     -> ViewConfig (List (State state))
     -> Html (Delta (ListDelta delta))
 listView path ctrl config =
-    H.div []
-        [ if List.isEmpty config.state then
-            H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
+    wrappedView config.status
+        (H.div []
+            [ if List.isEmpty config.state then
+                H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
 
-          else
-            H.div []
-                (List.indexedMap
-                    (\idx (State internalState state) ->
-                        let
-                            control =
-                                ctrl (Path.add (String.fromInt idx) path)
-                        in
-                        H.div [ HA.style "margin-top" "10px" ]
-                            [ H.summary
-                                [ HA.style "margin-bottom" "10px" ]
-                                [ H.text ("#" ++ String.fromInt (idx + 1))
-                                , H.button
-                                    [ HA.style "margin-left" "10px"
-                                    , HE.onClick (DeleteItem idx)
+              else
+                H.div []
+                    (List.indexedMap
+                        (\idx (State internalState state) ->
+                            let
+                                control =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            H.div [ HA.style "margin-top" "10px" ]
+                                [ H.summary
+                                    [ HA.style "margin-bottom" "10px" ]
+                                    [ H.text ("#" ++ String.fromInt (idx + 1))
+                                    , H.button
+                                        [ HA.style "margin-left" "10px"
+                                        , HE.onClick (DeleteItem idx)
+                                        ]
+                                        [ H.text "❌" ]
+                                    , H.button
+                                        [ HA.style "margin-left" "10px"
+                                        , HE.onClick (InsertItem (idx + 1))
+                                        ]
+                                        [ H.text "➕" ]
                                     ]
-                                    [ H.text "❌" ]
-                                , H.button
-                                    [ HA.style "margin-left" "10px"
-                                    , HE.onClick (InsertItem (idx + 1))
-                                    ]
-                                    [ H.text "➕" ]
+                                , control.view
+                                    { state = state
+                                    , status = getStatus control.parse control.receiveFlags config.flags (State internalState state)
+                                    , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
+                                    , flags = config.flags
+                                    , selected = config.selected
+                                    }
+                                    |> H.map (ChangeItem idx)
                                 ]
-                            , control.view
-                                { state = state
-                                , status = getStatus control.parse control.receiveFlags config.flags (State internalState state)
-                                , label = config.label ++ "-item#" ++ String.fromInt (idx + 1)
-                                , flags = config.flags
-                                , selected = config.selected
-                                }
-                                |> H.map (ChangeItem idx)
-                            ]
+                        )
+                        config.state
                     )
-                    config.state
-                )
-        ]
+            ]
+        )
         |> H.map ChangeState
 
 

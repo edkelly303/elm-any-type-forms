@@ -4,6 +4,7 @@ import Browser
 import Control
 import Html
 import Html.Events
+import List.Extra
 
 
 
@@ -36,8 +37,10 @@ exampleControl =
 
 
 fooControl =
-    Control.list (Control.string |> Control.failIf String.isEmpty "Item cannot be blank")
+    Control.list
+        (Control.string |> Control.failIf String.isEmpty "Item cannot be blank")
         |> Control.initWith [ "Hello", "World", "" ]
+        |> Control.failIf (List.Extra.allDifferent >> not) "All items in the list must be unique"
 
 
 barControl =
@@ -138,26 +141,25 @@ update msg model =
     case msg of
         FormUpdated delta ->
             let
-                ( state, cmd ) =
+                ( newForm, cmd ) =
                     exampleForm.update delta model.form
             in
-            ( { form = state }, cmd )
+            ( { form = newForm }, cmd )
 
         FormSubmitted ->
-            case exampleForm.submit model.form of
-                Ok { state, output } ->
-                    let
-                        _ =
-                            Debug.log "Success!" output
-                    in
-                    ( { form = state }, Cmd.none )
+            let
+                ( newForm, result ) =
+                    exampleForm.submit model.form
 
-                Err { state, errors } ->
-                    let
-                        _ =
-                            Debug.log "Failure!" errors
-                    in
-                    ( { form = state }, Cmd.none )
+                _ =
+                    case result of
+                        Ok output ->
+                            Debug.log "Success!" (Debug.toString output)
+
+                        Err errors ->
+                            Debug.log "Failure!" (Debug.toString errors)
+            in
+            ( { form = newForm }, Cmd.none )
 
 
 view : Model -> Html.Html Msg
