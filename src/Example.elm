@@ -2,6 +2,7 @@ module Example exposing (main)
 
 import Browser
 import Control
+import Dict
 import Html
 import Html.Events
 import List.Extra
@@ -38,9 +39,35 @@ exampleControl =
 
 fooControl =
     Control.list
-        (Control.string |> Control.failIf String.isEmpty "Item cannot be blank")
+        (Control.string
+            |> Control.failIf String.isEmpty "List items cannot be blank"
+            |> Control.onFlag "list-items-not-unique" "List items must be unique"
+        )
         |> Control.initWith [ "Hello", "World", "" ]
-        |> Control.failIf (List.Extra.allDifferent >> not) "All items in the list must be unique"
+        |> Control.flagListAt nonUniqueIndexes "list-items-not-unique"
+
+
+nonUniqueIndexes : List comparable -> List Int
+nonUniqueIndexes list =
+    List.Extra.indexedFoldl
+        (\idx item dict ->
+            Dict.update item
+                (\midx ->
+                    case midx of
+                        Nothing ->
+                            Just [ idx ]
+
+                        Just idxs ->
+                            Just (idx :: idxs)
+                )
+                dict
+        )
+        Dict.empty
+        list
+        |> Dict.values
+        |> List.filter (\idxs -> List.length idxs > 1)
+        |> List.concat
+        |> List.Extra.unique
 
 
 barControl =

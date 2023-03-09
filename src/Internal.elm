@@ -18,6 +18,7 @@ module Internal exposing
     , failIf
     , field
     , flagIf
+    , flagListIf
     , float
     , fromControl
     , hiddenField
@@ -119,6 +120,7 @@ type alias ControlFns input state delta output =
 type Flag
     = FlagLabel String
     | FlagPath Path.Path Int
+    | FlagList Path.Path String (List Int)
 
 
 type alias ViewConfig state =
@@ -394,6 +396,40 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
     `8bd8'  88   88 88booo.   .88.   88  .8D 88   88    88      .88.   `8b  d8' 88  V888
       YP    YP   YP Y88888P Y888888P Y8888D' YP   YP    YP    Y888888P  `Y88P'  VP   V8P
 -}
+
+
+flagListIf :
+    (output -> List Int)
+    -> String
+    -> Control (List state) (ListDelta delta) output
+    -> Control (List state) (ListDelta delta) output
+flagListIf check flagLabel (Control control) =
+    Control (control >> listFlagEmitter check flagLabel)
+
+
+listFlagEmitter :
+    (output -> List Int)
+    -> String
+    -> ControlFns input (List state) (ListDelta delta) output
+    -> ControlFns input (List state) (ListDelta delta) output
+listFlagEmitter check flagLabel ctrl =
+    { ctrl
+        | emitFlags =
+            \state ->
+                let
+                    oldFlags =
+                        ctrl.emitFlags state
+
+                    newFlags =
+                        case ctrl.parse state of
+                            Ok output ->
+                                [ FlagList ctrl.path flagLabel (check output) ]
+
+                            Err _ ->
+                                []
+                in
+                List.Extra.unique (oldFlags ++ newFlags)
+    }
 
 
 flagIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
@@ -898,10 +934,30 @@ list (Control ctrl) =
                     List.indexedMap
                         (\idx item ->
                             let
+                                filteredFlags =
+                                    List.filterMap
+                                        (\flag ->
+                                            case flag of
+                                                FlagList flagPath flagLabel flagIndexes ->
+                                                    if flagPath == path then
+                                                        if List.member idx flagIndexes then
+                                                            Just (FlagLabel flagLabel)
+
+                                                        else
+                                                            Nothing
+
+                                                    else
+                                                        Just flag
+
+                                                _ ->
+                                                    Just flag
+                                        )
+                                        flags
+
                                 itemControl =
                                     ctrl (Path.add (String.fromInt idx) path)
                             in
-                            itemControl.receiveFlags item flags
+                            itemControl.receiveFlags item filteredFlags
                         )
                         listState
                         |> List.concat
@@ -2350,47 +2406,65 @@ listView :
     -> ViewConfig (List (State state))
     -> Html (Delta (ListDelta delta))
 listView path ctrl config =
-    wrappedView config.status
-        (H.div []
-            [ if List.isEmpty config.state then
-                H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
+    H.div []
+        [ if List.isEmpty config.state then
+            H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
 
-              else
-                H.div []
-                    (List.indexedMap
-                        (\idx (State internalState state) ->
-                            let
-                                control =
-                                    ctrl (Path.add (String.fromInt idx) path)
-                            in
-                            H.div [ HA.style "margin-top" "10px" ]
-                                [ H.summary
-                                    [ HA.style "margin-bottom" "10px" ]
-                                    [ H.text ("#" ++ String.fromInt (idx + 1))
-                                    , H.button
-                                        [ HA.style "margin-left" "10px"
-                                        , HE.onClick (DeleteItem idx)
-                                        ]
-                                        [ H.text "❌" ]
-                                    , H.button
-                                        [ HA.style "margin-left" "10px"
-                                        , HE.onClick (InsertItem (idx + 1))
-                                        ]
-                                        [ H.text "➕" ]
+          else
+            H.div []
+                (List.indexedMap
+                    (\idx (State internalState state) ->
+                        let
+                            control =
+                                ctrl (Path.add (String.fromInt idx) path)
+
+                            filteredFlags =
+                                List.filterMap
+                                    (\flag ->
+                                        case flag of
+                                            FlagList flagPath flagLabel flagIndexes ->
+                                                if flagPath == path then
+                                                    if List.member idx flagIndexes then
+                                                        Just (FlagLabel flagLabel)
+
+                                                    else
+                                                        Nothing
+
+                                                else
+                                                    Just flag
+
+                                            _ ->
+                                                Just flag
+                                    )
+                                    config.flags
+                        in
+                        H.div [ HA.style "margin-top" "10px" ]
+                            [ H.summary
+                                [ HA.style "margin-bottom" "10px" ]
+                                [ H.text ("#" ++ String.fromInt (idx + 1))
+                                , H.button
+                                    [ HA.style "margin-left" "10px"
+                                    , HE.onClick (DeleteItem idx)
                                     ]
-                                , control.view
-                                    { state = state
-                                    , status = getStatus control.parse control.receiveFlags config.flags (State internalState state)
-                                    , flags = config.flags
-                                    , selected = config.selected
-                                    }
-                                    |> H.map (ChangeItem idx)
+                                    [ H.text "❌" ]
+                                , H.button
+                                    [ HA.style "margin-left" "10px"
+                                    , HE.onClick (InsertItem (idx + 1))
+                                    ]
+                                    [ H.text "➕" ]
                                 ]
-                        )
-                        config.state
+                            , control.view
+                                { state = state
+                                , status = getStatus control.parse control.receiveFlags filteredFlags (State internalState state)
+                                , flags = filteredFlags
+                                , selected = config.selected
+                                }
+                                |> H.map (ChangeItem idx)
+                            ]
                     )
-            ]
-        )
+                    config.state
+                )
+        ]
         |> H.map ChangeState
 
 
