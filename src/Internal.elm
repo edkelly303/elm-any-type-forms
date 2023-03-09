@@ -15,7 +15,6 @@ module Internal exposing
     , debounce
     , end
     , enum
-    , failChildrenIf
     , failIf
     , field
     , flagIf
@@ -110,20 +109,16 @@ type alias ControlFns input state delta output =
     , parse : State state -> Result (List ( String, String )) output
     , path : Path.Path
     , emitFlags : State state -> List Flag
-    , collectDebouncingReceivers : State state -> List FlagId
+    , collectDebouncingReceivers : State state -> List Flag
     , receiveFlags : State state -> List Flag -> List ( String, String )
-    , receiverCount : List FlagId
+    , receiverCount : List Flag
     , setAllIdle : State state -> State state
     }
 
 
 type Flag
-    = Flag FlagId (List Int)
-
-
-type FlagId
-    = LabelledFlag String
-    | PathFlag Path.Path Int
+    = FlagLabel String
+    | FlagPath Path.Path Int
 
 
 type alias ViewConfig state =
@@ -227,7 +222,7 @@ fromControl label toMsg (Control control) =
                     collectDebouncingReceivers s
 
                 flags =
-                    List.filter (\(Flag f _) -> not <| List.member f debouncingReceivers) emittedFlags
+                    List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
             in
             H.div []
                 [ H.h1 [] [ H.text label ]
@@ -402,25 +397,12 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 
 
 flagIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
-flagIf check flagLabel (Control control) =
-    let
-        checkInts =
-            \output ->
-                if check output then
-                    [ 0 ]
-
-                else
-                    []
-    in
-    Control (control >> flagEmitter checkInts (LabelledFlag flagLabel))
+flagIf check flag (Control control) =
+    Control (control >> flagEmitter check (FlagLabel flag))
 
 
-flagEmitter :
-    (output -> List Int)
-    -> FlagId
-    -> ControlFns input state delta output
-    -> ControlFns input state delta output
-flagEmitter check flagId ctrl =
+flagEmitter : (output -> Bool) -> Flag -> ControlFns input state delta output -> ControlFns input state delta output
+flagEmitter check flag ctrl =
     { ctrl
         | emitFlags =
             \state ->
@@ -431,15 +413,11 @@ flagEmitter check flagId ctrl =
                     newFlags =
                         case ctrl.parse state of
                             Ok output ->
-                                let
-                                    childIndexes =
-                                        check output
-                                in
-                                if List.isEmpty childIndexes then
-                                    []
+                                if check output then
+                                    [ flag ]
 
                                 else
-                                    [ Flag flagId childIndexes ]
+                                    []
 
                             Err _ ->
                                 []
@@ -449,12 +427,12 @@ flagEmitter check flagId ctrl =
 
 
 onFlag : String -> String -> Control state delta output -> Control state delta output
-onFlag flagLabel message (Control control) =
-    Control (control >> flagReceiver (LabelledFlag flagLabel) message)
+onFlag flag message (Control control) =
+    Control (control >> flagReceiver (FlagLabel flag) message)
 
 
-flagReceiver : FlagId -> String -> ControlFns input state delta output -> ControlFns input state delta output
-flagReceiver flagId message ctrl =
+flagReceiver : Flag -> String -> ControlFns input state delta output -> ControlFns input state delta output
+flagReceiver flag message ctrl =
     { ctrl
         | receiveFlags =
             \state flags ->
@@ -463,23 +441,19 @@ flagReceiver flagId message ctrl =
                         ctrl.receiveFlags state flags
 
                     newReceiver =
-                        if
-                            flags
-                                |> List.filter (\(Flag id _) -> id == flagId)
-                                |> List.isEmpty
-                        then
-                            []
+                        if List.member flag flags then
+                            [ ( Path.toString ctrl.path, message ) ]
 
                         else
-                            [ ( Path.toString ctrl.path, message ) ]
+                            []
                 in
                 List.Extra.unique (oldReceiver ++ newReceiver)
-        , receiverCount = flagId :: ctrl.receiverCount
+        , receiverCount = flag :: ctrl.receiverCount
         , collectDebouncingReceivers =
             \((State internalState _) as state) ->
                 case internalState.status of
                     DebouncingSince _ ->
-                        flagId :: ctrl.collectDebouncingReceivers state
+                        flag :: ctrl.collectDebouncingReceivers state
 
                     _ ->
                         ctrl.collectDebouncingReceivers state
@@ -488,36 +462,18 @@ flagReceiver flagId message ctrl =
 
 failIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
 failIf check message (Control c) =
-    let
-        checkInts =
-            \output ->
-                if check output then
-                    [ 0 ]
-
-                else
-                    []
-    in
-    failChildrenIf checkInts message (Control c)
-
-
-failChildrenIf :
-    (output -> List Int)
-    -> String
-    -> Control state delta output
-    -> Control state delta output
-failChildrenIf check message (Control c) =
     Control
         (\path ->
             let
                 control =
                     c path
 
-                flagId =
-                    PathFlag path (List.length control.receiverCount)
+                flag =
+                    FlagPath path (List.length control.receiverCount)
             in
             control
-                |> flagEmitter check flagId
-                |> flagReceiver flagId message
+                |> flagEmitter check flag
+                |> flagReceiver flag message
         )
 
 
@@ -926,7 +882,7 @@ list (Control ctrl) =
                             s
                         )
             , emitFlags =
-                \(State _ listState) ->
+                \(State _ s) ->
                     List.indexedMap
                         (\idx item ->
                             let
@@ -935,7 +891,7 @@ list (Control ctrl) =
                             in
                             itemControl.emitFlags item
                         )
-                        listState
+                        s
                         |> List.concat
             , receiveFlags =
                 \(State _ listState) flags ->
@@ -1190,33 +1146,33 @@ endRecord rec =
 
 
 collectDebouncingReceiversForRecord :
-    ((List FlagId
+    ((List Flag
       -> End
       -> End
-      -> List FlagId
+      -> List Flag
      )
-     -> List FlagId
+     -> List Flag
      -> ( { fns | field : ControlFns input state delta output }, restFns )
      -> ( State state, restStates )
-     -> List FlagId
+     -> List Flag
     )
     -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
-    -> List FlagId
+    -> List Flag
 collectDebouncingReceiversForRecord receiverCollector_ fns states =
     receiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
 recordDebouncingReceiverCollector :
-    (List FlagId
+    (List Flag
      -> restFns
      -> restStates
-     -> List FlagId
+     -> List Flag
     )
-    -> List FlagId
+    -> List Flag
     -> ( { fns | field : ControlFns input state delta output }, restFns )
     -> ( State state, restStates )
-    -> List FlagId
+    -> List Flag
 recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
     next (receivers ++ fns.field.collectDebouncingReceivers state) restFns restStates
 
