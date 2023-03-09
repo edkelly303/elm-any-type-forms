@@ -1772,12 +1772,12 @@ tagHelper label (Control control) toArgState builder =
                         in
                         rec.fns path
                             << Tuple.pair
-                                { field = { control_ | index = rec.index } }
+                                { control_ | index = rec.index }
                 , states =
                     \path ->
                         rec.states path
                             << Tuple.pair (control (Path.add label path) |> .init)
-                , updater = rec.updater >> recordStateUpdater
+                , updater = rec.updater >> customTypeStateUpdater
                 , viewer = rec.viewer >> selectedTagViewer
                 , parser = rec.parser >> selectedTagParser
                 , idleSetter = rec.idleSetter >> selectedTagIdleSetter
@@ -1796,7 +1796,7 @@ tagHelper label (Control control) toArgState builder =
                 , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
                 , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
                 , flagReceiver = rec.flagReceiver >> customTypeFlagReceiver
-                , receiverCollector = rec.receiverCollector >> recordDebouncingReceiverCollector
+                , receiverCollector = rec.receiverCollector >> customTypeDebouncingReceiverCollector
                 , destructor = rec.destructor
                 }
 
@@ -1922,7 +1922,7 @@ endCustomType rec =
                             ChangeState tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateRecordStates rec.updater fns deltaSetters tagDelta state
+                                        updateCustomTypeStates rec.updater fns deltaSetters tagDelta state
                                 in
                                 ( State i newTagStates
                                 , Cmd.map ChangeState cmd
@@ -1967,7 +1967,7 @@ endCustomType rec =
             , emitFlags = emitFlags
             , receiveFlags = \(State _ states) flags -> receiveFlagsForCustomType rec.flagReceiver flags fns states
             , receiverCount = []
-            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.receiverCollector fns states
+            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.receiverCollector fns states
             }
         )
 
@@ -1983,6 +1983,105 @@ endCustomType rec =
 -}
 
 
+collectDebouncingReceiversForCustomType :
+    ((List Flag
+      -> End
+      -> End
+      -> List Flag
+     )
+     -> List Flag
+     -> ( ControlFns input state delta output, restFns )
+     -> ( State state, restStates )
+     -> List Flag
+    )
+    -> ( ControlFns input state delta output, restFns )
+    -> ( State state, restStates )
+    -> List Flag
+collectDebouncingReceiversForCustomType receiverCollector_ fns states =
+    receiverCollector_ (\receivers End End -> receivers) [] fns states
+
+
+customTypeDebouncingReceiverCollector :
+    (List Flag
+     -> restFns
+     -> restStates
+     -> List Flag
+    )
+    -> List Flag
+    -> ( ControlFns input state delta output, restFns )
+    -> ( State state, restStates )
+    -> List Flag
+customTypeDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
+    next (receivers ++ fns.collectDebouncingReceivers state) restFns restStates
+
+
+updateCustomTypeStates :
+    (({ newStates : End -> states, newCmds : List (Cmd msg) }
+      -> End
+      -> End
+      -> End
+      -> End
+      -> { newStates : End -> states, newCmds : List (Cmd msg) }
+     )
+     -> { newStates : states -> states, newCmds : List (Cmd msg) }
+     -> ( ControlFns input state delta output, restFns )
+     -> ( setter, restSetters )
+     -> ( Delta delta, restDeltas )
+     -> ( State state, restStates )
+     -> { newStates : End -> states, newCmds : List (Cmd msg) }
+    )
+    -> ( ControlFns input state delta output, restFns )
+    -> ( setter, restSetters )
+    -> ( Delta delta, restDeltas )
+    -> ( State state, restStates )
+    -> ( states, Cmd msg )
+updateCustomTypeStates updater fields setters deltas states =
+    let
+        { newStates, newCmds } =
+            updater
+                (\output End End End End -> output)
+                { newStates = identity, newCmds = [] }
+                fields
+                setters
+                deltas
+                states
+    in
+    ( newStates End, Cmd.batch newCmds )
+
+
+customTypeStateUpdater :
+    ({ newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) }
+     -> restFns
+     -> restDeltaSetters
+     -> restDeltas
+     -> restStates
+     -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+    )
+    -> { newStates : ( State state, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) }
+    -> ( ControlFns input state delta output, restFns )
+    -> ( Delta delta -> recordDelta, restDeltaSetters )
+    -> ( Delta delta, restDeltas )
+    -> ( State state, restStates )
+    -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+customTypeStateUpdater next { newStates, newCmds } ( fns, restFns ) ( deltaSetter, restDeltaSetters ) ( delta, restDeltas ) ( state, restStates ) =
+    let
+        ( newState, newCmd ) =
+            fns.update delta state
+
+        cmd2 =
+            newCmd
+                |> Cmd.map deltaSetter
+    in
+    next
+        { newStates = newStates << Tuple.pair newState
+        , newCmds = cmd2 :: newCmds
+        }
+        restFns
+        restDeltaSetters
+        restDeltas
+        restStates
+
+
 receiveFlagsForCustomType :
     ((List Flag
       -> List ( String, String )
@@ -1992,16 +2091,16 @@ receiveFlagsForCustomType :
      )
      -> List Flag
      -> List ( String, String )
-     -> ( { fns | field : ControlFns input state delta output }, restFns )
+     -> ( ControlFns input state delta output, restFns )
      -> ( State state, restStates )
      -> List ( String, String )
     )
     -> List Flag
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List ( String, String )
-receiveFlagsForCustomType =
-    receiveFlagsForRecord
+receiveFlagsForCustomType flagReceiver_ flags fns states =
+    flagReceiver_ (\_ errors End End -> errors) flags [] fns states
 
 
 customTypeFlagReceiver :
@@ -2013,11 +2112,11 @@ customTypeFlagReceiver :
     )
     -> List Flag
     -> List ( String, String )
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List ( String, String )
-customTypeFlagReceiver =
-    recordFlagReceiver
+customTypeFlagReceiver next flags errors ( fns, restFns ) ( state, restStates ) =
+    next flags (errors ++ fns.receiveFlags state flags) restFns restStates
 
 
 emitFlagsForCustomType :
@@ -2029,12 +2128,12 @@ emitFlagsForCustomType :
      )
      -> List Flag
      -> Int
-     -> ( { fns | field : ControlFns input state delta output }, restFns )
+     -> ( ControlFns input state delta output, restFns )
      -> ( State state, restStates )
      -> List Flag
     )
     -> Int
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List Flag
 emitFlagsForCustomType flagEmitter_ selectedTag fns tagStates =
@@ -2050,14 +2149,14 @@ customTypeFlagEmitter :
     )
     -> List Flag
     -> Int
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List Flag
 customTypeFlagEmitter next flags selectedTag ( fns, restFns ) ( tagState, restTagStates ) =
     let
         newFlags =
-            if fns.field.index == selectedTag then
-                fns.field.emitFlags tagState
+            if fns.index == selectedTag then
+                fns.emitFlags tagState
 
             else
                 []
@@ -2165,7 +2264,7 @@ stateSetterMaker :
          -> State tagStates
         )
     -> ( State argState, restInits )
-    -> ( { fns | field : ControlFns fieldInput fieldState delta output }, restFns )
+    -> ( ControlFns fieldInput fieldState delta output, restFns )
     -> ( (fieldInput -> State tagStates) -> stateSetter, restToArgStates )
     -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState), restMaybeArgStates ), befores )
     -> ( after, afters )
@@ -2175,7 +2274,7 @@ stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toA
         (\argState ->
             let
                 maybes =
-                    before ( Just (fns.field.initialise argState), after )
+                    before ( Just (fns.initialise argState), after )
             in
             insertArgStateIntoTagState argStateIntoTagStateInserter_ maybes inits
         )
@@ -2245,12 +2344,12 @@ setSelectedTagStateIdle :
       -> End
      )
      -> Int
-     -> ( { fns | field : ControlFns input state delta output }, restFns )
+     -> ( ControlFns input state delta output, restFns )
      -> ( State state, restStates )
      -> ( State state, restStates )
     )
     -> Int
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> ( State state, restStates )
 setSelectedTagStateIdle idleSetter_ selectedTag fns tagStates =
@@ -2268,12 +2367,12 @@ selectedTagIdleSetter :
      -> restStates
     )
     -> Int
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> ( State state, restStates )
 selectedTagIdleSetter next selectedTag ( fns, restFns ) ( state, restStates ) =
-    ( if fns.field.index == selectedTag then
-        fns.field.setAllIdle state
+    ( if fns.index == selectedTag then
+        fns.setAllIdle state
 
       else
         state
@@ -2316,13 +2415,13 @@ selectedTagParser :
     )
     -> Result (List ( String, String )) output
     -> Int
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> Result (List ( String, String )) output
 selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
     next
-        (if fns.field.index == selectedTag then
-            fns.field.parse state
+        (if fns.index == selectedTag then
+            fns.parse state
 
          else
             result
@@ -2344,14 +2443,14 @@ viewSelectedTagState :
      -> Maybe (Html delta1)
      -> List Flag
      -> Int
-     -> ( { fns | field : ControlFns input state delta0 output }, restFns )
+     -> ( ControlFns input state delta0 output, restFns )
      -> ( Delta delta0 -> delta1, restSetters )
      -> ( State state, restStates )
      -> Maybe (Html delta1)
     )
     -> List Flag
     -> Int
-    -> ( { fns | field : ControlFns input state delta0 output }, restFns )
+    -> ( ControlFns input state delta0 output, restFns )
     -> ( Delta delta0 -> delta1, restSetters )
     -> ( State state, restStates )
     -> Html (Delta delta1)
@@ -2373,15 +2472,15 @@ selectedTagViewer :
     -> Maybe (Html delta1)
     -> List Flag
     -> Int
-    -> ( { fns | field : ControlFns input state delta0 output }, restFns )
+    -> ( ControlFns input state delta0 output, restFns )
     -> ( Delta delta0 -> delta1, restSetters )
     -> ( State state, restStates )
     -> Maybe (Html delta1)
 selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
-        (if fns.field.index == selectedTag then
+        (if fns.index == selectedTag then
             Just
-                (fns.field.view
+                (fns.view
                     { state = state
                     , status = Intact
                     , flags = flags
