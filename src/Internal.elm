@@ -1,50 +1,4 @@
-module Internal exposing
-    ( Access(..)
-    , Builder(..)
-    , Control
-    , ControlConfig
-    , ControlFns
-    , Delta
-    , End
-    , Flag
-    , Form
-    , ListDelta
-    , State
-    , Status
-    , ViewConfig
-    , bool
-    , checkMsgType
-    , customType
-    , debounce
-    , dict
-    , end
-    , enum
-    , failIf
-    , field
-    , flagIf
-    , flagListAt
-    , float
-    , fromControl
-    , hiddenField
-    , initWith
-    , int
-    , layout
-    , list
-    , makeControl
-    , maybe
-    , onFlag
-    , readOnlyField
-    , record
-    , string
-    , tag0
-    , tag1
-    , tag2
-    , tag3
-    , tag4
-    , tag5
-    , tuple
-    , wrapper
-    )
+module Internal exposing (..)
 
 import Dict
 import Html as H exposing (Html)
@@ -1297,11 +1251,11 @@ collectDebouncingReceiversForRecord :
       -> List Flag
      )
      -> List Flag
-     -> ( { fns | field : ControlFns input state delta output }, restFns )
+     -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( State state, restStates )
      -> List Flag
     )
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List Flag
 collectDebouncingReceiversForRecord receiverCollector_ fns states =
@@ -1315,7 +1269,7 @@ recordDebouncingReceiverCollector :
      -> List Flag
     )
     -> List Flag
-    -> ( { fns | field : ControlFns input state delta output }, restFns )
+    -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List Flag
 recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
