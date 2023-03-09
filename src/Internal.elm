@@ -1,6 +1,9 @@
 module Internal exposing
-    ( Control
+    ( Access(..)
+    , Builder(..)
+    , Control
     , ControlConfig
+    , ControlFns
     , Delta
     , End
     , Flag
@@ -951,7 +954,7 @@ list (Control ctrl) =
                         s
                         |> List.concat
             , receiveFlags =
-                \((State _ listState) as state) flags ->
+                \(State _ listState) flags ->
                     List.indexedMap
                         (\idx item ->
                             let
@@ -1235,7 +1238,6 @@ endRecord rec =
                     in
                     H.div []
                         [ if List.length combinedViews > 1 then
-                            --borderedDiv
                             H.div [] combinedViews
 
                           else
