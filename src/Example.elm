@@ -149,16 +149,21 @@ update msg model =
             let
                 ( newForm, result ) =
                     exampleForm.submit model.form
-
-                _ =
-                    case result of
-                        Ok output ->
-                            Debug.log "Success!" (Debug.toString output)
-
-                        Err errors ->
-                            Debug.log "Failure!" (Debug.toString errors)
             in
-            ( { form = newForm }, Cmd.none )
+            case result of
+                Ok output ->
+                    let
+                        _ =
+                            Debug.log "Success!" output
+                    in
+                    ( { form = newForm }, Cmd.none )
+
+                Err errors ->
+                    let
+                        _ =
+                            Debug.log "Failure!" errors
+                    in
+                    ( { form = newForm }, Cmd.none )
 
 
 view : Model -> Html.Html Msg
