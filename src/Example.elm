@@ -18,7 +18,7 @@ exampleForm =
 
 
 type Example
-    = Foo (List String)
+    = Foo (Dict.Dict String Int)
     | Bar { baz : String, qux : Int }
 
 
@@ -38,39 +38,8 @@ exampleControl =
 
 
 fooControl =
-    Control.list
-        (Control.string
-            |> Control.failIf String.isEmpty "List items cannot be blank"
-            |> Control.onFlag "list-items-not-unique" "List items must be unique"
-        )
-        |> Control.initWith [ "Hello", "World", "" ]
-        |> Control.flagListAt nonUniqueIndexes "list-items-not-unique"
-
-
-nonUniqueIndexes : List comparable -> List Int
-nonUniqueIndexes list =
-    let
-        duplicates =
-            List.Extra.frequencies list
-                |> List.filterMap
-                    (\( item, count ) ->
-                        if count > 1 then
-                            Just item
-
-                        else
-                            Nothing
-                    )
-    in
-    List.indexedMap
-        (\idx item ->
-            if List.member item duplicates then
-                Just idx
-
-            else
-                Nothing
-        )
-        list
-        |> List.filterMap identity
+    Control.dict "Key" Control.string "Value" Control.int
+        |> Control.initWith (Dict.fromList [ ( "Hello", 1 ), ( "World", 2 ) ])
 
 
 barControl =
@@ -211,15 +180,25 @@ view model =
 type alias FormState =
     Control.State
         ( Control.State
-            ( Control.State (List (Control.State String))
+            ( Control.State
+                ( Control.State
+                    (List
+                        (Control.State
+                            ( Control.State String
+                            , ( Control.State String
+                              , Control.End
+                              )
+                            )
+                        )
+                    )
+                , Control.End
+                )
             , Control.End
             )
         , ( Control.State
                 ( Control.State
                     ( Control.State String
-                    , ( Control.State Int
-                      , Control.End
-                      )
+                    , ( Control.State Int, Control.End )
                     )
                 , Control.End
                 )
@@ -231,15 +210,21 @@ type alias FormState =
 type alias FormDelta =
     Control.Delta
         ( Control.Delta
-            ( Control.Delta (Control.ListDelta String)
+            ( Control.Delta
+                ( Control.Delta
+                    (Control.ListDelta
+                        ( Control.Delta String
+                        , ( Control.Delta String, Control.End )
+                        )
+                    )
+                , Control.End
+                )
             , Control.End
             )
         , ( Control.Delta
                 ( Control.Delta
                     ( Control.Delta String
-                    , ( Control.Delta CounterDelta
-                      , Control.End
-                      )
+                    , ( Control.Delta CounterDelta, Control.End )
                     )
                 , Control.End
                 )

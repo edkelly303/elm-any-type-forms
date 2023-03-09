@@ -144,7 +144,7 @@ flagIf =
 
 
 flagListAt =
-    Internal.flagListIf
+    Internal.flagListAt
 
 
 onFlag =
@@ -153,3 +153,7 @@ onFlag =
 
 layout =
     Internal.layout
+
+
+dict =
+    Internal.dict

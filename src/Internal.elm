@@ -13,12 +13,13 @@ module Internal exposing
     , checkMsgType
     , customType
     , debounce
+    , dict
     , end
     , enum
     , failIf
     , field
     , flagIf
-    , flagListIf
+    , flagListAt
     , float
     , fromControl
     , hiddenField
@@ -42,6 +43,7 @@ module Internal exposing
     , wrapper
     )
 
+import Dict
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
@@ -398,12 +400,12 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 -}
 
 
-flagListIf :
+flagListAt :
     (output -> List Int)
     -> String
     -> Control (List state) (ListDelta delta) output
     -> Control (List state) (ListDelta delta) output
-flagListIf check flagLabel (Control control) =
+flagListAt check flagLabel (Control control) =
     Control (control >> listFlagEmitter check flagLabel)
 
 
@@ -985,6 +987,65 @@ list (Control ctrl) =
             , collectDebouncingReceivers = collectDebouncingReceivers
             }
         )
+
+
+
+{-
+   d8888b. d888888b  .o88b. d888888b
+   88  `8D   `88'   d8P  Y8 `~~88~~'
+   88   88    88    8P         88
+   88   88    88    8b         88
+   88  .8D   .88.   Y8b  d8    88
+   Y8888D' Y888888P  `Y88P'    YP
+-}
+
+
+dict :
+    String
+    -> Control keyState keyDelta comparable
+    -> String
+    -> Control valueState valueDelta value
+    ->
+        Control
+            ( State (List (State ( State keyState, ( State valueState, End ) ))), End )
+            ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
+            (Dict.Dict comparable value)
+dict keyLabel keyControl valueLabel valueControl =
+    list
+        (tuple
+            keyLabel
+            (keyControl |> onFlag "@@dict-unique-keys" "Keys must be unique")
+            valueLabel
+            valueControl
+        )
+        |> flagListAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
+        |> wrapper Dict.fromList Dict.toList
+
+
+nonUniqueIndexes : List comparable -> List Int
+nonUniqueIndexes listState =
+    let
+        duplicates =
+            List.Extra.frequencies listState
+                |> List.filterMap
+                    (\( item, count ) ->
+                        if count > 1 then
+                            Just item
+
+                        else
+                            Nothing
+                    )
+    in
+    List.indexedMap
+        (\idx item ->
+            if List.member item duplicates then
+                Just idx
+
+            else
+                Nothing
+        )
+        listState
+        |> List.filterMap identity
 
 
 
@@ -2355,7 +2416,7 @@ wrappedView status innerView =
         [ HA.style "background-color"
             (case status of
                 Idle (_ :: _) ->
-                    "rgba(255, 0, 0, 0.1)"
+                    "rgba(255, 0, 0, 0.05)"
 
                 _ ->
                     ""
@@ -2365,11 +2426,7 @@ wrappedView status innerView =
         [ innerView
         , case status of
             Idle [] ->
-                H.div
-                    [ HA.style "margin-top" "10px"
-                    , HA.style "margin-bottom" "10px"
-                    ]
-                    [ H.text "✅ Looking good!" ]
+                H.text ""
 
             Idle feedback ->
                 H.div [ HA.style "margin-top" "10px" ]
