@@ -222,6 +222,7 @@ fromControl label toMsg (Control control) =
 
                 debouncingReceivers =
                     collectDebouncingReceivers s
+                    |> Debug.log "debouncing receivers (top level)"
 
                 flags =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
@@ -962,7 +963,20 @@ list (Control ctrl) =
                         listState
                         |> List.concat
             , receiverCount = []
-            , collectDebouncingReceivers = \_ -> []
+            , collectDebouncingReceivers =
+                \(State _ listState) ->
+                    List.indexedMap
+                        (\idx itemState ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.collectDebouncingReceivers itemState
+                            
+                        )
+                        listState
+                        |> Debug.log "debouncing receivers for List"
+                        |> List.concat
             }
         )
 

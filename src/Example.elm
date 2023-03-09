@@ -49,25 +49,28 @@ fooControl =
 
 nonUniqueIndexes : List comparable -> List Int
 nonUniqueIndexes list =
-    List.Extra.indexedFoldl
-        (\idx item dict ->
-            Dict.update item
-                (\midx ->
-                    case midx of
-                        Nothing ->
-                            Just [ idx ]
+    let
+        duplicates =
+            List.Extra.frequencies list
+                |> List.filterMap
+                    (\( item, count ) ->
+                        if count > 1 then
+                            Just item
 
-                        Just idxs ->
-                            Just (idx :: idxs)
-                )
-                dict
+                        else
+                            Nothing
+                    )
+    in
+    List.indexedMap
+        (\idx item ->
+            if List.member item duplicates then
+                Just idx
+
+            else
+                Nothing
         )
-        Dict.empty
         list
-        |> Dict.values
-        |> List.filter (\idxs -> List.length idxs > 1)
-        |> List.concat
-        |> List.Extra.unique
+        |> List.filterMap identity
 
 
 barControl =
