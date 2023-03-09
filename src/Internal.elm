@@ -222,7 +222,6 @@ fromControl label toMsg (Control control) =
 
                 debouncingReceivers =
                     collectDebouncingReceivers s
-                    |> Debug.log "debouncing receivers (top level)"
 
                 flags =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
@@ -883,6 +882,18 @@ list (Control ctrl) =
                             (Ok [])
                             (List.indexedMap Tuple.pair state)
                             |> Result.mapError (List.map (\feedback -> ( Path.toString path, feedback )))
+
+                collectDebouncingReceivers (State _ listState) =
+                    List.indexedMap
+                        (\idx itemState ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.collectDebouncingReceivers itemState
+                        )
+                        listState
+                        |> List.concat
             in
             { path = path
             , index = 0
@@ -903,7 +914,14 @@ list (Control ctrl) =
             , baseUpdate = update
             , update = update 0
             , childViews = \_ -> []
-            , view = listView path ctrl
+            , view =
+                \config ->
+                    let
+                        debouncingReceivers =
+                            -- this is a total hack!
+                            collectDebouncingReceivers (State { status = Intact_, selected = 0 } config.state)
+                    in
+                    listView path ctrl config debouncingReceivers
             , parse = parse
             , setAllIdle =
                 \(State i s) ->
@@ -931,10 +949,13 @@ list (Control ctrl) =
                         s
                         |> List.concat
             , receiveFlags =
-                \(State _ listState) flags ->
+                \((State _ listState) as state) flags ->
                     List.indexedMap
                         (\idx item ->
                             let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+
                                 filteredFlags =
                                     List.filterMap
                                         (\flag ->
@@ -954,29 +975,14 @@ list (Control ctrl) =
                                                     Just flag
                                         )
                                         flags
-
-                                itemControl =
-                                    ctrl (Path.add (String.fromInt idx) path)
+                                        |> Debug.log "filteredFlags1"
                             in
                             itemControl.receiveFlags item filteredFlags
                         )
                         listState
                         |> List.concat
             , receiverCount = []
-            , collectDebouncingReceivers =
-                \(State _ listState) ->
-                    List.indexedMap
-                        (\idx itemState ->
-                            let
-                                itemControl =
-                                    ctrl (Path.add (String.fromInt idx) path)
-                            in
-                            itemControl.collectDebouncingReceivers itemState
-                            
-                        )
-                        listState
-                        |> Debug.log "debouncing receivers for List"
-                        |> List.concat
+            , collectDebouncingReceivers = collectDebouncingReceivers
             }
         )
 
@@ -2418,8 +2424,9 @@ listView :
     Path.Path
     -> (Path.Path -> ControlFns input state delta output)
     -> ViewConfig (List (State state))
+    -> List Flag
     -> Html (Delta (ListDelta delta))
-listView path ctrl config =
+listView path ctrl config debouncingReceivers =
     H.div []
         [ if List.isEmpty config.state then
             H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
@@ -2432,7 +2439,7 @@ listView path ctrl config =
                             control =
                                 ctrl (Path.add (String.fromInt idx) path)
 
-                            filteredFlags =
+                            filteredFlags1 =
                                 List.filterMap
                                     (\flag ->
                                         case flag of
@@ -2451,6 +2458,10 @@ listView path ctrl config =
                                                 Just flag
                                     )
                                     config.flags
+
+                            filteredFlags2 =
+                                List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
+                                    |> Debug.log "filteredFlags2"
                         in
                         H.div [ HA.style "margin-top" "10px" ]
                             [ H.summary
@@ -2469,8 +2480,8 @@ listView path ctrl config =
                                 ]
                             , control.view
                                 { state = state
-                                , status = getStatus control.parse control.receiveFlags filteredFlags (State internalState state)
-                                , flags = filteredFlags
+                                , status = getStatus control.parse control.receiveFlags filteredFlags2 (State internalState state)
+                                , flags = filteredFlags2
                                 , selected = config.selected
                                 }
                                 |> H.map (ChangeItem idx)
