@@ -977,7 +977,6 @@ list (Control ctrl) =
                                                     Just flag
                                         )
                                         flags
-                                        |> Debug.log "filteredFlags1"
                             in
                             itemControl.receiveFlags item filteredFlags
                         )
@@ -2518,7 +2517,6 @@ listView path ctrl config debouncingReceivers =
 
                             filteredFlags2 =
                                 List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
-                                    |> Debug.log "filteredFlags2"
                         in
                         H.div [ HA.style "margin-top" "10px" ]
                             [ H.summary
