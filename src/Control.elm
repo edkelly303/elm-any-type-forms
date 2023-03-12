@@ -141,7 +141,7 @@ customType :
             , deltaBefores : a13 -> a13
             , destructor : b
             , flagEmitter : a12 -> a12
-            , flagReceiver : a11 -> a11
+            , errorCollector : a11 -> a11
             , fns : c -> d -> d
             , idleSetter : a10 -> a10
             , index : number
@@ -149,7 +149,7 @@ customType :
             , makeDeltaSetters : a9 -> a9
             , makeStateSetters : a8 -> a8
             , parser : a7 -> a7
-            , receiverCollector : a6 -> a6
+            , debouncingReceiverCollector : a6 -> a6
             , stateAfter : End
             , stateAfters : End
             , stateBefore : a5 -> a5
@@ -202,8 +202,8 @@ field :
             , afters : c1
             , makeSetters : d1 -> befores -> afters -> next
             , flagEmitter : e1 -> List Internal.Flag -> f1 -> g1 -> List Internal.Flag
-            , flagReceiver : h1 -> List Internal.Flag -> List ( String, String ) -> i1 -> j1 -> List ( String, String )
-            , receiverCollector : k1 -> List Internal.Flag -> l1 -> m1 -> List Internal.Flag
+            , errorCollector : h1 -> List Internal.Flag -> List ( String, String ) -> i1 -> j1 -> List ( String, String )
+            , debouncingReceiverCollector : k1 -> List Internal.Flag -> l1 -> m1 -> List Internal.Flag
             }
             n1
     ->
@@ -224,8 +224,8 @@ field :
             , afters : ( b1, c1 )
             , makeSetters : d1 -> ( ( value, after ) -> k2, befores ) -> ( after, afters ) -> ( value -> k2, next )
             , flagEmitter : e1 -> List Internal.Flag -> ( Internal.RecordFns l2 m2 n2 o2 p2, f1 ) -> ( Internal.State m2, g1 ) -> List Internal.Flag
-            , flagReceiver : h1 -> List Internal.Flag -> List ( String, String ) -> ( Internal.RecordFns q2 r2 s2 t2 u2, i1 ) -> ( Internal.State r2, j1 ) -> List ( String, String )
-            , receiverCollector : k1 -> List Internal.Flag -> ( Internal.RecordFns v2 w2 x2 y2 z2, l1 ) -> ( Internal.State w2, m1 ) -> List Internal.Flag
+            , errorCollector : h1 -> List Internal.Flag -> List ( String, String ) -> ( Internal.RecordFns q2 r2 s2 t2 u2, i1 ) -> ( Internal.State r2, j1 ) -> List ( String, String )
+            , debouncingReceiverCollector : k1 -> List Internal.Flag -> ( Internal.RecordFns v2 w2 x2 y2 z2, l1 ) -> ( Internal.State w2, m1 ) -> List Internal.Flag
             }
             n1
 field =
@@ -263,7 +263,7 @@ end : Internal.Builder
                        )
                     -> ( Internal.State state, restStates )
                     -> List Internal.Flag
-              , flagReceiver :
+              , errorCollector :
                     (
                     List Internal.Flag
                     -> List ( String, String )
@@ -311,7 +311,7 @@ end : Internal.Builder
                        )
                     -> ( Internal.State state, restStates )
                     -> Result (List ( String, String )) output
-              , receiverCollector :
+              , debouncingReceiverCollector :
                     (
                     List Internal.Flag
                     -> Internal.End
@@ -413,7 +413,7 @@ end : Internal.Builder
                     -> ( Internal.ControlFns input1 state delta output1, restFns )
                     -> ( Internal.State state, restStates )
                     -> List Internal.Flag
-              , flagReceiver :
+              , errorCollector :
                     (
                     List Internal.Flag
                     -> List ( String, String )
@@ -468,7 +468,7 @@ end : Internal.Builder
                     -> ( Internal.ControlFns input1 state delta output1, restFns )
                     -> ( Internal.State state, restStates )
                     -> Result (List ( String, String )) output
-              , receiverCollector :
+              , debouncingReceiverCollector :
                     (
                     List Internal.Flag
                     -> Internal.End

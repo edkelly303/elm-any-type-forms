@@ -77,7 +77,7 @@ type alias ControlFns input state delta output =
     , path : Path.Path
     , emitFlags : State state -> List Flag
     , collectDebouncingReceivers : State state -> List Flag
-    , receiveFlags : State state -> List Flag -> List ( String, String )
+    , collectErrors : State state -> List Flag -> List ( String, String )
     , receiverCount : List Flag
     , setAllIdle : State state -> State state
     }
@@ -163,7 +163,7 @@ type Delta delta
 fromControl : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
 fromControl label toMsg (Control control) =
     let
-        { init, update, view, parse, setAllIdle, emitFlags, receiveFlags, collectDebouncingReceivers } =
+        { init, update, view, parse, setAllIdle, emitFlags, collectErrors, collectDebouncingReceivers } =
             control Path.root
     in
     { init = init
@@ -194,15 +194,13 @@ fromControl label toMsg (Control control) =
             in
             H.div []
                 [ H.h1 [] [ H.text label ]
-                , H.div []
-                    [ view
-                        { state = state
-                        , status = getStatus parse receiveFlags flags (State internalState state)
-                        , flags = flags
-                        , selected = internalState.selected
-                        }
-                        |> H.map toMsg
-                    ]
+                , view
+                    { state = state
+                    , status = getStatus parse collectErrors flags (State internalState state)
+                    , flags = flags
+                    , selected = internalState.selected
+                    }
+                    |> H.map toMsg
                 ]
     , submit =
         \state ->
@@ -212,7 +210,7 @@ fromControl label toMsg (Control control) =
 
                 validationErrors =
                     emitFlags state
-                        |> receiveFlags state
+                        |> collectErrors state
             in
             ( setAllIdle state
             , case ( parsingResult, validationErrors ) of
@@ -292,7 +290,7 @@ makeControl config =
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , emitFlags = \_ -> []
             , collectDebouncingReceivers = \_ -> []
-            , receiveFlags = \_ _ -> []
+            , collectErrors = \_ _ -> []
             , receiverCount = []
             }
         )
@@ -436,11 +434,11 @@ onFlag flag message (Control control) =
 flagReceiver : Flag -> String -> ControlFns input state delta output -> ControlFns input state delta output
 flagReceiver flag message ctrl =
     { ctrl
-        | receiveFlags =
+        | collectErrors =
             \state flags ->
                 let
                     oldReceiver =
-                        ctrl.receiveFlags state flags
+                        ctrl.collectErrors state flags
 
                     newReceiver =
                         if List.member flag flags then
@@ -914,7 +912,7 @@ list (Control ctrl) =
                         )
                         s
                         |> List.concat
-            , receiveFlags =
+            , collectErrors =
                 \(State _ listState) flags ->
                     List.indexedMap
                         (\idx item ->
@@ -942,7 +940,7 @@ list (Control ctrl) =
                                         )
                                         flags
                             in
-                            itemControl.receiveFlags item filteredFlags
+                            itemControl.collectErrors item filteredFlags
                         )
                         listState
                         |> List.concat
@@ -1057,8 +1055,8 @@ record :
             , afters : End
             , makeSetters : n -> n
             , flagEmitter : o -> o
-            , flagReceiver : p -> p
-            , receiverCollector : q -> q
+            , errorCollector : p -> p
+            , debouncingReceiverCollector : q -> q
             }
             cus
 record toOutput =
@@ -1079,8 +1077,8 @@ record toOutput =
         , afters = End
         , makeSetters = identity
         , flagEmitter = identity
-        , flagReceiver = identity
-        , receiverCollector = identity
+        , errorCollector = identity
+        , debouncingReceiverCollector = identity
         }
 
 
@@ -1135,8 +1133,8 @@ fieldHelper access label fromInput (Control control) builder =
                 , afters = ( rec.after, rec.afters )
                 , makeSetters = rec.makeSetters >> deltaSetterMaker
                 , flagEmitter = rec.flagEmitter >> recordFlagEmitter
-                , flagReceiver = rec.flagReceiver >> recordFlagReceiver
-                , receiverCollector = rec.receiverCollector >> recordDebouncingReceiverCollector
+                , errorCollector = rec.errorCollector >> recordErrorCollector
+                , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
                 }
 
 
@@ -1178,23 +1176,32 @@ endRecord rec =
                         fieldViews =
                             childViews_ config
 
-                        idViews =
-                            List.map (\i -> H.h4 [ HA.style "color" "maroon" ] [ H.text i ]) rec.labels
+                        labelViews =
+                            List.map
+                                (\label ->
+                                    H.label
+                                        [ HA.for label
+
+                                        --, HA.style "color" "maroon"
+                                        ]
+                                        [ H.text label ]
+                                )
+                                rec.labels
 
                         combinedViews =
                             List.map2
-                                (\idView fieldView ->
+                                (\labelView fieldView ->
                                     if fieldView == H.text "" then
                                         H.text ""
                                         --this is a bit of a hack!
 
                                     else
-                                        H.div []
-                                            [ idView
+                                        H.ul []
+                                            [ labelView
                                             , fieldView
                                             ]
                                 )
-                                idViews
+                                labelViews
                                 fieldViews
                     in
                     H.div []
@@ -1226,9 +1233,9 @@ endRecord rec =
             , parse = parse
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
-            , receiveFlags = \(State _ states) flags -> receiveFlagsForRecord rec.flagReceiver flags fns states
+            , collectErrors = \(State _ states) flags -> collectErrorsForRecord rec.errorCollector flags fns states
             , receiverCount = []
-            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.receiverCollector fns states
+            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.debouncingReceiverCollector fns states
             }
         )
 
@@ -1258,8 +1265,8 @@ collectDebouncingReceiversForRecord :
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List Flag
-collectDebouncingReceiversForRecord receiverCollector_ fns states =
-    receiverCollector_ (\receivers End End -> receivers) [] fns states
+collectDebouncingReceiversForRecord debouncingReceiverCollector_ fns states =
+    debouncingReceiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
 recordDebouncingReceiverCollector :
@@ -1276,7 +1283,7 @@ recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restS
     next (receivers ++ fns.field.collectDebouncingReceivers state) restFns restStates
 
 
-receiveFlagsForRecord :
+collectErrorsForRecord :
     ((List Flag
       -> List ( String, String )
       -> End
@@ -1293,11 +1300,11 @@ receiveFlagsForRecord :
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List ( String, String )
-receiveFlagsForRecord flagReceiver_ flags fns states =
-    flagReceiver_ (\_ errors End End -> errors) flags [] fns states
+collectErrorsForRecord errorCollector_ flags fns states =
+    errorCollector_ (\_ errors End End -> errors) flags [] fns states
 
 
-recordFlagReceiver :
+recordErrorCollector :
     (List Flag
      -> List ( String, String )
      -> restFns
@@ -1309,8 +1316,8 @@ recordFlagReceiver :
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List ( String, String )
-recordFlagReceiver next flags errors ( fns, restFns ) ( state, restStates ) =
-    next flags (errors ++ fns.field.receiveFlags state flags) restFns restStates
+recordErrorCollector next flags errors ( fns, restFns ) ( state, restStates ) =
+    next flags (errors ++ fns.field.collectErrors state flags) restFns restStates
 
 
 emitFlagsForRecord :
@@ -1523,7 +1530,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
         view =
             fns.field.view
                 { state = state
-                , status = getStatus fns.field.parse fns.field.receiveFlags flags (State internalState state)
+                , status = getStatus fns.field.parse fns.field.collectErrors flags (State internalState state)
                 , flags = flags
                 , selected = internalState.selected
                 }
@@ -1560,7 +1567,7 @@ getStatus :
     -> List Flag
     -> State state
     -> Status
-getStatus parse receiveFlags flags ((State internalState _) as state) =
+getStatus parse collectErrors flags ((State internalState _) as state) =
     case internalState.status of
         Intact_ ->
             Intact
@@ -1579,7 +1586,7 @@ getStatus parse receiveFlags flags ((State internalState _) as state) =
                             errs
 
                 flaggedErrors =
-                    receiveFlags state flags
+                    collectErrors state flags
             in
             Idle (List.map Err (parsedErrors ++ flaggedErrors))
 
@@ -1686,8 +1693,8 @@ customType destructor =
         , stateInserter = identity
         , applyInputs = identity
         , flagEmitter = identity
-        , flagReceiver = identity
-        , receiverCollector = identity
+        , errorCollector = identity
+        , debouncingReceiverCollector = identity
         , destructor = destructor
         }
 
@@ -1732,8 +1739,8 @@ tagHelper label (Control control) toArgState builder =
                 , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
                 , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
                 , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
-                , flagReceiver = rec.flagReceiver >> customTypeFlagReceiver
-                , receiverCollector = rec.receiverCollector >> customTypeDebouncingReceiverCollector
+                , errorCollector = rec.errorCollector >> customTypeErrorCollector
+                , debouncingReceiverCollector = rec.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
                 , destructor = rec.destructor
                 }
 
@@ -1902,9 +1909,9 @@ endCustomType rec =
             , parse = parse
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
-            , receiveFlags = \(State _ states) flags -> receiveFlagsForCustomType rec.flagReceiver flags fns states
+            , collectErrors = \(State _ states) flags -> collectErrorsForCustomType rec.errorCollector flags fns states
             , receiverCount = []
-            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.receiverCollector fns states
+            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.debouncingReceiverCollector fns states
             }
         )
 
@@ -1934,8 +1941,8 @@ collectDebouncingReceiversForCustomType :
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List Flag
-collectDebouncingReceiversForCustomType receiverCollector_ fns states =
-    receiverCollector_ (\receivers End End -> receivers) [] fns states
+collectDebouncingReceiversForCustomType debouncingReceiverCollector_ fns states =
+    debouncingReceiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
 customTypeDebouncingReceiverCollector :
@@ -2019,7 +2026,7 @@ customTypeStateUpdater next { newStates, newCmds } ( fns, restFns ) ( deltaSette
         restStates
 
 
-receiveFlagsForCustomType :
+collectErrorsForCustomType :
     ((List Flag
       -> List ( String, String )
       -> End
@@ -2036,11 +2043,11 @@ receiveFlagsForCustomType :
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List ( String, String )
-receiveFlagsForCustomType flagReceiver_ flags fns states =
-    flagReceiver_ (\_ errors End End -> errors) flags [] fns states
+collectErrorsForCustomType errorCollector_ flags fns states =
+    errorCollector_ (\_ errors End End -> errors) flags [] fns states
 
 
-customTypeFlagReceiver :
+customTypeErrorCollector :
     (List Flag
      -> List ( String, String )
      -> restFns
@@ -2052,8 +2059,8 @@ customTypeFlagReceiver :
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List ( String, String )
-customTypeFlagReceiver next flags errors ( fns, restFns ) ( state, restStates ) =
-    next flags (errors ++ fns.receiveFlags state flags) restFns restStates
+customTypeErrorCollector next flags errors ( fns, restFns ) ( state, restStates ) =
+    next flags (errors ++ fns.collectErrors state flags) restFns restStates
 
 
 emitFlagsForCustomType :
@@ -2573,7 +2580,7 @@ listView path ctrl config debouncingReceivers =
                                 ]
                             , control.view
                                 { state = state
-                                , status = getStatus control.parse control.receiveFlags filteredFlags2 (State internalState state)
+                                , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
                                 , flags = filteredFlags2
                                 , selected = config.selected
                                 }
