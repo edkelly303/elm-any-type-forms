@@ -240,306 +240,95 @@ hiddenField =
     Internal.hiddenField
 
 
-end : Internal.Builder
-          { d
-              | afters : afters1
-              , befores : Internal.End -> befores1
-              , fields :
-                    Path.Path
-                    -> Internal.End
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-              , flagEmitter :
-                    (
-                    List Internal.Flag
-                    -> Internal.End
-                    -> Internal.End
-                    -> List Internal.Flag
-                    )
-                    -> List Internal.Flag
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.State state, restStates )
-                    -> List Internal.Flag
-              , errorCollector :
-                    (
-                    List Internal.Flag
-                    -> List ( String, String )
-                    -> Internal.End
-                    -> Internal.End
-                    -> List ( String, String )
-                    )
-                    -> List Internal.Flag
-                    -> List ( String, String )
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.State state, restStates )
-                    -> List ( String, String )
-              , idleSetter :
-                    (Internal.End -> Internal.End -> Internal.End)
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.State state, restStates )
-                    -> ( Internal.State state, restStates )
-              , initialiser :
-                    (input -> Internal.End -> Internal.End)
-                    -> input
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.State state, restStates )
-              , labels : List String
-              , makeSetters :
-                    (Internal.End -> Internal.End -> Internal.End)
-                    -> befores1
-                    -> afters1
-                    -> ( Internal.Delta delta -> recordDelta, restDeltaSetters )
-              , parser :
-                    (
-                    Result (List ( String, String )) output
-                    -> Internal.End
-                    -> Internal.End
-                    -> Result (List ( String, String )) output
-                    )
-                    -> Result (List ( String, String )) output1_1
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.State state, restStates )
-                    -> Result (List ( String, String )) output
-              , debouncingReceiverCollector :
-                    (
-                    List Internal.Flag
-                    -> Internal.End
-                    -> Internal.End
-                    -> List Internal.Flag
-                    )
-                    -> List Internal.Flag
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.State state, restStates )
-                    -> List Internal.Flag
-              , states :
-                    Path.Path -> Internal.End -> ( Internal.State state, restStates )
-              , toOutput : output1_1
-              , updater :
-                    (
-                    { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                    , newStates : Internal.End -> ( Internal.State state, restStates )
-                    }
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                       , newStates :
-                             Internal.End -> ( Internal.State state, restStates )
-                       }
-                    )
-                    -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                       , newStates :
-                             ( Internal.State state, restStates )
-                             -> ( Internal.State state, restStates )
-                       }
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.Delta delta -> recordDelta, restDeltaSetters )
-                    -> ( Internal.Delta delta, restDeltas )
-                    -> ( Internal.State state, restStates )
-                    -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                       , newStates :
-                             Internal.End -> ( Internal.State state, restStates )
-                       }
-              , viewer :
-                    (
-                    List
-                        (
-                        Html.Html
-                            (Internal.Delta ( Internal.Delta delta, restDeltas ))
-                        )
-                    -> List Internal.Flag
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> List
-                           (
-                           Html.Html
-                               (Internal.Delta ( Internal.Delta delta, restDeltas ))
-                           )
-                    )
-                    -> List
-                           (
-                           Html.Html
-                               (Internal.Delta ( Internal.Delta delta, restDeltas ))
-                           )
-                    -> List Internal.Flag
-                    -> ( Internal.RecordFns input2 state delta output2 recordOutput
-                       , restFns1
-                       )
-                    -> ( Internal.Delta delta -> recordDelta, restDeltaSetters )
-                    -> ( Internal.State state, restStates )
-                    -> List
-                           (
-                           Html.Html
-                               (Internal.Delta ( Internal.Delta delta, restDeltas ))
-                           )
-          }
-          { e
-              | applyInputs :
-                    (state1 -> Internal.End -> state1)
-                    -> (stateSetter -> state0)
-                    -> ( stateSetter, restStateSetters )
-                    -> input
-                    -> Internal.State ( Internal.State state, restStates )
-              , deltaAfters : afters
-              , deltaBefores : Internal.End -> befores
-              , destructor : stateSetter -> state0
-              , flagEmitter :
-                    (
-                    List Internal.Flag
-                    -> Int
-                    -> Internal.End
-                    -> Internal.End
-                    -> List Internal.Flag
-                    )
-                    -> List Internal.Flag
-                    -> Int
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> ( Internal.State state, restStates )
-                    -> List Internal.Flag
-              , errorCollector :
-                    (
-                    List Internal.Flag
-                    -> List ( String, String )
-                    -> Internal.End
-                    -> Internal.End
-                    -> List ( String, String )
-                    )
-                    -> List Internal.Flag
-                    -> List ( String, String )
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> ( Internal.State state, restStates )
-                    -> List ( String, String )
-              , fns :
-                    Path.Path
-                    -> Internal.End
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-              , idleSetter :
-                    (Int -> Internal.End -> Internal.End -> Internal.End)
-                    -> Int
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> ( Internal.State state, restStates )
-                    -> ( Internal.State state, restStates )
-              , labels : List String
-              , makeDeltaSetters :
-                    (Internal.End -> Internal.End -> Internal.End)
-                    -> befores
-                    -> afters
-                    -> ( Internal.Delta delta -> ( Internal.Delta delta, restDeltas )
-                       , restSetters
-                       )
-              , makeStateSetters :
-                    (
-                    a1
-                    -> b1
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    )
-                    -> c
-                    -> ( Internal.State state, restStates )
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> f
-                    -> g
-                    -> h
-                    -> ( stateSetter, restStateSetters )
-              , parser :
-                    (a -> b -> Internal.End -> Internal.End -> a)
-                    -> Result (List ( String, String )) value
-                    -> Int
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> ( Internal.State state, restStates )
-                    -> Result (List ( String, String )) output
-              , debouncingReceiverCollector :
-                    (
-                    List Internal.Flag
-                    -> Internal.End
-                    -> Internal.End
-                    -> List Internal.Flag
-                    )
-                    -> List Internal.Flag
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> ( Internal.State state, restStates )
-                    -> List Internal.Flag
-              , stateAfters : h
-              , stateBefores : Internal.End -> g
-              , stateInserter : c
-              , states :
-                    Path.Path -> Internal.End -> ( Internal.State state, restStates )
-              , toArgStates : Internal.End -> f
-              , updater :
-                    (
-                    { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                    , newStates : Internal.End -> ( Internal.State state, restStates )
-                    }
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                       , newStates :
-                             Internal.End -> ( Internal.State state, restStates )
-                       }
-                    )
-                    -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                       , newStates :
-                             ( Internal.State state, restStates )
-                             -> ( Internal.State state, restStates )
-                       }
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> ( Internal.Delta delta -> ( Internal.Delta delta, restDeltas )
-                       , restSetters
-                       )
-                    -> ( Internal.Delta delta, restDeltas )
-                    -> ( Internal.State state, restStates )
-                    -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas ))
-                       , newStates :
-                             Internal.End -> ( Internal.State state, restStates )
-                       }
-              , viewer :
-                    (
-                    Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
-                    -> List Internal.Flag
-                    -> Int
-                    -> Internal.End
-                    -> Internal.End
-                    -> Internal.End
-                    -> Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
-                    )
-                    -> Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
-                    -> List Internal.Flag
-                    -> Int
-                    -> ( Internal.ControlFns input1 state delta output1, restFns )
-                    -> ( Internal.Delta delta -> ( Internal.Delta delta, restDeltas )
-                       , restSetters
-                       )
-                    -> ( Internal.State state, restStates )
-                    -> Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
-          }
-      -> Internal.AdvancedControl
-             input
-             ( Internal.State state, restStates )
-             ( Internal.Delta delta, restDeltas )
-             output
-
+end :
+    Internal.Builder
+        { d
+            | afters : afters1
+            , befores : Internal.End -> befores1
+            , fields : Path.Path -> Internal.End -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 )
+            , flagEmitter : (List Internal.Flag -> Internal.End -> Internal.End -> List Internal.Flag) -> List Internal.Flag -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( Internal.State state, restStates ) -> List Internal.Flag
+            , errorCollector : (List Internal.Flag -> List ( String, String ) -> Internal.End -> Internal.End -> List ( String, String )) -> List Internal.Flag -> List ( String, String ) -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( Internal.State state, restStates ) -> List ( String, String )
+            , idleSetter : (Internal.End -> Internal.End -> Internal.End) -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( Internal.State state, restStates ) -> ( Internal.State state, restStates )
+            , initialiser : (input -> Internal.End -> Internal.End) -> input -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( Internal.State state, restStates )
+            , labels : List String
+            , makeSetters : (Internal.End -> Internal.End -> Internal.End) -> befores1 -> afters1 -> ( Internal.Delta delta -> recordDelta, restDeltaSetters )
+            , parser : (Result (List ( String, String )) output -> Internal.End -> Internal.End -> Result (List ( String, String )) output) -> Result (List ( String, String )) output1_1 -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( Internal.State state, restStates ) -> Result (List ( String, String )) output
+            , debouncingReceiverCollector : (List Internal.Flag -> Internal.End -> Internal.End -> List Internal.Flag) -> List Internal.Flag -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( Internal.State state, restStates ) -> List Internal.Flag
+            , states : Path.Path -> Internal.End -> ( Internal.State state, restStates )
+            , toOutput : output1_1
+            , updater :
+                ({ newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : Internal.End -> ( Internal.State state, restStates ) } -> Internal.End -> Internal.End -> Internal.End -> Internal.End -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : Internal.End -> ( Internal.State state, restStates ) })
+                -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : ( Internal.State state, restStates ) -> ( Internal.State state, restStates ) }
+                -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 )
+                -> ( Internal.Delta delta -> recordDelta, restDeltaSetters )
+                -> ( Internal.Delta delta, restDeltas )
+                -> ( Internal.State state, restStates )
+                -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : Internal.End -> ( Internal.State state, restStates ) }
+            , viewer :
+                (List (Html.Html (Internal.Delta ( Internal.Delta delta, restDeltas ))) -> List Internal.Flag -> Internal.End -> Internal.End -> Internal.End -> List (Html.Html (Internal.Delta ( Internal.Delta delta, restDeltas ))))
+                -> List (Html.Html (Internal.Delta ( Internal.Delta delta, restDeltas )))
+                -> List Internal.Flag
+                -> ( Internal.RecordFns input2 state delta output2 recordOutput, restFns1 )
+                -> ( Internal.Delta delta -> recordDelta, restDeltaSetters )
+                -> ( Internal.State state, restStates )
+                -> List (Html.Html (Internal.Delta ( Internal.Delta delta, restDeltas )))
+        }
+        { e
+            | applyInputs : (state1 -> Internal.End -> state1) -> (stateSetter -> state0) -> ( stateSetter, restStateSetters ) -> input -> Internal.State ( Internal.State state, restStates )
+            , deltaAfters : afters
+            , deltaBefores : Internal.End -> befores
+            , destructor : stateSetter -> state0
+            , flagEmitter : (List Internal.Flag -> Int -> Internal.End -> Internal.End -> List Internal.Flag) -> List Internal.Flag -> Int -> ( Internal.ControlFns input1 state delta output1, restFns ) -> ( Internal.State state, restStates ) -> List Internal.Flag
+            , errorCollector : (List Internal.Flag -> List ( String, String ) -> Internal.End -> Internal.End -> List ( String, String )) -> List Internal.Flag -> List ( String, String ) -> ( Internal.ControlFns input1 state delta output1, restFns ) -> ( Internal.State state, restStates ) -> List ( String, String )
+            , fns : Path.Path -> Internal.End -> ( Internal.ControlFns input1 state delta output1, restFns )
+            , idleSetter : (Int -> Internal.End -> Internal.End -> Internal.End) -> Int -> ( Internal.ControlFns input1 state delta output1, restFns ) -> ( Internal.State state, restStates ) -> ( Internal.State state, restStates )
+            , labels : List String
+            , makeDeltaSetters : (Internal.End -> Internal.End -> Internal.End) -> befores -> afters -> ( Internal.Delta delta -> ( Internal.Delta delta, restDeltas ), restSetters )
+            , makeStateSetters : (a1 -> b1 -> Internal.End -> Internal.End -> Internal.End -> Internal.End -> Internal.End) -> c -> ( Internal.State state, restStates ) -> ( Internal.ControlFns input1 state delta output1, restFns ) -> f -> g -> h -> ( stateSetter, restStateSetters )
+            , parser : (a -> b -> Internal.End -> Internal.End -> a) -> Result (List ( String, String )) value -> Int -> ( Internal.ControlFns input1 state delta output1, restFns ) -> ( Internal.State state, restStates ) -> Result (List ( String, String )) output
+            , debouncingReceiverCollector : (List Internal.Flag -> Internal.End -> Internal.End -> List Internal.Flag) -> List Internal.Flag -> ( Internal.ControlFns input1 state delta output1, restFns ) -> ( Internal.State state, restStates ) -> List Internal.Flag
+            , stateAfters : h
+            , stateBefores : Internal.End -> g
+            , stateInserter : c
+            , states : Path.Path -> Internal.End -> ( Internal.State state, restStates )
+            , toArgStates : Internal.End -> f
+            , updater :
+                ({ newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : Internal.End -> ( Internal.State state, restStates ) }
+                 -> Internal.End
+                 -> Internal.End
+                 -> Internal.End
+                 -> Internal.End
+                 -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : Internal.End -> ( Internal.State state, restStates ) }
+                )
+                -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : ( Internal.State state, restStates ) -> ( Internal.State state, restStates ) }
+                -> ( Internal.ControlFns input1 state delta output1, restFns )
+                -> ( Internal.Delta delta -> ( Internal.Delta delta, restDeltas ), restSetters )
+                -> ( Internal.Delta delta, restDeltas )
+                -> ( Internal.State state, restStates )
+                -> { newCmds : List (Cmd ( Internal.Delta delta, restDeltas )), newStates : Internal.End -> ( Internal.State state, restStates ) }
+            , viewer :
+                (Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
+                 -> List Internal.Flag
+                 -> Int
+                 -> Internal.End
+                 -> Internal.End
+                 -> Internal.End
+                 -> Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
+                )
+                -> Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
+                -> List Internal.Flag
+                -> Int
+                -> ( Internal.ControlFns input1 state delta output1, restFns )
+                -> ( Internal.Delta delta -> ( Internal.Delta delta, restDeltas ), restSetters )
+                -> ( Internal.State state, restStates )
+                -> Maybe (Html.Html ( Internal.Delta delta, restDeltas ))
+        }
+    ->
+        Internal.AdvancedControl
+            input
+            ( Internal.State state, restStates )
+            ( Internal.Delta delta, restDeltas )
+            output
 end =
     Internal.end
 
