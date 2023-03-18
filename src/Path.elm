@@ -1,4 +1,4 @@
-module Path exposing (Path, add, last, root, toString)
+module Path exposing (Path, add, root, toString)
 
 
 type Path
@@ -21,13 +21,3 @@ toString (Path path) =
         |> List.reverse
         |> List.filter (not << String.isEmpty)
         |> String.join " > "
-
-
-last : Path -> String
-last (Path path) =
-    case path of
-        lastSegment :: _ ->
-            lastSegment
-
-        [] ->
-            ""
