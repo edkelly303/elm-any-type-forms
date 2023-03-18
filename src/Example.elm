@@ -179,12 +179,7 @@ update msg model =
 
 view : Model -> Html.Html Msg
 view model =
-    Html.div []
-        [ exampleForm.view model.form
-        , Html.button
-            [ Html.Events.onClick FormSubmitted ]
-            [ Html.text "Submit" ]
-        ]
+    exampleForm.view model.form
 
 
 

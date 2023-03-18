@@ -201,6 +201,7 @@ fromControl label toFormUpdatedMsg formSubmittedMsg (Control control) =
                     , selected = internalState.selected
                     }
                     |> H.map toFormUpdatedMsg
+                , button formSubmittedMsg "Submit"
                 ]
     , submit =
         \state ->
