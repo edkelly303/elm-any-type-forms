@@ -49,6 +49,7 @@ type alias ViewConfig state =
 toForm :
     String
     -> (Delta delta -> msg)
+    -> msg
     -> Control state delta output
     -> Form state delta output msg
 toForm =

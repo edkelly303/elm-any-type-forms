@@ -160,8 +160,8 @@ type Delta delta
 -}
 
 
-fromControl : String -> (Delta delta -> msg) -> Control state delta output -> Form state delta output msg
-fromControl label toMsg (Control control) =
+fromControl : String -> (Delta delta -> msg) -> msg -> Control state delta output -> Form state delta output msg
+fromControl label toFormUpdatedMsg formSubmittedMsg (Control control) =
     let
         { init, update, view, parse, setAllIdle, emitFlags, collectErrors, collectDebouncingReceivers } =
             control Path.root
@@ -179,7 +179,7 @@ fromControl label toMsg (Control control) =
     , update =
         \msg state ->
             update msg state
-                |> Tuple.mapSecond (Cmd.map toMsg)
+                |> Tuple.mapSecond (Cmd.map toFormUpdatedMsg)
     , view =
         \((State internalState state) as s) ->
             let
@@ -192,7 +192,7 @@ fromControl label toMsg (Control control) =
                 flags =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
             in
-            H.div []
+            H.form [ HE.onSubmit formSubmittedMsg ]
                 [ H.h1 [] [ H.text label ]
                 , view
                     { state = state
@@ -200,7 +200,7 @@ fromControl label toMsg (Control control) =
                     , flags = flags
                     , selected = internalState.selected
                     }
-                    |> H.map toMsg
+                    |> H.map toFormUpdatedMsg
                 ]
     , submit =
         \state ->
@@ -1180,10 +1180,7 @@ endRecord rec =
                             List.map
                                 (\label ->
                                     H.label
-                                        [ HA.for label
-
-                                        --, HA.style "color" "maroon"
-                                        ]
+                                        [ HA.for label ]
                                         [ H.text label ]
                                 )
                                 rec.labels
@@ -1196,7 +1193,7 @@ endRecord rec =
                                         --this is a bit of a hack!
 
                                     else
-                                        H.ul []
+                                        H.li []
                                             [ labelView
                                             , fieldView
                                             ]
@@ -1204,13 +1201,11 @@ endRecord rec =
                                 labelViews
                                 fieldViews
                     in
-                    H.div []
-                        [ if List.length combinedViews > 1 then
-                            H.div [] combinedViews
+                    if List.length combinedViews > 1 then
+                        H.ul [] combinedViews
 
-                          else
-                            H.div [] fieldViews
-                        ]
+                    else
+                        H.div [] fieldViews
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
@@ -1545,13 +1540,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
                 H.text ""
 
             ReadOnly ->
-                H.fieldset
-                    [ HA.disabled True
-                    , HA.style "border" "none"
-                    , HA.style "padding" "0px"
-                    , HA.style "margin" "0px"
-                    ]
-                    [ view ]
+                H.div [ HA.disabled True ] [ view ]
          )
             :: views
         )
@@ -2457,15 +2446,14 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
 wrappedView : Status -> Html delta -> Html delta
 wrappedView status innerView =
     H.div
-        [ HA.style "background-color"
+        [ HA.class
             (case status of
                 Idle (_ :: _) ->
-                    "rgba(255, 0, 0, 0.05)"
+                    "invalid"
 
                 _ ->
                     ""
             )
-        , HA.style "padding" "5px"
         ]
         [ innerView
         , case status of
@@ -2473,7 +2461,7 @@ wrappedView status innerView =
                 H.text ""
 
             Idle feedback ->
-                H.div [ HA.style "margin-top" "10px" ]
+                H.div []
                     (List.map
                         (\f ->
                             let
@@ -2485,9 +2473,7 @@ wrappedView status innerView =
                                         Err ( _, t ) ->
                                             ( "❌", t )
                             in
-                            H.div
-                                [ HA.style "margin-bottom" "10px" ]
-                                [ H.text (icon ++ " " ++ txt) ]
+                            H.div [] [ H.text (icon ++ " " ++ txt) ]
                         )
                         feedback
                     )
@@ -2505,20 +2491,27 @@ customTypeView :
 customTypeView options selectedTag selectedTagView =
     H.div []
         (if List.length options > 1 then
-            [ H.div []
-                [ radioView
-                    { options = options
-                    , selectedOption = selectedTag
-                    , toMsg = TagSelected
-                    , columns = 3
-                    }
-                , H.div [] selectedTagView
-                ]
+            [ radioView
+                { options = options
+                , selectedOption = selectedTag
+                , toMsg = TagSelected
+                , columns = 3
+                }
+            , H.div [] selectedTagView
             ]
 
          else
             selectedTagView
         )
+
+
+button : msg -> String -> Html msg
+button msg text =
+    H.button
+        [ HA.type_ "button"
+        , HE.onClick msg
+        ]
+        [ H.text text ]
 
 
 listView :
@@ -2530,10 +2523,10 @@ listView :
 listView path ctrl config debouncingReceivers =
     H.div []
         [ if List.isEmpty config.state then
-            H.button [ HE.onClick (InsertItem 0) ] [ H.text "➕ Add an item" ]
+            button (InsertItem 0) "Add list item"
 
           else
-            H.div []
+            H.ol []
                 (List.indexedMap
                     (\idx (State internalState state) ->
                         let
@@ -2563,28 +2556,16 @@ listView path ctrl config debouncingReceivers =
                             filteredFlags2 =
                                 List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
                         in
-                        H.div [ HA.style "margin-top" "10px" ]
-                            [ H.summary
-                                [ HA.style "margin-bottom" "10px" ]
-                                [ H.text ("#" ++ String.fromInt (idx + 1))
-                                , H.button
-                                    [ HA.style "margin-left" "10px"
-                                    , HE.onClick (DeleteItem idx)
-                                    ]
-                                    [ H.text "❌" ]
-                                , H.button
-                                    [ HA.style "margin-left" "10px"
-                                    , HE.onClick (InsertItem (idx + 1))
-                                    ]
-                                    [ H.text "➕" ]
-                                ]
-                            , control.view
+                        H.li []
+                            [ control.view
                                 { state = state
                                 , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
                                 , flags = filteredFlags2
                                 , selected = config.selected
                                 }
                                 |> H.map (ChangeItem idx)
+                            , button (DeleteItem idx) ("Delete item " ++ String.fromInt (idx + 1))
+                            , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
                             ]
                     )
                     config.state
@@ -2621,16 +2602,13 @@ radioView :
     }
     -> Html msg
 radioView { options, selectedOption, toMsg, columns } =
-    H.div
+    H.fieldset
         [ HA.style "display" "grid"
         , HA.style "grid-template-columns" (String.repeat columns "1fr ")
         ]
         (List.map
             (\( option, optionLabel ) ->
-                H.div
-                    [ HA.style "margin-right" "15px"
-                    , HA.style "margin-bottom" "10px"
-                    ]
+                H.div []
                     [ H.input
                         [ HA.type_ "radio"
                         , HA.id optionLabel
@@ -2639,11 +2617,7 @@ radioView { options, selectedOption, toMsg, columns } =
                         , onChecked (toMsg option)
                         ]
                         []
-                    , H.label
-                        [ HA.for optionLabel
-                        , HA.style "margin-left" "4px"
-                        ]
-                        [ H.text optionLabel ]
+                    , H.label [ HA.for optionLabel ] [ H.text optionLabel ]
                     ]
             )
             options

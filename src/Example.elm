@@ -4,6 +4,7 @@ import Browser
 import Control
 import Dict
 import Html
+import Html.Attributes
 import Html.Events
 
 
@@ -13,7 +14,10 @@ import Html.Events
 
 
 exampleForm =
-    Control.toForm "My Lovely Form" FormUpdated exampleControl
+    Control.toForm "My Lovely Form"
+        FormUpdated
+        FormSubmitted
+        exampleControl
 
 
 type Example
@@ -96,9 +100,17 @@ counterControl =
         , view =
             \state ->
                 Html.div []
-                    [ Html.button [ Html.Events.onClick Increment ] [ Html.text "+1" ]
+                    [ Html.button
+                        [ Html.Attributes.type_ "button"
+                        , Html.Events.onClick Increment
+                        ]
+                        [ Html.text "+1" ]
                     , Html.div [] [ Html.text <| String.fromInt state ]
-                    , Html.button [ Html.Events.onClick Decrement ] [ Html.text "-1" ]
+                    , Html.button
+                        [ Html.Attributes.type_ "button"
+                        , Html.Events.onClick Decrement
+                        ]
+                        [ Html.text "-1" ]
                     ]
         , parse = Ok
         }
