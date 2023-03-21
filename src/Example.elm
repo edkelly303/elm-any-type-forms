@@ -55,20 +55,20 @@ barControl =
         |> Control.field "Baz" .baz bazControl
         |> Control.field "Qux" .qux quxControl
         |> Control.end
-        |> Control.flagIf (\record -> String.toInt record.baz == Just record.qux) "baz=qux"
+        |> Control.throwFlagIf (\record -> String.toInt record.baz == Just record.qux) "baz=qux"
 
 
 bazControl =
     Control.string
         |> Control.debounce 500
-        |> Control.onFlag "baz=qux" "Baz must not equal Qux"
+        |> Control.catchFlag "baz=qux" "Baz must not equal Qux"
         |> Control.failIf String.isEmpty "Baz must not be blank"
         |> Control.failIf (String.contains "?") "Baz must not contain a '?'"
 
 
 quxControl =
     counterControl
-        |> Control.onFlag "baz=qux" "Qux must not equal Baz"
+        |> Control.catchFlag "baz=qux" "Qux must not equal Baz"
         |> Control.failIf (\n -> n < 1) "Qux must be greater than zero"
 
 
@@ -87,8 +87,8 @@ type CounterDelta
 
 counterControl =
     Control.create
-        { empty = 0
-        , initialise = identity
+        { initEmpty = 0
+        , initWith = identity
         , update =
             \delta state ->
                 case delta of
