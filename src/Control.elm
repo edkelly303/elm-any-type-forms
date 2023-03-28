@@ -2537,16 +2537,16 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
 
 {-| Add a tag with three arguments to a custom type.
 
-    type Point3
-        = Point3 Float Float Float
+    type Point3D
+        = Point3D Float Float Float
 
-    pointControl =
+    point3DControl =
         customType
-            (\point tag ->
-                Point x y z ->
-                    point x y z
+            (\point3D tag ->
+                Point3D x y z ->
+                    point3D x y z
             )
-            |> tag2 Point ("X", float) ("Y", float) ("Z", float)
+            |> tag2 Point3D ("X", float) ("Y", float) ("Z", float)
 
 -}
 tag3 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
