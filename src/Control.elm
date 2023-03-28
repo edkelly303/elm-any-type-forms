@@ -8,8 +8,8 @@ module Control exposing
     , throwFlagsAt
     , initWith, debounce
     , record, field, hiddenField, readOnlyField, end, layout
-    , customType, tag0, tag1, tag2
-    , State, Delta, ListDelta, End
+    , customType, tag0, tag1, tag2, tag3, tag4, tag5
+    , State, Delta, ListDelta, End, Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
     )
 
 {-| About this library
@@ -45,12 +45,12 @@ module Control exposing
 
 ## Multi-field validation
 
-You may want display errors on one or more controls based on the validation of 
-another control higher up the tree. 
+You may want display errors on one or more controls based on the validation of
+another control higher up the tree.
 
 Take the example of a password creation form. You want to validate that the
-"Enter password" and "Confirm password" fields both contain the same string, and 
-show helpful error messages on both fields if they don't. You can achieve this 
+"Enter password" and "Confirm password" fields both contain the same string, and
+show helpful error messages on both fields if they don't. You can achieve this
 as follows:
 
     passwordControl =
@@ -97,12 +97,12 @@ as follows:
 
 # Building custom type combinators
 
-@docs customType, tag0, tag1, tag2
+@docs customType, tag0, tag1, tag2, tag3, tag4, tag5
 
 
 # Form internals
 
-@docs State, Delta, ListDelta, End
+@docs State, Delta, ListDelta, End, Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
 
 -}
 
@@ -2535,6 +2535,20 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
         )
 
 
+{-| Add a tag with three arguments to a custom type.
+
+    type Point3
+        = Point3 Float Float Float
+
+    pointControl =
+        customType
+            (\point tag ->
+                Point x y z ->
+                    point x y z
+            )
+            |> tag2 Point ("X", float) ("Y", float) ("Z", float)
+
+-}
 tag3 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
     tagHelper
         label
@@ -2549,6 +2563,8 @@ tag3 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
         )
 
 
+{-| Add a tag with four arguments to a custom type.
+-}
 tag4 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( label4, control4 ) =
     tagHelper
         label
@@ -2564,6 +2580,8 @@ tag4 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( 
         )
 
 
+{-| Add a tag with five arguments to a custom type.
+-}
 tag5 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( label4, control4 ) ( label5, control5 ) =
     tagHelper
         label
