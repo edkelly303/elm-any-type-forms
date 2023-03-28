@@ -2546,7 +2546,7 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
                 Point3D x y z ->
                     point3D x y z
             )
-            |> tag2 Point3D ("X", float) ("Y", float) ("Z", float)
+            |> tag3 Point3D ("X", float) ("Y", float) ("Z", float)
 
 -}
 tag3 label tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
