@@ -121,117 +121,61 @@ roleControl =
         |> Control.end
 ```
 
-## What's nice about this?
+## How do I add forms to my `Model` and `Msg` types?
 
-Typically, when you're building a form, you're not particularly interested in 
-the form itself. What you're interested in is the data structure that the form 
-produces (which I am calling its `output`). 
+The big tradeoff with this package is that its forms build up quite large and 
+complex `State` and `Delta` types (which are the equivalent of an Elm program's 
+`Model` and `Msg` types). 
 
-This `output` is probably a type that is part of your domain model, and gets 
-used elsewhere in your codebase - like the `User` type in the example above.
+When you want to hook up a form in your Elm application, your `Model` and `Msg` 
+will need to include those `State` and `Delta` types - which means you have to 
+be able to work out what they are.
 
-However, the ugly fact is that the type you need to use to represent the 
-internal state of the form might not look anything like that `output` type. 
-
-### The `Float` problem
-As a notorious example, take a simple control that produces a `Float`. Very 
-probably, you want to give the user a text control where they can type 
-digits, periods and hyphens. 
-
-If you use a `Float` as the internal state of this control and store it in your 
-`Model`, your user is going to have a bad time. You'll have to immediately 
-convert whatever they type into a `Float` in your `update` function, and provide
-a default value (probably `0`) in case their input isn't valid. 
-
-That means as soon as they type something like `1.`, the text box will reset to 
-`0`, and they'll have to go through some ridiculous shenanigans to input the 
-number they actually want.
-
-Instead, what you probably want is a text input whose internal state is a 
-`String`. And when you're creating a form with lots of controls, you'll end up 
-defining all your types twice over:
+Fortunately, the Elm compiler has our back here, and we can use it to tell us 
+what types we need. We'll give it some deliberately incorrect type annotations, 
+and see what it gives us as an error message:
 
 ```elm
-type alias RealThingIWant = 
-    { x : Float
-    , y : Float
-    , z : Float
-    }
+type alias Model = 
+    { state : () } -- we'll get an error here, because the form's `state` won't be `()`
 
-type alias StupidInternalStateForControl = 
-    { x : String
-    , y : String
-    , z : String
-    }
-```
 
-And _then_ you have to initialise all these fields in your `Model` individually, 
-and write a bunch of `Msg` variants to update each of them individually, and 
-handle those variants in your `update` function individually, and display each 
-field in your `view` individually, and yadda yadda. It's all a lot of ceremony.
+type Msg 
+    = FormUpdated () -- we'll get an error here, because the form's `delta` won't be `()`
+    | FormSubmitted
 
-### What it looks like with this package
 
-```elm
-realThingForm = 
-    Control.record RealThingIWant
-        |> Control.field "x" .x Control.float
-        |> Control.field "y" .y Control.float
-        |> Control.field "z" .z Control.float
+myForm =
+    Control.toForm 
+        "My form"
+        FormUpdated
+        FormSubmitted
+        myControl
+
+
+myControl =
+    Control.record 
+        (\name age -> { name = name, age = age })
+        |> Control.field "Name" .name Control.string
+        |> Control.field "Age" .age Control.int
         |> Control.end
-        |> Control.toForm "How to build a real thing" FormUpdated FormSubmitted 
+
 
 main : Browser.Program () Model Msg
 main = 
     Browser.element
-        { init = \flags -> ( realThingForm.init, Cmd.none )
-        , view = \model -> realThingForm.view model
-        , update = 
-            \msg model ->
-                case msg of 
-                    FormUpdated delta -> 
-                        realThingForm.update delta model
-                    FormSubmitted ->
-                        let 
-                            (newModel, result) = 
-                                realThingForm.submit model
-                        in
-                        (newModel, Cmd.none)
-        , subscriptions = \model -> Sub.none
+        { init = \() -> ( { state = myForm.init }, Cmd.none )
+        , view = \model -> myForm.view model.state
+        , update = \msg model -> 
+            case msg of 
+                FormUpdated delta -> 
+                    let 
+                        ( form, cmd ) = myForm.update delta model.state
+                    in
+                    ( { model | state = state }, cmd )
+
+                _ -> 
+                    ( model, Cmd.none )
+        , subscriptions = \_ -> Sub.none
         }
 ```
-Aaaand... that's kinda sorta almost it.
-
-## But where's the catch?
-
-Oh boy. Everything is tradeoffs, right? 
-
-The catch, and it's a doozy, is the types. While you don't actually have to 
-figure out the annotations for the form's internal `state` and `delta` types 
-yourself, they are not pretty, and you'll need to declare them so that you can 
-include them in the definition of your Elm program's `Model` and `Msg`.
-
-Under the hood, this package builds up the `state` and `delta` types for 
-combinators such as records and custom types using nested tuples. As an example,
-the `Msg` type for `realThingForm` would be:
-
-```elm
-type alias Msg 
-    = FormUpdated 
-        (Control.Delta 
-            ( Control.Delta String
-            , ( Control.Delta String
-              , ( Control.Delta String
-                , Control.End
-                )
-              )
-            )
-        )
-    | FormSubmitted
-```
-
-And that is a very mild, inoffensive example. With `customType`, it gets 
-positively Lovecraftian.
-
-If you really want to witness the full horror, take a look in the `Control` 
-module docs for the type annotation on the `tag0`, `tag1` and `tag2` functions.
