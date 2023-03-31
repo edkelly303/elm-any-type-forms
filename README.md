@@ -270,3 +270,11 @@ type Msg
 ```
 
 Yeah. Do you hate it yet?
+
+## How do I run the examples?
+
+```bash
+$ cd examples
+$ npm install
+$ . run
+```

@@ -1,7 +1,7 @@
 {
     "port": 8001,
     "targets": {
-        "elm-forms": {
+        "elm-any-type-forms": {
             "inputs": [
                 "src/Example.elm"
             ],
