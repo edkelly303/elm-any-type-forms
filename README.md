@@ -1,5 +1,16 @@
 # Any-type forms
 
+*DISCLAIMER: I am reluctant to publish this package in its current unfinished 
+state, but impending fatherhood means I am unlikely to have much time for my 
+programming hobby over the next few months, and I wanted to share this in case 
+anyone finds it useful. I would **not** recommend using this package in 
+production, and you'll probably see why if you read to the end of this document. 
+Nevertheless, I think the techniques I used to implement form state with nested 
+tuples are interesting, and may possibly inspire someone to build something more 
+useful.*
+
+# What does it do?
+
 This package allows you to build up user input forms that you can use to create 
 or update any arbitrary Elm type. Forms are composed from individual controls,
 and the internal state of each control can be any arbitrary Elm type.
