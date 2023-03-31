@@ -15,6 +15,21 @@ more complex types. In addition to standard combinators for `List`, `Dict`,
 `Maybe`, `Tuple` and `Wrapper` types, you can also create combinators 
 for records and custom types, with an API similar to `miniBill/elm-codec`.
 
+## What's nice about it?
+
+* Simple API(?)
+* Composable
+* Completely custom controls, with whatever types you like
+* Less wiring to make simple changes (such as adding a field to a record)
+* Built-in validation (including multi-field validation)
+* Built-in debouncing
+
+## What's nasty about it?
+
+* Default controls don't look nice (this is fixable, just needs more work)
+* Form types are confusing (see "How do I include a form in my `Model` and `Msg` types?")
+* The implementation is pretty difficult to understand
+
 ## What does it look like?
 
 ### A minimal example
@@ -121,7 +136,7 @@ roleControl =
         |> Control.end
 ```
 
-## How do I add forms to my `Model` and `Msg` types?
+## How do I include a form in my `Model` and `Msg` types?
 
 The big tradeoff with this package is that its forms build up quite large and 
 complex `State` and `Delta` types (which are the equivalent of an Elm program's 
@@ -184,7 +199,7 @@ main =
 
 And you should get some errors like this:
 
-```
+```text
 -- TYPE MISMATCH ----------------------------------------------
 
 Something is off with the body of the `main` definition:
@@ -238,10 +253,15 @@ But this function needs the 1st argument to be:
         ( Control.Delta String, ( Control.Delta String, Control.End ) )
 ```
 
-So, your `State` is going to be:
+So, your types are going to be:
 
-`Control.State ( Control.State String, ( Control.State String, Control.End ) )`
+```elm
+type alias Model = 
+    { state : Control.State ( Control.State String, ( Control.State String, Control.End ) ) 
+    }
 
-And your `Delta` will be:
 
-`Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) )`
+type Msg 
+    = FormUpdated (Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) ))
+    | FormSubmitted
+```
