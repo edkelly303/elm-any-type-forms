@@ -1,13 +1,19 @@
 # Any-type forms
 
-*DISCLAIMER: I am reluctant to publish this package in its current unfinished 
-state, but impending fatherhood means I am unlikely to have much time for my 
-programming hobby over the next few months, and I wanted to share this in case 
-anyone finds it useful. I would **not** recommend using this package in 
-production, and you'll probably see why if you read to the end of this document. 
+*DISCLAIMER: I am uneasy about publishing this package in its current unfinished 
+state. However, impending fatherhood means I won't be doing much programming 
+over the next few months, and I wanted to share the work I've done so far. 
+
+I would **not** recommend using this package in production, and you'll probably 
+see why if you read to the end of this document. 
+
 Nevertheless, I think the techniques I used to implement form state with nested 
-tuples are interesting, and may possibly inspire someone to build something more 
-useful.*
+tuples are fairly novel in the Elm community (perhaps for good reason), so they 
+may be interesting to someone. 
+
+Perhaps by the time our baby lets me get back to my Elm addiction, someone will 
+have been inspired to build something less ridiculous and more useful with 
+nested tuples.*
 
 # What does it do?
 
