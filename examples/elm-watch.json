@@ -3,7 +3,7 @@
     "targets": {
         "elm-forms": {
             "inputs": [
-                "src/User.elm"
+                "src/Example.elm"
             ],
             "output": "main.js"
         }

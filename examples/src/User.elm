@@ -1,20 +1,21 @@
 module User exposing (main)
 
-import Control
 import Browser
+import Control
 
-type alias User = 
+
+type alias User =
     { name : String
     , age : Int
     , role : Role
     }
 
 
-userControl = 
-    Control.record 
-        (\name age role -> 
+userControl =
+    Control.record
+        (\name age role ->
             { name = name
-            , age = age 
+            , age = age
             , role = role
             }
         )
@@ -29,12 +30,13 @@ type Role
     | AdminLevel Int
 
 
-roleControl = 
+roleControl =
     Control.customType
         (\regular adminLevel tag ->
             case tag of
-                Regular -> 
+                Regular ->
                     regular
+
                 AdminLevel level ->
                     adminLevel level
         )
@@ -43,12 +45,46 @@ roleControl =
         |> Control.end
 
 
-type alias Model = 
-    { state : () } -- we'll get an error here, because the form's `state` won't be `()`
+type alias Model =
+    { state :
+        Control.State
+            ( Control.State String
+            , ( Control.State String
+              , ( Control.State
+                    ( Control.State ()
+                    , ( Control.State
+                            ( Control.State String
+                            , Control.End
+                            )
+                      , Control.End
+                      )
+                    )
+                , Control.End
+                )
+              )
+            )
+    }
 
 
-type Msg 
-    = FormUpdated () -- we'll get an error here, because the form's `delta` won't be `()`
+type Msg
+    = FormUpdated
+        (Control.Delta
+            ( Control.Delta String
+            , ( Control.Delta String
+              , ( Control.Delta
+                    ( Control.Delta ()
+                    , ( Control.Delta
+                            ( Control.Delta String
+                            , Control.End
+                            )
+                      , Control.End
+                      )
+                    )
+                , Control.End
+                )
+              )
+            )
+        )
     | FormSubmitted
 
 
