@@ -28,6 +28,7 @@ for records and custom types, with an API similar to `miniBill/elm-codec`.
 
 * Default controls don't look nice (this is fixable, just needs more work)
 * Form types are confusing (see "How do I include a form in my `Model` and `Msg` types?")
+* The types of some of the functions in the `Control` module are... interesting
 * The implementation is pretty difficult to understand
 
 ## What does it look like?
