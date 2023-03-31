@@ -1,17 +1,18 @@
 # Any-type forms
 
-*DISCLAIMER: I am uneasy about publishing this package in its current unfinished 
-state. However, impending fatherhood means I won't be doing much programming 
-over the next few months, and I wanted to share the work I've done so far. 
+*DISCLAIMER: I am uneasy about publishing this package in its current rough and 
+unfinished state. However, impending fatherhood means I won't be doing much 
+programming over the next few months, and I wanted to share the work I've done 
+so far. 
 
 I would **not** recommend using this package in production, and you'll probably 
 see why if you read to the end of this document. 
 
-Nevertheless, I think the techniques I used to implement form state with nested 
-tuples are fairly novel in the Elm community (perhaps for good reason), so they 
-may be interesting to someone. 
+Nevertheless, I think the techniques I used to implement control combinators 
+with nested tuples may be of interest to people who like using Elm to do weird, 
+unElmish things. 
 
-Perhaps by the time our baby lets me get back to my Elm addiction, someone will 
+Perhaps by the time our baby lets me get back to coding again, someone will 
 have been inspired to build something less ridiculous and more useful with 
 nested tuples.*
 
