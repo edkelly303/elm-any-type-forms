@@ -146,7 +146,7 @@ type Msg
 
 
 myForm =
-    Control.toForm 
+    Control.toForm
         "My form"
         FormUpdated
         FormSubmitted
@@ -154,28 +154,94 @@ myForm =
 
 
 myControl =
-    Control.record 
+    Control.record
         (\name age -> { name = name, age = age })
         |> Control.field "Name" .name Control.string
         |> Control.field "Age" .age Control.int
         |> Control.end
 
 
-main : Browser.Program () Model Msg
-main = 
+main : Program () Model Msg
+main =
     Browser.element
         { init = \() -> ( { state = myForm.init }, Cmd.none )
         , view = \model -> myForm.view model.state
-        , update = \msg model -> 
-            case msg of 
-                FormUpdated delta -> 
-                    let 
-                        ( form, cmd ) = myForm.update delta model.state
-                    in
-                    ( { model | state = state }, cmd )
+        , update =
+            \msg model ->
+                case msg of
+                    FormUpdated delta ->
+                        let
+                            ( state, cmd ) =
+                                myForm.update delta model.state
+                        in
+                        ( { model | state = state }, cmd )
 
-                _ -> 
-                    ( model, Cmd.none )
+                    _ ->
+                        ( model, Cmd.none )
         , subscriptions = \_ -> Sub.none
         }
 ```
+
+And you should get some errors like this:
+
+```
+-- TYPE MISMATCH ----------------------------------------------
+
+Something is off with the body of the `main` definition:
+
+    Browser.element
+        { init = \() -> ( { state = myForm.init }, Cmd.none )
+        , view = \model -> myForm.view model.state
+        , update =
+            \msg model ->
+                case msg of
+                    FormUpdated delta ->
+                        let
+                            ( state, cmd ) =
+                                myForm.update delta model.state
+                        in
+                        ( { model | state = state }, cmd )
+
+                    _ ->
+                        ( model, Cmd.none )
+        , subscriptions = \_ -> Sub.none
+        }
+
+This `element` call produces:
+
+    Program
+        ()
+        { state :
+              Control.State
+                  ( Control.State String, ( Control.State String, Control.End )
+                  )
+        }
+        Msg
+
+But the type annotation on `main` says it should be:
+
+    Program () Model Msg
+
+-- TYPE MISMATCH ----------------------------------------------
+
+The 1st argument to this function is not what I expect:
+
+                                myForm.update delta model.state
+                                              ^^^^^
+This `delta` value is a:
+
+    ()
+
+But this function needs the 1st argument to be:
+
+    Control.Delta
+        ( Control.Delta String, ( Control.Delta String, Control.End ) )
+```
+
+So, your `State` is going to be:
+
+`Control.State ( Control.State String, ( Control.State String, Control.End ) )`
+
+And your `Delta` will be:
+
+`Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) )`
