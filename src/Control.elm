@@ -82,7 +82,7 @@ as follows:
 @docs throwFlagsAt
 
 
-# Customizing controls
+# Configuring controls
 
 @docs initWith, debounce
 
@@ -98,8 +98,16 @@ as follows:
 
 
 # Form internals
+These are types that you will see in your form's `State` and `Delta` type signatures.
 
-@docs State, Delta, ListDelta, End, Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
+@docs State, Delta, ListDelta, End
+
+# Internal stuff that you can ignore
+
+A user of this package shouldn't need to know about any of these types - 
+they are only exposed to make it possible to write type signatures.
+
+@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
 
 -}
 

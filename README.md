@@ -19,8 +19,8 @@ for records and custom types, with an API similar to `miniBill/elm-codec`.
 
 * Simple API(?)
 * Composable
-* Completely custom controls, with whatever types you like
-* Less wiring to make simple changes (such as adding a field to a record)
+* Custom controls, with whatever types you like
+* Less wiring & boilerplate
 * Built-in validation (including multi-field validation)
 * Built-in debouncing
 
