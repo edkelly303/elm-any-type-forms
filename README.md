@@ -26,10 +26,10 @@ for records and custom types, with an API similar to `miniBill/elm-codec`.
 
 ## What's nasty about it?
 
-* Default controls don't look nice (this is fixable, just needs more work)
-* Form types are confusing (see "How do I include a form in my `Model` and `Msg` types?")
-* The types of some of the functions in the `Control` module are... interesting
-* The implementation is pretty difficult to understand
+* The default controls don't look very nice (this is fixable, just needs some CSS).
+* The types of the forms it generates are a bit unintuitive (see "How do I include a form in my `Model` and `Msg` types?").
+* The types of some of the functions in the `Control` module are... interesting.
+* The implementation is pretty difficult to understand.
 
 ## What does it look like?
 
