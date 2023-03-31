@@ -1,25 +1,31 @@
-# Elm forms
+# Any-type forms
 
-A package for making user input forms that produce any arbitrary Elm type, 
-composed from controls whose internal state can be any (non-recursive, 
-non-function) Elm type.
+This package allows you to build up user input forms that you can use to create 
+or update any arbitrary Elm type. Forms are composed from individual controls,
+and the internal state of each control can be any arbitrary Elm type.
 
-## What does it do?
+This gives the user a lot of flexibility to create whatever controls they
+like, as well as making it easy to create forms for complex data structures 
+by combining simpler controls, without too much wiring or boilerplate.
 
-The package provides basic controls that produce primitive Elm types (such as 
-`String`, `Int`, `Float`, etc.), and if you need a completely custom 
-control, you can easily create one from scratch.
+## What's in the package?
+
+The package provides basic controls that produce primitive Elm types, such as 
+`String`, `Int`, `Float`, etc. If you need a completely custom 
+control, you can easily create one from scratch using `Control.create`.
 
 It also provides combinators that allow the user to combine controls to create 
 more complex types. In addition to standard combinators for `List`, `Dict`, 
 `Maybe`, `Tuple` and `Wrapper` types, you can also create combinators 
 for records and custom types, with an API similar to `miniBill/elm-codec`.
 
+Finally, it provides functions to validate and debounce controls, without 
+worrying about any annoying state management or book-keeping.
+
 ## What's nice about it?
 
-* Simple API(?)
-* Composable
-* Custom controls, with whatever types you like
+* Simple(?), composable API
+* Custom controls with whatever types you like
 * Less wiring & boilerplate
 * Built-in validation (including multi-field validation)
 * Built-in debouncing
@@ -28,76 +34,12 @@ for records and custom types, with an API similar to `miniBill/elm-codec`.
 
 * The default controls don't look very nice (this is fixable, just needs some CSS).
 * The types of the forms it generates are a bit unintuitive (see "How do I include a form in my `Model` and `Msg` types?").
-* The types of some of the functions in the `Control` module are... interesting.
+* The type signatures of some of the functions in the `Control` module are... interesting.
 * The implementation is pretty difficult to understand.
 
-## What does it look like?
+## How do I build up some controls?
 
-### A minimal example
-
-Here is a very basic example, showing how a form can be created from a simple 
-control and wired into an Elm program:
-
-```elm
-type alias Model = 
-    Control.State String
-
-
-type Msg 
-    = FormUpdated (Control.Delta String)
-    | FormSubmitted
-
-
-exampleForm : Control.Form String String String Msg
-exampleForm =
-    Control.toForm 
-        "A form with one text input"
-        FormUpdated
-        FormSubmitted
-        Control.string
-
-
-main : Browser.Program () Model Msg
-main = 
-    Browser.element
-        { init = \() -> ( exampleForm.init, Cmd.none )
-        , view = exampleForm.view
-        , update = update
-        , subscriptions = \_ -> Sub.none
-        }
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        FormUpdated delta ->
-            exampleForm.update delta model
-            
-
-        FormSubmitted ->
-            let
-                ( newForm, result ) =
-                    exampleForm.submit model
-            in
-            case result of
-                Ok output ->
-                    let
-                        _ =
-                            Debug.log "Success!" output
-                    in
-                    ( newForm, Cmd.none )
-
-                Err errors ->
-                    let
-                        _ =
-                            Debug.log "Failure!" errors
-                    in
-                    ( newForm, Cmd.none )
-```
-
-## A more complex control
-
-Here are some examples of the `record` and `customType` combinators in action.
+Here's an example that shows the `record` and `customType` combinators in action:
 
 ```elm
 type alias User = 
@@ -137,11 +79,11 @@ roleControl =
         |> Control.end
 ```
 
-## How do I include a form in my `Model` and `Msg` types?
+## How do I turn a control into a form and wire it into my Elm app?
 
-The big tradeoff with this package is that its forms build up quite large and 
+The big tradeoff of this package is that its forms build up quite large and 
 complex `State` and `Delta` types (which are the equivalent of an Elm program's 
-`Model` and `Msg` types). 
+`Model` and `Msg` types, respectively). 
 
 When you want to hook up a form in your Elm application, your `Model` and `Msg` 
 will need to include those `State` and `Delta` types - which means you have to 
@@ -149,7 +91,7 @@ be able to work out what they are.
 
 Fortunately, the Elm compiler has our back here, and we can use it to tell us 
 what types we need. We'll give it some deliberately incorrect type annotations, 
-and see what it gives us as an error message:
+and see what error messages it gives us.
 
 ```elm
 type alias Model = 
@@ -161,34 +103,26 @@ type Msg
     | FormSubmitted
 
 
-myForm =
+userForm =
     Control.toForm
-        "My form"
+        "Let's make a User"
         FormUpdated
         FormSubmitted
-        myControl
-
-
-myControl =
-    Control.record
-        (\name age -> { name = name, age = age })
-        |> Control.field "Name" .name Control.string
-        |> Control.field "Age" .age Control.int
-        |> Control.end
+        userControl
 
 
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \() -> ( { state = myForm.init }, Cmd.none )
-        , view = \model -> myForm.view model.state
+        { init = \() -> ( { state = userForm.init }, Cmd.none )
+        , view = \model -> userForm.view model.state
         , update =
             \msg model ->
                 case msg of
                     FormUpdated delta ->
                         let
                             ( state, cmd ) =
-                                myForm.update delta model.state
+                                userForm.update delta model.state
                         in
                         ( { model | state = state }, cmd )
 
@@ -198,7 +132,7 @@ main =
         }
 ```
 
-And you should get some errors like this:
+When you compile this, you should get some errors like this:
 
 ```text
 -- TYPE MISMATCH ----------------------------------------------
@@ -229,7 +163,18 @@ This `element` call produces:
         ()
         { state :
               Control.State
-                  ( Control.State String, ( Control.State String, Control.End )
+                  ( Control.State String
+                  , ( Control.State String
+                    , ( Control.State
+                            ( Control.State ()
+                            , ( Control.State
+                                    ( Control.State String, Control.End )
+                              , Control.End
+                              )
+                            )
+                      , Control.End
+                      )
+                    )
                   )
         }
         Msg
@@ -251,18 +196,57 @@ This `delta` value is a:
 But this function needs the 1st argument to be:
 
     Control.Delta
-        ( Control.Delta String, ( Control.Delta String, Control.End ) )
+        ( Control.Delta String
+        , ( Control.Delta String
+          , ( Control.Delta
+                  ( Control.Delta ()
+                  , ( Control.Delta ( Control.Delta String, Control.End )
+                    , Control.End
+                    )
+                  )
+            , Control.End
+            )
+          )
+        )
 ```
 
 So, your types are going to be:
 
 ```elm
 type alias Model = 
-    { state : Control.State ( Control.State String, ( Control.State String, Control.End ) ) 
+    { state : Control.State
+                  ( Control.State String
+                  , ( Control.State String
+                    , ( Control.State
+                            ( Control.State ()
+                            , ( Control.State
+                                    ( Control.State String, Control.End )
+                              , Control.End
+                              )
+                            )
+                      , Control.End
+                      )
+                    )
+                  ) 
     }
 
 
 type Msg 
-    = FormUpdated (Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) ))
+    = FormUpdated 
+        (  Control.Delta
+            ( Control.Delta String
+            , ( Control.Delta String
+            , ( Control.Delta
+                    ( Control.Delta ()
+                    , ( Control.Delta ( Control.Delta String, Control.End )
+                        , Control.End
+                        )
+                    )
+                , Control.End
+                )
+            )
+        ))
     | FormSubmitted
 ```
+
+Yeah. Do you hate it yet?

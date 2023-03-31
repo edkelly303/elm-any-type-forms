@@ -1,7 +1,7 @@
 {
     "type": "package",
-    "name": "edkelly303/any-type-forms",
-    "summary": "An eccentric forms library",
+    "name": "edkelly303/elm-any-type-forms",
+    "summary": "Quickly build forms to create or update any Elm type",
     "license": "BSD-3-Clause",
     "version": "1.0.0",
     "exposed-modules": [
