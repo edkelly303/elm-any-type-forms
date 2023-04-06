@@ -9,10 +9,14 @@ module Control exposing
     , initWith, debounce
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
-    , State, Delta, ListDelta, End, Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
+    , State, Delta, ListDelta, End
+    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
     )
 
-{-| # Creating a form
+{-|
+
+
+# Creating a form
 
 @docs Control, Form, toForm
 
@@ -98,13 +102,15 @@ as follows:
 
 
 # Form internals
+
 These are types that you will see in your form's `State` and `Delta` type signatures.
 
 @docs State, Delta, ListDelta, End
 
+
 # Internal stuff that you can ignore
 
-A user of this package shouldn't need to know about any of these types - 
+A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
 @docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
