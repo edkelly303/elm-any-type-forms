@@ -1,6 +1,6 @@
 module Control exposing
     ( Control, Form, toForm
-    , bool, int, float, string, enum
+    , bool, int, float, string, char, enum
     , wrapper, tuple, maybe, list, dict
     , ControlConfig, create
     , failIf
@@ -23,7 +23,7 @@ module Control exposing
 
 # Basic controls
 
-@docs bool, int, float, string, enum
+@docs bool, int, float, string, char, enum
 
 
 # Basic combinators
@@ -855,7 +855,7 @@ initWith input (Control control) =
 -}
 
 
-{-| A control that produces an integer. Renders as an HTML text input.
+{-| A control that produces an `Int`. Renders as an HTML text input.
 -}
 int : Control String String Int
 int =
@@ -888,7 +888,7 @@ int =
 -}
 
 
-{-| A control that produces a floating-point number. Renders as an HTML text input.
+{-| A control that produces a `Float`. Renders as an HTML text input.
 -}
 float : Control String String Float
 float =
@@ -920,7 +920,7 @@ float =
 -}
 
 
-{-| A control that produces a string. Renders as an HTML text input.
+{-| A control that produces a `String`. Renders as an HTML text input.
 -}
 string : Control String String String
 string =
@@ -930,6 +930,42 @@ string =
         , update = \delta _ -> delta
         , view = textControlView "text"
         , parse = Ok
+        }
+        |> debounce 500
+
+
+
+{-
+    .o88b. db   db  .d8b.  d8888b.
+   d8P  Y8 88   88 d8' `8b 88  `8D
+   8P      88ooo88 88ooo88 88oobY'
+   8b      88~~~88 88~~~88 88`8b
+   Y8b  d8 88   88 88   88 88 `88.
+    `Y88P' YP   YP YP   YP 88   YD
+-}
+
+
+{-| A control that produces a `Char`. Renders as an HTML text input.
+-}
+char : Control String String Char
+char =
+    create
+        { initEmpty = ""
+        , initWith = String.fromChar
+        , update = \delta _ -> delta
+        , view = textControlView "text"
+        , parse =
+            \str ->
+                case String.uncons str of
+                    Just ( char_, rest ) ->
+                        if String.isEmpty rest then
+                            Ok char_
+
+                        else
+                            Err [ "must be exactly one character" ]
+
+                    Nothing ->
+                        Err [ "must not be blank" ]
         }
         |> debounce 500
 
