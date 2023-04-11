@@ -22,7 +22,7 @@ exampleForm =
 
 type Example
     = Foo (Dict.Dict String Int)
-    | Bar { baz : String, qux : Int }
+    | Bar { baz : String, qux : Int, xin : Bool, jyg : Char, zup : Float }
 
 
 exampleControl =
@@ -47,13 +47,19 @@ fooControl =
 
 barControl =
     Control.record
-        (\baz qux ->
+        (\baz qux xin jyg zup ->
             { baz = baz
             , qux = qux
+            , xin = xin
+            , jyg = jyg
+            , zup = zup
             }
         )
         |> Control.field "Baz" .baz bazControl
         |> Control.field "Qux" .qux quxControl
+        |> Control.field "Xin" .xin (Control.bool "" "")
+        |> Control.field "Jyg" .jyg Control.char
+        |> Control.field "Zup" .zup Control.float
         |> Control.end
         |> Control.throwFlagIf (\record -> String.toInt record.baz == Just record.qux) "baz=qux"
 
@@ -191,26 +197,32 @@ view model =
 type alias FormState =
     Control.State
         ( Control.State
-            ( Control.State
-                ( Control.State
-                    (List
-                        (Control.State
-                            ( Control.State String
-                            , ( Control.State String
-                              , Control.End
+              ( Control.State
+                    ( Control.State
+                          (
+                          List
+                              (
+                              Control.State
+                                  ( Control.State String
+                                  , ( Control.State String, Control.End )
+                                  )
                               )
-                            )
-                        )
+                          )
+                    , Control.End
                     )
-                , Control.End
-                )
-            , Control.End
-            )
+              , Control.End
+              )
         , ( Control.State
                 ( Control.State
-                    ( Control.State String
-                    , ( Control.State Int, Control.End )
-                    )
+                      ( Control.State String
+                      , ( Control.State Int
+                        , ( Control.State Bool
+                          , ( Control.State String
+                            , ( Control.State String, Control.End )
+                            )
+                          )
+                        )
+                      )
                 , Control.End
                 )
           , Control.End
@@ -221,22 +233,29 @@ type alias FormState =
 type alias FormDelta =
     Control.Delta
         ( Control.Delta
-            ( Control.Delta
-                ( Control.Delta
-                    (Control.ListDelta
-                        ( Control.Delta String
-                        , ( Control.Delta String, Control.End )
-                        )
+              ( Control.Delta
+                    ( Control.Delta
+                          (
+                          Control.ListDelta
+                              ( Control.Delta String
+                              , ( Control.Delta String, Control.End )
+                              )
+                          )
+                    , Control.End
                     )
-                , Control.End
-                )
-            , Control.End
-            )
+              , Control.End
+              )
         , ( Control.Delta
                 ( Control.Delta
-                    ( Control.Delta String
-                    , ( Control.Delta CounterDelta, Control.End )
-                    )
+                      ( Control.Delta String
+                      , ( Control.Delta CounterDelta
+                        , ( Control.Delta Bool
+                          , ( Control.Delta String
+                            , ( Control.Delta String, Control.End )
+                            )
+                          )
+                        )
+                      )
                 , Control.End
                 )
           , Control.End
