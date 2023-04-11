@@ -1,7 +1,7 @@
 module Control exposing
     ( Control, Form, toForm
     , bool, int, float, string, char, enum
-    , wrapper, tuple, maybe, list, dict
+    , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
     , failIf
     , throwFlagIf, catchFlag
@@ -10,7 +10,7 @@ module Control exposing
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
-    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
+    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig, Path
     )
 
 {-|
@@ -28,7 +28,7 @@ module Control exposing
 
 # Basic combinators
 
-@docs wrapper, tuple, maybe, list, dict
+@docs wrapper, tuple, triple, maybe, result, list, dict, set, array
 
 
 # Creating a new control
@@ -113,10 +113,11 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig
+@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig, Path
 
 -}
 
+import Array
 import Dict
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -125,6 +126,7 @@ import Json.Decode
 import List.Extra
 import Path
 import Process
+import Set
 import Task
 import Time
 
@@ -181,7 +183,7 @@ type alias Control state delta output =
 {-| A slightly more flexible version of `Control`
 -}
 type AdvancedControl input state delta output
-    = Control (Path.Path -> ControlFns input state delta output)
+    = Control (Path -> ControlFns input state delta output)
 
 
 {-| Some internal stuff needed to build up a record control
@@ -209,7 +211,7 @@ type alias ControlFns input state delta output =
     , view : ViewConfig state -> Html (Delta delta)
     , childViews : ViewConfig state -> List (Html (Delta delta))
     , parse : State state -> Result (List ( String, String )) output
-    , path : Path.Path
+    , path : Path
     , emitFlags : State state -> List Flag
     , collectDebouncingReceivers : State state -> List Flag
     , collectErrors : State state -> List Flag -> List ( String, String )
@@ -222,8 +224,8 @@ type alias ControlFns input state delta output =
 -}
 type Flag
     = FlagLabel String
-    | FlagPath Path.Path Int
-    | FlagList Path.Path String (List Int)
+    | FlagPath Path Int
+    | FlagList Path String (List Int)
 
 
 {-| Some internal stuff needed to view controls
@@ -242,6 +244,13 @@ type Status
     = Intact
     | Debouncing
     | Idle (List (Result ( String, String ) ( String, String )))
+
+
+{-| an internal type needed to track the position of a control within a tree of
+controls
+-}
+type alias Path =
+    Path.Path
 
 
 
@@ -1024,7 +1033,7 @@ enum first second rest =
 -}
 
 
-{-| A control that produces a Boolean value. Renders as an HTML checkbox???
+{-| A control that produces a Boolean value. Renders as an HTML radio control.
 -}
 bool : String -> String -> Control Bool Bool Bool
 bool trueId falseId =
@@ -1106,6 +1115,47 @@ maybe control =
 
 
 {-
+   d8888b. d88888b .d8888. db    db db      d888888b
+   88  `8D 88'     88'  YP 88    88 88      `~~88~~'
+   88oobY' 88ooooo `8bo.   88    88 88         88
+   88`8b   88~~~~~   `Y8b. 88    88 88         88
+   88 `88. 88.     db   8D 88b  d88 88booo.    88
+   88   YD Y88888P `8888Y' ~Y8888P' Y88888P    YP
+-}
+
+
+{-| A combinator that produces a `Result` with a given error and
+success type.
+
+    myResultControl =
+        result string int
+
+-}
+result :
+    Control failureState failureDelta failureOutput
+    -> Control successState successDelta successOutput
+    ->
+        Control
+            ( State ( State failureState, End ), ( State ( State successState, End ), End ) )
+            ( Delta ( Delta failureDelta, End ), ( Delta ( Delta successDelta, End ), End ) )
+            (Result failureOutput successOutput)
+result failureControl successControl =
+    customType
+        (\err ok tag ->
+            case tag of
+                Err failure ->
+                    err failure
+
+                Ok success ->
+                    ok success
+        )
+        |> tag1 "Err" Err failureControl
+        |> tag1 "Ok" Ok successControl
+        |> end
+
+
+
+{-
    d888888b db    db d8888b. db      d88888b
    `~~88~~' 88    88 88  `8D 88      88'
       88    88    88 88oodD' 88      88ooooo
@@ -1127,10 +1177,47 @@ tuple :
     -> String
     -> Control state2 delta2 output2
     -> Control ( State state1, ( State state2, End ) ) ( Delta delta1, ( Delta delta2, End ) ) ( output1, output2 )
-tuple fstLabel fst sndLabel snd =
+tuple firstLabel first secondLabel second =
     record Tuple.pair
-        |> field fstLabel Tuple.first fst
-        |> field sndLabel Tuple.second snd
+        |> field firstLabel Tuple.first first
+        |> field secondLabel Tuple.second second
+        |> end
+
+
+
+{-
+   d888888b d8888b. d888888b d8888b. db      d88888b
+   `~~88~~' 88  `8D   `88'   88  `8D 88      88'
+      88    88oobY'    88    88oodD' 88      88ooooo
+      88    88`8b      88    88~~~   88      88~~~~~
+      88    88 `88.   .88.   88      88booo. 88.
+      YP    88   YD Y888888P 88      Y88888P Y88888P
+-}
+
+
+{-| A combinator that produces a triple of three controls of given types.
+
+    myTripleControl =
+        triple "First" string "Second" int "Third" float
+
+-}
+triple :
+    String
+    -> Control state1 delta1 output1
+    -> String
+    -> Control state2 delta2 output2
+    -> String
+    -> Control state3 delta3 output3
+    ->
+        Control
+            ( State state1, ( State state2, ( State state3, End ) ) )
+            ( Delta delta1, ( Delta delta2, ( Delta delta3, End ) ) )
+            ( output1, output2, output3 )
+triple firstLabel first secondLabel second thirdLabel third =
+    record (\a b c -> ( a, b, c ))
+        |> field firstLabel (\( a, _, _ ) -> a) first
+        |> field secondLabel (\( _, b, _ ) -> b) second
+        |> field thirdLabel (\( _, _, c ) -> c) third
         |> end
 
 
@@ -1403,6 +1490,63 @@ nonUniqueIndexes listState =
 
 
 {-
+   .d8888. d88888b d888888b
+   88'  YP 88'     `~~88~~'
+   `8bo.   88ooooo    88
+     `Y8b. 88~~~~~    88
+   db   8D 88.        88
+   `8888Y' Y88888P    YP
+-}
+
+
+{-| A combinator that produces a `Set` from controls of a given member
+types. The member type must be `comparable`.
+
+    mySetControl =
+        set string
+
+-}
+set :
+    Control state delta comparable
+    -> Control ( State (List (State state)), End ) ( Delta (ListDelta delta), End ) (Set.Set comparable)
+set memberControl =
+    list
+        (memberControl |> catchFlag "@@set-unique-keys" "Set members must be unique")
+        |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
+        |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
+
+
+
+{-
+    .d8b.  d8888b. d8888b.  .d8b.  db    db
+   d8' `8b 88  `8D 88  `8D d8' `8b `8b  d8'
+   88ooo88 88oobY' 88oobY' 88ooo88  `8bd8'
+   88~~~88 88`8b   88`8b   88~~~88    88
+   88   88 88 `88. 88 `88. 88   88    88
+   YP   YP 88   YD 88   YD YP   YP    YP
+-}
+
+
+{-| A combinator that produces an `Array` from a control of a given type.
+
+    myArrayControl =
+        array int
+
+-}
+array :
+    Control state delta output
+    ->
+        Control
+            ( State (List (State state)), End )
+            ( Delta (ListDelta delta), End )
+            (Array.Array output)
+array itemControl =
+    list itemControl
+        |> wrapper { wrap = Array.fromList, unwrap = Array.toList }
+
+
+
+{-
    d8888b. d88888b  .o88b.  .d88b.  d8888b. d8888b.
    88  `8D 88'     d8P  Y8 .8P  Y8. 88  `8D 88  `8D
    88oobY' 88ooooo 8P      88    88 88oobY' 88   88
@@ -1429,7 +1573,7 @@ end :
         { d
             | afters : afters1
             , befores : End -> befores1
-            , fields : Path.Path -> End -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
+            , fields : Path -> End -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
             , flagEmitter : (List Flag -> End -> End -> List Flag) -> List Flag -> ( RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( State state, restStates ) -> List Flag
             , errorCollector : (List Flag -> List ( String, String ) -> End -> End -> List ( String, String )) -> List Flag -> List ( String, String ) -> ( RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( State state, restStates ) -> List ( String, String )
             , idleSetter : (End -> End -> End) -> ( RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( State state, restStates ) -> ( State state, restStates )
@@ -1438,7 +1582,7 @@ end :
             , makeSetters : (End -> End -> End) -> befores1 -> afters1 -> ( Delta delta -> recordDelta, restDeltaSetters )
             , parser : (Result (List ( String, String )) output -> End -> End -> Result (List ( String, String )) output) -> Result (List ( String, String )) output1_1 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( State state, restStates ) -> Result (List ( String, String )) output
             , debouncingReceiverCollector : (List Flag -> End -> End -> List Flag) -> List Flag -> ( RecordFns input2 state delta output2 recordOutput, restFns1 ) -> ( State state, restStates ) -> List Flag
-            , states : Path.Path -> End -> ( State state, restStates )
+            , states : Path -> End -> ( State state, restStates )
             , toOutput : output1_1
             , updater :
                 ({ newCmds : List (Cmd ( Delta delta, restDeltas )), newStates : End -> ( State state, restStates ) } -> End -> End -> End -> End -> { newCmds : List (Cmd ( Delta delta, restDeltas )), newStates : End -> ( State state, restStates ) })
@@ -1464,7 +1608,7 @@ end :
             , destructor : stateSetter -> state0
             , flagEmitter : (List Flag -> Int -> End -> End -> List Flag) -> List Flag -> Int -> ( ControlFns input1 state delta output1, restFns ) -> ( State state, restStates ) -> List Flag
             , errorCollector : (List Flag -> List ( String, String ) -> End -> End -> List ( String, String )) -> List Flag -> List ( String, String ) -> ( ControlFns input1 state delta output1, restFns ) -> ( State state, restStates ) -> List ( String, String )
-            , fns : Path.Path -> End -> ( ControlFns input1 state delta output1, restFns )
+            , fns : Path -> End -> ( ControlFns input1 state delta output1, restFns )
             , idleSetter : (Int -> End -> End -> End) -> Int -> ( ControlFns input1 state delta output1, restFns ) -> ( State state, restStates ) -> ( State state, restStates )
             , labels : List String
             , makeDeltaSetters : (End -> End -> End) -> befores -> afters -> ( Delta delta -> ( Delta delta, restDeltas ), restSetters )
@@ -1474,7 +1618,7 @@ end :
             , stateAfters : h
             , stateBefores : End -> g
             , stateInserter : c
-            , states : Path.Path -> End -> ( State state, restStates )
+            , states : Path -> End -> ( State state, restStates )
             , toArgStates : End -> f
             , updater :
                 ({ newCmds : List (Cmd ( Delta delta, restDeltas )), newStates : End -> ( State state, restStates ) }
@@ -1617,8 +1761,8 @@ field :
             { index : number
             , labels : List String
             , toOutput : b
-            , fields : Path.Path -> ( { field : ControlFns input state delta output, fromInput : c, access : Access }, d ) -> e
-            , states : Path.Path -> ( State state, f ) -> g
+            , fields : Path -> ( { field : ControlFns input state delta output, fromInput : c, access : Access }, d ) -> e
+            , states : Path -> ( State state, f ) -> g
             , updater : h -> { newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) } -> restFns -> restDeltaSetters -> restDeltas -> restStates -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
             , viewer : i -> List (Html (Delta j)) -> List Flag -> k -> l -> m -> List (Html (Delta j))
             , parser : n -> Result (List ( String, String )) output1 -> o -> p -> Result (List ( String, String )) output2
@@ -1639,8 +1783,8 @@ field :
             { index : number
             , labels : List String
             , toOutput : b
-            , fields : Path.Path -> d -> e
-            , states : Path.Path -> f -> g
+            , fields : Path -> d -> e
+            , states : Path -> f -> g
             , updater : h -> { newStates : ( State o1, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) } -> ( RecordFns p1 o1 q1 r1 recordOutput, restFns ) -> ( Delta q1 -> recordDelta, restDeltaSetters ) -> ( Delta q1, restDeltas ) -> ( State o1, restStates ) -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
             , viewer : i -> List (Html (Delta j)) -> List Flag -> ( RecordFns s1 t1 u1 v1 w1, k ) -> ( Delta u1 -> j, l ) -> ( State t1, m ) -> List (Html (Delta j))
             , parser : n -> Result (List ( String, String )) (output0 -> output1) -> ( RecordFns x1 y1 z1 output0 a2, o ) -> ( State y1, p ) -> Result (List ( String, String )) output2
@@ -1680,8 +1824,8 @@ hiddenField :
             { index : number
             , labels : List String
             , toOutput : b
-            , fields : Path.Path -> ( { field : ControlFns input state delta output, fromInput : c, access : Access }, d ) -> e
-            , states : Path.Path -> ( State state, f ) -> g
+            , fields : Path -> ( { field : ControlFns input state delta output, fromInput : c, access : Access }, d ) -> e
+            , states : Path -> ( State state, f ) -> g
             , updater : h -> { newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) } -> restFns -> restDeltaSetters -> restDeltas -> restStates -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
             , viewer : i -> List (Html (Delta j)) -> List Flag -> k -> l -> m -> List (Html (Delta j))
             , parser : n -> Result (List ( String, String )) output1 -> o -> p -> Result (List ( String, String )) output2
@@ -1702,8 +1846,8 @@ hiddenField :
             { index : number
             , labels : List String
             , toOutput : b
-            , fields : Path.Path -> d -> e
-            , states : Path.Path -> f -> g
+            , fields : Path -> d -> e
+            , states : Path -> f -> g
             , updater : h -> { newStates : ( State o1, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) } -> ( RecordFns p1 o1 q1 r1 recordOutput, restFns ) -> ( Delta q1 -> recordDelta, restDeltaSetters ) -> ( Delta q1, restDeltas ) -> ( State o1, restStates ) -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
             , viewer : i -> List (Html (Delta j)) -> List Flag -> ( RecordFns s1 t1 u1 v1 w1, k ) -> ( Delta u1 -> j, l ) -> ( State t1, m ) -> List (Html (Delta j))
             , parser : n -> Result (List ( String, String )) (output0 -> output1) -> ( RecordFns x1 y1 z1 output0 a2, o ) -> ( State y1, p ) -> Result (List ( String, String )) output2
@@ -1743,8 +1887,8 @@ readOnlyField :
             { index : number
             , labels : List String
             , toOutput : b
-            , fields : Path.Path -> ( { field : ControlFns input state delta output, fromInput : c, access : Access }, d ) -> e
-            , states : Path.Path -> ( State state, f ) -> g
+            , fields : Path -> ( { field : ControlFns input state delta output, fromInput : c, access : Access }, d ) -> e
+            , states : Path -> ( State state, f ) -> g
             , updater : h -> { newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) } -> restFns -> restDeltaSetters -> restDeltas -> restStates -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
             , viewer : i -> List (Html (Delta j)) -> List Flag -> k -> l -> m -> List (Html (Delta j))
             , parser : n -> Result (List ( String, String )) output1 -> o -> p -> Result (List ( String, String )) output2
@@ -1765,8 +1909,8 @@ readOnlyField :
             { index : number
             , labels : List String
             , toOutput : b
-            , fields : Path.Path -> d -> e
-            , states : Path.Path -> f -> g
+            , fields : Path -> d -> e
+            , states : Path -> f -> g
             , updater : h -> { newStates : ( State o1, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) } -> ( RecordFns p1 o1 q1 r1 recordOutput, restFns ) -> ( Delta q1 -> recordDelta, restDeltaSetters ) -> ( Delta q1, restDeltas ) -> ( State o1, restStates ) -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
             , viewer : i -> List (Html (Delta j)) -> List Flag -> ( RecordFns s1 t1 u1 v1 w1, k ) -> ( Delta u1 -> j, l ) -> ( State t1, m ) -> List (Html (Delta j))
             , parser : n -> Result (List ( String, String )) (output0 -> output1) -> ( RecordFns x1 y1 z1 output0 a2, o ) -> ( State y1, p ) -> Result (List ( String, String )) output2
@@ -2504,8 +2648,8 @@ tagHelper label (Control control) toArgState builder =
 tag0 :
     String
     -> output8
-    -> Builder rec { applyInputs : a18 -> state0 -> restStateSetters1 -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> restFns7 -> restStates6 -> List Flag, deltaAfter : b, deltaAfters : d, deltaBefore : ( Delta delta10, a16 ) -> c7, deltaBefores : ( ( Delta delta10, a16 ) -> c7, a15 ) -> c6, destructor : e, errorCollector : a14 -> List Flag -> List ( String, String ) -> restFns6 -> restStates5 -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag, fns : Path.Path -> ( { baseUpdate : Float -> Delta () -> State () -> ( State (), Cmd (Delta ()) ), childViews : ViewConfig () -> List (Html (Delta ())), collectDebouncingReceivers : State () -> List Flag, collectErrors : State () -> List Flag -> List ( String, String ), delta : Delta (), emitFlags : State () -> List Flag, index : Int, init : State (), initWith : output8 -> State (), parse : State () -> Result (List ( String, String )) output8, path : Path.Path, receiverCount : List Flag, setAllIdle : State () -> State (), update : Delta () -> State () -> ( State (), Cmd (Delta ()) ), view : ViewConfig () -> Html (Delta ()) }, a12 ) -> c5, idleSetter : a11 -> Int -> restFns4 -> restStates3 -> restStates3, index : Int, labels : List String, makeDeltaSetters : a10 -> befores1 -> afters1 -> next, makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> restFns3 -> restToArgStates -> befores -> afters -> restStateSetters, parser : a8 -> Result (List ( String, String )) output2 -> Int -> restFns2 -> restStates2 -> Result (List ( String, String )) output2, stateAfter : f, stateAfters : g, stateBefore : ( Maybe a19, a6 ) -> c3, stateBefores : ( ( Maybe a19, a6 ) -> c3, a5 ) -> c2, stateInserter : a4 -> Int -> Int -> (restArgStates -> tagStates) -> restMaybeArgStates -> restArgStates -> State tagStates, states : Path.Path -> ( State (), a3 ) -> c1, toArgStates : ( (output8 -> h) -> h, a2 ) -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : restStates1 -> recordState0 } -> restFns1 -> restDeltaSetters -> restDeltas -> restStates1 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> restFns -> restSetters -> restStates -> Maybe (Html delta1) }
-    -> Builder rec { applyInputs : a18 -> (stateSetter1 -> state0) -> ( stateSetter1, restStateSetters1 ) -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> ( ControlFns input6 state7 delta9 output7, restFns7 ) -> ( State state7, restStates6 ) -> List Flag, deltaAfter : ( Delta delta8, b ), deltaAfters : ( b, d ), deltaBefore : a16 -> c7, deltaBefores : a15 -> c6, destructor : e, errorCollector : a14 -> List Flag -> List ( String, String ) -> ( ControlFns input5 state6 delta7 output6, restFns6 ) -> ( State state6, restStates5 ) -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> ( ControlFns input4 state5 delta6 output5, restFns5 ) -> ( State state5, restStates4 ) -> List Flag, fns : Path.Path -> a12 -> c5, idleSetter : a11 -> Int -> ( ControlFns input3 state4 delta5 output4, restFns4 ) -> ( State state4, restStates3 ) -> ( State state4, restStates3 ), index : Int, labels : List String, makeDeltaSetters : a10 -> ( ( value, after1 ) -> delta4, befores1 ) -> ( after1, afters1 ) -> ( value -> delta4, next ), makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> ( ControlFns fieldInput fieldState delta3 output3, restFns3 ) -> ( (fieldInput -> State tagStates1) -> stateSetter, restToArgStates ) -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState1), restMaybeArgStates1 ), befores ) -> ( after, afters ) -> ( stateSetter, restStateSetters ), parser : a8 -> Result (List ( String, String )) output2 -> Int -> ( ControlFns input2 state2 delta2 output2, restFns2 ) -> ( State state2, restStates2 ) -> Result (List ( String, String )) output2, stateAfter : ( Maybe a7, f ), stateAfters : ( f, g ), stateBefore : a6 -> c3, stateBefores : a5 -> c2, stateInserter : a4 -> Int -> Int -> (( State argState, restArgStates ) -> tagStates) -> ( Maybe (State argState), restMaybeArgStates ) -> ( State argState, restArgStates ) -> State tagStates, states : Path.Path -> a3 -> c1, toArgStates : a2 -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : ( State state1, restStates1 ) -> recordState0 } -> ( ControlFns input1 state1 delta output1, restFns1 ) -> ( Delta delta -> recordDelta, restDeltaSetters ) -> ( Delta delta, restDeltas ) -> ( State state1, restStates1 ) -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> ( ControlFns input state delta0 output, restFns ) -> ( Delta delta0 -> delta1, restSetters ) -> ( State state, restStates ) -> Maybe (Html delta1) }
+    -> Builder rec { applyInputs : a18 -> state0 -> restStateSetters1 -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> restFns7 -> restStates6 -> List Flag, deltaAfter : b, deltaAfters : d, deltaBefore : ( Delta delta10, a16 ) -> c7, deltaBefores : ( ( Delta delta10, a16 ) -> c7, a15 ) -> c6, destructor : e, errorCollector : a14 -> List Flag -> List ( String, String ) -> restFns6 -> restStates5 -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag, fns : Path -> ( { baseUpdate : Float -> Delta () -> State () -> ( State (), Cmd (Delta ()) ), childViews : ViewConfig () -> List (Html (Delta ())), collectDebouncingReceivers : State () -> List Flag, collectErrors : State () -> List Flag -> List ( String, String ), delta : Delta (), emitFlags : State () -> List Flag, index : Int, init : State (), initWith : output8 -> State (), parse : State () -> Result (List ( String, String )) output8, path : Path, receiverCount : List Flag, setAllIdle : State () -> State (), update : Delta () -> State () -> ( State (), Cmd (Delta ()) ), view : ViewConfig () -> Html (Delta ()) }, a12 ) -> c5, idleSetter : a11 -> Int -> restFns4 -> restStates3 -> restStates3, index : Int, labels : List String, makeDeltaSetters : a10 -> befores1 -> afters1 -> next, makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> restFns3 -> restToArgStates -> befores -> afters -> restStateSetters, parser : a8 -> Result (List ( String, String )) output2 -> Int -> restFns2 -> restStates2 -> Result (List ( String, String )) output2, stateAfter : f, stateAfters : g, stateBefore : ( Maybe a19, a6 ) -> c3, stateBefores : ( ( Maybe a19, a6 ) -> c3, a5 ) -> c2, stateInserter : a4 -> Int -> Int -> (restArgStates -> tagStates) -> restMaybeArgStates -> restArgStates -> State tagStates, states : Path -> ( State (), a3 ) -> c1, toArgStates : ( (output8 -> h) -> h, a2 ) -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : restStates1 -> recordState0 } -> restFns1 -> restDeltaSetters -> restDeltas -> restStates1 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> restFns -> restSetters -> restStates -> Maybe (Html delta1) }
+    -> Builder rec { applyInputs : a18 -> (stateSetter1 -> state0) -> ( stateSetter1, restStateSetters1 ) -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> ( ControlFns input6 state7 delta9 output7, restFns7 ) -> ( State state7, restStates6 ) -> List Flag, deltaAfter : ( Delta delta8, b ), deltaAfters : ( b, d ), deltaBefore : a16 -> c7, deltaBefores : a15 -> c6, destructor : e, errorCollector : a14 -> List Flag -> List ( String, String ) -> ( ControlFns input5 state6 delta7 output6, restFns6 ) -> ( State state6, restStates5 ) -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> ( ControlFns input4 state5 delta6 output5, restFns5 ) -> ( State state5, restStates4 ) -> List Flag, fns : Path -> a12 -> c5, idleSetter : a11 -> Int -> ( ControlFns input3 state4 delta5 output4, restFns4 ) -> ( State state4, restStates3 ) -> ( State state4, restStates3 ), index : Int, labels : List String, makeDeltaSetters : a10 -> ( ( value, after1 ) -> delta4, befores1 ) -> ( after1, afters1 ) -> ( value -> delta4, next ), makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> ( ControlFns fieldInput fieldState delta3 output3, restFns3 ) -> ( (fieldInput -> State tagStates1) -> stateSetter, restToArgStates ) -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState1), restMaybeArgStates1 ), befores ) -> ( after, afters ) -> ( stateSetter, restStateSetters ), parser : a8 -> Result (List ( String, String )) output2 -> Int -> ( ControlFns input2 state2 delta2 output2, restFns2 ) -> ( State state2, restStates2 ) -> Result (List ( String, String )) output2, stateAfter : ( Maybe a7, f ), stateAfters : ( f, g ), stateBefore : a6 -> c3, stateBefores : a5 -> c2, stateInserter : a4 -> Int -> Int -> (( State argState, restArgStates ) -> tagStates) -> ( Maybe (State argState), restMaybeArgStates ) -> ( State argState, restArgStates ) -> State tagStates, states : Path -> a3 -> c1, toArgStates : a2 -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : ( State state1, restStates1 ) -> recordState0 } -> ( ControlFns input1 state1 delta output1, restFns1 ) -> ( Delta delta -> recordDelta, restDeltaSetters ) -> ( Delta delta, restDeltas ) -> ( State state1, restStates1 ) -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> ( ControlFns input state delta0 output, restFns ) -> ( Delta delta0 -> delta1, restSetters ) -> ( State state, restStates ) -> Maybe (Html delta1) }
 tag0 label tag =
     tagHelper
         label
@@ -2550,8 +2694,8 @@ tag1 :
     String
     -> (output9 -> output8)
     -> AdvancedControl output9 state8 delta10 output9
-    -> Builder r { applyInputs : a18 -> state0 -> restStateSetters1 -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> restFns7 -> restStates6 -> List Flag, deltaAfter : d, deltaAfters : e, deltaBefore : ( Delta delta11, a16 ) -> c7, deltaBefores : ( ( Delta delta11, a16 ) -> c7, a15 ) -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> restFns6 -> restStates5 -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag, fns : Path.Path -> ( { baseUpdate : Float -> Delta ( Delta delta10, End ) -> State ( State state8, End ) -> ( State ( State state8, End ), Cmd (Delta ( Delta delta10, End )) ), childViews : ViewConfig ( State state8, End ) -> List (Html (Delta ( Delta delta10, End ))), collectDebouncingReceivers : State ( State state8, End ) -> List Flag, collectErrors : State ( State state8, End ) -> List Flag -> List ( String, String ), delta : Delta ( Delta delta10, End ), emitFlags : State ( State state8, End ) -> List Flag, index : Int, init : State ( State state8, End ), initWith : ( output9, b ) -> State ( State state8, End ), parse : State ( State state8, End ) -> Result (List ( String, String )) output8, path : Path.Path, receiverCount : List Flag, setAllIdle : State ( State state8, End ) -> State ( State state8, End ), update : Delta ( Delta delta10, End ) -> State ( State state8, End ) -> ( State ( State state8, End ), Cmd (Delta ( Delta delta10, End )) ), view : ViewConfig ( State state8, End ) -> Html (Delta ( Delta delta10, End )) }, a12 ) -> c5, idleSetter : a11 -> Int -> restFns4 -> restStates3 -> restStates3, index : Int, labels : List String, makeDeltaSetters : a10 -> befores1 -> afters1 -> next, makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> restFns3 -> restToArgStates -> befores -> afters -> restStateSetters, parser : a8 -> Result (List ( String, String )) output2 -> Int -> restFns2 -> restStates2 -> Result (List ( String, String )) output2, stateAfter : g, stateAfters : h, stateBefore : ( Maybe a19, a6 ) -> c3, stateBefores : ( ( Maybe a19, a6 ) -> c3, a5 ) -> c2, stateInserter : a4 -> Int -> Int -> (restArgStates -> tagStates) -> restMaybeArgStates -> restArgStates -> State tagStates, states : Path.Path -> ( State ( State state8, End ), a3 ) -> c1, toArgStates : ( (( i, End ) -> j) -> i -> j, a2 ) -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : restStates1 -> recordState0 } -> restFns1 -> restDeltaSetters -> restDeltas -> restStates1 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> restFns -> restSetters -> restStates -> Maybe (Html delta1) }
-    -> Builder r { applyInputs : a18 -> (stateSetter1 -> state0) -> ( stateSetter1, restStateSetters1 ) -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> ( ControlFns input6 state7 delta9 output7, restFns7 ) -> ( State state7, restStates6 ) -> List Flag, deltaAfter : ( Delta delta8, d ), deltaAfters : ( d, e ), deltaBefore : a16 -> c7, deltaBefores : a15 -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> ( ControlFns input5 state6 delta7 output6, restFns6 ) -> ( State state6, restStates5 ) -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> ( ControlFns input4 state5 delta6 output5, restFns5 ) -> ( State state5, restStates4 ) -> List Flag, fns : Path.Path -> a12 -> c5, idleSetter : a11 -> Int -> ( ControlFns input3 state4 delta5 output4, restFns4 ) -> ( State state4, restStates3 ) -> ( State state4, restStates3 ), index : Int, labels : List String, makeDeltaSetters : a10 -> ( ( value, after1 ) -> delta4, befores1 ) -> ( after1, afters1 ) -> ( value -> delta4, next ), makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> ( ControlFns fieldInput fieldState delta3 output3, restFns3 ) -> ( (fieldInput -> State tagStates1) -> stateSetter, restToArgStates ) -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState1), restMaybeArgStates1 ), befores ) -> ( after, afters ) -> ( stateSetter, restStateSetters ), parser : a8 -> Result (List ( String, String )) output2 -> Int -> ( ControlFns input2 state2 delta2 output2, restFns2 ) -> ( State state2, restStates2 ) -> Result (List ( String, String )) output2, stateAfter : ( Maybe a7, g ), stateAfters : ( g, h ), stateBefore : a6 -> c3, stateBefores : a5 -> c2, stateInserter : a4 -> Int -> Int -> (( State argState, restArgStates ) -> tagStates) -> ( Maybe (State argState), restMaybeArgStates ) -> ( State argState, restArgStates ) -> State tagStates, states : Path.Path -> a3 -> c1, toArgStates : a2 -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : ( State state1, restStates1 ) -> recordState0 } -> ( ControlFns input1 state1 delta output1, restFns1 ) -> ( Delta delta -> recordDelta, restDeltaSetters ) -> ( Delta delta, restDeltas ) -> ( State state1, restStates1 ) -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> ( ControlFns input state delta0 output, restFns ) -> ( Delta delta0 -> delta1, restSetters ) -> ( State state, restStates ) -> Maybe (Html delta1) }
+    -> Builder r { applyInputs : a18 -> state0 -> restStateSetters1 -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> restFns7 -> restStates6 -> List Flag, deltaAfter : d, deltaAfters : e, deltaBefore : ( Delta delta11, a16 ) -> c7, deltaBefores : ( ( Delta delta11, a16 ) -> c7, a15 ) -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> restFns6 -> restStates5 -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag, fns : Path -> ( { baseUpdate : Float -> Delta ( Delta delta10, End ) -> State ( State state8, End ) -> ( State ( State state8, End ), Cmd (Delta ( Delta delta10, End )) ), childViews : ViewConfig ( State state8, End ) -> List (Html (Delta ( Delta delta10, End ))), collectDebouncingReceivers : State ( State state8, End ) -> List Flag, collectErrors : State ( State state8, End ) -> List Flag -> List ( String, String ), delta : Delta ( Delta delta10, End ), emitFlags : State ( State state8, End ) -> List Flag, index : Int, init : State ( State state8, End ), initWith : ( output9, b ) -> State ( State state8, End ), parse : State ( State state8, End ) -> Result (List ( String, String )) output8, path : Path, receiverCount : List Flag, setAllIdle : State ( State state8, End ) -> State ( State state8, End ), update : Delta ( Delta delta10, End ) -> State ( State state8, End ) -> ( State ( State state8, End ), Cmd (Delta ( Delta delta10, End )) ), view : ViewConfig ( State state8, End ) -> Html (Delta ( Delta delta10, End )) }, a12 ) -> c5, idleSetter : a11 -> Int -> restFns4 -> restStates3 -> restStates3, index : Int, labels : List String, makeDeltaSetters : a10 -> befores1 -> afters1 -> next, makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> restFns3 -> restToArgStates -> befores -> afters -> restStateSetters, parser : a8 -> Result (List ( String, String )) output2 -> Int -> restFns2 -> restStates2 -> Result (List ( String, String )) output2, stateAfter : g, stateAfters : h, stateBefore : ( Maybe a19, a6 ) -> c3, stateBefores : ( ( Maybe a19, a6 ) -> c3, a5 ) -> c2, stateInserter : a4 -> Int -> Int -> (restArgStates -> tagStates) -> restMaybeArgStates -> restArgStates -> State tagStates, states : Path -> ( State ( State state8, End ), a3 ) -> c1, toArgStates : ( (( i, End ) -> j) -> i -> j, a2 ) -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : restStates1 -> recordState0 } -> restFns1 -> restDeltaSetters -> restDeltas -> restStates1 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> restFns -> restSetters -> restStates -> Maybe (Html delta1) }
+    -> Builder r { applyInputs : a18 -> (stateSetter1 -> state0) -> ( stateSetter1, restStateSetters1 ) -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> ( ControlFns input6 state7 delta9 output7, restFns7 ) -> ( State state7, restStates6 ) -> List Flag, deltaAfter : ( Delta delta8, d ), deltaAfters : ( d, e ), deltaBefore : a16 -> c7, deltaBefores : a15 -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> ( ControlFns input5 state6 delta7 output6, restFns6 ) -> ( State state6, restStates5 ) -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> ( ControlFns input4 state5 delta6 output5, restFns5 ) -> ( State state5, restStates4 ) -> List Flag, fns : Path -> a12 -> c5, idleSetter : a11 -> Int -> ( ControlFns input3 state4 delta5 output4, restFns4 ) -> ( State state4, restStates3 ) -> ( State state4, restStates3 ), index : Int, labels : List String, makeDeltaSetters : a10 -> ( ( value, after1 ) -> delta4, befores1 ) -> ( after1, afters1 ) -> ( value -> delta4, next ), makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> ( ControlFns fieldInput fieldState delta3 output3, restFns3 ) -> ( (fieldInput -> State tagStates1) -> stateSetter, restToArgStates ) -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState1), restMaybeArgStates1 ), befores ) -> ( after, afters ) -> ( stateSetter, restStateSetters ), parser : a8 -> Result (List ( String, String )) output2 -> Int -> ( ControlFns input2 state2 delta2 output2, restFns2 ) -> ( State state2, restStates2 ) -> Result (List ( String, String )) output2, stateAfter : ( Maybe a7, g ), stateAfters : ( g, h ), stateBefore : a6 -> c3, stateBefores : a5 -> c2, stateInserter : a4 -> Int -> Int -> (( State argState, restArgStates ) -> tagStates) -> ( Maybe (State argState), restMaybeArgStates ) -> ( State argState, restArgStates ) -> State tagStates, states : Path -> a3 -> c1, toArgStates : a2 -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : ( State state1, restStates1 ) -> recordState0 } -> ( ControlFns input1 state1 delta output1, restFns1 ) -> ( Delta delta -> recordDelta, restDeltaSetters ) -> ( Delta delta, restDeltas ) -> ( State state1, restStates1 ) -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> ( ControlFns input state delta0 output, restFns ) -> ( Delta delta0 -> delta1, restSetters ) -> ( State state, restStates ) -> Maybe (Html delta1) }
 tag1 label tag control =
     tagHelper
         label
@@ -2583,8 +2727,8 @@ tag2 :
     -> (output10 -> output9 -> output8)
     -> ( String, AdvancedControl output10 state9 delta11 output10 )
     -> ( String, AdvancedControl output9 state8 delta10 output9 )
-    -> Builder r { applyInputs : a18 -> state0 -> restStateSetters1 -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> restFns7 -> restStates6 -> List Flag, deltaAfter : d, deltaAfters : e, deltaBefore : ( Delta delta12, a16 ) -> c7, deltaBefores : ( ( Delta delta12, a16 ) -> c7, a15 ) -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> restFns6 -> restStates5 -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag, fns : Path.Path -> ( { baseUpdate : Float -> Delta ( Delta delta11, ( Delta delta10, End ) ) -> State ( State state9, ( State state8, End ) ) -> ( State ( State state9, ( State state8, End ) ), Cmd (Delta ( Delta delta11, ( Delta delta10, End ) )) ), childViews : ViewConfig ( State state9, ( State state8, End ) ) -> List (Html (Delta ( Delta delta11, ( Delta delta10, End ) ))), collectDebouncingReceivers : State ( State state9, ( State state8, End ) ) -> List Flag, collectErrors : State ( State state9, ( State state8, End ) ) -> List Flag -> List ( String, String ), delta : Delta ( Delta delta11, ( Delta delta10, End ) ), emitFlags : State ( State state9, ( State state8, End ) ) -> List Flag, index : Int, init : State ( State state9, ( State state8, End ) ), initWith : ( output10, ( output9, b ) ) -> State ( State state9, ( State state8, End ) ), parse : State ( State state9, ( State state8, End ) ) -> Result (List ( String, String )) output8, path : Path.Path, receiverCount : List Flag, setAllIdle : State ( State state9, ( State state8, End ) ) -> State ( State state9, ( State state8, End ) ), update : Delta ( Delta delta11, ( Delta delta10, End ) ) -> State ( State state9, ( State state8, End ) ) -> ( State ( State state9, ( State state8, End ) ), Cmd (Delta ( Delta delta11, ( Delta delta10, End ) )) ), view : ViewConfig ( State state9, ( State state8, End ) ) -> Html (Delta ( Delta delta11, ( Delta delta10, End ) )) }, a12 ) -> c5, idleSetter : a11 -> Int -> restFns4 -> restStates3 -> restStates3, index : Int, labels : List String, makeDeltaSetters : a10 -> befores1 -> afters1 -> next, makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> restFns3 -> restToArgStates -> befores -> afters -> restStateSetters, parser : a8 -> Result (List ( String, String )) output2 -> Int -> restFns2 -> restStates2 -> Result (List ( String, String )) output2, stateAfter : g, stateAfters : h, stateBefore : ( Maybe a19, a6 ) -> c3, stateBefores : ( ( Maybe a19, a6 ) -> c3, a5 ) -> c2, stateInserter : a4 -> Int -> Int -> (restArgStates -> tagStates) -> restMaybeArgStates -> restArgStates -> State tagStates, states : Path.Path -> ( State ( State state9, ( State state8, End ) ), a3 ) -> c1, toArgStates : ( (( i, ( j, End ) ) -> k) -> i -> j -> k, a2 ) -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : restStates1 -> recordState0 } -> restFns1 -> restDeltaSetters -> restDeltas -> restStates1 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> restFns -> restSetters -> restStates -> Maybe (Html delta1) }
-    -> Builder r { applyInputs : a18 -> (stateSetter1 -> state0) -> ( stateSetter1, restStateSetters1 ) -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> ( ControlFns input6 state7 delta9 output7, restFns7 ) -> ( State state7, restStates6 ) -> List Flag, deltaAfter : ( Delta delta8, d ), deltaAfters : ( d, e ), deltaBefore : a16 -> c7, deltaBefores : a15 -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> ( ControlFns input5 state6 delta7 output6, restFns6 ) -> ( State state6, restStates5 ) -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> ( ControlFns input4 state5 delta6 output5, restFns5 ) -> ( State state5, restStates4 ) -> List Flag, fns : Path.Path -> a12 -> c5, idleSetter : a11 -> Int -> ( ControlFns input3 state4 delta5 output4, restFns4 ) -> ( State state4, restStates3 ) -> ( State state4, restStates3 ), index : Int, labels : List String, makeDeltaSetters : a10 -> ( ( value, after1 ) -> delta4, befores1 ) -> ( after1, afters1 ) -> ( value -> delta4, next ), makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> ( ControlFns fieldInput fieldState delta3 output3, restFns3 ) -> ( (fieldInput -> State tagStates1) -> stateSetter, restToArgStates ) -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState1), restMaybeArgStates1 ), befores ) -> ( after, afters ) -> ( stateSetter, restStateSetters ), parser : a8 -> Result (List ( String, String )) output2 -> Int -> ( ControlFns input2 state2 delta2 output2, restFns2 ) -> ( State state2, restStates2 ) -> Result (List ( String, String )) output2, stateAfter : ( Maybe a7, g ), stateAfters : ( g, h ), stateBefore : a6 -> c3, stateBefores : a5 -> c2, stateInserter : a4 -> Int -> Int -> (( State argState, restArgStates ) -> tagStates) -> ( Maybe (State argState), restMaybeArgStates ) -> ( State argState, restArgStates ) -> State tagStates, states : Path.Path -> a3 -> c1, toArgStates : a2 -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : ( State state1, restStates1 ) -> recordState0 } -> ( ControlFns input1 state1 delta output1, restFns1 ) -> ( Delta delta -> recordDelta, restDeltaSetters ) -> ( Delta delta, restDeltas ) -> ( State state1, restStates1 ) -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> ( ControlFns input state delta0 output, restFns ) -> ( Delta delta0 -> delta1, restSetters ) -> ( State state, restStates ) -> Maybe (Html delta1) }
+    -> Builder r { applyInputs : a18 -> state0 -> restStateSetters1 -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> restFns7 -> restStates6 -> List Flag, deltaAfter : d, deltaAfters : e, deltaBefore : ( Delta delta12, a16 ) -> c7, deltaBefores : ( ( Delta delta12, a16 ) -> c7, a15 ) -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> restFns6 -> restStates5 -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag, fns : Path -> ( { baseUpdate : Float -> Delta ( Delta delta11, ( Delta delta10, End ) ) -> State ( State state9, ( State state8, End ) ) -> ( State ( State state9, ( State state8, End ) ), Cmd (Delta ( Delta delta11, ( Delta delta10, End ) )) ), childViews : ViewConfig ( State state9, ( State state8, End ) ) -> List (Html (Delta ( Delta delta11, ( Delta delta10, End ) ))), collectDebouncingReceivers : State ( State state9, ( State state8, End ) ) -> List Flag, collectErrors : State ( State state9, ( State state8, End ) ) -> List Flag -> List ( String, String ), delta : Delta ( Delta delta11, ( Delta delta10, End ) ), emitFlags : State ( State state9, ( State state8, End ) ) -> List Flag, index : Int, init : State ( State state9, ( State state8, End ) ), initWith : ( output10, ( output9, b ) ) -> State ( State state9, ( State state8, End ) ), parse : State ( State state9, ( State state8, End ) ) -> Result (List ( String, String )) output8, path : Path, receiverCount : List Flag, setAllIdle : State ( State state9, ( State state8, End ) ) -> State ( State state9, ( State state8, End ) ), update : Delta ( Delta delta11, ( Delta delta10, End ) ) -> State ( State state9, ( State state8, End ) ) -> ( State ( State state9, ( State state8, End ) ), Cmd (Delta ( Delta delta11, ( Delta delta10, End ) )) ), view : ViewConfig ( State state9, ( State state8, End ) ) -> Html (Delta ( Delta delta11, ( Delta delta10, End ) )) }, a12 ) -> c5, idleSetter : a11 -> Int -> restFns4 -> restStates3 -> restStates3, index : Int, labels : List String, makeDeltaSetters : a10 -> befores1 -> afters1 -> next, makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> restFns3 -> restToArgStates -> befores -> afters -> restStateSetters, parser : a8 -> Result (List ( String, String )) output2 -> Int -> restFns2 -> restStates2 -> Result (List ( String, String )) output2, stateAfter : g, stateAfters : h, stateBefore : ( Maybe a19, a6 ) -> c3, stateBefores : ( ( Maybe a19, a6 ) -> c3, a5 ) -> c2, stateInserter : a4 -> Int -> Int -> (restArgStates -> tagStates) -> restMaybeArgStates -> restArgStates -> State tagStates, states : Path -> ( State ( State state9, ( State state8, End ) ), a3 ) -> c1, toArgStates : ( (( i, ( j, End ) ) -> k) -> i -> j -> k, a2 ) -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : restStates1 -> recordState0 } -> restFns1 -> restDeltaSetters -> restDeltas -> restStates1 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> restFns -> restSetters -> restStates -> Maybe (Html delta1) }
+    -> Builder r { applyInputs : a18 -> (stateSetter1 -> state0) -> ( stateSetter1, restStateSetters1 ) -> state1_1, debouncingReceiverCollector : a17 -> List Flag -> ( ControlFns input6 state7 delta9 output7, restFns7 ) -> ( State state7, restStates6 ) -> List Flag, deltaAfter : ( Delta delta8, d ), deltaAfters : ( d, e ), deltaBefore : a16 -> c7, deltaBefores : a15 -> c6, destructor : f, errorCollector : a14 -> List Flag -> List ( String, String ) -> ( ControlFns input5 state6 delta7 output6, restFns6 ) -> ( State state6, restStates5 ) -> List ( String, String ), flagEmitter : a13 -> List Flag -> Int -> ( ControlFns input4 state5 delta6 output5, restFns5 ) -> ( State state5, restStates4 ) -> List Flag, fns : Path -> a12 -> c5, idleSetter : a11 -> Int -> ( ControlFns input3 state4 delta5 output4, restFns4 ) -> ( State state4, restStates3 ) -> ( State state4, restStates3 ), index : Int, labels : List String, makeDeltaSetters : a10 -> ( ( value, after1 ) -> delta4, befores1 ) -> ( after1, afters1 ) -> ( value -> delta4, next ), makeStateSetters : a9 -> ((Int -> Int -> (End -> state3) -> End -> End -> State state3) -> Int -> Int -> (c4 -> c4) -> ( Maybe (State argState1), restMaybeArgStates1 ) -> ( State argState1, restInits ) -> State tagStates1) -> ( State argState1, restInits ) -> ( ControlFns fieldInput fieldState delta3 output3, restFns3 ) -> ( (fieldInput -> State tagStates1) -> stateSetter, restToArgStates ) -> ( ( Maybe (State fieldState), after ) -> ( Maybe (State argState1), restMaybeArgStates1 ), befores ) -> ( after, afters ) -> ( stateSetter, restStateSetters ), parser : a8 -> Result (List ( String, String )) output2 -> Int -> ( ControlFns input2 state2 delta2 output2, restFns2 ) -> ( State state2, restStates2 ) -> Result (List ( String, String )) output2, stateAfter : ( Maybe a7, g ), stateAfters : ( g, h ), stateBefore : a6 -> c3, stateBefores : a5 -> c2, stateInserter : a4 -> Int -> Int -> (( State argState, restArgStates ) -> tagStates) -> ( Maybe (State argState), restMaybeArgStates ) -> ( State argState, restArgStates ) -> State tagStates, states : Path -> a3 -> c1, toArgStates : a2 -> c, updater : a1 -> { newCmds : List (Cmd recordDelta), newStates : ( State state1, restStates1 ) -> recordState0 } -> ( ControlFns input1 state1 delta output1, restFns1 ) -> ( Delta delta -> recordDelta, restDeltaSetters ) -> ( Delta delta, restDeltas ) -> ( State state1, restStates1 ) -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }, viewer : a -> Maybe (Html delta1) -> List Flag -> Int -> ( ControlFns input state delta0 output, restFns ) -> ( Delta delta0 -> delta1, restSetters ) -> ( State state, restStates ) -> Maybe (Html delta1) }
 tag2 label tag ( label1, control1 ) ( label2, control2 ) =
     tagHelper
         label
@@ -2640,7 +2784,7 @@ tag3 :
                 , flagEmitter :
                     a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -2723,7 +2867,7 @@ tag3 :
                                     , ( State t1_1, ( State t1, End ) )
                                     )
                                 -> Result (List ( String, String )) output8
-                          , path : Path.Path
+                          , path : Path
                           , receiverCount : List Flag
                           , setAllIdle :
                                 State
@@ -2814,7 +2958,7 @@ tag3 :
                     -> restArgStates
                     -> State tagStates
                 , states :
-                    Path.Path
+                    Path
                     ->
                         ( State ( State t1_2, ( State t1_1, ( State t1, End ) ) )
                         , a3
@@ -2880,7 +3024,7 @@ tag3 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a12 -> c5
+            , fns : Path -> a12 -> c5
             , idleSetter :
                 a11
                 -> Int
@@ -2937,7 +3081,7 @@ tag3 :
                 -> ( Maybe (State argState), restMaybeArgStates )
                 -> ( State argState, restArgStates )
                 -> State tagStates
-            , states : Path.Path -> a3 -> c1
+            , states : Path -> a3 -> c1
             , toArgStates : a2 -> c
             , updater :
                 a1
@@ -3005,7 +3149,7 @@ tag4 :
                 , flagEmitter :
                     a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -3114,7 +3258,7 @@ tag4 :
                                       )
                                     )
                                 -> Result (List ( String, String )) output8
-                          , path : Path.Path
+                          , path : Path
                           , receiverCount : List Flag
                           , setAllIdle :
                                 State
@@ -3221,7 +3365,7 @@ tag4 :
                     -> restArgStates
                     -> State tagStates
                 , states :
-                    Path.Path
+                    Path
                     ->
                         ( State
                             ( State t1_3
@@ -3297,7 +3441,7 @@ tag4 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a12 -> c5
+            , fns : Path -> a12 -> c5
             , idleSetter :
                 a11
                 -> Int
@@ -3354,7 +3498,7 @@ tag4 :
                 -> ( Maybe (State argState), restMaybeArgStates )
                 -> ( State argState, restArgStates )
                 -> State tagStates
-            , states : Path.Path -> a3 -> c1
+            , states : Path -> a3 -> c1
             , toArgStates : a2 -> c
             , updater :
                 a1
@@ -3424,7 +3568,7 @@ tag5 :
                 , flagEmitter :
                     a13 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -3561,7 +3705,7 @@ tag5 :
                                       )
                                     )
                                 -> Result (List ( String, String )) output8
-                          , path : Path.Path
+                          , path : Path
                           , receiverCount : List Flag
                           , setAllIdle :
                                 State
@@ -3684,7 +3828,7 @@ tag5 :
                     -> restArgStates
                     -> State tagStates
                 , states :
-                    Path.Path
+                    Path
                     ->
                         ( State
                             ( State t1_4
@@ -3763,7 +3907,7 @@ tag5 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a12 -> c5
+            , fns : Path -> a12 -> c5
             , idleSetter :
                 a11
                 -> Int
@@ -3820,7 +3964,7 @@ tag5 :
                 -> ( Maybe (State argState), restMaybeArgStates )
                 -> ( State argState, restArgStates )
                 -> State tagStates
-            , states : Path.Path -> a3 -> c1
+            , states : Path -> a3 -> c1
             , toArgStates : a2 -> c
             , updater :
                 a1
@@ -4367,7 +4511,7 @@ validateSelectedTagState :
     -> e
 validateSelectedTagState parser selectedTag fns states =
     parser
-        (\result _ End End -> result)
+        (\result_ _ End End -> result_)
         (Err [ ( "FATAL ERROR", "tag index " ++ String.fromInt selectedTag ++ " not found" ) ])
         selectedTag
         fns
@@ -4386,13 +4530,13 @@ selectedTagParser :
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> Result (List ( String, String )) output
-selectedTagParser next result selectedTag ( fns, restFns ) ( state, restStates ) =
+selectedTagParser next result_ selectedTag ( fns, restFns ) ( state, restStates ) =
     next
         (if fns.index == selectedTag then
             fns.parse state
 
          else
-            result
+            result_
         )
         selectedTag
         restFns
@@ -4550,8 +4694,8 @@ button msg text =
 
 
 listView :
-    Path.Path
-    -> (Path.Path -> ControlFns input state delta output)
+    Path
+    -> (Path -> ControlFns input state delta output)
     -> ViewConfig (List (State state))
     -> List Flag
     -> Html (Delta (ListDelta delta))
