@@ -3,7 +3,7 @@
     "name": "edkelly303/elm-any-type-forms",
     "summary": "Quickly build forms to create or update any Elm type",
     "license": "BSD-3-Clause",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "exposed-modules": [
         "Control"
     ],
