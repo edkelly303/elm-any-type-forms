@@ -1353,9 +1353,10 @@ list (Control ctrl) =
             , view =
                 \config ->
                     let
+                        
                         debouncingReceivers =
                             -- this is a total hack!
-                            collectDebouncingReceivers (State { status = Intact_, selected = 0 } config.state)
+                            collectDebouncingReceivers (State { status = Intact_, selected = config.selected } config.state)
                     in
                     listView path ctrl config debouncingReceivers
             , parse = parse
@@ -4740,7 +4741,7 @@ listView path ctrl config debouncingReceivers =
                                 { state = state
                                 , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
                                 , flags = filteredFlags2
-                                , selected = config.selected
+                                , selected = internalState.selected
                                 }
                                 |> H.map (ChangeItem idx)
                             , button (DeleteItem idx) ("Delete item " ++ String.fromInt (idx + 1))
