@@ -167,7 +167,7 @@ type alias ControlConfig state delta output =
     { initEmpty : state
     , initWith : output -> state
     , update : delta -> state -> state
-    , view : state -> Html delta
+    , view : { label : String, id : String, name : String, state : state } -> Html delta
     , parse : state -> Result (List String) output
     }
 
@@ -519,7 +519,12 @@ create config =
             , childViews = \_ -> []
             , view =
                 \{ state, status } ->
-                    config.view state
+                    config.view
+                        { state = state
+                        , label = Path.last path
+                        , id = Path.toString path
+                        , name = Path.toString path
+                        }
                         |> wrappedView status
                         |> H.map ChangeState
             , parse = parse
@@ -1353,7 +1358,6 @@ list (Control ctrl) =
             , view =
                 \config ->
                     let
-                        
                         debouncingReceivers =
                             -- this is a total hack!
                             collectDebouncingReceivers (State { status = Intact_, selected = config.selected } config.state)
@@ -2010,41 +2014,21 @@ endRecord rec =
                 childViews config =
                     viewRecordStates rec.viewer config.flags fns deltaSetters config.state
 
-                view childViews_ config =
+                view config =
                     let
-                        fieldViews =
-                            childViews_ config
-
-                        labelViews =
-                            List.map
-                                (\label ->
-                                    H.label
-                                        [ HA.for label ]
-                                        [ H.text label ]
-                                )
-                                rec.labels
-
-                        combinedViews =
-                            List.map2
-                                (\labelView fieldView ->
-                                    if fieldView == H.text "" then
-                                        H.text ""
-                                        --this is a bit of a hack!
-
-                                    else
-                                        H.li []
-                                            [ labelView
-                                            , fieldView
-                                            ]
-                                )
-                                labelViews
-                                fieldViews
+                        childViews_ =
+                            viewRecordStates rec.viewer config.flags fns deltaSetters config.state
                     in
-                    if List.length combinedViews > 1 then
-                        H.ul [] combinedViews
+                    case childViews_ of
+                        [ cv ] ->
+                            cv
 
-                    else
-                        H.div [] fieldViews
+                        _ ->
+                            H.ul []
+                                (List.map
+                                    (\li -> H.li [] [ li ])
+                                    childViews_
+                                )
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
@@ -2063,7 +2047,7 @@ endRecord rec =
             , baseUpdate = \_ -> update
             , update = update
             , childViews = \config -> childViews config
-            , view = \config -> view childViews config
+            , view = \config -> view config
             , parse = parse
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
@@ -4055,7 +4039,7 @@ endCustomType rec =
                         childViews_ =
                             childViews config
                     in
-                    customTypeView options config.selected childViews_
+                    customTypeView path options config.selected childViews_
 
                 parse =
                     \(State i state) -> validateSelectedTagState rec.parser i.selected fns state
@@ -4664,11 +4648,12 @@ wrappedView status innerView =
 
 
 customTypeView :
-    List ( Int, String )
+    Path
+    -> List ( Int, String )
     -> Int
     -> List (Html (Delta variants))
     -> Html (Delta variants)
-customTypeView options selectedTag selectedTagView =
+customTypeView path options selectedTag selectedTagView =
     H.div []
         (if List.length options > 1 then
             [ radioView
@@ -4676,6 +4661,9 @@ customTypeView options selectedTag selectedTagView =
                 , selectedOption = selectedTag
                 , toMsg = TagSelected
                 , columns = 3
+                , id = Path.toString path
+                , label = Path.last path
+                , name = Path.toString path
                 }
             , H.div [] selectedTagView
             ]
@@ -4754,23 +4742,31 @@ listView path ctrl config debouncingReceivers =
         |> H.map ChangeState
 
 
-textControlView : String -> String -> Html String
-textControlView type_ state =
-    H.input
-        [ HE.onInput identity
-        , HA.type_ type_
-        , HA.value state
+textControlView : String -> { state : String, id : String, label : String, name : String } -> Html String
+textControlView type_ { state, id, label, name } =
+    H.div []
+        [ H.label [ HA.for id ] [ H.text label ]
+        , H.input
+            [ HE.onInput identity
+            , HA.name name
+            , HA.id id
+            , HA.type_ type_
+            , HA.value state
+            ]
+            [ H.text state ]
         ]
-        [ H.text state ]
 
 
-enumView : List ( String, enum ) -> enum -> Html enum
-enumView tags config =
+enumView : List ( String, enum ) -> { state : enum, id : String, label : String, name : String } -> Html enum
+enumView tags { state, id, label, name } =
     radioView
         { options = List.map (\( a, b ) -> ( b, a )) tags
-        , selectedOption = config
+        , selectedOption = state
         , toMsg = identity
         , columns = 3
+        , id = id
+        , label = label
+        , name = name
         }
 
 
@@ -4779,28 +4775,34 @@ radioView :
     , selectedOption : state
     , toMsg : state -> msg
     , columns : Int
+    , id : String
+    , label : String
+    , name : String
     }
     -> Html msg
-radioView { options, selectedOption, toMsg, columns } =
+radioView { options, selectedOption, toMsg, columns, id, label, name } =
     H.fieldset
         [ HA.style "display" "grid"
         , HA.style "grid-template-columns" (String.repeat columns "1fr ")
+        , HA.id id
         ]
-        (List.map
-            (\( option, optionLabel ) ->
-                H.div []
-                    [ H.input
-                        [ HA.type_ "radio"
-                        , HA.id optionLabel
-                        , HA.value optionLabel
-                        , HA.checked (selectedOption == option)
-                        , onChecked (toMsg option)
+        (H.legend [] [ H.text label ]
+            :: List.map
+                (\( option, optionLabel ) ->
+                    H.div []
+                        [ H.input
+                            [ HA.type_ "radio"
+                            , HA.name name
+                            , HA.id optionLabel
+                            , HA.value optionLabel
+                            , HA.checked (selectedOption == option)
+                            , onChecked (toMsg option)
+                            ]
+                            []
+                        , H.label [ HA.for optionLabel ] [ H.text optionLabel ]
                         ]
-                        []
-                    , H.label [ HA.for optionLabel ] [ H.text optionLabel ]
-                    ]
-            )
-            options
+                )
+                options
         )
 
 

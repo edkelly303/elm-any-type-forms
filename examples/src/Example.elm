@@ -52,7 +52,7 @@ barControl =
         )
         |> Control.field "Baz" .baz bazControl
         |> Control.field "Qux" .qux quxControl
-        |> Control.field "Xin" .xin (Control.bool "" "")
+        |> Control.field "Xin" .xin (Control.bool "True" "False")
         |> Control.field "Jyg" .jyg Control.char
         |> Control.field "Zup" .zup Control.float
         |> Control.end
@@ -99,14 +99,18 @@ counterControl =
                     Decrement ->
                         state - 1
         , view =
-            \state ->
-                Html.div []
-                    [ Html.button
+            \{ state, label, id, name } ->
+                Html.div
+                    [ Html.Attributes.id id
+                    , Html.Attributes.name name
+                    ]
+                    [ Html.label [] [ Html.text label ]
+                    , Html.button
                         [ Html.Attributes.type_ "button"
                         , Html.Events.onClick Increment
                         ]
                         [ Html.text "+1" ]
-                    , Html.div [] [ Html.text <| String.fromInt state ]
+                    , Html.text <| String.fromInt state
                     , Html.button
                         [ Html.Attributes.type_ "button"
                         , Html.Events.onClick Decrement
