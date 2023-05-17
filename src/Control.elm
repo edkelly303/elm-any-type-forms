@@ -4028,18 +4028,16 @@ endCustomType rec =
                             _ ->
                                 ( State i state, Cmd.none )
 
-                childViews config =
-                    [ viewSelectedTagState rec.viewer config.flags config.selected fns deltaSetters config.state ]
+                childView config =
+                    viewSelectedTagState rec.viewer config.flags config.selected fns deltaSetters config.state
 
                 view config =
                     let
                         options =
                             List.indexedMap Tuple.pair labels
-
-                        childViews_ =
-                            childViews config
                     in
-                    customTypeView path options config.selected childViews_
+                    childView config
+                        |> customTypeView path options config.selected
 
                 parse =
                     \(State i state) -> validateSelectedTagState rec.parser i.selected fns state
@@ -4057,7 +4055,7 @@ endCustomType rec =
             , initWith = applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters
             , baseUpdate = \_ -> update
             , update = update
-            , childViews = childViews
+            , childViews = \config -> [ childView config ]
             , view = \config -> view config
             , parse = parse
             , setAllIdle = setAllIdle
@@ -4651,26 +4649,24 @@ customTypeView :
     Path
     -> List ( Int, String )
     -> Int
-    -> List (Html (Delta variants))
+    -> Html (Delta variants)
     -> Html (Delta variants)
 customTypeView path options selectedTag selectedTagView =
-    H.div []
-        (if List.length options > 1 then
+    if List.length options > 1 then
+        H.div []
             [ radioView
                 { options = options
                 , selectedOption = selectedTag
                 , toMsg = TagSelected
-                , columns = 3
                 , id = Path.toString path
                 , label = Path.last path
                 , name = Path.toString path
                 }
-            , H.div [] selectedTagView
+            , selectedTagView
             ]
 
-         else
-            selectedTagView
-        )
+    else
+        selectedTagView
 
 
 button : msg -> String -> Html msg
@@ -4689,57 +4685,55 @@ listView :
     -> List Flag
     -> Html (Delta (ListDelta delta))
 listView path ctrl config debouncingReceivers =
-    H.div []
-        [ if List.isEmpty config.state then
-            button (InsertItem 0) "Add list item"
+    if List.isEmpty config.state then
+        button (ChangeState (InsertItem 0)) "Add list item"
 
-          else
-            H.ol []
-                (List.indexedMap
-                    (\idx (State internalState state) ->
-                        let
-                            control =
-                                ctrl (Path.add (String.fromInt idx) path)
+    else
+        H.ol []
+            (List.indexedMap
+                (\idx (State internalState state) ->
+                    let
+                        control =
+                            ctrl (Path.add (String.fromInt idx) path)
 
-                            filteredFlags1 =
-                                List.filterMap
-                                    (\flag ->
-                                        case flag of
-                                            FlagList flagPath flagLabel flagIndexes ->
-                                                if flagPath == path then
-                                                    if List.member idx flagIndexes then
-                                                        Just (FlagLabel flagLabel)
-
-                                                    else
-                                                        Nothing
+                        filteredFlags1 =
+                            List.filterMap
+                                (\flag ->
+                                    case flag of
+                                        FlagList flagPath flagLabel flagIndexes ->
+                                            if flagPath == path then
+                                                if List.member idx flagIndexes then
+                                                    Just (FlagLabel flagLabel)
 
                                                 else
-                                                    Just flag
+                                                    Nothing
 
-                                            _ ->
+                                            else
                                                 Just flag
-                                    )
-                                    config.flags
 
-                            filteredFlags2 =
-                                List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
-                        in
-                        H.li []
-                            [ control.view
-                                { state = state
-                                , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
-                                , flags = filteredFlags2
-                                , selected = internalState.selected
-                                }
-                                |> H.map (ChangeItem idx)
-                            , button (DeleteItem idx) ("Delete item " ++ String.fromInt (idx + 1))
-                            , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
-                            ]
-                    )
-                    config.state
+                                        _ ->
+                                            Just flag
+                                )
+                                config.flags
+
+                        filteredFlags2 =
+                            List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
+                    in
+                    H.li []
+                        [ control.view
+                            { state = state
+                            , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
+                            , flags = filteredFlags2
+                            , selected = internalState.selected
+                            }
+                            |> H.map (ChangeItem idx)
+                        , button (DeleteItem idx) ("Delete item " ++ String.fromInt (idx + 1))
+                        , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
+                        ]
                 )
-        ]
-        |> H.map ChangeState
+                config.state
+            )
+            |> H.map ChangeState
 
 
 textControlView : String -> { state : String, id : String, label : String, name : String } -> Html String
@@ -4763,7 +4757,6 @@ enumView tags { state, id, label, name } =
         { options = List.map (\( a, b ) -> ( b, a )) tags
         , selectedOption = state
         , toMsg = identity
-        , columns = 3
         , id = id
         , label = label
         , name = name
@@ -4771,21 +4764,17 @@ enumView tags { state, id, label, name } =
 
 
 radioView :
-    { options : List ( state, String )
-    , selectedOption : state
-    , toMsg : state -> msg
-    , columns : Int
+    { options : List ( option, String )
+    , selectedOption : option
+    , toMsg : option -> msg
     , id : String
     , label : String
     , name : String
     }
     -> Html msg
-radioView { options, selectedOption, toMsg, columns, id, label, name } =
+radioView { options, selectedOption, toMsg, id, label, name } =
     H.fieldset
-        [ HA.style "display" "grid"
-        , HA.style "grid-template-columns" (String.repeat columns "1fr ")
-        , HA.id id
-        ]
+        [ HA.id id ]
         (H.legend [] [ H.text label ]
             :: List.map
                 (\( option, optionLabel ) ->
