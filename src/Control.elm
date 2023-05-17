@@ -2685,7 +2685,7 @@ tag1 label tag control =
     tagHelper
         label
         (record tag
-            |> field "" Tuple.first control
+            |> field label Tuple.first control
             |> end
         )
         (\insertArgStateIntoTagStates arg1 ->
