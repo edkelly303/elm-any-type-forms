@@ -159,7 +159,7 @@ type alias Form state delta output msg =
   - `initEmpty`: a default initial "empty" value for the `state` of the control. For a control whose `state` is of type `String`, this might be `""`, for a number it might be `0`.
   - `initWith`: a function that initialises the control's `state` from a value of the control's `output` type. For a control that outputs an `Int`, but whose `state` is a `String`, this might be `String.fromInt`.
   - `update`: a function that updates the `state` of the control based on its existing `state` and a `delta` type that it receives. This is exactly analogous to an Elm program's update function, where `state` = `Model` and `delta` = `Msg`.
-  - `view`: a function that outputs `Html delta` based on the `state` of the control. This is exactly analogous to an Elm program's view function.
+  - `view`: a function that outputs `Html delta` based on the `state` of the control. This is similar to an Elm program's view function, except instead of just taking the `state` as an argument, it takes a record containing the `state` plus the id, name, and label for the input.
   - `parse`: a function that attempts to parse the control's state into its output type, producing a result. If parsing fails, it can provide a list of errors.
 
 -}
@@ -264,7 +264,7 @@ type alias Path =
 -}
 
 
-{-| `State` is the form's equivalent of an Elm program's `Model`type. It is
+{-| `State` is the form's equivalent of an Elm program's `Model` type. It is
 used to manage the form's internal state.
 -}
 type State state
@@ -474,19 +474,27 @@ Here's how we could create a control like the famous
                         Decrement ->
                             state - 1
             , view =
-                \state ->
+                \{ state, name, id, label } ->
                     Html.div []
-                        [ Html.button
-                            [ Html.Attributes.type_ "button"
-                            , Html.Events.onClick Increment
+                        [ Html.label
+                            [ Html.Attributes.for id ]
+                            [ Html.text label ]
+                        , Html.div
+                            [ Html.Attributes.id id
+                            , Html.Attributes.name name
                             ]
-                            [ Html.text "+" ]
-                        , Html.div [] [ Html.text <| String.fromInt state ]
-                        , Html.button
-                            [ Html.Attributes.type_ "button"
-                            , Html.Events.onClick Decrement
+                            [ Html.button
+                                [ Html.Attributes.type_ "button"
+                                , Html.Events.onClick Increment
+                                ]
+                                [ Html.text "+" ]
+                            , Html.div [] [ Html.text <| String.fromInt state ]
+                            , Html.button
+                                [ Html.Attributes.type_ "button"
+                                , Html.Events.onClick Decrement
+                                ]
+                                [ Html.text "-" ]
                             ]
-                            [ Html.text "-" ]
                         ]
             }
 
@@ -1007,9 +1015,8 @@ variants have any payload. Renders as an HTML radio input.
     colourControl =
         enum
             ( "Red", Red )
-            [ ( "Green", Green )
-            , ( "Blue", Blue )
-            ]
+            ( "Green", Green )
+            [ ( "Blue", Blue ) ]
 
 -}
 enum :
@@ -1177,12 +1184,10 @@ result failureControl successControl =
 
 -}
 tuple :
-    String
-    -> Control state1 delta1 output1
-    -> String
-    -> Control state2 delta2 output2
+    ( String, Control state1 delta1 output1 )
+    -> ( String, Control state2 delta2 output2 )
     -> Control ( State state1, ( State state2, End ) ) ( Delta delta1, ( Delta delta2, End ) ) ( output1, output2 )
-tuple firstLabel first secondLabel second =
+tuple ( firstLabel, first ) ( secondLabel, second ) =
     record Tuple.pair
         |> field firstLabel Tuple.first first
         |> field secondLabel Tuple.second second
@@ -1203,22 +1208,19 @@ tuple firstLabel first secondLabel second =
 {-| A combinator that produces a triple of three controls of given types.
 
     myTripleControl =
-        triple "First" string "Second" int "Third" float
+        triple ( "First", string ) ( "Second", int ) ( "Third", float )
 
 -}
 triple :
-    String
-    -> Control state1 delta1 output1
-    -> String
-    -> Control state2 delta2 output2
-    -> String
-    -> Control state3 delta3 output3
+    ( String, Control state1 delta1 output1 )
+    -> ( String, Control state2 delta2 output2 )
+    -> ( String, Control state3 delta3 output3 )
     ->
         Control
             ( State state1, ( State state2, ( State state3, End ) ) )
             ( Delta delta1, ( Delta delta2, ( Delta delta3, End ) ) )
             ( output1, output2, output3 )
-triple firstLabel first secondLabel second thirdLabel third =
+triple ( firstLabel, first ) ( secondLabel, second ) ( thirdLabel, third ) =
     record (\a b c -> ( a, b, c ))
         |> field firstLabel (\( a, _, _ ) -> a) first
         |> field secondLabel (\( _, b, _ ) -> b) second
@@ -1442,26 +1444,22 @@ list (Control ctrl) =
 types. The key type must be `comparable`.
 
     myDictControl =
-        dict "Key" int "Value" string
+        dict ( "Key", int ) ( "Value", string )
 
 -}
 dict :
-    String
-    -> Control keyState keyDelta comparable
-    -> String
-    -> Control valueState valueDelta value
+    ( String, Control keyState keyDelta comparable )
+    -> ( String, Control valueState valueDelta value )
     ->
         Control
             ( State (List (State ( State keyState, ( State valueState, End ) ))), End )
             ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
             (Dict.Dict comparable value)
-dict keyLabel keyControl valueLabel valueControl =
+dict ( keyLabel, keyControl ) ( valueLabel, valueControl ) =
     list
         (tuple
-            keyLabel
-            (keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique")
-            valueLabel
-            valueControl
+            ( keyLabel, keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique" )
+            ( valueLabel, valueControl )
         )
         |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
         |> wrapper { wrap = Dict.fromList, unwrap = Dict.toList }
@@ -2503,7 +2501,7 @@ recordStateUpdater next { newStates, newCmds } ( fns, restFns ) ( deltaSetter, r
             )
             |> tag0 "NoArgs" NoArgs
             |> tag1 "OneArg" OneArg string
-            |> tag2 "TwoArgs" TwoArgs int float
+            |> tag2 "TwoArgs" TwoArgs ( "Int", int ) ( "Float", float )
             |> end
 
 -}
@@ -2701,10 +2699,11 @@ tag1 label tag control =
     pointControl =
         customType
             (\point tag ->
-                Point x y ->
-                    point x y
+                case tag of
+                    Point x y ->
+                        point x y
             )
-            |> tag2 Point ("X", float) ("Y", float)
+            |> tag2 Point ( "X", float ) ( "Y", float )
 
 -}
 tag2 :
@@ -2735,10 +2734,11 @@ tag2 label tag ( label1, control1 ) ( label2, control2 ) =
     point3DControl =
         customType
             (\point3D tag ->
-                Point3D x y z ->
-                    point3D x y z
+                case tag of
+                    Point3D x y z ->
+                        point3D x y z
             )
-            |> tag3 Point3D ("X", float) ("Y", float) ("Z", float)
+            |> tag3 Point3D ( "X", float ) ( "Y", float ) ( "Z", float )
 
 -}
 tag3 :
