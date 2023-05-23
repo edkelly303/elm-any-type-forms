@@ -385,10 +385,10 @@ myForm =
 toForm : String -> (Delta delta -> msg) -> msg -> Control state delta output -> Form state delta output msg
 toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
     let
-        { init, update, view, parse, setAllIdle, emitFlags, collectErrors, collectDebouncingReceivers } =
+        fns =
             control Path.root
     in
-    { init = init
+    { init = fns.init
     , initWith =
         \output ->
             let
@@ -400,29 +400,29 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
                 |> .init
     , update =
         \msg state ->
-            update msg state
+            fns.update msg state
                 |> Tuple.mapSecond (Cmd.map toFormUpdatedMsg)
     , view =
         \((State internalState state) as s) ->
             let
                 emittedFlags =
-                    emitFlags s
+                    fns.emitFlags s
 
                 debouncingReceivers =
-                    collectDebouncingReceivers s
+                    fns.collectDebouncingReceivers s
 
                 flags =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
             in
             H.form [ HE.onSubmit formSubmittedMsg ]
                 [ H.h1 [] [ H.text label_ ]
-                , view
-                    { id = Nothing
-                    , name = Nothing
-                    , label = Nothing
+                , fns.view
+                    { id = fns.id
+                    , name = fns.name
+                    , label = fns.label
                     }
                     { state = state
-                    , status = getStatus parse collectErrors flags (State internalState state)
+                    , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
                     , flags = flags
                     , selected = internalState.selected
                     }
@@ -433,13 +433,13 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
         \state ->
             let
                 parsingResult =
-                    parse state
+                    fns.parse state
 
                 validationErrors =
-                    emitFlags state
-                        |> collectErrors state
+                    fns.emitFlags state
+                        |> fns.collectErrors state
             in
-            ( setAllIdle state
+            ( fns.setAllIdle state
             , case ( parsingResult, validationErrors ) of
                 ( Ok output, [] ) ->
                     Ok output
