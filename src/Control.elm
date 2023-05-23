@@ -6,7 +6,7 @@ module Control exposing
     , failIf
     , throwFlagIf, catchFlag
     , throwFlagsAt
-    , initWith, debounce, id, name, label
+    , initWith, debounce, id, name, label, class, classList
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
@@ -88,7 +88,7 @@ as follows:
 
 # Configuring controls
 
-@docs initWith, debounce, id, name, label
+@docs initWith, debounce, id, name, label, class, classList
 
 
 # Building record combinators
@@ -887,7 +887,7 @@ name name_ (Control control) =
 {-| Set a label for a `Control`.
 
     string
-        |> label "My string"
+        |> label "Enter your name"
 
 -}
 label : String -> Control state delta output -> Control state delta output
@@ -897,6 +897,64 @@ label label_ (Control control) =
             { i | label = Just label_ }
     in
     Control (control >> labeller)
+
+
+
+{-
+       .o88b. db       .d8b.  .d8888. .d8888.
+      d8P  Y8 88      d8' `8b 88'  YP 88'  YP
+      8P      88      88ooo88 `8bo.   `8bo.
+      8b      88      88~~~88   `Y8b.   `Y8b.
+      Y8b  d8 88booo. 88   88 db   8D db   8D
+       `Y88P' Y88888P YP   YP `8888Y' `8888Y'
+   S
+-}
+
+
+{-| Add an HTML class attribute for a `Control`. See docs for Html.Attributes.class in elm-html.
+
+    string
+        |> class "important"
+
+-}
+class : String -> Control state delta output -> Control state delta output
+class class_ (Control control) =
+    let
+        classifier i =
+            { i | class = class_ :: i.class }
+    in
+    Control (control >> classifier)
+
+
+{-| Add a list of HTML class attributes to a `Control`. See docs for Html.Attributes.classList in elm-html.
+
+    string
+        |> classList
+            [ ( "text", True )
+            , ( "text-important", isImportant )
+            , ( "text-seen", isSeen )
+            ]
+
+-}
+classList : List ( String, Bool ) -> Control state delta output -> Control state delta output
+classList classList_ (Control control) =
+    let
+        classifier i =
+            { i
+                | class =
+                    List.filterMap
+                        (\( class_, isActive ) ->
+                            if isActive then
+                                Just class_
+
+                            else
+                                Nothing
+                        )
+                        classList_
+                        ++ i.class
+            }
+    in
+    Control (control >> classifier)
 
 
 
