@@ -1460,7 +1460,7 @@ list (Control ctrl) =
                             -- this is a total hack!
                             collectDebouncingReceivers (State { status = Intact_, selected = dynamicConfig.selected } dynamicConfig.state)
                     in
-                    listView path ctrl dynamicConfig debouncingReceivers
+                    listView path staticConfig dynamicConfig debouncingReceivers ctrl
             , parse = parse
             , setAllIdle =
                 \(State i s) ->
@@ -3578,64 +3578,75 @@ button msg text =
 
 listView :
     Path
-    -> (Path -> ControlFns input state delta output)
+    -> ViewConfigStatic
     -> ViewConfigDynamic (List (State state))
     -> List Flag
+    -> (Path -> ControlFns input state delta output)
     -> Html (Delta (ListDelta delta))
-listView path ctrl config debouncingReceivers =
-    if List.isEmpty config.state then
-        button (ChangeState (InsertItem 0)) "Add list item"
+listView path staticConfig dynamicConfig debouncingReceivers ctrl =
+    let
+        id_ =
+            Maybe.withDefault (Path.toString path) staticConfig.id
+    in
+    H.div
+        [ HA.id id_ ]
+        [ H.label
+            [ HA.for id_ ]
+            [ H.text (Maybe.withDefault (Path.last path) staticConfig.label) ]
+        , if List.isEmpty dynamicConfig.state then
+            button (ChangeState (InsertItem 0)) "Add list item"
 
-    else
-        H.ol []
-            (List.indexedMap
-                (\idx (State internalState state) ->
-                    let
-                        control =
-                            ctrl (Path.add (String.fromInt idx) path)
+          else
+            H.ol []
+                (List.indexedMap
+                    (\idx (State internalState state) ->
+                        let
+                            control =
+                                ctrl (Path.add (String.fromInt idx) path)
 
-                        filteredFlags1 =
-                            List.filterMap
-                                (\flag ->
-                                    case flag of
-                                        FlagList flagPath flagLabel flagIndexes ->
-                                            if flagPath == path then
-                                                if List.member idx flagIndexes then
-                                                    Just (FlagLabel flagLabel)
+                            filteredFlags1 =
+                                List.filterMap
+                                    (\flag ->
+                                        case flag of
+                                            FlagList flagPath flagLabel flagIndexes ->
+                                                if flagPath == path then
+                                                    if List.member idx flagIndexes then
+                                                        Just (FlagLabel flagLabel)
+
+                                                    else
+                                                        Nothing
 
                                                 else
-                                                    Nothing
+                                                    Just flag
 
-                                            else
+                                            _ ->
                                                 Just flag
+                                    )
+                                    dynamicConfig.flags
 
-                                        _ ->
-                                            Just flag
-                                )
-                                config.flags
-
-                        filteredFlags2 =
-                            List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
-                    in
-                    H.li []
-                        [ control.view
-                            { id = control.id
-                            , name = control.name
-                            , label = control.label
-                            }
-                            { state = state
-                            , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
-                            , flags = filteredFlags2
-                            , selected = internalState.selected
-                            }
-                            |> H.map (ChangeItem idx)
-                        , button (DeleteItem idx) ("Delete item " ++ String.fromInt (idx + 1))
-                        , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
-                        ]
+                            filteredFlags2 =
+                                List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
+                        in
+                        H.li []
+                            [ control.view
+                                { id = control.id
+                                , name = control.name
+                                , label = control.label
+                                }
+                                { state = state
+                                , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
+                                , flags = filteredFlags2
+                                , selected = internalState.selected
+                                }
+                                |> H.map (ChangeItem idx)
+                            , button (DeleteItem idx) ("Delete item " ++ String.fromInt (idx + 1))
+                            , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
+                            ]
+                    )
+                    dynamicConfig.state
                 )
-                config.state
-            )
-            |> H.map ChangeState
+                |> H.map ChangeState
+        ]
 
 
 textControlView : String -> { state : String, id : String, label : String, name : String } -> Html String
