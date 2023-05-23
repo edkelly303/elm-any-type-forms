@@ -2115,17 +2115,26 @@ endRecord rec =
                     let
                         childViews_ =
                             viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
-                    in
-                    case childViews_ of
-                        [ cv ] ->
-                            cv
 
-                        _ ->
-                            H.ul []
-                                (List.map
-                                    (\li -> H.li [] [ li ])
-                                    childViews_
-                                )
+                        id_ =
+                            Maybe.withDefault (Path.toString path) staticConfig.id
+
+                        label_ =
+                            Maybe.withDefault (Path.last path) staticConfig.label
+                    in
+                    H.div [ HA.id id_ ]
+                        [ H.label [ HA.for id_ ] [ H.text label_ ]
+                        , case childViews_ of
+                            [ cv ] ->
+                                cv
+
+                            _ ->
+                                H.ul []
+                                    (List.map
+                                        (\li -> H.li [] [ li ])
+                                        childViews_
+                                    )
+                        ]
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
