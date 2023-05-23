@@ -35,9 +35,20 @@ exampleControl =
                 Bar record ->
                     bar record
         )
-        |> Control.tag1 "Foo" Foo (Control.list (Control.maybe Control.string))
-        |> Control.tag1 "Bar" Bar barControl
+        |> Control.tag1 "Foo"
+            Foo
+            (Control.list
+                (Control.maybe
+                    (Control.string
+                        |> Control.label "Woop woop"
+                    )
+                    |> Control.label "Maaaybe"
+                )
+                |> Control.label "Listy McList"
+            )
+        |> Control.tag1 "Bar" Bar (barControl |> Control.label "Define Bar")
         |> Control.end
+        |> Control.label "Hello!"
 
 
 barControl =
@@ -53,7 +64,13 @@ barControl =
         |> Control.field "Baz" .baz bazControl
         |> Control.field "Qux" .qux quxControl
         |> Control.field "Xin" .xin (Control.bool "True" "False")
-        |> Control.field "Jyg" .jyg Control.char
+        |> Control.field "Jyg"
+            .jyg
+            (Control.char
+                |> Control.label "What is jyg?"
+                |> Control.id "jyggy-001"
+                |> Control.name "JYG"
+            )
         |> Control.field "Zup" .zup Control.float
         |> Control.end
         |> Control.throwFlagIf (\record -> String.toInt record.baz == Just record.qux) "baz=qux"
