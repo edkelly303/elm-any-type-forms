@@ -167,7 +167,7 @@ type alias ControlConfig state delta output =
     { initEmpty : state
     , initWith : output -> state
     , update : delta -> state -> state
-    , view : { label : String, id : String, name : String, state : state } -> Html delta
+    , view : { label : String, id : String, name : String, class : String, state : state } -> Html delta
     , parse : state -> Result (List String) output
     }
 
@@ -220,6 +220,7 @@ type alias ControlFns input state delta output =
     , label : Maybe String
     , id : Maybe String
     , name : Maybe String
+    , class : List String
     }
 
 
@@ -247,6 +248,7 @@ type alias ViewConfigStatic =
     { name : Maybe String
     , id : Maybe String
     , label : Maybe String
+    , class : List String
     }
 
 
@@ -421,6 +423,7 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
                     { id = fns.id
                     , name = fns.name
                     , label = fns.label
+                    , class = fns.class
                     }
                     { state = state
                     , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
@@ -548,6 +551,7 @@ create config =
                         , label = Maybe.withDefault (Path.last path) staticConfig.label
                         , id = Maybe.withDefault (Path.toString path) staticConfig.id
                         , name = Maybe.withDefault (Path.toString path) staticConfig.name
+                        , class = String.join " " staticConfig.class
                         }
                         |> wrappedView dynamicConfig.status
                         |> H.map ChangeState
@@ -560,6 +564,7 @@ create config =
             , label = Nothing
             , id = Nothing
             , name = Nothing
+            , class = []
             }
         )
 
@@ -1525,6 +1530,7 @@ list (Control ctrl) =
             , label = Nothing
             , id = Nothing
             , name = Nothing
+            , class = []
             }
         )
 
@@ -2164,6 +2170,7 @@ endRecord rec =
             , label = Nothing
             , id = Nothing
             , name = Nothing
+            , class = []
             }
         )
 
@@ -2460,6 +2467,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
                 { id = fns.field.id
                 , name = fns.field.name
                 , label = fns.field.label
+                , class = fns.field.class
                 }
                 { state = state
                 , status = getStatus fns.field.parse fns.field.collectErrors flags (State internalState state)
@@ -2966,6 +2974,7 @@ endCustomType rec =
             , label = Nothing
             , id = Nothing
             , name = Nothing
+            , class = []
             }
         )
 
@@ -3482,6 +3491,7 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
                     { id = fns.id
                     , label = fns.label
                     , name = fns.name
+                    , class = fns.class
                     }
                     { state = state
                     , status = Intact
@@ -3517,11 +3527,17 @@ wrappedView status innerView =
     H.div
         [ HA.class
             (case status of
-                Idle (_ :: _) ->
-                    "invalid"
+                Intact ->
+                    "control-intact"
 
-                _ ->
-                    ""
+                Debouncing ->
+                    "control-debouncing"
+
+                Idle (_ :: _) ->
+                    "control-invalid"
+
+                Idle _ ->
+                    "control-valid"
             )
         ]
         [ innerView
@@ -3642,6 +3658,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                 { id = control.id
                                 , name = control.name
                                 , label = control.label
+                                , class = control.class
                                 }
                                 { state = state
                                 , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
@@ -3659,7 +3676,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
         ]
 
 
-textControlView : String -> { state : String, id : String, label : String, name : String } -> Html String
+textControlView : String -> { state : String, id : String, label : String, name : String, class : String } -> Html String
 textControlView type_ config =
     H.div []
         [ H.label [ HA.for config.id ] [ H.text config.label ]
@@ -3667,6 +3684,7 @@ textControlView type_ config =
             [ HE.onInput identity
             , HA.name config.name
             , HA.id config.id
+            , HA.class config.class
             , HA.type_ type_
             , HA.value config.state
             ]
@@ -3674,7 +3692,7 @@ textControlView type_ config =
         ]
 
 
-enumView : List ( String, enum ) -> { state : enum, id : String, label : String, name : String } -> Html enum
+enumView : List ( String, enum ) -> { state : enum, id : String, label : String, name : String, class : String } -> Html enum
 enumView tags config =
     radioView
         { options = List.map (\( a, b ) -> ( b, a )) tags
