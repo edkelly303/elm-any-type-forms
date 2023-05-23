@@ -10,8 +10,7 @@ module Control exposing
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
-    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, Path
-    , ViewConfigDynamic
+    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
     )
 
 {-|
@@ -114,7 +113,7 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfig, Path
+@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
 
 -}
 
@@ -242,6 +241,8 @@ type alias ViewConfigDynamic state =
     }
 
 
+{-| Some internal stuff needed to view controls
+-}
 type alias ViewConfigStatic =
     { name : Maybe String
     , id : Maybe String
@@ -2108,7 +2109,7 @@ endRecord rec =
                         _ ->
                             ( State s state, Cmd.none )
 
-                childViews staticConfig dynamicConfig =
+                childViews _ dynamicConfig =
                     viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
 
                 view staticConfig dynamicConfig =
@@ -2927,7 +2928,7 @@ endCustomType rec =
                             _ ->
                                 ( State i state, Cmd.none )
 
-                childView staticConfig dynamicConfig =
+                childView _ dynamicConfig =
                     viewSelectedTagState rec.viewer dynamicConfig.flags dynamicConfig.selected fns deltaSetters dynamicConfig.state
 
                 view staticConfig dynamicConfig =
