@@ -2187,8 +2187,8 @@ endRecord rec =
                         label_ =
                             Maybe.withDefault (Path.last path) staticConfig.label
                     in
-                    H.div [ HA.id id_ ]
-                        [ H.label [ HA.for id_ ] [ H.text label_ ]
+                    H.section [ HA.id id_ ]
+                        [ H.h2 [] [ H.text label_ ]
                         , case childViews_ of
                             [ cv ] ->
                                 cv
@@ -3002,8 +3002,7 @@ endCustomType rec =
                         options =
                             List.indexedMap Tuple.pair labels
                     in
-                    childView staticConfig dynamicConfig
-                        |> customTypeView path staticConfig options dynamicConfig.selected
+                    customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
 
                 parse =
                     \(State i state) -> validateSelectedTagState rec.parser i.selected fns state
