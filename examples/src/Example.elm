@@ -1,11 +1,13 @@
 module Example exposing (main)
 
+import Array
 import Browser
 import Control
 import Dict
 import Html
 import Html.Attributes
 import Html.Events
+import Set
 
 
 
@@ -20,74 +22,64 @@ exampleForm =
         exampleControl
 
 
-type Example
-    = Foo (List (Maybe String))
-    | Bar { baz : String, qux : Int, xin : Bool, jyg : Char, zup : Float }
+type alias Example =
+    { int : Int
+    , float : Float
+    , string : String
+    , char : Char
+    , bool : Bool
+    , enum : Enum
+    , maybe : Maybe Example2
+    }
 
 
 exampleControl =
-    Control.customType
-        (\foo bar tag ->
-            case tag of
-                Foo list ->
-                    foo list
-
-                Bar record ->
-                    bar record
-        )
-        |> Control.tag1 "Foo"
-            Foo
-            (Control.list
-                (Control.maybe
-                    (Control.string
-                        |> Control.label "Woop woop"
-                    )
-                    |> Control.label "Maaaybe"
-                )
-                |> Control.label "Listy McList"
-            )
-        |> Control.tag1 "Bar" Bar (barControl |> Control.label "Define Bar")
+    Control.record Example
+        |> Control.field "int" .int Control.int
+        |> Control.field "float" .float Control.float
+        |> Control.field "string" .string Control.string
+        |> Control.field "char" .char Control.char
+        |> Control.field "bool" .bool (Control.bool "true" "false")
+        |> Control.field "enum" .enum (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ])
+        |> Control.field "maybe" .maybe (Control.maybe example2Control)
         |> Control.end
-        |> Control.label "Hello!"
 
 
-barControl =
-    Control.record
-        (\baz qux xin jyg zup ->
-            { baz = baz
-            , qux = qux
-            , xin = xin
-            , jyg = jyg
-            , zup = zup
-            }
-        )
-        |> Control.field "Baz" .baz bazControl
-        |> Control.field "Qux" .qux quxControl
-        |> Control.field "Xin" .xin (Control.bool "True" "False")
-        |> Control.field "Jyg"
-            .jyg
-            (Control.char
-                |> Control.label "What is jyg?"
-                |> Control.id "jyggy-001"
-                |> Control.name "JYG"
-            )
-        |> Control.field "Zup" .zup Control.float
+type Enum
+    = Red
+    | Green
+    | Blue
+
+
+type alias Example2 =
+    { wrapper : Wrapper Int
+    , tuple : ( Int, String )
+    , triple : ( Int, String, Float )
+    , result : Result Int String
+    , list : List Int
+    , dict : Dict.Dict String Int
+    , set : Set.Set String
+    , array : Array.Array Int
+    , counter : Int
+    }
+
+
+example2Control =
+    Control.record Example2
+        |> Control.field "wrapper" .wrapper (Control.wrapper { wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
+        |> Control.field "tuple" .tuple (Control.tuple ( "int", Control.int ) ( "string", Control.string ))
+        |> Control.field "triple" .triple (Control.triple ( "int", Control.int ) ( "string", Control.string ) ( "float", Control.float ))
+        |> Control.field "result" .result (Control.result Control.int Control.string)
+        |> Control.field "list" .list (Control.list Control.int)
+        |> Control.field "dict" .dict (Control.dict ("key", Control.string) ("value", Control.int))
+        |> Control.field "set" .set (Control.set Control.string)
+        |> Control.field "array" .array (Control.array Control.int)
+        |> Control.field "counter" .counter counterControl
         |> Control.end
-        |> Control.throwFlagIf (\record -> String.toInt record.baz == Just record.qux) "baz=qux"
 
 
-bazControl =
-    Control.string
-        |> Control.debounce 500
-        |> Control.catchFlag "baz=qux" "Baz must not equal Qux"
-        |> Control.failIf String.isEmpty "Baz must not be blank"
-        |> Control.failIf (String.contains "?") "Baz must not contain a '?'"
-
-
-quxControl =
-    counterControl
-        |> Control.catchFlag "baz=qux" "Qux must not equal Baz"
-        |> Control.failIf (\n -> n < 1) "Qux must be greater than zero"
+type Wrapper a
+    = Wrapper a
 
 
 
@@ -212,64 +204,213 @@ view model =
 
 type alias FormState =
     Control.State
-        ( Control.State
-            ( Control.State
-                (List
-                    (Control.State
-                        ( Control.State ()
-                        , ( Control.State
-                                ( Control.State String, Control.End )
-                          , Control.End
+        ( Control.State String
+        , ( Control.State String
+          , ( Control.State String
+            , ( Control.State String
+              , ( Control.State Bool
+                , ( Control.State Enum
+                  , ( Control.State
+                          ( Control.State ()
+                          , ( Control.State
+                                  ( Control.State
+                                        ( Control.State
+                                              ( Control.State String
+                                              , Control.End
+                                              )
+                                        , ( Control.State
+                                                ( Control.State String
+                                                , ( Control.State String
+                                                  , Control.End
+                                                  )
+                                                )
+                                          , ( Control.State
+                                                  ( Control.State String
+                                                  , ( Control.State String
+                                                    , ( Control.State String
+                                                      , Control.End
+                                                      )
+                                                    )
+                                                  )
+                                            , ( Control.State
+                                                    ( Control.State
+                                                          ( Control.State String
+                                                          , Control.End
+                                                          )
+                                                    , ( Control.State
+                                                            ( Control.State
+                                                                  String
+                                                            , Control.End
+                                                            )
+                                                      , Control.End
+                                                      )
+                                                    )
+                                              , ( Control.State
+                                                      (
+                                                      List
+                                                          (Control.State String)
+                                                      )
+                                                , ( Control.State
+                                                        ( Control.State
+                                                              (
+                                                              List
+                                                                  (
+                                                                  Control.State
+                                                                      ( Control.State
+                                                                            String
+                                                                      , ( Control.State
+                                                                              String
+                                                                        , Control.End
+                                                                        )
+                                                                      )
+                                                                  )
+                                                              )
+                                                        , Control.End
+                                                        )
+                                                  , ( Control.State
+                                                          ( Control.State
+                                                                (
+                                                                List
+                                                                    (
+                                                                    Control.State
+                                                                        String
+                                                                    )
+                                                                )
+                                                          , Control.End
+                                                          )
+                                                    , ( Control.State
+                                                            ( Control.State
+                                                                  (
+                                                                  List
+                                                                      (
+                                                                      Control.State
+                                                                          String
+                                                                      )
+                                                                  )
+                                                            , Control.End
+                                                            )
+                                                      , ( Control.State Int
+                                                        , Control.End
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                  , Control.End
+                                  )
+                            , Control.End
+                            )
                           )
-                        )
+                    , Control.End
                     )
+                  )
                 )
-            , Control.End
+              )
             )
-        , ( Control.State
-                ( Control.State
-                    ( Control.State String
-                    , ( Control.State Int
-                      , ( Control.State Bool
-                        , ( Control.State String
-                          , ( Control.State String, Control.End )
-                          )
-                        )
-                      )
-                    )
-                , Control.End
-                )
-          , Control.End
           )
         )
 
 
 type alias FormDelta =
-    Control.Delta
-        ( Control.Delta
-            ( Control.Delta
-                (Control.ListDelta
-                    ( Control.Delta ()
-                    , ( Control.Delta ( Control.Delta String, Control.End )
-                      , Control.End
-                      )
-                    )
-                )
-            , Control.End
-            )
-        , ( Control.Delta
-                ( Control.Delta
-                    ( Control.Delta String
-                    , ( Control.Delta CounterDelta
-                      , ( Control.Delta Bool
-                        , ( Control.Delta String
-                          , ( Control.Delta String, Control.End )
+    Control.Delta (        ( Control.Delta String
+        , ( Control.Delta String
+          , ( Control.Delta String
+            , ( Control.Delta String
+              , ( Control.Delta Bool
+                , ( Control.Delta Enum
+                  , ( Control.Delta
+                          ( Control.Delta ()
+                          , ( Control.Delta
+                                  ( Control.Delta
+                                        ( Control.Delta
+                                              ( Control.Delta String
+                                              , Control.End
+                                              )
+                                        , ( Control.Delta
+                                                ( Control.Delta String
+                                                , ( Control.Delta String
+                                                  , Control.End
+                                                  )
+                                                )
+                                          , ( Control.Delta
+                                                  ( Control.Delta String
+                                                  , ( Control.Delta String
+                                                    , ( Control.Delta String
+                                                      , Control.End
+                                                      )
+                                                    )
+                                                  )
+                                            , ( Control.Delta
+                                                    ( Control.Delta
+                                                          ( Control.Delta String
+                                                          , Control.End
+                                                          )
+                                                    , ( Control.Delta
+                                                            ( Control.Delta
+                                                                  String
+                                                            , Control.End
+                                                            )
+                                                      , Control.End
+                                                      )
+                                                    )
+                                              , ( Control.Delta
+                                                      (Control.ListDelta String)
+                                                , ( Control.Delta
+                                                        ( Control.Delta
+                                                              (
+                                                              Control.ListDelta
+                                                                  ( Control.Delta
+                                                                        String
+                                                                  , ( Control.Delta
+                                                                          String
+                                                                    , Control.End
+                                                                    )
+                                                                  )
+                                                              )
+                                                        , Control.End
+                                                        )
+                                                  , ( Control.Delta
+                                                          ( Control.Delta
+                                                                (
+                                                                Control.ListDelta
+                                                                    String
+                                                                )
+                                                          , Control.End
+                                                          )
+                                                    , ( Control.Delta
+                                                            ( Control.Delta
+                                                                  (
+                                                                  Control.ListDelta
+                                                                      String
+                                                                  )
+                                                            , Control.End
+                                                            )
+                                                      , ( Control.Delta
+                                                              CounterDelta
+                                                        , Control.End
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                  , Control.End
+                                  )
+                            , Control.End
+                            )
                           )
-                        )
-                      )
+                    , Control.End
                     )
-                , Control.End
+                  )
                 )
-          , Control.End
+              )
+            )
           )
-        )
+        ))
