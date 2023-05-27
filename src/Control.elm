@@ -2187,19 +2187,19 @@ endRecord rec =
                         label_ =
                             Maybe.withDefault (Path.last path) staticConfig.label
                     in
-                    H.section [ HA.id id_ ]
-                        [ H.h2 [] [ H.text label_ ]
-                        , case childViews_ of
-                            [ cv ] ->
-                                cv
+                    case childViews_ of
+                        [ onlyChild ] ->
+                            onlyChild
 
-                            _ ->
-                                H.ul []
+                        _ ->
+                            H.section [ HA.id id_ ]
+                                [ H.h2 [] [ H.text label_ ]
+                                , H.ul []
                                     (List.map
                                         (\li -> H.li [] [ li ])
                                         childViews_
                                     )
-                        ]
+                                ]
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
