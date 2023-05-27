@@ -2193,13 +2193,7 @@ endRecord rec =
 
                         _ ->
                             H.section [ HA.id id_ ]
-                                [ H.h2 [] [ H.text label_ ]
-                                , H.ul []
-                                    (List.map
-                                        (\li -> H.li [] [ li ])
-                                        childViews_
-                                    )
-                                ]
+                                (H.h2 [] [ H.text label_ ] :: childViews_)
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
