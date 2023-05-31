@@ -1233,16 +1233,16 @@ bool trueId falseId =
 
 -}
 wrapper :
-    { wrap : output -> wrapped, unwrap : wrapped -> output }
+    { label : String, wrap : output -> wrapped, unwrap : wrapped -> output }
     -> Control state delta output
     ->
         Control
             ( State state, End )
             ( Delta delta, End )
             wrapped
-wrapper { wrap, unwrap } control =
-    record wrap
-        |> field "Wrapper" unwrap control
+wrapper config control =
+    record config.wrap
+        |> field config.label config.unwrap control
         |> end
 
 
@@ -1626,7 +1626,7 @@ dict ( keyLabel, keyControl ) ( valueLabel, valueControl ) =
             ( valueLabel, valueControl )
         )
         |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
-        |> wrapper { wrap = Dict.fromList, unwrap = Dict.toList }
+        |> wrapper { label = "dict", wrap = Dict.fromList, unwrap = Dict.toList }
 
 
 nonUniqueIndexes : List comparable -> List Int
@@ -1680,7 +1680,7 @@ set memberControl =
     list
         (memberControl |> catchFlag "@@set-unique-keys" "Set members must be unique")
         |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
-        |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
+        |> wrapper { label = "set", wrap = Set.fromList, unwrap = Set.toList }
 
 
 
@@ -1709,7 +1709,7 @@ array :
             (Array.Array output)
 array itemControl =
     list itemControl
-        |> wrapper { wrap = Array.fromList, unwrap = Array.toList }
+        |> wrapper { label = "array", wrap = Array.fromList, unwrap = Array.toList }
 
 
 
@@ -3671,7 +3671,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
             [ HA.for id_ ]
             [ H.text (Maybe.withDefault (Path.last path) staticConfig.label) ]
         , if List.isEmpty dynamicConfig.state then
-            button (ChangeState (InsertItem 0)) "Add list item"
+            button (ChangeState (InsertItem 0)) "Add item"
 
           else
             H.ol []
@@ -3717,7 +3717,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                 , selected = internalState.selected
                                 }
                                 |> H.map (ChangeItem idx)
-                            , button (DeleteItem idx) ("Delete item " ++ String.fromInt (idx + 1))
+                            , button (DeleteItem idx) "Delete item"
                             , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
                             ]
                     )
