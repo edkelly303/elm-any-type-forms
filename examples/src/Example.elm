@@ -66,7 +66,7 @@ type alias Example2 =
 
 example2Control =
     Control.record Example2
-        |> Control.field "wrapper" .wrapper (Control.wrapper { wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
+        |> Control.field "wrapper" .wrapper (Control.wrapper { label = "wrapper", wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
         |> Control.field "tuple" .tuple (Control.tuple ( "int", Control.int ) ( "string", Control.string ))
         |> Control.field "triple" .triple (Control.triple ( "int", Control.int ) ( "string", Control.string ) ( "float", Control.float ))
         |> Control.field "result" .result (Control.result Control.int Control.string)
