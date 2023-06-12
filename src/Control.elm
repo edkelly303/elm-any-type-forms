@@ -1,6 +1,6 @@
 module Control exposing
     ( Control, Form, toProgram, toForm
-    , bool, int, float, string, char, enum
+    , bool, checkbox, int, float, string, char, enum
     , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
     , failIf
@@ -23,7 +23,7 @@ module Control exposing
 
 # Basic controls
 
-@docs bool, int, float, string, char, enum
+@docs bool, checkbox, int, float, string, char, enum
 
 
 # Basic combinators
@@ -1266,6 +1266,34 @@ enum first second rest =
 bool : String -> String -> Control Bool Bool Bool
 bool trueId falseId =
     enum ( trueId, True ) ( falseId, False ) []
+
+
+{-| A control that produces a Boolean value. Renders as an HTML checkbox.
+-}
+checkbox : Control Bool Bool Bool
+checkbox =
+    create
+        { initEmpty = False
+        , initWith = identity
+        , view =
+            \config ->
+                H.div []
+                    [ H.input
+                        [ HA.type_ "checkbox"
+                        , HA.id config.id
+                        , HA.name config.name
+                        , HA.class config.class
+                        , HA.checked config.state
+                        , HE.onClick (not config.state)
+                        ]
+                        []
+                    , H.label
+                        [ HA.for config.id ]
+                        [ H.text config.label ]
+                    ]
+        , update = \delta _ -> delta
+        , parse = Ok
+        }
 
 
 

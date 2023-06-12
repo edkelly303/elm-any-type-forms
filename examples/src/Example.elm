@@ -14,97 +14,6 @@ import Set
 -- Here's how we define a form for a complex Elm type
 
 
-main :
-    Program
-        ()
-        (Control.State
-            ( Control.State String
-            , ( Control.State String
-              , ( Control.State String
-                , ( Control.State String
-                  , ( Control.State Bool
-                    , ( Control.State Enum
-                      , ( Control.State
-                            ( Control.State ()
-                            , ( Control.State
-                                    ( Control.State
-                                        ( Control.State ( Control.State String, Control.End )
-                                        , ( Control.State ( Control.State String, ( Control.State String, Control.End ) )
-                                          , ( Control.State ( Control.State String, ( Control.State String, ( Control.State String, Control.End ) ) )
-                                            , ( Control.State ( Control.State ( Control.State String, Control.End ), ( Control.State ( Control.State String, Control.End ), Control.End ) )
-                                              , ( Control.State (List (Control.State String))
-                                                , ( Control.State ( Control.State (List (Control.State ( Control.State String, ( Control.State String, Control.End ) ))), Control.End )
-                                                  , ( Control.State ( Control.State (List (Control.State String)), Control.End )
-                                                    , ( Control.State ( Control.State (List (Control.State String)), Control.End )
-                                                      , ( Control.State Int
-                                                        , Control.End
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                                                )
-                                              )
-                                            )
-                                          )
-                                        )
-                                    , Control.End
-                                    )
-                              , Control.End
-                              )
-                            )
-                        , Control.End
-                        )
-                      )
-                    )
-                  )
-                )
-              )
-            )
-        )
-        (Control.Delta
-            ( Control.Delta String
-            , ( Control.Delta String
-              , ( Control.Delta String
-                , ( Control.Delta String
-                  , ( Control.Delta Bool
-                    , ( Control.Delta Enum
-                      , ( Control.Delta
-                            ( Control.Delta ()
-                            , ( Control.Delta
-                                    ( Control.Delta
-                                        ( Control.Delta ( Control.Delta String, Control.End )
-                                        , ( Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) )
-                                          , ( Control.Delta ( Control.Delta String, ( Control.Delta String, ( Control.Delta String, Control.End ) ) )
-                                            , ( Control.Delta ( Control.Delta ( Control.Delta String, Control.End ), ( Control.Delta ( Control.Delta String, Control.End ), Control.End ) )
-                                              , ( Control.Delta (Control.ListDelta String)
-                                                , ( Control.Delta ( Control.Delta (Control.ListDelta ( Control.Delta String, ( Control.Delta String, Control.End ) )), Control.End )
-                                                  , ( Control.Delta ( Control.Delta (Control.ListDelta String), Control.End )
-                                                    , ( Control.Delta ( Control.Delta (Control.ListDelta String), Control.End )
-                                                      , ( Control.Delta CounterDelta
-                                                        , Control.End
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                                                )
-                                              )
-                                            )
-                                          )
-                                        )
-                                    , Control.End
-                                    )
-                              , Control.End
-                              )
-                            )
-                        , Control.End
-                        )
-                      )
-                    )
-                  )
-                )
-              )
-            )
-        )
 main =
     Control.toProgram "My Lovely Form" exampleControl
 
@@ -115,6 +24,7 @@ type alias Example =
     , string : String
     , char : Char
     , bool : Bool
+    , checkbox : Bool
     , enum : Enum
     , maybe : Maybe Example2
     }
@@ -127,6 +37,7 @@ exampleControl =
         |> Control.field "string" .string Control.string
         |> Control.field "char" .char Control.char
         |> Control.field "bool" .bool (Control.bool "true" "false")
+        |> Control.field "checkbox" .checkbox (Control.checkbox)
         |> Control.field "enum" .enum (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ])
         |> Control.field "maybe" .maybe (Control.maybe example2Control)
         |> Control.end
