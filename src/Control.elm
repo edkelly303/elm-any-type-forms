@@ -1,5 +1,5 @@
 module Control exposing
-    ( Control, Form, toForm
+    ( Control, Form, toProgram, toForm
     , bool, int, float, string, char, enum
     , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
@@ -11,7 +11,6 @@ module Control exposing
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
-    , toProgram
     )
 
 {-|
@@ -19,7 +18,7 @@ module Control exposing
 
 # Creating a form
 
-@docs Control, Form, toForm
+@docs Control, Form, toProgram, toForm
 
 
 # Basic controls
@@ -459,6 +458,24 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
     }
 
 
+{-| Convert a `Control` into a `Program` by providing:
+
+1.  A name/title for the form
+2.  The `Control` itself
+
+```
+main =
+    toProgram "My Form" int
+```
+
+This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
+your Elm application's `Model`and `Msg` types. 
+
+Once you're happy with the form, you can then ask the Elm compiler (or your editor's Elm plugin) to tell you the type 
+signature of the `Program`, which will give you the form's `state` and `delta` types. You can then plug these into your 
+main `Model`and `Msg` types wherever appropriate.
+
+-}
 toProgram : String -> Control state delta output -> Program () (State state) (Delta delta)
 toProgram label_ (Control control) =
     let
