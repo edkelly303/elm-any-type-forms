@@ -199,8 +199,7 @@ type alias RecordFns input state delta output recordOutput =
 {-| Some internal stuff needed to build up record and custom type controls
 -}
 type alias ControlFns input state delta output =
-    { delta : Delta delta
-    , index : Int
+    { index : Int
     , init : State state
     , initWith : input -> State state
     , baseUpdate :
@@ -601,7 +600,6 @@ create config =
             { path = path
             , index = 0
             , init = State { status = Intact_, selected = 0 } config.initEmpty
-            , delta = Skip
             , initWith = \input -> State { status = Intact_, selected = 0 } (config.initWith input)
             , baseUpdate = preUpdate
             , update = preUpdate 0
@@ -1575,7 +1573,6 @@ list (Control ctrl) =
                         input
                         |> State { status = Intact_, selected = 0 }
             , init = State { status = Intact_, selected = 0 } []
-            , delta = Skip
             , baseUpdate = update
             , update = update 0
             , childViews = \_ _ -> []
@@ -2269,7 +2266,6 @@ endRecord rec =
             { path = path
             , index = 0
             , init = State { status = Intact_, selected = 0 } inits
-            , delta = Skip
             , initWith = \output -> initialiseRecordStates rec.initialiser output fns
             , baseUpdate = \_ -> update
             , update = update
@@ -3072,7 +3068,6 @@ endCustomType rec =
             { path = path
             , index = 0
             , init = State { status = Intact_, selected = 0 } inits
-            , delta = Skip
             , initWith = applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters
             , baseUpdate = \_ -> update
             , update = update
