@@ -167,7 +167,7 @@ type alias Form state delta output msg =
 type alias ControlConfig state delta output =
     { initEmpty : state
     , initWith : output -> state
-    , update : delta -> state -> state
+    , update : delta -> state -> ( state, Cmd delta )
     , view : { label : String, id : String, name : String, class : String, state : state } -> Html delta
     , parse : state -> Result (List String) output
     }
@@ -581,12 +581,7 @@ create config =
         (\path ->
             let
                 preUpdate =
-                    wrapUpdate
-                        (\delta state ->
-                            ( config.update delta state
-                            , Cmd.none
-                            )
-                        )
+                    wrapUpdate config.update
 
                 parse =
                     \(State _ state) ->
@@ -1100,7 +1095,7 @@ int =
     create
         { initEmpty = ""
         , initWith = String.fromInt
-        , update = \delta _ -> delta
+        , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "number"
         , parse =
             \state ->
@@ -1133,7 +1128,7 @@ float =
     create
         { initEmpty = ""
         , initWith = String.fromFloat
-        , update = \delta _ -> delta
+        , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "number"
         , parse =
             \state ->
@@ -1165,7 +1160,7 @@ string =
     create
         { initEmpty = ""
         , initWith = identity
-        , update = \delta _ -> delta
+        , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse = Ok
         }
@@ -1190,7 +1185,7 @@ char =
     create
         { initEmpty = ""
         , initWith = String.fromChar
-        , update = \delta _ -> delta
+        , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse =
             \str ->
@@ -1244,7 +1239,7 @@ enum first second rest =
     create
         { initEmpty = Tuple.second first
         , initWith = identity
-        , update = \delta _ -> delta
+        , update = \delta _ -> ( delta, Cmd.none )
         , view = enumView (first :: second :: rest)
         , parse = Ok
         }
@@ -1291,7 +1286,7 @@ checkbox =
                         [ HA.for config.id ]
                         [ H.text config.label ]
                     ]
-        , update = \delta _ -> delta
+        , update = \delta _ -> ( delta, Cmd.none )
         , parse = Ok
         }
 
@@ -2900,7 +2895,7 @@ null tag =
     create
         { initEmpty = ()
         , initWith = \_ -> ()
-        , update = \() () -> ()
+        , update = \() () -> ( (), Cmd.none )
         , view = \_ -> H.text ""
         , parse = \() -> Ok tag
         }

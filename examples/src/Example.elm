@@ -37,7 +37,7 @@ exampleControl =
         |> Control.field "string" .string Control.string
         |> Control.field "char" .char Control.char
         |> Control.field "bool" .bool (Control.bool "true" "false")
-        |> Control.field "checkbox" .checkbox (Control.checkbox)
+        |> Control.field "checkbox" .checkbox Control.checkbox
         |> Control.field "enum" .enum (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ])
         |> Control.field "maybe" .maybe (Control.maybe example2Control)
         |> Control.end
@@ -99,12 +99,14 @@ counterControl =
         , initWith = identity
         , update =
             \delta state ->
-                case delta of
+                ( case delta of
                     Increment ->
                         state + 1
 
                     Decrement ->
                         state - 1
+                , Cmd.none
+                )
         , view =
             \{ state, label, id, name } ->
                 Html.div
