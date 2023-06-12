@@ -202,11 +202,7 @@ type alias ControlFns input state delta output =
     { index : Int
     , init : State state
     , initWith : input -> State state
-    , baseUpdate :
-        Float
-        -> Delta delta
-        -> State state
-        -> ( State state, Cmd (Delta delta) )
+    , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
     , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
     , view : ViewConfigStatic -> ViewConfigDynamic state -> Html (Delta delta)
     , childViews : ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta))
