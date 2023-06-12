@@ -7,7 +7,10 @@ import Dict
 import Html
 import Html.Attributes
 import Html.Events
+import Process
 import Set
+import Task
+import Time
 
 
 
@@ -59,6 +62,7 @@ type alias Example2 =
     , set : Set.Set String
     , array : Array.Array Int
     , counter : Int
+    , time : Time.Posix
     }
 
 
@@ -73,6 +77,7 @@ example2Control =
         |> Control.field "set" .set (Control.set Control.string)
         |> Control.field "array" .array (Control.array Control.int)
         |> Control.field "counter" .counter counterControl
+        |> Control.field "time" .time timeControl
         |> Control.end
 
 
@@ -127,4 +132,47 @@ counterControl =
                         [ Html.text "-1" ]
                     ]
         , parse = Ok
+        }
+
+
+type TimeDelta
+    = ClockTicked Time.Posix
+    | InputUpdated String
+
+
+timeControl =
+    Control.create
+        { initEmpty = { input = "", now = Time.millisToPosix 0 }
+        , initWith = \posix -> { input = "", now = posix }
+        , update =
+            \delta state ->
+                case delta of
+                    ClockTicked posix ->
+                        ( { state | now = posix }
+                        , Task.perform ClockTicked (Process.sleep 1000 |> Task.andThen (\() -> Time.now))
+                        )
+
+                    InputUpdated str ->
+                        ( { state | input = str }
+                        , Task.perform ClockTicked (Process.sleep 1000 |> Task.andThen (\() -> Time.now))
+                        )
+        , view =
+            \{ state, label, id, name, class } ->
+                Html.div []
+                    [ Html.text
+                        (String.fromInt (Time.toHour Time.utc state.now)
+                            ++ ":"
+                            ++ String.fromInt (Time.toMinute Time.utc state.now)
+                            ++ ":"
+                            ++ String.fromInt (Time.toSecond Time.utc state.now)
+                        )
+                    , Html.input
+                        [ Html.Attributes.id id
+                        , Html.Attributes.name name
+                        , Html.Attributes.class class
+                        , Html.Events.onInput InputUpdated
+                        ]
+                        [ Html.text state.input ]
+                    ]
+        , parse = \state -> Ok state.now
         }
