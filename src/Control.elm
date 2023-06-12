@@ -215,7 +215,7 @@ type alias ControlFns input state delta output =
     , emitFlags : State state -> List Flag
     , collectDebouncingReceivers : State state -> List Flag
     , collectErrors : State state -> List Flag -> List ( String, String )
-    , receiverCount : List Flag
+    , receiverCount : Int
     , setAllIdle : State state -> State state
     , label : Maybe String
     , id : Maybe String
@@ -468,10 +468,10 @@ main =
 ```
 
 This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
-your Elm application's `Model`and `Msg` types. 
+your Elm application's `Model`and `Msg` types.
 
-Once you're happy with the form, you can then ask the Elm compiler (or your editor's Elm plugin) to tell you the type 
-signature of the `Program`, which will give you the form's `state` and `delta` types. You can then plug these into your 
+Once you're happy with the form, you can then ask the Elm compiler (or your editor's Elm plugin) to tell you the type
+signature of the `Program`, which will give you the form's `state` and `delta` types. You can then plug these into your
 main `Model`and `Msg` types wherever appropriate.
 
 -}
@@ -620,7 +620,7 @@ create config =
             , emitFlags = \_ -> []
             , collectDebouncingReceivers = \_ -> []
             , collectErrors = \_ _ -> []
-            , receiverCount = []
+            , receiverCount = 0
             , label = Nothing
             , id = Nothing
             , name = Nothing
@@ -816,7 +816,7 @@ flagReceiver flag message ctrl =
                             []
                 in
                 List.Extra.unique (oldReceiver ++ newReceiver)
-        , receiverCount = flag :: ctrl.receiverCount
+        , receiverCount = ctrl.receiverCount + 1
         , collectDebouncingReceivers =
             \((State internalState _) as state) ->
                 case internalState.status of
@@ -845,7 +845,7 @@ failIf check message (Control c) =
                     c path
 
                 flag =
-                    FlagPath path (List.length control.receiverCount)
+                    FlagPath path control.receiverCount
             in
             control
                 |> flagEmitter check flag
@@ -1642,7 +1642,7 @@ list (Control ctrl) =
                         )
                         listState
                         |> List.concat
-            , receiverCount = []
+            , receiverCount = 0
             , collectDebouncingReceivers = collectDebouncingReceivers
             , label = Nothing
             , id = Nothing
@@ -2275,7 +2275,7 @@ endRecord rec =
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
             , collectErrors = \(State _ states) flags -> collectErrorsForRecord rec.errorCollector flags fns states
-            , receiverCount = []
+            , receiverCount = 0
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.debouncingReceiverCollector fns states
             , label = Nothing
             , id = Nothing
@@ -3077,7 +3077,7 @@ endCustomType rec =
             , setAllIdle = setAllIdle
             , emitFlags = emitFlags
             , collectErrors = \(State _ states) flags -> collectErrorsForCustomType rec.errorCollector flags fns states
-            , receiverCount = []
+            , receiverCount = 0
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.debouncingReceiverCollector fns states
             , label = Nothing
             , id = Nothing
