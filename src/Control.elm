@@ -1142,7 +1142,7 @@ float =
                         Ok i
 
                     Nothing ->
-                        Err [ "must be a whole number" ]
+                        Err [ "must be a number" ]
         }
         |> debounce 500
 
