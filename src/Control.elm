@@ -11,6 +11,7 @@ module Control exposing
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
+    , toProgram
     )
 
 {-|
@@ -118,6 +119,7 @@ they are only exposed to make it possible to write type signatures.
 -}
 
 import Array
+import Browser
 import Dict
 import Html as H exposing (Html)
 import Html.Attributes as HA
@@ -455,6 +457,49 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
                     Err (pErrs ++ vErrs)
             )
     }
+
+
+toProgram : String -> Control state delta output -> Program () (State state) (Delta delta)
+toProgram label_ (Control control) =
+    let
+        fns =
+            control Path.root
+    in
+    Browser.element
+        { init =
+            \() ->
+                ( fns.init, Cmd.none )
+        , update =
+            \msg state ->
+                fns.update msg state
+        , view =
+            \((State internalState state) as s) ->
+                let
+                    emittedFlags =
+                        fns.emitFlags s
+
+                    debouncingReceivers =
+                        fns.collectDebouncingReceivers s
+
+                    flags =
+                        List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
+                in
+                H.form []
+                    [ H.h1 [] [ H.text label_ ]
+                    , fns.view
+                        { id = fns.id
+                        , name = fns.name
+                        , label = fns.label
+                        , class = fns.class
+                        }
+                        { state = state
+                        , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
+                        , flags = flags
+                        , selected = internalState.selected
+                        }
+                    ]
+        , subscriptions = \_ -> Sub.none
+        }
 
 
 

@@ -12,14 +12,101 @@ import Set
 
 
 -- Here's how we define a form for a complex Elm type
--- with multi-field validations and debouncing for free
 
 
-exampleForm =
-    Control.toForm "My Lovely Form"
-        FormUpdated
-        FormSubmitted
-        exampleControl
+main :
+    Program
+        ()
+        (Control.State
+            ( Control.State String
+            , ( Control.State String
+              , ( Control.State String
+                , ( Control.State String
+                  , ( Control.State Bool
+                    , ( Control.State Enum
+                      , ( Control.State
+                            ( Control.State ()
+                            , ( Control.State
+                                    ( Control.State
+                                        ( Control.State ( Control.State String, Control.End )
+                                        , ( Control.State ( Control.State String, ( Control.State String, Control.End ) )
+                                          , ( Control.State ( Control.State String, ( Control.State String, ( Control.State String, Control.End ) ) )
+                                            , ( Control.State ( Control.State ( Control.State String, Control.End ), ( Control.State ( Control.State String, Control.End ), Control.End ) )
+                                              , ( Control.State (List (Control.State String))
+                                                , ( Control.State ( Control.State (List (Control.State ( Control.State String, ( Control.State String, Control.End ) ))), Control.End )
+                                                  , ( Control.State ( Control.State (List (Control.State String)), Control.End )
+                                                    , ( Control.State ( Control.State (List (Control.State String)), Control.End )
+                                                      , ( Control.State Int
+                                                        , Control.End
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                    , Control.End
+                                    )
+                              , Control.End
+                              )
+                            )
+                        , Control.End
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+        )
+        (Control.Delta
+            ( Control.Delta String
+            , ( Control.Delta String
+              , ( Control.Delta String
+                , ( Control.Delta String
+                  , ( Control.Delta Bool
+                    , ( Control.Delta Enum
+                      , ( Control.Delta
+                            ( Control.Delta ()
+                            , ( Control.Delta
+                                    ( Control.Delta
+                                        ( Control.Delta ( Control.Delta String, Control.End )
+                                        , ( Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) )
+                                          , ( Control.Delta ( Control.Delta String, ( Control.Delta String, ( Control.Delta String, Control.End ) ) )
+                                            , ( Control.Delta ( Control.Delta ( Control.Delta String, Control.End ), ( Control.Delta ( Control.Delta String, Control.End ), Control.End ) )
+                                              , ( Control.Delta (Control.ListDelta String)
+                                                , ( Control.Delta ( Control.Delta (Control.ListDelta ( Control.Delta String, ( Control.Delta String, Control.End ) )), Control.End )
+                                                  , ( Control.Delta ( Control.Delta (Control.ListDelta String), Control.End )
+                                                    , ( Control.Delta ( Control.Delta (Control.ListDelta String), Control.End )
+                                                      , ( Control.Delta CounterDelta
+                                                        , Control.End
+                                                        )
+                                                      )
+                                                    )
+                                                  )
+                                                )
+                                              )
+                                            )
+                                          )
+                                        )
+                                    , Control.End
+                                    )
+                              , Control.End
+                              )
+                            )
+                        , Control.End
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+        )
+main =
+    Control.toProgram "My Lovely Form" exampleControl
 
 
 type alias Example =
@@ -71,7 +158,7 @@ example2Control =
         |> Control.field "triple" .triple (Control.triple ( "int", Control.int ) ( "string", Control.string ) ( "float", Control.float ))
         |> Control.field "result" .result (Control.result Control.int Control.string)
         |> Control.field "list" .list (Control.list Control.int)
-        |> Control.field "dict" .dict (Control.dict ("key", Control.string) ("value", Control.int))
+        |> Control.field "dict" .dict (Control.dict ( "key", Control.string ) ( "value", Control.int ))
         |> Control.field "set" .set (Control.set Control.string)
         |> Control.field "array" .array (Control.array Control.int)
         |> Control.field "counter" .counter counterControl
@@ -128,289 +215,3 @@ counterControl =
                     ]
         , parse = Ok
         }
-
-
-
--- And here's how we initialise, update and view a form:
-
-
-main : Program () Model Msg
-main =
-    Browser.element
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = \_ -> Sub.none
-        }
-
-
-type alias Model =
-    { form : FormState }
-
-
-type Msg
-    = FormUpdated FormDelta
-    | FormSubmitted
-
-
-init : () -> ( Model, Cmd Msg )
-init () =
-    ( { form = exampleForm.init }
-    , Cmd.none
-    )
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        FormUpdated delta ->
-            let
-                ( newForm, cmd ) =
-                    exampleForm.update delta model.form
-            in
-            ( { form = newForm }, cmd )
-
-        FormSubmitted ->
-            let
-                ( newForm, result ) =
-                    exampleForm.submit model.form
-            in
-            case result of
-                Ok output ->
-                    let
-                        _ =
-                            Debug.log "Success!" output
-                    in
-                    ( { form = newForm }, Cmd.none )
-
-                Err errors ->
-                    let
-                        _ =
-                            Debug.log "Failure!" errors
-                    in
-                    ( { form = newForm }, Cmd.none )
-
-
-view : Model -> Html.Html Msg
-view model =
-    exampleForm.view model.form
-
-
-
--- The ugly secret! The internal model and msg types for forms are a bit nasty.
--- Fortunately the Elm compiler can tell us what they should be, so we don't have
--- to work them out for ourselves.
-
-
-type alias FormState =
-    Control.State
-        ( Control.State String
-        , ( Control.State String
-          , ( Control.State String
-            , ( Control.State String
-              , ( Control.State Bool
-                , ( Control.State Enum
-                  , ( Control.State
-                          ( Control.State ()
-                          , ( Control.State
-                                  ( Control.State
-                                        ( Control.State
-                                              ( Control.State String
-                                              , Control.End
-                                              )
-                                        , ( Control.State
-                                                ( Control.State String
-                                                , ( Control.State String
-                                                  , Control.End
-                                                  )
-                                                )
-                                          , ( Control.State
-                                                  ( Control.State String
-                                                  , ( Control.State String
-                                                    , ( Control.State String
-                                                      , Control.End
-                                                      )
-                                                    )
-                                                  )
-                                            , ( Control.State
-                                                    ( Control.State
-                                                          ( Control.State String
-                                                          , Control.End
-                                                          )
-                                                    , ( Control.State
-                                                            ( Control.State
-                                                                  String
-                                                            , Control.End
-                                                            )
-                                                      , Control.End
-                                                      )
-                                                    )
-                                              , ( Control.State
-                                                      (
-                                                      List
-                                                          (Control.State String)
-                                                      )
-                                                , ( Control.State
-                                                        ( Control.State
-                                                              (
-                                                              List
-                                                                  (
-                                                                  Control.State
-                                                                      ( Control.State
-                                                                            String
-                                                                      , ( Control.State
-                                                                              String
-                                                                        , Control.End
-                                                                        )
-                                                                      )
-                                                                  )
-                                                              )
-                                                        , Control.End
-                                                        )
-                                                  , ( Control.State
-                                                          ( Control.State
-                                                                (
-                                                                List
-                                                                    (
-                                                                    Control.State
-                                                                        String
-                                                                    )
-                                                                )
-                                                          , Control.End
-                                                          )
-                                                    , ( Control.State
-                                                            ( Control.State
-                                                                  (
-                                                                  List
-                                                                      (
-                                                                      Control.State
-                                                                          String
-                                                                      )
-                                                                  )
-                                                            , Control.End
-                                                            )
-                                                      , ( Control.State Int
-                                                        , Control.End
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                                                )
-                                              )
-                                            )
-                                          )
-                                        )
-                                  , Control.End
-                                  )
-                            , Control.End
-                            )
-                          )
-                    , Control.End
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-
-
-type alias FormDelta =
-    Control.Delta (        ( Control.Delta String
-        , ( Control.Delta String
-          , ( Control.Delta String
-            , ( Control.Delta String
-              , ( Control.Delta Bool
-                , ( Control.Delta Enum
-                  , ( Control.Delta
-                          ( Control.Delta ()
-                          , ( Control.Delta
-                                  ( Control.Delta
-                                        ( Control.Delta
-                                              ( Control.Delta String
-                                              , Control.End
-                                              )
-                                        , ( Control.Delta
-                                                ( Control.Delta String
-                                                , ( Control.Delta String
-                                                  , Control.End
-                                                  )
-                                                )
-                                          , ( Control.Delta
-                                                  ( Control.Delta String
-                                                  , ( Control.Delta String
-                                                    , ( Control.Delta String
-                                                      , Control.End
-                                                      )
-                                                    )
-                                                  )
-                                            , ( Control.Delta
-                                                    ( Control.Delta
-                                                          ( Control.Delta String
-                                                          , Control.End
-                                                          )
-                                                    , ( Control.Delta
-                                                            ( Control.Delta
-                                                                  String
-                                                            , Control.End
-                                                            )
-                                                      , Control.End
-                                                      )
-                                                    )
-                                              , ( Control.Delta
-                                                      (Control.ListDelta String)
-                                                , ( Control.Delta
-                                                        ( Control.Delta
-                                                              (
-                                                              Control.ListDelta
-                                                                  ( Control.Delta
-                                                                        String
-                                                                  , ( Control.Delta
-                                                                          String
-                                                                    , Control.End
-                                                                    )
-                                                                  )
-                                                              )
-                                                        , Control.End
-                                                        )
-                                                  , ( Control.Delta
-                                                          ( Control.Delta
-                                                                (
-                                                                Control.ListDelta
-                                                                    String
-                                                                )
-                                                          , Control.End
-                                                          )
-                                                    , ( Control.Delta
-                                                            ( Control.Delta
-                                                                  (
-                                                                  Control.ListDelta
-                                                                      String
-                                                                  )
-                                                            , Control.End
-                                                            )
-                                                      , ( Control.Delta
-                                                              CounterDelta
-                                                        , Control.End
-                                                        )
-                                                      )
-                                                    )
-                                                  )
-                                                )
-                                              )
-                                            )
-                                          )
-                                        )
-                                  , Control.End
-                                  )
-                            , Control.End
-                            )
-                          )
-                    , Control.End
-                    )
-                  )
-                )
-              )
-            )
-          )
-        ))
