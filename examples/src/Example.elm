@@ -69,7 +69,7 @@ type alias Example2 =
 
 example2Control =
     Control.record Example2
-        |> Control.field "time" .time timeControl
+        |> Control.field "time" .time (timeControl Time.utc)
         |> Control.field "wrapper" .wrapper (Control.wrapper { label = "wrapper", wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
         |> Control.field "tuple" .tuple (Control.tuple ( "int", Control.int ) ( "string", Control.string ))
         |> Control.field "triple" .triple (Control.triple ( "int", Control.int ) ( "string", Control.string ) ( "float", Control.float ))
@@ -141,7 +141,7 @@ type TimeDelta
     | InputUpdated String
 
 
-timeControl =
+timeControl tz =
     Control.create
         { initEmpty =
             ( { input = "", now = Time.millisToPosix 0 }
@@ -149,7 +149,7 @@ timeControl =
             )
         , initWith =
             \posix ->
-                ( { input = String.fromInt (Time.toHour Time.utc posix) ++ ":" ++ String.fromInt (Time.toMinute Time.utc posix)
+                ( { input = String.fromInt (Time.toHour tz posix) ++ ":" ++ String.fromInt (Time.toMinute tz posix)
                   , now = posix
                   }
                 , Task.perform ClockTicked Time.now
@@ -171,7 +171,7 @@ timeControl =
                 let
                     showTime toPart =
                         state.now
-                            |> toPart Time.utc
+                            |> toPart tz
                             |> String.fromInt
                             |> String.padLeft 2 '0'
                 in
@@ -190,8 +190,6 @@ timeControl =
                                 ++ showTime Time.toHour
                                 ++ ":"
                                 ++ showTime Time.toMinute
-                                ++ ":"
-                                ++ showTime Time.toSecond
                                 ++ ")"
                             )
                         ]
@@ -219,10 +217,10 @@ timeControl =
 
                                             else
                                                 Ok
-                                                    (Time.Extra.partsToPosix Time.utc
-                                                        { day = Time.toDay Time.utc now
-                                                        , month = Time.toMonth Time.utc now
-                                                        , year = Time.toYear Time.utc now
+                                                    (Time.Extra.partsToPosix tz
+                                                        { day = Time.toDay tz now
+                                                        , month = Time.toMonth tz now
+                                                        , year = Time.toYear tz now
                                                         , hour = h_
                                                         , minute = m_
                                                         , second = 0
