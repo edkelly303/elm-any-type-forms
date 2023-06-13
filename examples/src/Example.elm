@@ -100,8 +100,8 @@ type CounterDelta
 
 counterControl =
     Control.create
-        { initEmpty = 0
-        , initWith = identity
+        { initEmpty = ( 0, Cmd.none )
+        , initWith = \int -> ( int, Cmd.none )
         , update =
             \delta state ->
                 ( case delta of
@@ -142,8 +142,15 @@ type TimeDelta
 
 timeControl =
     Control.create
-        { initEmpty = { input = "", now = Time.millisToPosix 0 }
-        , initWith = \posix -> { input = "", now = posix }
+        { initEmpty =
+            ( { input = "", now = Time.millisToPosix 0 }
+            , Task.perform ClockTicked Time.now
+            )
+        , initWith =
+            \posix ->
+                ( { input = "", now = posix }
+                , Task.perform ClockTicked Time.now
+                )
         , update =
             \delta state ->
                 case delta of
