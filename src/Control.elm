@@ -1883,12 +1883,14 @@ record toOutput =
         , labels = []
         , toOutput = toOutput
         , fields = \_ x -> x
-        , states = \_ x -> x
+        , initialStates = \_ x -> x
+        , initialDeltas = \_ x -> x
         , updater = identity
         , viewer = identity
         , parser = identity
         , idleSetter = identity
         , initialiser = identity
+        , deltaInitialiser = identity
         , before = identity
         , befores = identity
         , after = End
@@ -1971,20 +1973,28 @@ fieldHelper access label_ fromInput (Control control) builder =
                                 , fromInput = fromInput
                                 , access = access
                                 }
-                , states =
+                , initialStates =
                     \path ->
-                        rec.states path
+                        rec.initialStates path
                             << Tuple.pair
                                 (control (Path.add label_ path)
                                     |> .init
                                     |> Tuple.first
-                                    |> Debug.log "FIXME"
+                                )
+                , initialDeltas =
+                    \path ->
+                        rec.initialDeltas path
+                            << Tuple.pair
+                                (control (Path.add label_ path)
+                                    |> .init
+                                    |> Tuple.second
                                 )
                 , updater = rec.updater >> recordStateUpdater
                 , viewer = rec.viewer >> recordStateViewer
                 , parser = rec.parser >> recordStateValidator
                 , idleSetter = rec.idleSetter >> recordStateIdleSetter
                 , initialiser = rec.initialiser >> recordStateInitialiser
+                , deltaInitialiser = rec.deltaInitialiser >> recordDeltaInitialiser
                 , before = rec.before << Tuple.pair Skip
                 , befores = rec.befores << Tuple.pair rec.before
                 , after = ( Skip, rec.after )
@@ -2003,8 +2013,11 @@ endRecord rec =
                 fns =
                     rec.fields path End
 
-                inits =
-                    rec.states path End
+                initialStates =
+                    rec.initialStates path End
+
+                initialDeltas =
+                    rec.initialDeltas path End
 
                 deltaSetters =
                     makeDeltaSetters rec.makeSetters rec.befores rec.afters
@@ -2033,18 +2046,19 @@ endRecord rec =
                     let
                         childViews_ =
                             viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
-
-                        id_ =
-                            Maybe.withDefault (Path.toString path) staticConfig.id
-
-                        label_ =
-                            Maybe.withDefault (Path.last path) staticConfig.label
                     in
                     case childViews_ of
                         [ onlyChild ] ->
                             onlyChild
 
                         _ ->
+                            let
+                                id_ =
+                                    Maybe.withDefault (Path.toString path) staticConfig.id
+
+                                label_ =
+                                    Maybe.withDefault (Path.last path) staticConfig.label
+                            in
                             H.section [ HA.id id_ ]
                                 (H.h2 [] [ H.text label_ ] :: childViews_)
 
@@ -2060,13 +2074,13 @@ endRecord rec =
             { path = path
             , index = 0
             , init =
-                ( State { status = Intact_, selected = 0 } inits
-                , Cmd.none |> Debug.log "FIXME"
+                ( State { status = Intact_, selected = 0 } initialStates
+                , initialiseRecordDeltas rec.deltaInitialiser deltaSetters initialDeltas
                 )
             , initWith =
                 \output ->
                     ( initialiseRecordStates rec.initialiser output fns
-                    , Cmd.none |> Debug.log "FIXME"
+                    , Cmd.none |> Debug.log "FIXME - record initWith"
                     )
             , baseUpdate = \_ -> update
             , update = update
@@ -2256,9 +2270,18 @@ recordStateInitialiser next recordInput ( fns, restFns ) =
         |> fns.fromInput
         |> fns.field.initWith
         |> Tuple.first
-        |> Debug.log "FIXME"
     , next recordInput restFns
     )
+
+
+initialiseRecordDeltas deltaInitialiser_ deltaSetters deltas =
+    deltaInitialiser_ (\cmdList End End -> cmdList) [] deltaSetters deltas
+        |> List.map (Cmd.map ChangeState)
+        |> Cmd.batch
+
+
+recordDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDeltas ) =
+    next (Cmd.map setter delta :: cmdList) restSetters restDeltas
 
 
 validateRecordStates :
@@ -2549,7 +2572,8 @@ customType destructor =
         { index = 0
         , labels = []
         , fns = \_ x -> x
-        , states = \_ x -> x
+        , initialStates = \_ x -> x
+        , initialDeltas = \_ x -> x
         , updater = identity
         , viewer = identity
         , parser = identity
@@ -2559,6 +2583,7 @@ customType destructor =
         , deltaAfter = End
         , deltaAfters = End
         , makeDeltaSetters = identity
+        , initialiseDeltas = identity
         , stateBefore = identity
         , stateBefores = identity
         , toArgStates = identity
@@ -2592,14 +2617,21 @@ tagHelper label_ (Control control) toArgState builder =
                         rec.fns path
                             << Tuple.pair
                                 { control_ | index = rec.index }
-                , states =
+                , initialStates =
                     \path ->
-                        rec.states path
+                        rec.initialStates path
                             << Tuple.pair
                                 (control (Path.add label_ path)
                                     |> .init
                                     |> Tuple.first
-                                    |> Debug.log "FIXME"
+                                )
+                , initialDeltas =
+                    \path ->
+                        rec.initialDeltas path
+                            << Tuple.pair
+                                (control (Path.add label_ path)
+                                    |> .init
+                                    |> Tuple.second
                                 )
                 , updater = rec.updater >> customTypeStateUpdater
                 , viewer = rec.viewer >> selectedTagViewer
@@ -2610,6 +2642,7 @@ tagHelper label_ (Control control) toArgState builder =
                 , deltaAfter = ( Skip, rec.deltaAfter )
                 , deltaAfters = ( rec.deltaAfter, rec.deltaAfters )
                 , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
+                , initialiseDeltas = rec.initialiseDeltas >> customTypeDeltaInitialiser
                 , stateBefore = rec.stateBefore << Tuple.pair Nothing
                 , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
                 , toArgStates = rec.toArgStates << Tuple.pair toArgState
@@ -2623,6 +2656,111 @@ tagHelper label_ (Control control) toArgState builder =
                 , debouncingReceiverCollector = rec.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
                 , destructor = rec.destructor
                 }
+
+
+endCustomType rec =
+    Control
+        (\path ->
+            let
+                fns =
+                    rec.fns path End
+
+                initialStates =
+                    rec.initialStates path End
+
+                initialDeltas =
+                    rec.initialDeltas path End
+
+                deltaSetters =
+                    makeDeltaSetters rec.makeDeltaSetters rec.deltaBefores rec.deltaAfters
+
+                stateSetters =
+                    makeStateSetters rec.makeStateSetters rec.stateInserter initialStates fns rec.toArgStates rec.stateBefores rec.stateAfters
+
+                labels =
+                    List.reverse rec.labels
+
+                update =
+                    \delta (State internalState state) ->
+                        case delta of
+                            Skip ->
+                                ( State internalState state, Cmd.none )
+
+                            TagSelected idx ->
+                                ( State { internalState | selected = idx } state, Cmd.none )
+
+                            ChangeState tagDelta ->
+                                let
+                                    ( newTagStates, cmd ) =
+                                        updateCustomTypeStates rec.updater fns deltaSetters tagDelta state
+                                in
+                                ( State internalState newTagStates
+                                , Cmd.map ChangeState cmd
+                                )
+
+                            _ ->
+                                ( State internalState state, Cmd.none )
+
+                childView _ dynamicConfig =
+                    viewSelectedTagState rec.viewer dynamicConfig.flags dynamicConfig.selected fns deltaSetters dynamicConfig.state
+
+                view staticConfig dynamicConfig =
+                    let
+                        options =
+                            List.indexedMap Tuple.pair labels
+                    in
+                    customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
+
+                parse =
+                    \(State internalState state) -> validateSelectedTagState rec.parser internalState.selected fns state
+
+                setAllIdle =
+                    \(State internalState state) ->
+                        State
+                            { internalState | status = Idle_ }
+                            (setSelectedTagStateIdle rec.idleSetter internalState.selected fns state)
+
+                emitFlags (State internalState state) =
+                    emitFlagsForCustomType rec.flagEmitter internalState.selected fns state
+            in
+            { path = path
+            , index = 0
+            , init =
+                ( State { status = Intact_, selected = 0 } initialStates
+                , initialiseCustomTypeDeltas rec.initialiseDeltas deltaSetters initialDeltas
+                )
+            , initWith =
+                \tag ->
+                    ( applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters tag
+                    , Cmd.none |> Debug.log "FIXME - initWith for custom types doesn't run Cmds of child controls"
+                    )
+            , baseUpdate = \_ -> update
+            , update = update
+            , childViews = \staticConfig dynamicConfig -> [ childView staticConfig dynamicConfig ]
+            , view = \staticConfig dynamicConfig -> view staticConfig dynamicConfig
+            , parse = parse
+            , setAllIdle = setAllIdle
+            , emitFlags = emitFlags
+            , collectErrors = \(State _ states) flags -> collectErrorsForCustomType rec.errorCollector flags fns states
+            , receiverCount = 0
+            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.debouncingReceiverCollector fns states
+            , label = Nothing
+            , id = Nothing
+            , name = Nothing
+            , class = []
+            }
+        )
+
+
+
+{-
+   d888888b  .d8b.   d888b  .d8888.
+   `~~88~~' d8' `8b 88' Y8b 88'  YP
+      88    88ooo88 88      `8bo.
+      88    88~~~88 88  ooo   `Y8b.
+      88    88   88 88. ~8~ db   8D
+      YP    YP   YP  Y888P  `8888Y'
+-}
 
 
 {-| Add a tag with no arguments to a custom type.
@@ -2785,94 +2923,6 @@ tag5 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) (
         )
 
 
-endCustomType rec =
-    Control
-        (\path ->
-            let
-                fns =
-                    rec.fns path End
-
-                inits =
-                    rec.states path End
-
-                deltaSetters =
-                    makeDeltaSetters rec.makeDeltaSetters rec.deltaBefores rec.deltaAfters
-
-                stateSetters =
-                    makeStateSetters rec.makeStateSetters rec.stateInserter inits fns rec.toArgStates rec.stateBefores rec.stateAfters
-
-                labels =
-                    List.reverse rec.labels
-
-                update =
-                    \delta (State i state) ->
-                        case delta of
-                            Skip ->
-                                ( State i state, Cmd.none )
-
-                            TagSelected idx ->
-                                ( State { i | selected = idx } state, Cmd.none )
-
-                            ChangeState tagDelta ->
-                                let
-                                    ( newTagStates, cmd ) =
-                                        updateCustomTypeStates rec.updater fns deltaSetters tagDelta state
-                                in
-                                ( State i newTagStates
-                                , Cmd.map ChangeState cmd
-                                )
-
-                            _ ->
-                                ( State i state, Cmd.none )
-
-                childView _ dynamicConfig =
-                    viewSelectedTagState rec.viewer dynamicConfig.flags dynamicConfig.selected fns deltaSetters dynamicConfig.state
-
-                view staticConfig dynamicConfig =
-                    let
-                        options =
-                            List.indexedMap Tuple.pair labels
-                    in
-                    customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
-
-                parse =
-                    \(State i state) -> validateSelectedTagState rec.parser i.selected fns state
-
-                setAllIdle =
-                    \(State i state) -> State { i | status = Idle_ } (setSelectedTagStateIdle rec.idleSetter i.selected fns state)
-
-                emitFlags (State i state) =
-                    emitFlagsForCustomType rec.flagEmitter i.selected fns state
-            in
-            { path = path
-            , index = 0
-            , init =
-                ( State { status = Intact_, selected = 0 } inits
-                , Cmd.none |> Debug.log "FIXME"
-                )
-            , initWith =
-                \tag ->
-                    ( applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters tag
-                    , Cmd.none |> Debug.log "FIXME"
-                    )
-            , baseUpdate = \_ -> update
-            , update = update
-            , childViews = \staticConfig dynamicConfig -> [ childView staticConfig dynamicConfig ]
-            , view = \staticConfig dynamicConfig -> view staticConfig dynamicConfig
-            , parse = parse
-            , setAllIdle = setAllIdle
-            , emitFlags = emitFlags
-            , collectErrors = \(State _ states) flags -> collectErrorsForCustomType rec.errorCollector flags fns states
-            , receiverCount = 0
-            , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.debouncingReceiverCollector fns states
-            , label = Nothing
-            , id = Nothing
-            , name = Nothing
-            , class = []
-            }
-        )
-
-
 
 {-
     .o88b. db    db .d8888. d888888b  .d88b.  .88b  d88.      d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
@@ -2968,19 +3018,25 @@ customTypeStateUpdater next { newStates, newCmds } ( fns, restFns ) ( deltaSette
     let
         ( newState, newCmd ) =
             fns.update delta state
-
-        cmd2 =
-            newCmd
-                |> Cmd.map deltaSetter
     in
     next
         { newStates = newStates << Tuple.pair newState
-        , newCmds = cmd2 :: newCmds
+        , newCmds = Cmd.map deltaSetter newCmd :: newCmds
         }
         restFns
         restDeltaSetters
         restDeltas
         restStates
+
+
+initialiseCustomTypeDeltas deltaInitialiser_ deltaSetters deltas =
+    deltaInitialiser_ (\cmdList End End -> cmdList) [] deltaSetters deltas
+        |> List.map (Cmd.map ChangeState)
+        |> Cmd.batch
+
+
+customTypeDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDeltas ) =
+    next (Cmd.map setter delta :: cmdList) restSetters restDeltas
 
 
 collectErrorsForCustomType :
@@ -3177,7 +3233,6 @@ stateSetterMaker next argStateIntoTagStateInserter_ inits ( fns, restFns ) ( toA
                 initialState =
                     fns.initWith argState
                         |> Tuple.first
-                        |> Debug.log "FIXME"
 
                 maybes =
                     before ( Just initialState, after )

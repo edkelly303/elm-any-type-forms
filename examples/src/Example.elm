@@ -22,7 +22,8 @@ main =
 
 
 type alias Example =
-    { int : Int
+    { time : Time.Posix
+    , int : Int
     , float : Float
     , string : String
     , char : Char
@@ -35,6 +36,7 @@ type alias Example =
 
 exampleControl =
     Control.record Example
+        |> Control.field "time" .time timeControl
         |> Control.field "int" .int Control.int
         |> Control.field "float" .float Control.float
         |> Control.field "string" .string Control.string
@@ -53,7 +55,9 @@ type Enum
 
 
 type alias Example2 =
-    { wrapper : Wrapper Int
+    { 
+        time : Time.Posix
+    , wrapper : Wrapper Int
     , tuple : ( Int, String )
     , triple : ( Int, String, Float )
     , result : Result Int String
@@ -62,12 +66,12 @@ type alias Example2 =
     , set : Set.Set String
     , array : Array.Array Int
     , counter : Int
-    , time : Time.Posix
     }
 
 
 example2Control =
     Control.record Example2
+            |> Control.field "time" .time timeControl
         |> Control.field "wrapper" .wrapper (Control.wrapper { label = "wrapper", wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
         |> Control.field "tuple" .tuple (Control.tuple ( "int", Control.int ) ( "string", Control.string ))
         |> Control.field "triple" .triple (Control.triple ( "int", Control.int ) ( "string", Control.string ) ( "float", Control.float ))
@@ -77,7 +81,6 @@ example2Control =
         |> Control.field "set" .set (Control.set Control.string)
         |> Control.field "array" .array (Control.array Control.int)
         |> Control.field "counter" .counter counterControl
-        |> Control.field "time" .time timeControl
         |> Control.end
 
 
