@@ -53,7 +53,7 @@ worrying about any annoying state management or book-keeping.
 ## What's nasty about it?
 
 * The default controls don't look very nice (this is fixable, just needs some CSS).
-* The types of the forms it generates are a bit unintuitive (see "How do I include a form in my `Model` and `Msg` types?").
+* The types of the forms it generates are a bit unintuitive (see "How do I turn a control into a form and wire it into my Elm app?").
 * The type signatures of some of the functions in the `Control` module are... interesting.
 * The implementation is pretty difficult to understand.
 
@@ -62,13 +62,17 @@ worrying about any annoying state management or book-keeping.
 Here's an example that shows the `record` and `customType` combinators in action:
 
 ```elm
+module User exposing (User, control)
+
+import Control
+
 type alias User = 
     { name : String
     , age : Int
     , role : Role
     }
 
-userControl = 
+control = 
     Control.record 
         (\name age role -> 
             { name = name
@@ -101,6 +105,31 @@ roleControl =
 
 ## How do I turn a control into a form and wire it into my Elm app?
 
+Taking the example of the `userControl` defined in the previous section, we'll 
+start by creating a form that we can play with in its own separate Elm app, by
+using `Control.debug`.
+
+```elm
+module Main exposing (main)
+
+import Control
+import User
+
+main = 
+    Control.debug 
+        { control = User.control
+        , title = "Let's create a user!"
+        , outputToString = Debug.toString
+        }
+```
+
+If you open this `Main.elm` file in `elm reactor` (or your preferred dev 
+server), you'll be able to play with your form and edit it to your heart's 
+content.
+
+Once you're happy with your form, you'll probably want to embed it into a larger 
+Elm app. This is where it gets tricky
+
 The big tradeoff of this package is that its forms build up quite large and 
 complex `State` and `Delta` types (which are the equivalent of an Elm program's 
 `Model` and `Msg` types, respectively). 
@@ -110,8 +139,7 @@ will need to include those `State` and `Delta` types - which means you have to
 be able to work out what they are.
 
 Fortunately, the Elm compiler has our back here, and we can use it to tell us 
-what types we need. We'll give it some deliberately incorrect type annotations, 
-and see what error messages it gives us.
+what types we need.
 
 ```elm
 type alias Model = 
@@ -124,7 +152,7 @@ type Msg
 
 
 userForm =
-    Control.toForm
+    Control.form
         "Let's make a User"
         FormUpdated
         FormSubmitted
