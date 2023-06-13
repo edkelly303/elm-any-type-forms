@@ -23,7 +23,6 @@ type alias Example =
     , string : String
     , char : Char
     , bool : Bool
-    , checkbox : Bool
     , enum : Enum
     , maybe : Maybe Example2
     }
@@ -31,14 +30,13 @@ type alias Example =
 
 exampleControl =
     Control.record Example
-        |> Control.field "int" .int Control.int
-        |> Control.field "float" .float Control.float
-        |> Control.field "string" .string Control.string
-        |> Control.field "char" .char Control.char
-        |> Control.field "bool" .bool (Control.bool "true" "false")
-        |> Control.field "checkbox" .checkbox Control.checkbox
-        |> Control.field "enum" .enum (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ])
-        |> Control.field "maybe" .maybe (Control.maybe example2Control)
+        |> Control.field "Int" .int Control.int
+        |> Control.field "Float" .float Control.float
+        |> Control.field "String" .string Control.string
+        |> Control.field "Char" .char Control.char
+        |> Control.field "Bool" .bool Control.bool
+        |> Control.field "Enum" .enum (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ])
+        |> Control.field "Maybe" .maybe (Control.maybe example2Control)
         |> Control.end
 
 
@@ -64,16 +62,16 @@ type alias Example2 =
 
 example2Control =
     Control.record Example2
-        |> Control.field "time" .time (timeControl Time.utc)
-        |> Control.field "wrapper" .wrapper (Control.wrapper { label = "wrapper", wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
-        |> Control.field "tuple" .tuple (Control.tuple ( "int", Control.int ) ( "string", Control.string ))
-        |> Control.field "triple" .triple (Control.triple ( "int", Control.int ) ( "string", Control.string ) ( "float", Control.float ))
-        |> Control.field "result" .result (Control.result Control.int Control.string)
-        |> Control.field "list" .list (Control.list Control.int)
-        |> Control.field "dict" .dict (Control.dict ( "key", Control.string ) ( "value", Control.int ))
-        |> Control.field "set" .set (Control.set Control.string)
-        |> Control.field "array" .array (Control.array Control.int)
-        |> Control.field "counter" .counter counterControl
+        |> Control.field "Time" .time (timeControl Time.utc)
+        |> Control.field "Wrapper" .wrapper (Control.wrapper { wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
+        |> Control.field "Tuple" .tuple (Control.tuple ( "Int", Control.int ) ( "String", Control.string ))
+        |> Control.field "Triple" .triple (Control.triple ( "Int", Control.int ) ( "String", Control.string ) ( "Float", Control.float ))
+        |> Control.field "Result" .result (Control.result Control.int Control.string)
+        |> Control.field "List" .list (Control.list Control.int)
+        |> Control.field "Dict" .dict (Control.dict ( "Key", Control.string ) ( "Value", Control.int ))
+        |> Control.field "Set" .set (Control.set Control.string)
+        |> Control.field "Array" .array (Control.array Control.int)
+        |> Control.field "Counter" .counter counterControl
         |> Control.end
 
 
