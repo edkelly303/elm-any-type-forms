@@ -1,7 +1,6 @@
 module Example exposing (main)
 
 import Array
-import Browser
 import Control
 import Dict
 import Html
@@ -16,10 +15,6 @@ import Time.Extra
 
 
 -- Here's how we define a form for a complex Elm type
-
-
-main =
-    Control.toProgram "My Lovely Form" exampleControl
 
 
 type alias Example =
@@ -230,4 +225,16 @@ timeControl tz =
 
                     _ ->
                         Err [ "Format must be HH:MM" ]
+        }
+
+
+
+-- And here's how we can test it out:
+
+
+main =
+    Control.debug
+        { control = exampleControl
+        , title = "My Lovely Form"
+        , outputToString = Debug.toString
         }

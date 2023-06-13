@@ -1,5 +1,5 @@
 module Control exposing
-    ( Control, Form, toProgram, toForm
+    ( Control, Form, debug, form
     , bool, checkbox, int, float, string, char, enum
     , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
@@ -18,7 +18,7 @@ module Control exposing
 
 # Creating a form
 
-@docs Control, Form, toProgram, toForm
+@docs Control, Form, debug, form
 
 
 # Basic controls
@@ -364,44 +364,47 @@ type End
 -}
 
 
-{-| Convert a `Control` into a `Form` by providing:
-
-1.  A name/title for the form
-2.  A `Msg` variant for updating the form
-3.  A `Msg` variant for submitting the form
-4.  The `Control` itself
+{-| Convert a `Control` into a `Form`, which you can then plumb into your Elm application. You will need to supply a 
+couple of variants from your app's `Msg` type: one to handle updates of the form's state, and one to handle the 
+submission of the form.
 
 ```
 type alias Msg
-    = FormUpdated (Delta Int)
+    = FormUpdated (Delta String)
     | FormSubmitted
 
+myForm : Form (State String) (Delta String) Int Msg
 myForm =
-    toForm "My Form" FormUpdated FormSubmitted int
+    form 
+        { control = int
+        , title = "Just a simple Int control"
+        , onUpdate = FormUpdated 
+        , onSubmit = FormSubmitted
+        }
 ```
 
 -}
-toForm : String -> (Delta delta -> msg) -> msg -> Control state delta output -> Form state delta output msg
-toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
+form : { control : Control state delta output, title : String, onUpdate : (Delta delta -> msg), onSubmit: msg } -> Form state delta output msg
+form {title, onUpdate, onSubmit, control} =
     let
+        (Control c) = control
         fns =
-            control Path.root
+            c Path.root
     in
-    { init = fns.init |> Tuple.mapSecond (Cmd.map toFormUpdatedMsg)
+    { init = fns.init |> Tuple.mapSecond (Cmd.map onUpdate)
     , initWith =
         \output ->
             let
                 (Control initialisedControl) =
-                    Control control
-                        |> initWith output
+                    initWith output control
             in
             initialisedControl Path.root
                 |> .init
-                |> Tuple.mapSecond (Cmd.map toFormUpdatedMsg)
+                |> Tuple.mapSecond (Cmd.map onUpdate)
     , update =
         \msg state ->
             fns.update msg state
-                |> Tuple.mapSecond (Cmd.map toFormUpdatedMsg)
+                |> Tuple.mapSecond (Cmd.map onUpdate)
     , view =
         \((State internalState state) as s) ->
             let
@@ -414,8 +417,8 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
                 flags =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
             in
-            H.form [ HE.onSubmit formSubmittedMsg ]
-                [ H.h1 [] [ H.text label_ ]
+            H.form [ HE.onSubmit onSubmit ]
+                [ H.h1 [] [ H.text title ]
                 , fns.view
                     { id = fns.id
                     , name = fns.name
@@ -427,8 +430,8 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
                     , flags = flags
                     , selected = internalState.selected
                     }
-                    |> H.map toFormUpdatedMsg
-                , button formSubmittedMsg "Submit"
+                    |> H.map onUpdate
+                , button onSubmit "Submit"
                 ]
     , submit =
         \state ->
@@ -454,15 +457,7 @@ toForm label_ toFormUpdatedMsg formSubmittedMsg (Control control) =
     }
 
 
-{-| Convert a `Control` into a `Program` by providing:
-
-1.  A name/title for the form
-2.  The `Control` itself
-
-```
-main =
-    toProgram "My Form" int
-```
+{-| Test and debug a `Control` by turning it into a `Program`.
 
 This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
 your Elm application's `Model`and `Msg` types.
@@ -471,12 +466,27 @@ Once you're happy with the form, you can then ask the Elm compiler (or your edit
 signature of the `Program`, which will give you the form's `state` and `delta` types. You can then plug these into your
 main `Model`and `Msg` types wherever appropriate.
 
+    module Main exposing (main)
+
+    import Control exposing (..)
+
+    main : Program () (State String) (Delta String)
+    main =
+        debug
+            { control = int
+            , title = "Just a simple Int control"
+            , outputToString = Debug.toString
+            }
+
 -}
-toProgram : String -> Control state delta output -> Program () (State state) (Delta delta)
-toProgram label_ (Control control) =
+debug : { outputToString : output -> String, title : String, control : Control state delta output } -> Program () (State state) (Delta delta)
+debug { outputToString, title, control } =
     let
+        (Control c) =
+            control
+
         fns =
-            control Path.root
+            c Path.root
     in
     Browser.element
         { init =
@@ -498,7 +508,7 @@ toProgram label_ (Control control) =
                         List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
                 in
                 H.form []
-                    [ H.h1 [] [ H.text label_ ]
+                    [ H.h1 [] [ H.text title ]
                     , fns.view
                         { id = fns.id
                         , name = fns.name
@@ -510,6 +520,21 @@ toProgram label_ (Control control) =
                         , flags = flags
                         , selected = internalState.selected
                         }
+                    , H.div []
+                        [ H.h2 [] [ H.text "Output" ]
+                        , case fns.parse s of
+                            Ok output ->
+                                H.div []
+                                    [ H.p [] [ H.text "Success! Your form produced this data structure:" ]
+                                    , H.pre [] [ H.text (outputToString output) ]
+                                    ]
+
+                            Err errs ->
+                                H.div []
+                                    [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
+                                    , H.ul [] (List.map (\( path, err ) -> H.li [] [ H.text (path ++ ": " ++ err) ]) errs)
+                                    ]
+                        ]
                     ]
         , subscriptions = \_ -> Sub.none
         }

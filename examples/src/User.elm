@@ -89,18 +89,27 @@ type Msg
 
 
 userForm =
-    Control.toForm
-        "Let's make a User"
-        FormUpdated
-        FormSubmitted
-        userControl
+    Control.form
+        { control = userControl
+        , title = "Let's make a User"
+        , onUpdate = FormUpdated
+        , onSubmit = FormSubmitted
+        }
 
 
 main : Program () Model Msg
 main =
     Browser.element
-        { init = \() -> ( { state = userForm.init }, Cmd.none )
-        , view = \model -> userForm.view model.state
+        { init =
+            \() ->
+                let
+                    ( state, cmd ) =
+                        userForm.init
+                in
+                ( { state = state }, cmd )
+        , view =
+            \model ->
+                userForm.view model.state
         , update =
             \msg model ->
                 case msg of
@@ -113,5 +122,6 @@ main =
 
                     _ ->
                         ( model, Cmd.none )
-        , subscriptions = \_ -> Sub.none
+        , subscriptions =
+            \_ -> Sub.none
         }
