@@ -141,14 +141,14 @@ timeControl tz =
     Control.create
         { initEmpty =
             ( { input = "", now = Time.millisToPosix 0 }
-            , Cmd.none
+            , Task.perform ClockTicked Time.now
             )
         , initWith =
             \posix ->
                 ( { input = String.fromInt (Time.toHour tz posix) ++ ":" ++ String.fromInt (Time.toMinute tz posix)
                   , now = posix
                   }
-                , Cmd.none
+                , Task.perform ClockTicked Time.now
                 )
         , update =
             \delta state ->
