@@ -18,7 +18,8 @@ import Time.Extra
 
 
 type alias Example =
-    { int : Int
+    { time : Time.Posix
+    ,    int : Int
     , float : Float
     , string : String
     , char : Char
@@ -30,6 +31,7 @@ type alias Example =
 
 exampleControl =
     Control.record Example
+            |> Control.field "Time" .time (timeControl Time.utc)
         |> Control.field "Int" .int Control.int
         |> Control.field "Float" .float Control.float
         |> Control.field "String" .string Control.string
@@ -126,6 +128,7 @@ counterControl =
                         [ Html.text "-1" ]
                     ]
         , parse = Ok
+        , subscriptions = \_ -> Sub.none
         }
 
 
@@ -138,26 +141,26 @@ timeControl tz =
     Control.create
         { initEmpty =
             ( { input = "", now = Time.millisToPosix 0 }
-            , Task.perform ClockTicked Time.now
+            , Cmd.none
             )
         , initWith =
             \posix ->
                 ( { input = String.fromInt (Time.toHour tz posix) ++ ":" ++ String.fromInt (Time.toMinute tz posix)
                   , now = posix
                   }
-                , Task.perform ClockTicked Time.now
+                , Cmd.none
                 )
         , update =
             \delta state ->
                 case delta of
                     ClockTicked posix ->
                         ( { state | now = posix }
-                        , Task.perform ClockTicked (Process.sleep 1000 |> Task.andThen (\() -> Time.now))
+                        , Cmd.none
                         )
 
                     InputUpdated str ->
                         ( { state | input = str }
-                        , Task.perform ClockTicked (Process.sleep 1000 |> Task.andThen (\() -> Time.now))
+                        , Cmd.none
                         )
         , view =
             \{ state, label, id, name, class } ->
@@ -223,6 +226,7 @@ timeControl tz =
 
                     _ ->
                         Err [ "Format must be HH:MM" ]
+        , subscriptions = \_ -> Time.every 1000 ClockTicked
         }
 
 

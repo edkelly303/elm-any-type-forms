@@ -152,6 +152,7 @@ type alias Form state delta output msg =
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
     , submit : State state -> ( State state, Result (List ( String, String )) output )
+    , subscriptions : State state -> Sub msg
     }
 
 
@@ -170,6 +171,7 @@ type alias ControlConfig state delta output =
     , update : delta -> state -> ( state, Cmd delta )
     , view : { label : String, id : String, name : String, class : String, state : state } -> Html delta
     , parse : state -> Result (List String) output
+    , subscriptions : state -> Sub delta
     }
 
 
@@ -217,6 +219,7 @@ type alias ControlFns input state delta output =
     , id : Maybe String
     , name : Maybe String
     , class : List String
+    , subscriptions : State state -> Sub (Delta delta)
     }
 
 
@@ -454,6 +457,10 @@ form { title, onUpdate, onSubmit, control } =
                 ( Err pErrs, vErrs ) ->
                     Err (pErrs ++ vErrs)
             )
+    , subscriptions =
+        \state ->
+            fns.subscriptions state
+                |> Sub.map onUpdate
     }
 
 
@@ -536,7 +543,7 @@ debug { outputToString, title, control } =
                                     ]
                         ]
                     ]
-        , subscriptions = \_ -> Sub.none
+        , subscriptions = fns.subscriptions
         }
 
 
@@ -649,6 +656,10 @@ create config =
             , id = Nothing
             , name = Nothing
             , class = []
+            , subscriptions =
+                \(State _ s) ->
+                    config.subscriptions s
+                        |> Sub.map ChangeState
             }
         )
 
@@ -1138,6 +1149,7 @@ int =
 
                     Nothing ->
                         Err [ "must be a whole number" ]
+        , subscriptions = \state -> Sub.none
         }
         |> debounce 500
 
@@ -1171,6 +1183,7 @@ float =
 
                     Nothing ->
                         Err [ "must be a number" ]
+        , subscriptions = \state -> Sub.none
         }
         |> debounce 500
 
@@ -1196,6 +1209,7 @@ string =
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse = Ok
+        , subscriptions = \state -> Sub.none
         }
         |> debounce 500
 
@@ -1232,6 +1246,7 @@ char =
 
                     Nothing ->
                         Err [ "must not be blank" ]
+        , subscriptions = \state -> Sub.none
         }
         |> debounce 500
 
@@ -1275,6 +1290,7 @@ enum first second rest =
         , update = \delta _ -> ( delta, Cmd.none )
         , view = enumView (first :: second :: rest)
         , parse = Ok
+        , subscriptions = \state -> Sub.none
         }
 
 
@@ -1314,6 +1330,7 @@ bool =
                     ]
         , update = \delta _ -> ( delta, Cmd.none )
         , parse = Ok
+        , subscriptions = \state -> Sub.none
         }
 
 
@@ -1719,6 +1736,20 @@ list (Control ctrl) =
             , id = Nothing
             , name = Nothing
             , class = []
+            , subscriptions =
+                \(State _ listState) ->
+                    List.indexedMap
+                        (\idx itemState ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.subscriptions itemState
+                                |> Sub.map (ChangeItem idx)
+                        )
+                        listState
+                        |> Sub.batch
+                        |> Sub.map ChangeState
             }
         )
 
@@ -1907,7 +1938,7 @@ record toOutput =
         { index = 0
         , labels = []
         , toOutput = toOutput
-        , fields = \_ x -> x
+        , fns = \_ x -> x
         , initialStates = \_ x -> x
         , initialDeltas = \_ x -> x
         , updater = identity
@@ -1924,6 +1955,7 @@ record toOutput =
         , flagEmitter = identity
         , errorCollector = identity
         , debouncingReceiverCollector = identity
+        , subscriptionCollector = identity
         }
 
 
@@ -1990,9 +2022,9 @@ fieldHelper access label_ fromInput (Control control) builder =
                 { index = rec.index + 1
                 , labels = rec.labels ++ [ label_ ]
                 , toOutput = rec.toOutput
-                , fields =
+                , fns =
                     \path ->
-                        rec.fields path
+                        rec.fns path
                             << Tuple.pair
                                 { field = control (Path.add label_ path)
                                 , fromInput = fromInput
@@ -2028,6 +2060,7 @@ fieldHelper access label_ fromInput (Control control) builder =
                 , flagEmitter = rec.flagEmitter >> recordFlagEmitter
                 , errorCollector = rec.errorCollector >> recordErrorCollector
                 , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
+                , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
                 }
 
 
@@ -2036,7 +2069,7 @@ endRecord rec =
         (\path ->
             let
                 fns =
-                    rec.fields path End
+                    rec.fns path End
 
                 initialStates =
                     rec.initialStates path End
@@ -2121,6 +2154,7 @@ endRecord rec =
             , id = Nothing
             , name = Nothing
             , class = []
+            , subscriptions = \(State _ states) -> collectRecordSubscriptions rec.subscriptionCollector deltaSetters fns states
             }
         )
 
@@ -2134,6 +2168,16 @@ endRecord rec =
    88 `88. 88.     Y8b  d8 `8b  d8' 88 `88. 88  .8D        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
    88   YD Y88888P  `Y88P'  `Y88P'  88   YD Y8888D'      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+collectRecordSubscriptions collector setters fns states =
+    collector (\listSubs End End End -> listSubs) [] setters fns states
+        |> Sub.batch
+        |> Sub.map ChangeState
+
+
+recordSubscriptionCollector next listSubs ( setter, restSetters ) ( fns, restFns ) ( state, restStates ) =
+    next ((fns.field.subscriptions state |> Sub.map setter) :: listSubs) restSetters restFns restStates
 
 
 collectDebouncingReceiversForRecord :
@@ -2295,14 +2339,15 @@ recordStateInitialiser next recordInput ( fns, restFns ) =
         |> fns.fromInput
         |> fns.field.initWith
         |> Tuple.first
+        |> Debug.log "FIXME - need to initialise record deltas like this too for initWith"
     , next recordInput restFns
     )
 
 
 initialiseRecordDeltas deltaInitialiser_ deltaSetters deltas =
     deltaInitialiser_ (\cmdList End End -> cmdList) [] deltaSetters deltas
-        |> List.map (Cmd.map ChangeState)
         |> Cmd.batch
+        |> Cmd.map ChangeState
 
 
 recordDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDeltas ) =
@@ -2620,6 +2665,7 @@ customType destructor =
         , flagEmitter = identity
         , errorCollector = identity
         , debouncingReceiverCollector = identity
+        , subscriptionCollector = identity
         , destructor = destructor
         }
 
@@ -2679,6 +2725,7 @@ tagHelper label_ (Control control) toArgState builder =
                 , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
                 , errorCollector = rec.errorCollector >> customTypeErrorCollector
                 , debouncingReceiverCollector = rec.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
+                , subscriptionCollector = rec.subscriptionCollector >> customTypeSubscriptionCollector
                 , destructor = rec.destructor
                 }
 
@@ -2773,6 +2820,7 @@ endCustomType rec =
             , id = Nothing
             , name = Nothing
             , class = []
+            , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions rec.subscriptionCollector deltaSetters fns states
             }
         )
 
@@ -2821,6 +2869,7 @@ null tag =
         , update = \() () -> ( (), Cmd.none )
         , view = \_ -> H.text ""
         , parse = \() -> Ok tag
+        , subscriptions = \() -> Sub.none
         }
 
 
@@ -2957,6 +3006,16 @@ tag5 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) (
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+
+
+collectCustomTypeSubscriptions collector setters fns states =
+    collector (\listSubs End End End -> listSubs) [] setters fns states
+        |> Sub.batch
+        |> Sub.map ChangeState
+
+
+customTypeSubscriptionCollector next listSubs ( setter, restSetters ) ( fns, restFns ) ( state, restStates ) =
+    next ((fns.subscriptions state |> Sub.map setter) :: listSubs) restSetters restFns restStates
 
 
 collectDebouncingReceiversForCustomType :
