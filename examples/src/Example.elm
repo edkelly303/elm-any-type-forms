@@ -54,7 +54,7 @@ type alias Example2 =
     , tuple : ( Int, String )
     , triple : ( Int, String, Float )
     , result : Result Int String
-    , list : List Int
+    , list : List Time.Posix
     , dict : Dict.Dict String Int
     , set : Set.Set String
     , array : Array.Array Int
@@ -69,7 +69,7 @@ example2Control =
         |> Control.field "Tuple" .tuple (Control.tuple ( "Int", Control.int ) ( "String", Control.string ))
         |> Control.field "Triple" .triple (Control.triple ( "Int", Control.int ) ( "String", Control.string ) ( "Float", Control.float ))
         |> Control.field "Result" .result (Control.result Control.int Control.string)
-        |> Control.field "List" .list (Control.list Control.int)
+        |> Control.field "List" .list (Control.list (timeControl Time.utc))
         |> Control.field "Dict" .dict (Control.dict ( "Key", Control.string ) ( "Value", Control.int ))
         |> Control.field "Set" .set (Control.set Control.string)
         |> Control.field "Array" .array (Control.array Control.int)
