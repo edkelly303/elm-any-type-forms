@@ -19,7 +19,7 @@ import Time.Extra
 
 type alias Example =
     { time : Time.Posix
-    ,    int : Int
+    , int : Int
     , float : Float
     , string : String
     , char : Char
@@ -31,7 +31,7 @@ type alias Example =
 
 exampleControl =
     Control.record Example
-            |> Control.field "Time" .time (timeControl Time.utc)
+        |> Control.field "Time" .time (timeControl Time.utc)
         |> Control.field "Int" .int Control.int
         |> Control.field "Float" .float Control.float
         |> Control.field "String" .string Control.string
