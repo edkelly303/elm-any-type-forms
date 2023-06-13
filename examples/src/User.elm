@@ -19,9 +19,9 @@ userControl =
             , role = role
             }
         )
-        |> Control.field "Name" .name Control.string
-        |> Control.field "Age" .age Control.int
-        |> Control.field "Role" .role roleControl
+        |> Control.field "Name" .name (Control.string |> Control.label "What is the user's name?")
+        |> Control.field "Age" .age (Control.int |> Control.label "How old is the user?")
+        |> Control.field "Role" .role (roleControl |> Control.label "What is the user's role?")
         |> Control.end
 
 
@@ -41,8 +41,9 @@ roleControl =
                     adminLevel level
         )
         |> Control.tag0 "Regular" Regular
-        |> Control.tag1 "Admin Level" AdminLevel Control.int
+        |> Control.tag1 "Admin" AdminLevel (Control.int |> Control.label "What level of clearance does the user have?")
         |> Control.end
+        |> Control.label "What is the user's role?"
 
 
 type alias Model =
