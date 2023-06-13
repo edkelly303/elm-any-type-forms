@@ -1,6 +1,6 @@
 module Control exposing
     ( Control, Form, debug, form
-    , bool, checkbox, int, float, string, char, enum
+    , bool, int, float, string, char, enum
     , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
     , failIf
@@ -23,7 +23,7 @@ module Control exposing
 
 # Basic controls
 
-@docs bool, checkbox, int, float, string, char, enum
+@docs bool, int, float, string, char, enum
 
 
 # Basic combinators
@@ -364,30 +364,30 @@ type End
 -}
 
 
-{-| Convert a `Control` into a `Form`, which you can then plumb into your Elm application. You will need to supply a 
-couple of variants from your app's `Msg` type: one to handle updates of the form's state, and one to handle the 
+{-| Convert a `Control` into a `Form`, which you can then plumb into your Elm application. You will need to supply a
+couple of variants from your app's `Msg` type: one to handle updates of the form's state, and one to handle the
 submission of the form.
 
-```
-type alias Msg
-    = FormUpdated (Delta String)
-    | FormSubmitted
+    type alias Msg
+        = FormUpdated (Delta String)
+        | FormSubmitted
 
-myForm : Form (State String) (Delta String) Int Msg
-myForm =
-    form 
-        { control = int
-        , title = "Just a simple Int control"
-        , onUpdate = FormUpdated 
-        , onSubmit = FormSubmitted
-        }
-```
+    myForm : Form (State String) (Delta String) Int Msg
+    myForm =
+        form
+            { control = int
+            , title = "Just a simple Int control"
+            , onUpdate = FormUpdated
+            , onSubmit = FormSubmitted
+            }
 
 -}
-form : { control : Control state delta output, title : String, onUpdate : (Delta delta -> msg), onSubmit: msg } -> Form state delta output msg
-form {title, onUpdate, onSubmit, control} =
+form : { control : Control state delta output, title : String, onUpdate : Delta delta -> msg, onSubmit : msg } -> Form state delta output msg
+form { title, onUpdate, onSubmit, control } =
     let
-        (Control c) = control
+        (Control c) =
+            control
+
         fns =
             c Path.root
     in
@@ -525,7 +525,7 @@ debug { outputToString, title, control } =
                         , case fns.parse s of
                             Ok output ->
                                 H.div []
-                                    [ H.p [] [ H.text "Success! Your form produced this data structure:" ]
+                                    [ H.p [] [ H.text "Success! Your form produced the following value:" ]
                                     , H.pre [] [ H.text (outputToString output) ]
                                     ]
 
@@ -1289,17 +1289,10 @@ enum first second rest =
 -}
 
 
-{-| A control that produces a Boolean value. Renders as an HTML radio control.
--}
-bool : String -> String -> Control Bool Bool Bool
-bool trueId falseId =
-    enum ( trueId, True ) ( falseId, False ) []
-
-
 {-| A control that produces a Boolean value. Renders as an HTML checkbox.
 -}
-checkbox : Control Bool Bool Bool
-checkbox =
+bool : Control Bool Bool Bool
+bool =
     create
         { initEmpty = ( False, Cmd.none )
         , initWith = \b -> ( b, Cmd.none )
@@ -1345,7 +1338,7 @@ checkbox =
 
 -}
 wrapper :
-    { label : String, wrap : output -> wrapped, unwrap : wrapped -> output }
+    { wrap : output -> wrapped, unwrap : wrapped -> output }
     -> Control state delta output
     ->
         Control
@@ -1353,9 +1346,16 @@ wrapper :
             ( Delta delta, End )
             wrapped
 wrapper config control =
-    record config.wrap
-        |> field config.label config.unwrap control
-        |> end
+    Control
+        (\path ->
+            let
+                (Control inner) =
+                    record config.wrap
+                        |> field (Path.last path) config.unwrap control
+                        |> end
+            in
+            inner (Path.dropLast path)
+        )
 
 
 
@@ -1756,7 +1756,7 @@ dict ( keyLabel, keyControl ) ( valueLabel, valueControl ) =
             ( valueLabel, valueControl )
         )
         |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
-        |> wrapper { label = "dict", wrap = Dict.fromList, unwrap = Dict.toList }
+        |> wrapper { wrap = Dict.fromList, unwrap = Dict.toList }
 
 
 nonUniqueIndexes : List comparable -> List Int
@@ -1810,7 +1810,7 @@ set memberControl =
     list
         (memberControl |> catchFlag "@@set-unique-keys" "Set members must be unique")
         |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
-        |> wrapper { label = "set", wrap = Set.fromList, unwrap = Set.toList }
+        |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
 
 
 
@@ -1839,7 +1839,7 @@ array :
             (Array.Array output)
 array itemControl =
     list itemControl
-        |> wrapper { label = "array", wrap = Array.fromList, unwrap = Array.toList }
+        |> wrapper { wrap = Array.fromList, unwrap = Array.toList }
 
 
 
