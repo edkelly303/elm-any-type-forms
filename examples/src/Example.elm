@@ -11,6 +11,7 @@ import Process
 import Set
 import Task
 import Time
+import Time.Extra
 
 
 
@@ -22,8 +23,7 @@ main =
 
 
 type alias Example =
-    { time : Time.Posix
-    , int : Int
+    { int : Int
     , float : Float
     , string : String
     , char : Char
@@ -36,7 +36,6 @@ type alias Example =
 
 exampleControl =
     Control.record Example
-        |> Control.field "time" .time timeControl
         |> Control.field "int" .int Control.int
         |> Control.field "float" .float Control.float
         |> Control.field "string" .string Control.string
@@ -55,8 +54,7 @@ type Enum
 
 
 type alias Example2 =
-    { 
-        time : Time.Posix
+    { time : Time.Posix
     , wrapper : Wrapper Int
     , tuple : ( Int, String )
     , triple : ( Int, String, Float )
@@ -71,7 +69,7 @@ type alias Example2 =
 
 example2Control =
     Control.record Example2
-            |> Control.field "time" .time timeControl
+        |> Control.field "time" .time timeControl
         |> Control.field "wrapper" .wrapper (Control.wrapper { label = "wrapper", wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
         |> Control.field "tuple" .tuple (Control.tuple ( "int", Control.int ) ( "string", Control.string ))
         |> Control.field "triple" .triple (Control.triple ( "int", Control.int ) ( "string", Control.string ) ( "float", Control.float ))
@@ -151,7 +149,9 @@ timeControl =
             )
         , initWith =
             \posix ->
-                ( { input = "", now = posix }
+                ( { input = String.fromInt (Time.toHour Time.utc posix) ++ ":" ++ String.fromInt (Time.toMinute Time.utc posix)
+                  , now = posix
+                  }
                 , Task.perform ClockTicked Time.now
                 )
         , update =
@@ -168,14 +168,15 @@ timeControl =
                         )
         , view =
             \{ state, label, id, name, class } ->
+                let
+                    showTime toPart =
+                        state.now
+                            |> toPart Time.utc
+                            |> String.fromInt
+                            |> String.padLeft 2 '0'
+                in
                 Html.div []
-                    [ Html.text
-                        (String.fromInt (Time.toHour Time.utc state.now)
-                            ++ ":"
-                            ++ String.fromInt (Time.toMinute Time.utc state.now)
-                            ++ ":"
-                            ++ String.fromInt (Time.toSecond Time.utc state.now)
-                        )
+                    [ Html.label [ Html.Attributes.for id ] [ Html.text label ]
                     , Html.input
                         [ Html.Attributes.id id
                         , Html.Attributes.name name
@@ -183,6 +184,38 @@ timeControl =
                         , Html.Events.onInput InputUpdated
                         ]
                         [ Html.text state.input ]
+                    , Html.small []
+                        [ Html.text
+                            ("(Current time is "
+                                ++ showTime Time.toHour
+                                ++ ":"
+                                ++ showTime Time.toMinute
+                                ++ ":"
+                                ++ showTime Time.toSecond
+                                ++ ")"
+                            )
+                        ]
                     ]
-        , parse = \state -> Ok state.now
+        , parse =
+            \{ input, now } ->
+                case String.split ":" input of
+                    [ h, m ] ->
+                        Maybe.map2
+                            (\h_ m_ ->
+                                Time.Extra.partsToPosix Time.utc
+                                    { day = Time.toDay Time.utc now
+                                    , month = Time.toMonth Time.utc now
+                                    , year = Time.toYear Time.utc now
+                                    , hour = h_
+                                    , minute = m_
+                                    , second = 0
+                                    , millisecond = 0
+                                    }
+                            )
+                            (String.toInt h)
+                            (String.toInt m)
+                            |> Result.fromMaybe [ "Not a valid time" ]
+
+                    _ ->
+                        Err [ "Not a valid time" ]
         }
