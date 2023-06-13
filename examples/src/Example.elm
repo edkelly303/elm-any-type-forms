@@ -200,22 +200,36 @@ timeControl =
             \{ input, now } ->
                 case String.split ":" input of
                     [ h, m ] ->
-                        Maybe.map2
-                            (\h_ m_ ->
-                                Time.Extra.partsToPosix Time.utc
-                                    { day = Time.toDay Time.utc now
-                                    , month = Time.toMonth Time.utc now
-                                    , year = Time.toYear Time.utc now
-                                    , hour = h_
-                                    , minute = m_
-                                    , second = 0
-                                    , millisecond = 0
-                                    }
-                            )
-                            (String.toInt h)
-                            (String.toInt m)
-                            |> Result.fromMaybe [ "Not a valid time" ]
+                        case String.toInt h of
+                            Nothing ->
+                                Err [ "Hours must be a number" ]
+
+                            Just h_ ->
+                                if h_ < 0 || h_ > 23 then
+                                    Err [ "Hours must be between 0 and 23" ]
+
+                                else
+                                    case String.toInt m of
+                                        Nothing ->
+                                            Err [ "Minutes must be a number" ]
+
+                                        Just m_ ->
+                                            if m_ < 0 || m_ > 59 then
+                                                Err [ "Minutes must be between 0 and 59" ]
+
+                                            else
+                                                Ok
+                                                    (Time.Extra.partsToPosix Time.utc
+                                                        { day = Time.toDay Time.utc now
+                                                        , month = Time.toMonth Time.utc now
+                                                        , year = Time.toYear Time.utc now
+                                                        , hour = h_
+                                                        , minute = m_
+                                                        , second = 0
+                                                        , millisecond = 0
+                                                        }
+                                                    )
 
                     _ ->
-                        Err [ "Not a valid time" ]
+                        Err [ "Format must be HH:MM" ]
         }
