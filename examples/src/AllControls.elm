@@ -1,4 +1,4 @@
-module Example exposing (main)
+module AllControls exposing (main)
 
 import Array
 import Control
