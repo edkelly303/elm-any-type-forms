@@ -1,4 +1,4 @@
-module Path exposing (Path, add, root, toString)
+module Path exposing (Path, add, dropLast, last, root, toString)
 
 
 type Path
@@ -21,3 +21,14 @@ toString (Path path) =
         |> List.reverse
         |> List.filter (not << String.isEmpty)
         |> String.join " > "
+
+
+last : Path -> String
+last (Path path) =
+    List.head path
+        |> Maybe.withDefault ""
+
+
+dropLast : Path -> Path
+dropLast (Path path) =
+    Path (List.drop 1 path)

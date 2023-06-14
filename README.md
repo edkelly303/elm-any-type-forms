@@ -2,21 +2,16 @@
 
 ## DISCLAIMER
 
-I am uneasy about publishing this package in its current rough and 
-unfinished state. However, impending fatherhood means I won't be doing much 
-programming over the next few months, and I wanted to share the work I've done 
-so far.
+I am uneasy about publishing this package in its current rough and unfinished 
+state. I wanted to share the work I've done so far, and I also want to try it 
+out in some of my own projects and see if it's useful.
 
 I would *not* recommend using this package in production, and you'll probably 
-see why if you read to the end of this document.
+see why if you read the section about `State` and `Delta` types.
 
 Nevertheless, I think the techniques I used to implement control combinators 
 with nested tuples may be of interest to people who like using Elm to do weird, 
 unElmish things.
-
-Perhaps by the time our baby lets me get back to coding again, someone will 
-have been inspired to build something less ridiculous and more useful with 
-nested tuples.
 
 ## What does it do?
 
@@ -53,22 +48,30 @@ worrying about any annoying state management or book-keeping.
 ## What's nasty about it?
 
 * The default controls don't look very nice (this is fixable, just needs some CSS).
-* The types of the forms it generates are a bit unintuitive (see "How do I include a form in my `Model` and `Msg` types?").
-* The type signatures of some of the functions in the `Control` module are... interesting.
-* The implementation is pretty difficult to understand.
+* The error messages the compiler gives you when you get something wrong are awful.
+* The types of the forms it generates are complex and weird-looking.
+* The type signatures of some of the functions in the `Control` module are quite terrifying.
+* The implementation is very complex, undocumented, and difficult to understand.
+* There are a few known bugs - see "Known bugs and future work" at the end of this README.
+
+# Getting started
 
 ## How do I build up some controls?
 
 Here's an example that shows the `record` and `customType` combinators in action:
 
 ```elm
+module User exposing (User, control)
+
+import Control
+
 type alias User = 
     { name : String
     , age : Int
     , role : Role
     }
 
-userControl = 
+control = 
     Control.record 
         (\name age role -> 
             { name = name
@@ -76,7 +79,7 @@ userControl =
             , role = role
             }
         )
-        |> Control.field "Name" .name Control.string
+        |> Control.field "Name" .name (Control.string |> Control.failIf String.isEmpty "Name is required")
         |> Control.field "Age" .age Control.int
         |> Control.field "Role" .role roleControl
         |> Control.end
@@ -95,181 +98,254 @@ roleControl =
                     adminLevel level
         )
         |> Control.tag0 "Regular" Regular
-        |> Control.tag1 "Admin Level" AdminLevel Control.int
+        |> Control.tag1 "Admin" AdminLevel (Control.int |> Control.label "Security clearance level")
         |> Control.end
 ```
 
-## How do I turn a control into a form and wire it into my Elm app?
+## How do I turn a control into a form?
+
+Taking the example of the `userControl` defined in the previous section, we'll 
+start by using `Control.sandbox` to turn it into a form that we can test in the 
+browser.
+
+Make a new file called `Sandbox.elm`
+
+```elm
+module Sandbox exposing (main)
+
+import Control
+import User
+
+main = 
+    Control.sandbox 
+        { control = User.control
+        , title = "Let's create a user!"
+        , outputToString = Debug.toString
+        }
+```
+
+If you open this `Sandbox.elm` file in `elm reactor` (or your preferred dev 
+server - try `lydell/elm-watch`, you won't regret it), you'll be able to play 
+with your form and make sure it does what you want.
+
+## How do I embed a form into a larger Elm app?
+
+Once you're happy with your form, you'll probably want to embed it into a larger 
+Elm app. This is where things get a bit tricky.
 
 The big tradeoff of this package is that its forms build up quite large and 
 complex `State` and `Delta` types (which are the equivalent of an Elm program's 
 `Model` and `Msg` types, respectively). 
 
-When you want to hook up a form in your Elm application, your `Model` and `Msg` 
-will need to include those `State` and `Delta` types - which means you have to 
-be able to work out what they are.
+When using `Control.sandbox`, you don't need to worry about what those types 
+are. There's no need to define them or write type annotations. 
 
-Fortunately, the Elm compiler has our back here, and we can use it to tell us 
-what types we need. We'll give it some deliberately incorrect type annotations, 
-and see what error messages it gives us.
+But when you want to integrate a form into a real Elm application, your `Model` 
+and `Msg` will need to include those `State` and `Delta` types somehow. So we 
+need a way to work out what the types should be.
+
+For example, let's say this `Main.elm` file is the entrypoint for our 
+application:
 
 ```elm
-type alias Model = 
-    { state : () } -- we'll get an error here, because the form's `state` won't be `()`
+module Main exposing (main)
 
+import Control
+import User
 
-type Msg 
-    = FormUpdated () -- we'll get an error here, because the form's `delta` won't be `()`
+type Model = 
+    { formState : ??? -- what `State` type do we need here?
+    -- ... other `Model` fields
+    }
+
+type Msg
+    = FormUpdated ??? -- what `Delta` type do we need here?
     | FormSubmitted
-
-
-userForm =
-    Control.toForm
-        "Let's make a User"
-        FormUpdated
-        FormSubmitted
-        userControl
-
-
-main : Program () Model Msg
-main =
-    Browser.element
-        { init = \() -> ( { state = userForm.init }, Cmd.none )
-        , view = \model -> userForm.view model.state
-        , update =
-            \msg model ->
-                case msg of
-                    FormUpdated delta ->
-                        let
-                            ( state, cmd ) =
-                                userForm.update delta model.state
-                        in
-                        ( { model | state = state }, cmd )
-
-                    _ ->
-                        ( model, Cmd.none )
-        , subscriptions = \_ -> Sub.none
-        }
+    | --... other `Msg` variants
 ```
 
-When you compile this, you should get some errors like this:
+### 1. Let `elm repl` tell us the types
 
-```text
--- TYPE MISMATCH ----------------------------------------------
+Fortunately, the Elm compiler has our back; we can use it to tell us the types 
+we need. In your terminal, go to your project root folder, fire up the 
+`elm repl`, and ask it to tell you the type of `Sandbox.main`:
 
-Something is off with the body of the `main` definition:
-
-    Browser.element
-        { init = \() -> ( { state = myForm.init }, Cmd.none )
-        , view = \model -> myForm.view model.state
-        , update =
-            \msg model ->
-                case msg of
-                    FormUpdated delta ->
-                        let
-                            ( state, cmd ) =
-                                myForm.update delta model.state
-                        in
-                        ( { model | state = state }, cmd )
-
-                    _ ->
-                        ( model, Cmd.none )
-        , subscriptions = \_ -> Sub.none
-        }
-
-This `element` call produces:
-
-    Program
-        ()
-        { state :
-              Control.State
-                  ( Control.State String
-                  , ( Control.State String
-                    , ( Control.State
-                            ( Control.State ()
-                            , ( Control.State
-                                    ( Control.State String, Control.End )
-                              , Control.End
-                              )
-                            )
-                      , Control.End
-                      )
-                    )
+```
+$ elm repl
+---- Elm 0.19.1 ----------------------------------------------------------------
+Say :help for help and :exit to exit! More at <https://elm-lang.org/0.19.1/repl>
+--------------------------------------------------------------------------------
+> import Sandbox
+> Sandbox.main
+<function>
+    : Program
+          ()
+          (
+          Control.State
+              ( Control.State String
+              , ( Control.State String
+                , ( Control.State
+                        ( Control.State ()
+                        , ( Control.State ( Control.State String, Control.End )
+                          , Control.End
+                          )
+                        )
+                  , Control.End
                   )
-        }
-        Msg
+                )
+              )
+          )
+          (
+          Control.Delta
+              ( Control.Delta String
+              , ( Control.Delta String
+                , ( Control.Delta
+                        ( Control.Delta ()
+                        , ( Control.Delta ( Control.Delta String, Control.End )
+                          , Control.End
+                          )
+                        )
+                  , Control.End
+                  )
+                )
+              )
+          )
+```
 
-But the type annotation on `main` says it should be:
+Yeah. Those are our types. Sorry not sorry.
 
-    Program () Model Msg
+### 2. Make some nice type aliases
 
--- TYPE MISMATCH ----------------------------------------------
+Copy and paste the types from the terminal into your application to create type 
+aliases for your form's `State` and `Delta` types:
 
-The 1st argument to this function is not what I expect:
+```elm
+module Main exposing (main)
 
-                                myForm.update delta model.state
-                                              ^^^^^
-This `delta` value is a:
+import Control
+import User
 
-    ()
+type alias Model = 
+    { formState : FormState
+    -- ... other `Model` fields
+    }
 
-But this function needs the 1st argument to be:
+type Msg
+    = FormUpdated FormDelta
+    | FormSubmitted
+    | --... other `Msg` variants
 
+type alias FormState = 
+    Control.State
+        ( Control.State String
+        , ( Control.State String
+          , ( Control.State
+              ( Control.State ()
+              , ( Control.State ( Control.State String, Control.End )
+                , Control.End
+                )
+              )
+            , Control.End
+            )
+          )
+        )
+
+type alias FormDelta = 
     Control.Delta
         ( Control.Delta String
         , ( Control.Delta String
           , ( Control.Delta
-                  ( Control.Delta ()
-                  , ( Control.Delta ( Control.Delta String, Control.End )
-                    , Control.End
-                    )
-                  )
+              ( Control.Delta ()
+              , ( Control.Delta ( Control.Delta String, Control.End )
+                , Control.End
+                )
+              )
             , Control.End
             )
           )
         )
 ```
 
-So, your types are going to be:
+### 3. Instantiate your form
+
+Use `Control.form` to create an embeddable version of your form:
 
 ```elm
-type alias Model = 
-    { state : Control.State
-                  ( Control.State String
-                  , ( Control.State String
-                    , ( Control.State
-                            ( Control.State ()
-                            , ( Control.State
-                                    ( Control.State String, Control.End )
-                              , Control.End
-                              )
-                            )
-                      , Control.End
-                      )
-                    )
-                  ) 
-    }
-
-
-type Msg 
-    = FormUpdated 
-        (  Control.Delta
-            ( Control.Delta String
-            , ( Control.Delta String
-            , ( Control.Delta
-                    ( Control.Delta ()
-                    , ( Control.Delta ( Control.Delta String, Control.End )
-                        , Control.End
-                        )
-                    )
-                , Control.End
-                )
-            )
-        ))
-    | FormSubmitted
+userForm = 
+    Control.form 
+        { control = User.control 
+        , title = "Let's create a user!"
+        , onUpdate = FormUpdated
+        , onSubmit = FormSubmitted
+        }
 ```
 
-Yeah. Do you hate it yet?
+### 4. Plumb your form into your app's `main` function
+
+Finally, integrate the form into your `main` function:
+
+```elm
+main : Program () Model Msg
+main =
+    Browser.element
+        { init = 
+            \() -> 
+                let
+                    (formState, formCmd) = 
+                        userForm.init
+                in
+                ( { formState = formState 
+                  , -- your app's other `Model` fields
+                  }
+                , Cmd.batch 
+                    [ formCmd 
+                    , -- your app's other initial Cmds
+                    ]
+                )
+        , view = 
+            \model -> 
+                Html.div [] 
+                    [ userForm.view model.formState
+                    , -- your app's other view functions
+                    ]
+        , update =
+            \msg model ->
+                case msg of
+                    FormUpdated delta ->
+                        let
+                            ( newFormState, formCmd ) =
+                                userForm.update delta model.formState
+                        in
+                        ( { model | formState = newFormState }
+                        , formCmd 
+                        )
+
+                    FormSubmitted ->
+                        case userForm.submit model.formState of 
+                            (newFormState, Ok user) ->
+                                -- in a real app, you'd probably do something 
+                                -- with the `user` here.
+                                ( { model | formState = newFormState }
+                                , Cmd.none 
+                                )
+
+                            (newFormState, Err errors) ->
+                                -- in a real app, you might choose to do 
+                                -- something with the `errors` here.
+                                ( { model | formState = newFormState }
+                                , Cmd.none 
+                                )
+                    
+                    -- your app's other `Msg` variants
+
+        , subscriptions = 
+            \model -> 
+                Sub.batch 
+                    [ userForm.subscriptions model.formState
+                    , -- your app's other subscriptions
+                    ]
+        }
+```
 
 ## How do I run the examples?
 
@@ -278,3 +354,10 @@ $ cd examples
 $ npm install
 $ . run
 ```
+
+## Known bugs and future work
+
+- `Control.initWith` doesn't send out initial Cmds for record fields or custom 
+type variants.
+- Lack of consistency in use of labels and headings in generated HTML.
+- Lack of consistency in list indices (should lists be 0- or 1-indexed?)
