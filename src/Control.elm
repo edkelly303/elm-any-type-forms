@@ -132,6 +132,11 @@ import Task
 import Time
 
 
+fixme : String -> a -> a
+fixme _ a =
+    a
+
+
 
 {-
    d888888b db    db d8888b. d88888b .d8888.
@@ -474,10 +479,6 @@ your main Elm application's `Model`and `Msg` types.
 Once you're happy with the form, you can then ask the Elm repl (or your editor's Elm plugin) to tell you the type
 signature of the `Program`, which will give you the form's `State` and `Delta` types. You can then plug these into your
 main `Model`and `Msg` types wherever appropriate.
-
-    module Main exposing (main)
-
-    import Control exposing (..)
 
     main : Program () (State String) (Delta String)
     main =
@@ -1154,7 +1155,7 @@ initWith input (Control control) =
 -}
 
 
-{-| A control that produces an `Int`. Renders as an HTML text input.
+{-| A control that produces an `Int`. Renders as an HTML number input.
 -}
 int : Control String String Int
 int =
@@ -1188,7 +1189,7 @@ int =
 -}
 
 
-{-| A control that produces a `Float`. Renders as an HTML text input.
+{-| A control that produces a `Float`. Renders as an HTML number input.
 -}
 float : Control String String Float
 float =
@@ -1954,7 +1955,7 @@ end :
                 -> ( State state, restStates )
                 -> List Flag
             , fns :
-                Path.Path
+                Path
                 -> End
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
             , idleSetter :
@@ -1962,8 +1963,8 @@ end :
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
                 -> ( State state, restStates )
                 -> ( State state, restStates )
-            , initialDeltas : Path.Path -> End -> i
-            , initialStates : Path.Path -> End -> ( State state, restStates )
+            , initialDeltas : Path -> End -> i
+            , initialStates : Path -> End -> ( State state, restStates )
             , initialiser :
                 (input -> End -> End)
                 -> input
@@ -2293,7 +2294,7 @@ field :
                 , flagEmitter :
                     a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { access : Access
                           , field : ControlFns input7 state8 delta10 output8
@@ -2304,8 +2305,8 @@ field :
                     -> c3
                 , idleSetter : a9 -> restFns4 -> restStates4 -> restStates4
                 , index : number
-                , initialDeltas : Path.Path -> ( Cmd (Delta delta10), a8 ) -> c2
-                , initialStates : Path.Path -> ( State state8, a7 ) -> c1
+                , initialDeltas : Path -> ( Cmd (Delta delta10), a8 ) -> c2
+                , initialStates : Path -> ( State state8, a7 ) -> c1
                 , initialiser : a6 -> recordInput -> restFns3 -> restStates3
                 , labels : List String
                 , makeSetters : a5 -> befores -> afters -> next
@@ -2377,7 +2378,7 @@ field :
                     )
                 -> ( State state5, restStates5 )
                 -> List Flag
-            , fns : Path.Path -> a10 -> c3
+            , fns : Path -> a10 -> c3
             , idleSetter :
                 a9
                 ->
@@ -2387,8 +2388,8 @@ field :
                 -> ( State state4, restStates4 )
                 -> ( State state4, restStates4 )
             , index : number
-            , initialDeltas : Path.Path -> a8 -> c2
-            , initialStates : Path.Path -> a7 -> c1
+            , initialDeltas : Path -> a8 -> c2
+            , initialStates : Path -> a7 -> c1
             , initialiser :
                 a6
                 -> recordInput
@@ -2483,7 +2484,7 @@ hiddenField :
                 , flagEmitter :
                     a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { access : Access
                           , field : ControlFns input7 state8 delta10 output8
@@ -2494,8 +2495,8 @@ hiddenField :
                     -> c3
                 , idleSetter : a9 -> restFns4 -> restStates4 -> restStates4
                 , index : number
-                , initialDeltas : Path.Path -> ( Cmd (Delta delta10), a8 ) -> c2
-                , initialStates : Path.Path -> ( State state8, a7 ) -> c1
+                , initialDeltas : Path -> ( Cmd (Delta delta10), a8 ) -> c2
+                , initialStates : Path -> ( State state8, a7 ) -> c1
                 , initialiser : a6 -> recordInput -> restFns3 -> restStates3
                 , labels : List String
                 , makeSetters : a5 -> befores -> afters -> next
@@ -2567,7 +2568,7 @@ hiddenField :
                     )
                 -> ( State state5, restStates5 )
                 -> List Flag
-            , fns : Path.Path -> a10 -> c3
+            , fns : Path -> a10 -> c3
             , idleSetter :
                 a9
                 ->
@@ -2577,8 +2578,8 @@ hiddenField :
                 -> ( State state4, restStates4 )
                 -> ( State state4, restStates4 )
             , index : number
-            , initialDeltas : Path.Path -> a8 -> c2
-            , initialStates : Path.Path -> a7 -> c1
+            , initialDeltas : Path -> a8 -> c2
+            , initialStates : Path -> a7 -> c1
             , initialiser :
                 a6
                 -> recordInput
@@ -2673,7 +2674,7 @@ readOnlyField :
                 , flagEmitter :
                     a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { access : Access
                           , field : ControlFns input7 state8 delta10 output8
@@ -2684,8 +2685,8 @@ readOnlyField :
                     -> c3
                 , idleSetter : a9 -> restFns4 -> restStates4 -> restStates4
                 , index : number
-                , initialDeltas : Path.Path -> ( Cmd (Delta delta10), a8 ) -> c2
-                , initialStates : Path.Path -> ( State state8, a7 ) -> c1
+                , initialDeltas : Path -> ( Cmd (Delta delta10), a8 ) -> c2
+                , initialStates : Path -> ( State state8, a7 ) -> c1
                 , initialiser : a6 -> recordInput -> restFns3 -> restStates3
                 , labels : List String
                 , makeSetters : a5 -> befores -> afters -> next
@@ -2757,7 +2758,7 @@ readOnlyField :
                     )
                 -> ( State state5, restStates5 )
                 -> List Flag
-            , fns : Path.Path -> a10 -> c3
+            , fns : Path -> a10 -> c3
             , idleSetter :
                 a9
                 ->
@@ -2767,8 +2768,8 @@ readOnlyField :
                 -> ( State state4, restStates4 )
                 -> ( State state4, restStates4 )
             , index : number
-            , initialDeltas : Path.Path -> a8 -> c2
-            , initialStates : Path.Path -> a7 -> c1
+            , initialDeltas : Path -> a8 -> c2
+            , initialStates : Path -> a7 -> c1
             , initialiser :
                 a6
                 -> recordInput
@@ -2971,7 +2972,7 @@ endRecord rec =
             , initWith =
                 \output ->
                     ( initialiseRecordStates rec.initialiser output fns
-                    , Cmd.none |> Debug.log "FIXME - record initWith"
+                    , Cmd.none |> fixme "record initWith doesn't send Cmds"
                     )
             , baseUpdate = \_ -> update
             , update = update
@@ -3172,7 +3173,7 @@ recordStateInitialiser next recordInput ( fns, restFns ) =
         |> fns.fromInput
         |> fns.field.initWith
         |> Tuple.first
-        |> Debug.log "FIXME - need to initialise record deltas like this too for initWith"
+        |> fixme "Need to initialise record deltas like this too for initWith"
     , next recordInput restFns
     )
 
@@ -3680,7 +3681,7 @@ endCustomType rec =
             , initWith =
                 \tag ->
                     ( applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters tag
-                    , Cmd.none |> Debug.log "FIXME - initWith for custom types doesn't run Cmds of child controls"
+                    , Cmd.none |> fixme "initWith for custom types doesn't run Cmds of child controls"
                     )
             , baseUpdate = \_ -> update
             , update = update
@@ -3753,7 +3754,7 @@ tag0 :
                 , flagEmitter :
                     a18 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -3793,8 +3794,8 @@ tag0 :
                     -> c6
                 , idleSetter : a16 -> Int -> restFns4 -> restStates3 -> restStates3
                 , index : Int
-                , initialDeltas : Path.Path -> ( Cmd (Delta ()), a15 ) -> c5
-                , initialStates : Path.Path -> ( State (), a14 ) -> c4
+                , initialDeltas : Path -> ( Cmd (Delta ()), a15 ) -> c5
+                , initialStates : Path -> ( State (), a14 ) -> c4
                 , initialiseDeltas : a13 -> List (Cmd msg1) -> f -> g -> h
                 , labels : List String
                 , makeDeltaSetters : a11 -> befores1 -> afters1 -> next
@@ -3893,7 +3894,7 @@ tag0 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a17 -> c6
+            , fns : Path -> a17 -> c6
             , idleSetter :
                 a16
                 -> Int
@@ -3901,8 +3902,8 @@ tag0 :
                 -> ( State state4, restStates3 )
                 -> ( State state4, restStates3 )
             , index : Int
-            , initialDeltas : Path.Path -> a15 -> c5
-            , initialStates : Path.Path -> a14 -> c4
+            , initialDeltas : Path -> a15 -> c5
+            , initialStates : Path -> a14 -> c4
             , initialiseDeltas :
                 a13 -> List (Cmd msg1) -> ( a12 -> msg1, f ) -> ( Cmd a12, g ) -> h
             , labels : List String
@@ -4050,7 +4051,7 @@ tag1 :
                 , flagEmitter :
                     a18 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -4115,9 +4116,9 @@ tag1 :
                 , idleSetter : a16 -> Int -> restFns4 -> restStates3 -> restStates3
                 , index : Int
                 , initialDeltas :
-                    Path.Path -> ( Cmd (Delta ( Delta delta10, End )), a15 ) -> c5
+                    Path -> ( Cmd (Delta ( Delta delta10, End )), a15 ) -> c5
                 , initialStates :
-                    Path.Path -> ( State ( State state8, End ), a14 ) -> c4
+                    Path -> ( State ( State state8, End ), a14 ) -> c4
                 , initialiseDeltas : a13 -> List (Cmd msg1) -> g -> h -> i
                 , labels : List String
                 , makeDeltaSetters : a11 -> befores1 -> afters1 -> next
@@ -4216,7 +4217,7 @@ tag1 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a17 -> c6
+            , fns : Path -> a17 -> c6
             , idleSetter :
                 a16
                 -> Int
@@ -4224,8 +4225,8 @@ tag1 :
                 -> ( State state4, restStates3 )
                 -> ( State state4, restStates3 )
             , index : Int
-            , initialDeltas : Path.Path -> a15 -> c5
-            , initialStates : Path.Path -> a14 -> c4
+            , initialDeltas : Path -> a15 -> c5
+            , initialStates : Path -> a14 -> c4
             , initialiseDeltas :
                 a13 -> List (Cmd msg1) -> ( a12 -> msg1, g ) -> ( Cmd a12, h ) -> i
             , labels : List String
@@ -4360,7 +4361,7 @@ tag2 :
                 , flagEmitter :
                     a18 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -4466,14 +4467,14 @@ tag2 :
                 , idleSetter : a16 -> Int -> restFns4 -> restStates3 -> restStates3
                 , index : Int
                 , initialDeltas :
-                    Path.Path
+                    Path
                     ->
                         ( Cmd (Delta ( Delta delta11, ( Delta delta10, End ) ))
                         , a15
                         )
                     -> c5
                 , initialStates :
-                    Path.Path
+                    Path
                     -> ( State ( State state9, ( State state8, End ) ), a14 )
                     -> c4
                 , initialiseDeltas : a13 -> List (Cmd msg1) -> g -> h -> i
@@ -4574,7 +4575,7 @@ tag2 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a17 -> c6
+            , fns : Path -> a17 -> c6
             , idleSetter :
                 a16
                 -> Int
@@ -4582,8 +4583,8 @@ tag2 :
                 -> ( State state4, restStates3 )
                 -> ( State state4, restStates3 )
             , index : Int
-            , initialDeltas : Path.Path -> a15 -> c5
-            , initialStates : Path.Path -> a14 -> c4
+            , initialDeltas : Path -> a15 -> c5
+            , initialStates : Path -> a14 -> c4
             , initialiseDeltas :
                 a13 -> List (Cmd msg1) -> ( a12 -> msg1, g ) -> ( Cmd a12, h ) -> i
             , labels : List String
@@ -4720,7 +4721,7 @@ tag3 :
                 , flagEmitter :
                     a18 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -4899,7 +4900,7 @@ tag3 :
                 , idleSetter : a16 -> Int -> restFns4 -> restStates3 -> restStates3
                 , index : Int
                 , initialDeltas :
-                    Path.Path
+                    Path
                     ->
                         ( Cmd
                             (Delta
@@ -4911,7 +4912,7 @@ tag3 :
                         )
                     -> c5
                 , initialStates :
-                    Path.Path
+                    Path
                     ->
                         ( State
                             ( State state10
@@ -5020,7 +5021,7 @@ tag3 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a17 -> c6
+            , fns : Path -> a17 -> c6
             , idleSetter :
                 a16
                 -> Int
@@ -5028,8 +5029,8 @@ tag3 :
                 -> ( State state4, restStates3 )
                 -> ( State state4, restStates3 )
             , index : Int
-            , initialDeltas : Path.Path -> a15 -> c5
-            , initialStates : Path.Path -> a14 -> c4
+            , initialDeltas : Path -> a15 -> c5
+            , initialStates : Path -> a14 -> c4
             , initialiseDeltas :
                 a13 -> List (Cmd msg1) -> ( a12 -> msg1, g ) -> ( Cmd a12, h ) -> i
             , labels : List String
@@ -5155,7 +5156,7 @@ tag4 :
                 , flagEmitter :
                     a18 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -5384,7 +5385,7 @@ tag4 :
                 , idleSetter : a16 -> Int -> restFns4 -> restStates3 -> restStates3
                 , index : Int
                 , initialDeltas :
-                    Path.Path
+                    Path
                     ->
                         ( Cmd
                             (Delta
@@ -5398,7 +5399,7 @@ tag4 :
                         )
                     -> c5
                 , initialStates :
-                    Path.Path
+                    Path
                     ->
                         ( State
                             ( State state11
@@ -5516,7 +5517,7 @@ tag4 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a17 -> c6
+            , fns : Path -> a17 -> c6
             , idleSetter :
                 a16
                 -> Int
@@ -5524,8 +5525,8 @@ tag4 :
                 -> ( State state4, restStates3 )
                 -> ( State state4, restStates3 )
             , index : Int
-            , initialDeltas : Path.Path -> a15 -> c5
-            , initialStates : Path.Path -> a14 -> c4
+            , initialDeltas : Path -> a15 -> c5
+            , initialStates : Path -> a14 -> c4
             , initialiseDeltas :
                 a13 -> List (Cmd msg1) -> ( a12 -> msg1, g ) -> ( Cmd a12, h ) -> i
             , labels : List String
@@ -5653,7 +5654,7 @@ tag5 :
                 , flagEmitter :
                     a18 -> List Flag -> Int -> restFns5 -> restStates4 -> List Flag
                 , fns :
-                    Path.Path
+                    Path
                     ->
                         ( { baseUpdate :
                                 Float
@@ -5940,7 +5941,7 @@ tag5 :
                 , idleSetter : a16 -> Int -> restFns4 -> restStates3 -> restStates3
                 , index : Int
                 , initialDeltas :
-                    Path.Path
+                    Path
                     ->
                         ( Cmd
                             (Delta
@@ -5956,7 +5957,7 @@ tag5 :
                         )
                     -> c5
                 , initialStates :
-                    Path.Path
+                    Path
                     ->
                         ( State
                             ( State state12
@@ -6077,7 +6078,7 @@ tag5 :
                 -> ( ControlFns input4 state5 delta6 output5, restFns5 )
                 -> ( State state5, restStates4 )
                 -> List Flag
-            , fns : Path.Path -> a17 -> c6
+            , fns : Path -> a17 -> c6
             , idleSetter :
                 a16
                 -> Int
@@ -6085,8 +6086,8 @@ tag5 :
                 -> ( State state4, restStates3 )
                 -> ( State state4, restStates3 )
             , index : Int
-            , initialDeltas : Path.Path -> a15 -> c5
-            , initialStates : Path.Path -> a14 -> c4
+            , initialDeltas : Path -> a15 -> c5
+            , initialStates : Path -> a14 -> c4
             , initialiseDeltas :
                 a13 -> List (Cmd msg1) -> ( a12 -> msg1, g ) -> ( Cmd a12, h ) -> i
             , labels : List String
