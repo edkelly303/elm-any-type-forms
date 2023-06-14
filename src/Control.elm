@@ -1,5 +1,5 @@
 module Control exposing
-    ( Control, Form, debug, form
+    ( Control, Form, sandbox, form
     , bool, int, float, string, char, enum
     , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
@@ -18,7 +18,7 @@ module Control exposing
 
 # Creating a form
 
-@docs Control, Form, debug, form
+@docs Control, Form, sandbox, form
 
 
 # Basic controls
@@ -466,13 +466,13 @@ form { title, onUpdate, onSubmit, control } =
     }
 
 
-{-| Test and debug a `Control` by turning it into a `Program`.
+{-| Test and debug a `Control` by turning it into a `Program` that you can run as a standalone Elm application.
 
 This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
-your Elm application's `Model`and `Msg` types.
+your main Elm application's `Model`and `Msg` types.
 
-Once you're happy with the form, you can then ask the Elm compiler (or your editor's Elm plugin) to tell you the type
-signature of the `Program`, which will give you the form's `state` and `delta` types. You can then plug these into your
+Once you're happy with the form, you can then ask the Elm repl (or your editor's Elm plugin) to tell you the type
+signature of the `Program`, which will give you the form's `State` and `Delta` types. You can then plug these into your
 main `Model`and `Msg` types wherever appropriate.
 
     module Main exposing (main)
@@ -481,15 +481,15 @@ main `Model`and `Msg` types wherever appropriate.
 
     main : Program () (State String) (Delta String)
     main =
-        debug
+        sandbox
             { control = int
             , title = "Just a simple Int control"
             , outputToString = Debug.toString
             }
 
 -}
-debug : { outputToString : output -> String, title : String, control : Control state delta output } -> Program () (State state) (Delta delta)
-debug { outputToString, title, control } =
+sandbox : { outputToString : output -> String, title : String, control : Control state delta output } -> Program () (State state) (Delta delta)
+sandbox { outputToString, title, control } =
     let
         (Control c) =
             control
