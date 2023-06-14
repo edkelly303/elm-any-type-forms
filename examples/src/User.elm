@@ -19,9 +19,9 @@ userControl =
             , role = role
             }
         )
-        |> Control.field "Name" .name (Control.string |> Control.label "What is the user's name?")
-        |> Control.field "Age" .age (Control.int |> Control.label "How old is the user?")
-        |> Control.field "Role" .role (roleControl |> Control.label "What is the user's role?")
+        |> Control.field "Name" .name (Control.string |> Control.failIf String.isEmpty "Name is required")
+        |> Control.field "Age" .age Control.int
+        |> Control.field "Role" .role roleControl
         |> Control.end
 
 
@@ -41,58 +41,56 @@ roleControl =
                     adminLevel level
         )
         |> Control.tag0 "Regular" Regular
-        |> Control.tag1 "Admin" AdminLevel (Control.int |> Control.label "What level of clearance does the user have?")
+        |> Control.tag1 "Admin" AdminLevel (Control.int |> Control.label "Security clearance level")
         |> Control.end
-        |> Control.label "What is the user's role?"
 
 
 type alias Model =
-    { state :
-        Control.State
-            ( Control.State String
-            , ( Control.State String
-              , ( Control.State
-                    ( Control.State ()
-                    , ( Control.State
-                            ( Control.State String
-                            , Control.End
-                            )
-                      , Control.End
-                      )
-                    )
-                , Control.End
-                )
-              )
-            )
+    { formState : FormState
     }
 
 
 type Msg
-    = FormUpdated
-        (Control.Delta
-            ( Control.Delta String
-            , ( Control.Delta String
-              , ( Control.Delta
-                    ( Control.Delta ()
-                    , ( Control.Delta
-                            ( Control.Delta String
-                            , Control.End
-                            )
-                      , Control.End
-                      )
-                    )
-                , Control.End
-                )
-              )
-            )
-        )
+    = FormUpdated FormDelta
     | FormSubmitted
+
+
+type alias FormState =
+    Control.State
+        ( Control.State String
+        , ( Control.State String
+          , ( Control.State
+                ( Control.State ()
+                , ( Control.State ( Control.State String, Control.End )
+                  , Control.End
+                  )
+                )
+            , Control.End
+            )
+          )
+        )
+
+
+type alias FormDelta =
+    Control.Delta
+        ( Control.Delta String
+        , ( Control.Delta String
+          , ( Control.Delta
+                ( Control.Delta ()
+                , ( Control.Delta ( Control.Delta String, Control.End )
+                  , Control.End
+                  )
+                )
+            , Control.End
+            )
+          )
+        )
 
 
 userForm =
     Control.form
         { control = userControl
-        , title = "Let's make a User"
+        , title = "Let's create a user!"
         , onUpdate = FormUpdated
         , onSubmit = FormSubmitted
         }
@@ -104,25 +102,43 @@ main =
         { init =
             \() ->
                 let
-                    ( state, cmd ) =
+                    ( formState, formCmd ) =
                         userForm.init
                 in
-                ( { state = state }, cmd )
+                ( { formState = formState }
+                , formCmd
+                )
         , view =
             \model ->
-                userForm.view model.state
+                userForm.view model.formState
         , update =
             \msg model ->
                 case msg of
                     FormUpdated delta ->
                         let
-                            ( state, cmd ) =
-                                userForm.update delta model.state
+                            ( newFormState, formCmd ) =
+                                userForm.update delta model.formState
                         in
-                        ( { model | state = state }, cmd )
+                        ( { model | formState = newFormState }
+                        , formCmd
+                        )
 
-                    _ ->
-                        ( model, Cmd.none )
+                    FormSubmitted ->
+                        case userForm.submit model.formState of
+                            ( newFormState, Ok user ) ->
+                                -- in a real app, you'd probably do something
+                                -- with the `user` here.
+                                ( { model | formState = newFormState }
+                                , Cmd.none
+                                )
+
+                            ( newFormState, Err errors ) ->
+                                -- in a real app, you might choose to do
+                                -- something with the `errors` here.
+                                ( { model | formState = newFormState }
+                                , Cmd.none
+                                )
         , subscriptions =
-            \_ -> Sub.none
+            \model ->
+                userForm.subscriptions model.formState
         }
