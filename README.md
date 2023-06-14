@@ -2,21 +2,16 @@
 
 ## DISCLAIMER
 
-I am uneasy about publishing this package in its current rough and 
-unfinished state. However, impending fatherhood means I won't be doing much 
-programming over the next few months, and I wanted to share the work I've done 
-so far.
+I am uneasy about publishing this package in its current rough and unfinished 
+state. I wanted to share the work I've done so far, and I also want to try it 
+out in some of my own projects and see if it's useful.
 
 I would *not* recommend using this package in production, and you'll probably 
-see why if you read to the end of this document.
+see why if you read the section about `State` and `Delta` types.
 
 Nevertheless, I think the techniques I used to implement control combinators 
 with nested tuples may be of interest to people who like using Elm to do weird, 
 unElmish things.
-
-Perhaps by the time our baby lets me get back to coding again, someone will 
-have been inspired to build something less ridiculous and more useful with 
-nested tuples.
 
 ## What does it do?
 
@@ -53,9 +48,11 @@ worrying about any annoying state management or book-keeping.
 ## What's nasty about it?
 
 * The default controls don't look very nice (this is fixable, just needs some CSS).
+* The error messages the compiler gives you when you get something wrong are awful.
 * The types of the forms it generates are complex and weird-looking.
 * The type signatures of some of the functions in the `Control` module are quite terrifying.
 * The implementation is very complex, undocumented, and difficult to understand.
+* There are a few known bugs - see "Known bugs and future work" at the end of this README.
 
 # Getting started
 
@@ -357,3 +354,10 @@ $ cd examples
 $ npm install
 $ . run
 ```
+
+## Known bugs and future work
+
+- `Control.initWith` doesn't send out initial Cmds for record fields or custom 
+type variants.
+- Lack of consistency in use of labels and headings in generated HTML.
+- Lack of consistency in list indices (should lists be 0- or 1-indexed?)
