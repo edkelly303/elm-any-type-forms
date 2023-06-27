@@ -178,6 +178,7 @@ type alias ControlConfig state delta output =
     , view : { label : String, id : String, name : String, class : String, state : state } -> Html delta
     , subscriptions : state -> Sub delta
     , parse : state -> Result (List String) output
+    , label : String
     }
 
 
@@ -221,7 +222,7 @@ type alias ControlFns input state delta output =
     , collectErrors : State state -> List Flag -> List ( String, String )
     , receiverCount : Int
     , setAllIdle : State state -> State state
-    , label : Maybe String
+    , label : String
     , id : Maybe String
     , name : Maybe String
     , class : List String
@@ -252,7 +253,7 @@ type alias ViewConfigDynamic state =
 type alias ViewConfigStatic =
     { name : Maybe String
     , id : Maybe String
-    , label : Maybe String
+    , label : String
     , class : List String
     }
 
@@ -643,7 +644,7 @@ create config =
                 \staticConfig dynamicConfig ->
                     config.view
                         { state = dynamicConfig.state
-                        , label = Maybe.withDefault (Path.last path) staticConfig.label
+                        , label = staticConfig.label
                         , id = Maybe.withDefault (Path.toString path) staticConfig.id
                         , name = Maybe.withDefault (Path.toString path) staticConfig.name
                         , class = String.join " " staticConfig.class
@@ -656,7 +657,7 @@ create config =
             , collectDebouncingReceivers = \_ -> []
             , collectErrors = \_ _ -> []
             , receiverCount = 0
-            , label = Nothing
+            , label = config.label
             , id = Nothing
             , name = Nothing
             , class = []
@@ -1007,7 +1008,7 @@ label : String -> Control state delta output -> Control state delta output
 label label_ (Control control) =
     let
         labeller i =
-            { i | label = Just label_ }
+            { i | label = label_ }
     in
     Control (control >> labeller)
 
@@ -1173,6 +1174,7 @@ int =
                     Nothing ->
                         Err [ "must be a whole number" ]
         , subscriptions = \state -> Sub.none
+        , label = "Int"
         }
         |> debounce 500
 
@@ -1207,6 +1209,7 @@ float =
                     Nothing ->
                         Err [ "must be a number" ]
         , subscriptions = \state -> Sub.none
+        , label = "Float"
         }
         |> debounce 500
 
@@ -1233,6 +1236,7 @@ string =
         , view = textControlView "text"
         , parse = Ok
         , subscriptions = \state -> Sub.none
+        , label = "String"
         }
         |> debounce 500
 
@@ -1270,6 +1274,7 @@ char =
                     Nothing ->
                         Err [ "must not be blank" ]
         , subscriptions = \state -> Sub.none
+        , label = "Char"
         }
         |> debounce 500
 
@@ -1314,6 +1319,7 @@ enum first second rest =
         , view = enumView (first :: second :: rest)
         , parse = Ok
         , subscriptions = \state -> Sub.none
+        , label = "Enum"
         }
 
 
@@ -1354,6 +1360,7 @@ bool =
         , update = \delta _ -> ( delta, Cmd.none )
         , parse = Ok
         , subscriptions = \state -> Sub.none
+        , label = "Bool"
         }
 
 
@@ -1391,7 +1398,7 @@ wrapper config control =
             let
                 (Control inner) =
                     record config.wrap
-                        |> field (Path.last path) config.unwrap control
+                        |> field config.unwrap control
                         |> end
             in
             inner (Path.dropLast path)
@@ -1435,6 +1442,7 @@ maybe control =
         |> tag0 "Nothing" Nothing
         |> tag1 "Just" Just control
         |> end
+        |> label "Maybe"
 
 
 
@@ -1476,6 +1484,7 @@ result failureControl successControl =
         |> tag1 "Err" Err failureControl
         |> tag1 "Ok" Ok successControl
         |> end
+        |> label "Result"
 
 
 
@@ -1496,13 +1505,13 @@ result failureControl successControl =
 
 -}
 tuple :
-    ( String, Control state1 delta1 output1 )
-    -> ( String, Control state2 delta2 output2 )
+    Control state1 delta1 output1
+    -> Control state2 delta2 output2
     -> Control ( State state1, ( State state2, End ) ) ( Delta delta1, ( Delta delta2, End ) ) ( output1, output2 )
-tuple ( firstLabel, first ) ( secondLabel, second ) =
+tuple first second =
     record Tuple.pair
-        |> field firstLabel Tuple.first first
-        |> field secondLabel Tuple.second second
+        |> field Tuple.first first
+        |> field Tuple.second second
         |> end
 
 
@@ -1520,23 +1529,23 @@ tuple ( firstLabel, first ) ( secondLabel, second ) =
 {-| A combinator that produces a triple of three controls of given types.
 
     myTripleControl =
-        triple ( "First", string ) ( "Second", int ) ( "Third", float )
+        triple string int float
 
 -}
 triple :
-    ( String, Control state1 delta1 output1 )
-    -> ( String, Control state2 delta2 output2 )
-    -> ( String, Control state3 delta3 output3 )
+    Control state1 delta1 output1
+    -> Control state2 delta2 output2
+    -> Control state3 delta3 output3
     ->
         Control
             ( State state1, ( State state2, ( State state3, End ) ) )
             ( Delta delta1, ( Delta delta2, ( Delta delta3, End ) ) )
             ( output1, output2, output3 )
-triple ( firstLabel, first ) ( secondLabel, second ) ( thirdLabel, third ) =
+triple first second third =
     record (\a b c -> ( a, b, c ))
-        |> field firstLabel (\( a, _, _ ) -> a) first
-        |> field secondLabel (\( _, b, _ ) -> b) second
-        |> field thirdLabel (\( _, _, c ) -> c) third
+        |> field (\( a, _, _ ) -> a) first
+        |> field (\( _, b, _ ) -> b) second
+        |> field (\( _, _, c ) -> c) third
         |> end
 
 
@@ -1755,7 +1764,7 @@ list (Control ctrl) =
                         |> List.concat
             , receiverCount = 0
             , collectDebouncingReceivers = collectDebouncingReceivers
-            , label = Nothing
+            , label = "List"
             , id = Nothing
             , name = Nothing
             , class = []
@@ -1796,20 +1805,21 @@ types. The key type must be `comparable`.
 
 -}
 dict :
-    ( String, Control keyState keyDelta comparable )
-    -> ( String, Control valueState valueDelta value )
+    Control keyState keyDelta comparable
+    -> Control valueState valueDelta value
     ->
         Control
             ( State (List (State ( State keyState, ( State valueState, End ) ))), End )
             ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
             (Dict.Dict comparable value)
-dict ( keyLabel, keyControl ) ( valueLabel, valueControl ) =
+dict keyControl valueControl =
     list
         (tuple
-            ( keyLabel, keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique" )
-            ( valueLabel, valueControl )
+            (keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique")
+            valueControl
         )
         |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
+        |> label "Dict"
         |> wrapper { wrap = Dict.fromList, unwrap = Dict.toList }
 
 
@@ -1864,6 +1874,7 @@ set memberControl =
     list
         (memberControl |> catchFlag "@@set-unique-keys" "Set members must be unique")
         |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
+        |> label "Set"
         |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
 
 
@@ -1893,6 +1904,7 @@ array :
             (Array.Array output)
 array itemControl =
     list itemControl
+        |> label "Array"
         |> wrapper { wrap = Array.fromList, unwrap = Array.toList }
 
 
@@ -2220,7 +2232,7 @@ record :
             , flagEmitter : a7 -> a7
             , fns : d -> e -> e
             , idleSetter : a6 -> a6
-            , index : number
+            , index : Int
             , initialDeltas : f -> g -> g
             , initialStates : h -> i -> i
             , initialiser : a5 -> a5
@@ -2271,8 +2283,7 @@ record toOutput =
 
 -}
 field :
-    String
-    -> b
+    b
     -> AdvancedControl input7 state8 delta10 output8
     ->
         Builder
@@ -2304,7 +2315,7 @@ field :
                         )
                     -> c3
                 , idleSetter : a9 -> restFns4 -> restStates4 -> restStates4
-                , index : number
+                , index : Int
                 , initialDeltas : Path -> ( Cmd (Delta delta10), a8 ) -> c2
                 , initialStates : Path -> ( State state8, a7 ) -> c1
                 , initialiser : a6 -> recordInput -> restFns3 -> restStates3
@@ -2387,7 +2398,7 @@ field :
                     )
                 -> ( State state4, restStates4 )
                 -> ( State state4, restStates4 )
-            , index : number
+            , index : Int
             , initialDeltas : Path -> a8 -> c2
             , initialStates : Path -> a7 -> c1
             , initialiser :
@@ -2461,8 +2472,7 @@ field =
 
 -}
 hiddenField :
-    String
-    -> b
+    b
     -> AdvancedControl input7 state8 delta10 output8
     ->
         Builder
@@ -2494,7 +2504,7 @@ hiddenField :
                         )
                     -> c3
                 , idleSetter : a9 -> restFns4 -> restStates4 -> restStates4
-                , index : number
+                , index : Int
                 , initialDeltas : Path -> ( Cmd (Delta delta10), a8 ) -> c2
                 , initialStates : Path -> ( State state8, a7 ) -> c1
                 , initialiser : a6 -> recordInput -> restFns3 -> restStates3
@@ -2577,7 +2587,7 @@ hiddenField :
                     )
                 -> ( State state4, restStates4 )
                 -> ( State state4, restStates4 )
-            , index : number
+            , index : Int
             , initialDeltas : Path -> a8 -> c2
             , initialStates : Path -> a7 -> c1
             , initialiser :
@@ -2651,8 +2661,7 @@ hiddenField =
 
 -}
 readOnlyField :
-    String
-    -> b
+    b
     -> AdvancedControl input7 state8 delta10 output8
     ->
         Builder
@@ -2684,7 +2693,7 @@ readOnlyField :
                         )
                     -> c3
                 , idleSetter : a9 -> restFns4 -> restStates4 -> restStates4
-                , index : number
+                , index : Int
                 , initialDeltas : Path -> ( Cmd (Delta delta10), a8 ) -> c2
                 , initialStates : Path -> ( State state8, a7 ) -> c1
                 , initialiser : a6 -> recordInput -> restFns3 -> restStates3
@@ -2767,7 +2776,7 @@ readOnlyField :
                     )
                 -> ( State state4, restStates4 )
                 -> ( State state4, restStates4 )
-            , index : number
+            , index : Int
             , initialDeltas : Path -> a8 -> c2
             , initialStates : Path -> a7 -> c1
             , initialiser :
@@ -2837,37 +2846,53 @@ type Access
     | Hidden
 
 
-fieldHelper access label_ fromInput (Control control) builder =
+fieldHelper access fromInput (Control control) builder =
     case builder of
         Cus c ->
             Cus c
 
         Rec rec ->
+            let
+                newIndex =
+                    rec.index + 1
+            in
             Rec
-                { index = rec.index + 1
-                , labels = rec.labels ++ [ label_ ]
+                { index = newIndex
+                , labels = rec.labels
                 , toOutput = rec.toOutput
                 , fns =
                     \path ->
+                        let
+                            newPath =
+                                Path.add (String.fromInt newIndex) path
+                        in
                         rec.fns path
                             << Tuple.pair
-                                { field = control (Path.add label_ path)
+                                { field = control newPath
                                 , fromInput = fromInput
                                 , access = access
                                 }
                 , initialStates =
                     \path ->
+                        let
+                            newPath =
+                                Path.add (String.fromInt newIndex) path
+                        in
                         rec.initialStates path
                             << Tuple.pair
-                                (control (Path.add label_ path)
+                                (control newPath
                                     |> .init
                                     |> Tuple.first
                                 )
                 , initialDeltas =
                     \path ->
+                        let
+                            newPath =
+                                Path.add (String.fromInt newIndex) path
+                        in
                         rec.initialDeltas path
                             << Tuple.pair
-                                (control (Path.add label_ path)
+                                (control newPath
                                     |> .init
                                     |> Tuple.second
                                 )
@@ -2947,12 +2972,8 @@ endRecord rec =
                             let
                                 id_ =
                                     Maybe.withDefault (Path.toString path) staticConfig.id
-
-                                label_ =
-                                    Maybe.withDefault (Path.last path) staticConfig.label
                             in
-                            H.section [ HA.id id_ ]
-                                (H.h2 [] [ H.text label_ ] :: childViews_)
+                            H.section [ HA.id id_ ] childViews_
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
@@ -2984,7 +3005,7 @@ endRecord rec =
             , collectErrors = \(State _ states) flags -> collectErrorsForRecord rec.errorCollector flags fns states
             , receiverCount = 0
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.debouncingReceiverCollector fns states
-            , label = Nothing
+            , label = "Record"
             , id = Nothing
             , name = Nothing
             , class = []
@@ -3487,7 +3508,7 @@ customType :
             , flagEmitter : a12 -> a12
             , fns : c -> d -> d
             , idleSetter : a11 -> a11
-            , index : number
+            , index : Int
             , initialDeltas : e -> f -> f
             , initialStates : g -> h -> h
             , initialiseDeltas : a10 -> a10
@@ -3693,7 +3714,7 @@ endCustomType rec =
             , collectErrors = \(State _ states) flags -> collectErrorsForCustomType rec.errorCollector flags fns states
             , receiverCount = 0
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.debouncingReceiverCollector fns states
-            , label = Nothing
+            , label = "Custom Type"
             , id = Nothing
             , name = Nothing
             , class = []
@@ -3774,7 +3795,7 @@ tag0 :
                           , index : Int
                           , init : ( State (), Cmd (Delta ()) )
                           , initWith : output8 -> ( State (), Cmd (Delta ()) )
-                          , label : Maybe String
+                          , label : String
                           , name : Maybe String
                           , parse :
                                 State () -> Result (List ( String, String )) output8
@@ -4002,6 +4023,7 @@ null tag =
         , view = \_ -> H.text ""
         , parse = \() -> Ok tag
         , subscriptions = \() -> Sub.none
+        , label = ""
         }
 
 
@@ -4085,7 +4107,7 @@ tag1 :
                                     ( State ( State state8, End )
                                     , Cmd (Delta ( Delta delta10, End ))
                                     )
-                          , label : Maybe String
+                          , label : String
                           , name : Maybe String
                           , parse :
                                 State ( State state8, End )
@@ -4311,7 +4333,7 @@ tag1 label_ tag control =
     tagHelper
         label_
         (record tag
-            |> field "" Tuple.first control
+            |> field Tuple.first control
             |> end
         )
         (\insertArgStateIntoTagStates arg1 ->
@@ -4421,7 +4443,7 @@ tag2 :
                                             )
                                         )
                                     )
-                          , label : Maybe String
+                          , label : String
                           , name : Maybe String
                           , parse :
                                 State ( State state9, ( State state8, End ) )
@@ -4669,8 +4691,8 @@ tag2 label_ tag ( label1, control1 ) ( label2, control2 ) =
     tagHelper
         label_
         (record tag
-            |> field label1 Tuple.first control1
-            |> field label2 (Tuple.second >> Tuple.first) control2
+            |> field Tuple.first control1
+            |> field (Tuple.second >> Tuple.first) control2
             |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->
@@ -4819,7 +4841,7 @@ tag3 :
                                             )
                                         )
                                     )
-                          , label : Maybe String
+                          , label : String
                           , name : Maybe String
                           , parse :
                                 State
@@ -5115,9 +5137,9 @@ tag3 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
     tagHelper
         label_
         (record tag
-            |> field label1 Tuple.first control1
-            |> field label2 (Tuple.second >> Tuple.first) control2
-            |> field label3 (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> field Tuple.first control1
+            |> field (Tuple.second >> Tuple.first) control2
+            |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
             |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 ->
@@ -5282,7 +5304,7 @@ tag4 :
                                             )
                                         )
                                     )
-                          , label : Maybe String
+                          , label : String
                           , name : Maybe String
                           , parse :
                                 State
@@ -5611,10 +5633,10 @@ tag4 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) (
     tagHelper
         label_
         (record tag
-            |> field label1 Tuple.first control1
-            |> field label2 (Tuple.second >> Tuple.first) control2
-            |> field label3 (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> field label4 (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> field Tuple.first control1
+            |> field (Tuple.second >> Tuple.first) control2
+            |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
             |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 ->
@@ -5814,7 +5836,7 @@ tag5 :
                                             )
                                         )
                                     )
-                          , label : Maybe String
+                          , label : String
                           , name : Maybe String
                           , parse :
                                 State
@@ -6172,11 +6194,11 @@ tag5 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) (
     tagHelper
         label_
         (record tag
-            |> field label1 Tuple.first control1
-            |> field label2 (Tuple.second >> Tuple.first) control2
-            |> field label3 (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> field label4 (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
-            |> field label5 (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
+            |> field Tuple.first control1
+            |> field (Tuple.second >> Tuple.first) control2
+            |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
             |> end
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 arg5 ->
@@ -6809,7 +6831,7 @@ customTypeView path staticConfig options selectedTag selectedTagView =
                 , toMsg = TagSelected
                 , id = Maybe.withDefault (Path.toString path) staticConfig.id
                 , name = Maybe.withDefault (Path.toString path) staticConfig.name
-                , label = Maybe.withDefault (Path.last path) staticConfig.label
+                , label = staticConfig.label
                 }
             , selectedTagView
             ]
@@ -6843,7 +6865,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
         [ HA.id id_ ]
         [ H.label
             [ HA.for id_ ]
-            [ H.text (Maybe.withDefault (Path.last path) staticConfig.label) ]
+            [ H.text staticConfig.label ]
         , if List.isEmpty dynamicConfig.state then
             button (ChangeStateOnInput (InsertItem 0)) "Add item"
 

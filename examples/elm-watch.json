@@ -3,7 +3,7 @@
     "targets": {
         "elm-any-type-forms": {
             "inputs": [
-                "src/User.elm"
+                "src/AllControls.elm"
             ],
             "output": "main.js"
         }

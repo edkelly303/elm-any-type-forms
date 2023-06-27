@@ -31,14 +31,14 @@ type alias Example =
 
 exampleControl =
     Control.record Example
-        |> Control.field "Time" .time (timeControl Time.utc)
-        |> Control.field "Int" .int Control.int
-        |> Control.field "Float" .float Control.float
-        |> Control.field "String" .string Control.string
-        |> Control.field "Char" .char Control.char
-        |> Control.field "Bool" .bool Control.bool
-        |> Control.field "Enum" .enum (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ])
-        |> Control.field "Maybe" .maybe (Control.maybe example2Control)
+        |> Control.field .time (timeControl Time.utc)
+        |> Control.field .int Control.int
+        |> Control.field .float Control.float
+        |> Control.field .string Control.string
+        |> Control.field .char Control.char
+        |> Control.field .bool Control.bool
+        |> Control.field .enum (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ])
+        |> Control.field .maybe (Control.maybe example2Control)
         |> Control.end
 
 
@@ -64,16 +64,16 @@ type alias Example2 =
 
 example2Control =
     Control.record Example2
-        |> Control.field "Time" .time (timeControl Time.utc)
-        |> Control.field "Wrapper" .wrapper (Control.wrapper { wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
-        |> Control.field "Tuple" .tuple (Control.tuple ( "Int", Control.int ) ( "String", Control.string ))
-        |> Control.field "Triple" .triple (Control.triple ( "Int", Control.int ) ( "String", Control.string ) ( "Float", Control.float ))
-        |> Control.field "Result" .result (Control.result Control.int Control.string)
-        |> Control.field "List" .list (Control.list (timeControl Time.utc))
-        |> Control.field "Dict" .dict (Control.dict ( "Key", Control.string ) ( "Value", Control.int ))
-        |> Control.field "Set" .set (Control.set Control.string)
-        |> Control.field "Array" .array (Control.array Control.int)
-        |> Control.field "Counter" .counter counterControl
+        |> Control.field .time (timeControl Time.utc)
+        |> Control.field .wrapper (Control.wrapper { wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
+        |> Control.field .tuple (Control.tuple (  Control.int ) (Control.string ))
+        |> Control.field .triple (Control.triple ( Control.int ) (  Control.string ) ( Control.float ))
+        |> Control.field .result (Control.result Control.int Control.string)
+        |> Control.field .list (Control.list (timeControl Time.utc))
+        |> Control.field .dict (Control.dict ( Control.string ) (  Control.int ))
+        |> Control.field .set (Control.set Control.string)
+        |> Control.field .array (Control.array Control.int)
+        |> Control.field .counter counterControl
         |> Control.end
 
 
@@ -129,6 +129,7 @@ counterControl =
                     ]
         , parse = Ok
         , subscriptions = \_ -> Sub.none
+        , label = "Counter"
         }
 
 
@@ -196,20 +197,20 @@ timeControl tz =
                     [ h, m ] ->
                         case String.toInt h of
                             Nothing ->
-                                Err [ "Hours must be a number" ]
+                                Err [ "hours must be a number" ]
 
                             Just h_ ->
                                 if h_ < 0 || h_ > 23 then
-                                    Err [ "Hours must be between 0 and 23" ]
+                                    Err [ "hours must be between 0 and 23" ]
 
                                 else
                                     case String.toInt m of
                                         Nothing ->
-                                            Err [ "Minutes must be a number" ]
+                                            Err [ "minutes must be a number" ]
 
                                         Just m_ ->
                                             if m_ < 0 || m_ > 59 then
-                                                Err [ "Minutes must be between 0 and 59" ]
+                                                Err [ "minutes must be between 0 and 59" ]
 
                                             else
                                                 Ok
@@ -225,8 +226,9 @@ timeControl tz =
                                                     )
 
                     _ ->
-                        Err [ "Format must be HH:MM" ]
+                        Err [ "format must be HH:MM" ]
         , subscriptions = \_ -> Time.every 1000 ClockTicked
+        , label = "Time"
         }
 
 
@@ -235,7 +237,7 @@ timeControl tz =
 
 
 main =
-    Control.debug
+    Control.sandbox
         { control = exampleControl
         , title = "My Lovely Form"
         , outputToString = Debug.toString
