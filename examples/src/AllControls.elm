@@ -66,11 +66,11 @@ example2Control =
     Control.record Example2
         |> Control.field .time (timeControl Time.utc)
         |> Control.field .wrapper (Control.wrapper { wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
-        |> Control.field .tuple (Control.tuple (  Control.int ) (Control.string ))
-        |> Control.field .triple (Control.triple ( Control.int ) (  Control.string ) ( Control.float ))
+        |> Control.field .tuple (Control.tuple Control.int Control.string)
+        |> Control.field .triple (Control.triple Control.int Control.string Control.float)
         |> Control.field .result (Control.result Control.int Control.string)
         |> Control.field .list (Control.list (timeControl Time.utc))
-        |> Control.field .dict (Control.dict ( Control.string ) (  Control.int ))
+        |> Control.field .dict (Control.dict Control.string Control.int)
         |> Control.field .set (Control.set Control.string)
         |> Control.field .array (Control.array Control.int)
         |> Control.field .counter counterControl
