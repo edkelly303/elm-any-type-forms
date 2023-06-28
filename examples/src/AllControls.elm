@@ -65,7 +65,7 @@ type alias Example2 =
 example2Control =
     Control.record Example2
         |> Control.field .time (timeControl Time.utc)
-        |> Control.field .id ((Control.wrapper { wrap = Id, unwrap = \(Id x) -> x } (Control.int|> Control.label "Id")) )
+        |> Control.field .id (Control.wrapper { wrap = Id, unwrap = \(Id x) -> x } (Control.int |> Control.label "Id"))
         |> Control.field .tuple (Control.tuple Control.int Control.string)
         |> Control.field .triple (Control.triple Control.int Control.string Control.float)
         |> Control.field .result (Control.result Control.int Control.string)
