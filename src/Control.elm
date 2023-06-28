@@ -213,7 +213,7 @@ type alias ControlFns input state delta output =
     , initWith : input -> ( State state, Cmd (Delta delta) )
     , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
     , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
-    , view : ViewConfigStatic -> ViewConfigDynamic state -> Html (Delta delta)
+    , view : ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta))
     , childViews : ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta))
     , parse : State state -> Result (List ( String, String )) output
     , path : Path
@@ -430,17 +430,19 @@ form { title, onUpdate, onSubmit, control } =
             in
             H.form [ HE.onSubmit onSubmit ]
                 [ H.h1 [] [ H.text title ]
-                , fns.view
-                    { id = fns.id
-                    , name = fns.name
-                    , label = fns.label
-                    , class = fns.class
-                    }
-                    { state = state
-                    , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
-                    , flags = flags
-                    , selected = internalState.selected
-                    }
+                , H.div []
+                    (fns.view
+                        { id = fns.id
+                        , name = fns.name
+                        , label = fns.label
+                        , class = fns.class
+                        }
+                        { state = state
+                        , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
+                        , flags = flags
+                        , selected = internalState.selected
+                        }
+                    )
                     |> H.map onUpdate
                 , button onSubmit "Submit"
                 ]
@@ -518,34 +520,34 @@ sandbox { outputToString, title, control } =
                     flags =
                         List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
                 in
-                H.form []
+                H.div []
                     [ H.h1 [] [ H.text title ]
-                    , fns.view
-                        { id = fns.id
-                        , name = fns.name
-                        , label = fns.label
-                        , class = fns.class
-                        }
-                        { state = state
-                        , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
-                        , flags = flags
-                        , selected = internalState.selected
-                        }
-                    , H.div []
-                        [ H.h2 [] [ H.text "Output" ]
-                        , case fns.parse s of
-                            Ok output ->
-                                H.div []
-                                    [ H.p [] [ H.text "Success! Your form produced the following value:" ]
-                                    , H.pre [] [ H.text (outputToString output) ]
-                                    ]
+                    , H.form []
+                        (fns.view
+                            { id = fns.id
+                            , name = fns.name
+                            , label = fns.label
+                            , class = fns.class
+                            }
+                            { state = state
+                            , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
+                            , flags = flags
+                            , selected = internalState.selected
+                            }
+                        )
+                    , H.h2 [] [ H.text "Output" ]
+                    , case fns.parse s of
+                        Ok output ->
+                            H.div []
+                                [ H.p [] [ H.text "Success! Your form produced the following value:" ]
+                                , H.pre [] [ H.text (outputToString output) ]
+                                ]
 
-                            Err errs ->
-                                H.div []
-                                    [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                                    , H.ul [] (List.map (\( path, err ) -> H.li [] [ H.text (path ++ ": " ++ err) ]) errs)
-                                    ]
-                        ]
+                        Err errs ->
+                            H.div []
+                                [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
+                                , H.ul [] (List.map (\( path, err ) -> H.li [] [ H.text (path ++ ": " ++ err) ]) errs)
+                                ]
                     ]
         , subscriptions = fns.subscriptions
         }
@@ -651,6 +653,7 @@ create config =
                         }
                         |> wrappedView dynamicConfig.status
                         |> H.map ChangeStateOnInput
+                        |> List.singleton
             , parse = parse
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , emitFlags = \_ -> []
@@ -1107,7 +1110,7 @@ classList classList_ (Control control) =
 
 -}
 layout :
-    (List (Html (Delta delta)) -> ViewConfigStatic -> ViewConfigDynamic state -> Html (Delta delta))
+    (List (Html (Delta delta)) -> ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta)))
     -> Control state delta output
     -> Control state delta output
 layout v (Control control) =
@@ -1401,7 +1404,7 @@ wrapper config control =
                         |> field config.unwrap control
                         |> end
             in
-            inner (Path.dropLast path)
+            inner (path)
         )
 
 
@@ -1703,7 +1706,7 @@ list (Control ctrl) =
                             -- this is a total hack!
                             collectDebouncingReceivers (State { status = Intact_, selected = dynamicConfig.selected } dynamicConfig.state)
                     in
-                    listView path staticConfig dynamicConfig debouncingReceivers ctrl
+                    [ listView path staticConfig dynamicConfig debouncingReceivers ctrl ]
             , parse = parse
             , setAllIdle =
                 \(State i s) ->
@@ -2159,21 +2162,21 @@ end :
                     , newStates : End -> ( State state, restStates )
                     }
             , viewer :
-                (Maybe (Html ( Delta delta, restDeltas ))
+                (Maybe (List (Html ( Delta delta, restDeltas )))
                  -> List Flag
                  -> Int
                  -> End
                  -> End
                  -> End
-                 -> Maybe (Html ( Delta delta, restDeltas ))
+                 -> Maybe (List (Html ( Delta delta, restDeltas )))
                 )
-                -> Maybe (Html ( Delta delta, restDeltas ))
+                -> Maybe (List (Html ( Delta delta, restDeltas )))
                 -> List Flag
                 -> Int
                 -> ( ControlFns input1 state delta output1, restFns )
                 -> ( Delta delta -> ( Delta delta, restDeltas ), restSetters )
                 -> ( State state, restStates )
-                -> Maybe (Html ( Delta delta, restDeltas ))
+                -> Maybe (List (Html ( Delta delta, restDeltas )))
         }
     ->
         AdvancedControl
@@ -2960,20 +2963,7 @@ endRecord rec =
                     viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
 
                 view staticConfig dynamicConfig =
-                    let
-                        childViews_ =
-                            viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
-                    in
-                    case childViews_ of
-                        [ onlyChild ] ->
-                            onlyChild
-
-                        _ ->
-                            let
-                                id_ =
-                                    Maybe.withDefault (Path.toString path) staticConfig.id
-                            in
-                            H.section [ HA.id id_ ] childViews_
+                    viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
@@ -3306,7 +3296,6 @@ viewRecordStates :
     -> List (Html msg)
 viewRecordStates viewer flags fns setters states =
     viewer (\views _ End End End -> views) [] flags fns setters states
-        |> List.reverse
 
 
 recordStateViewer :
@@ -3337,20 +3326,20 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
                 , flags = flags
                 , selected = internalState.selected
                 }
-                |> H.map (\delta -> ChangeStateOnInput (setter delta))
+                |> List.map (H.map (\delta -> ChangeStateOnInput (setter delta)))
     in
     next
-        ((case fns.access of
-            Open ->
-                view
+        (views
+            ++ (case fns.access of
+                    Open ->
+                        view
 
-            Hidden ->
-                H.text ""
+                    Hidden ->
+                        []
 
-            ReadOnly ->
-                H.div [ HA.disabled True ] [ view ]
-         )
-            :: views
+                    ReadOnly ->
+                        [ H.div [ HA.disabled True ] view ]
+               )
         )
         flags
         restFns
@@ -3706,7 +3695,7 @@ endCustomType rec =
                     )
             , baseUpdate = \_ -> update
             , update = update
-            , childViews = \staticConfig dynamicConfig -> [ childView staticConfig dynamicConfig ]
+            , childViews = \staticConfig dynamicConfig -> childView staticConfig dynamicConfig
             , view = \staticConfig dynamicConfig -> view staticConfig dynamicConfig
             , parse = parse
             , setAllIdle = setAllIdle
@@ -3808,7 +3797,7 @@ tag0 :
                           , view :
                                 ViewConfigStatic
                                 -> ViewConfigDynamic ()
-                                -> Html (Delta ())
+                                -> List (Html (Delta ()))
                           }
                         , a17
                         )
@@ -3874,13 +3863,13 @@ tag0 :
                         }
                 , viewer :
                     a
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
                     -> List Flag
                     -> Int
                     -> restFns
                     -> restSetters
                     -> restStates
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
             }
     ->
         Builder
@@ -3997,13 +3986,13 @@ tag0 :
                 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }
             , viewer :
                 a
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
                 -> List Flag
                 -> Int
                 -> ( ControlFns input state delta0 output, restFns )
                 -> ( Delta delta0 -> delta1, restSetters )
                 -> ( State state, restStates )
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
             }
 tag0 label_ tag =
     tagHelper
@@ -4130,7 +4119,7 @@ tag1 :
                           , view :
                                 ViewConfigStatic
                                 -> ViewConfigDynamic ( State state8, End )
-                                -> Html (Delta ( Delta delta10, End ))
+                                -> List (Html (Delta ( Delta delta10, End )))
                           }
                         , a17
                         )
@@ -4198,13 +4187,13 @@ tag1 :
                         }
                 , viewer :
                     a
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
                     -> List Flag
                     -> Int
                     -> restFns
                     -> restSetters
                     -> restStates
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
             }
     ->
         Builder
@@ -4321,13 +4310,13 @@ tag1 :
                 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }
             , viewer :
                 a
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
                 -> List Flag
                 -> Int
                 -> ( ControlFns input state delta0 output, restFns )
                 -> ( Delta delta0 -> delta1, restSetters )
                 -> ( State state, restStates )
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
             }
 tag1 label_ tag control =
     tagHelper
@@ -4478,9 +4467,11 @@ tag2 :
                                     ViewConfigDynamic
                                         ( State state9, ( State state8, End ) )
                                 ->
-                                    Html
-                                        (Delta
-                                            ( Delta delta11, ( Delta delta10, End ) )
+                                    List
+                                        (Html
+                                            (Delta
+                                                ( Delta delta11, ( Delta delta10, End ) )
+                                            )
                                         )
                           }
                         , a17
@@ -4556,13 +4547,13 @@ tag2 :
                         }
                 , viewer :
                     a
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
                     -> List Flag
                     -> Int
                     -> restFns
                     -> restSetters
                     -> restStates
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
             }
     ->
         Builder
@@ -4679,13 +4670,13 @@ tag2 :
                 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }
             , viewer :
                 a
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
                 -> List Flag
                 -> Int
                 -> ( ControlFns input state delta0 output, restFns )
                 -> ( Delta delta0 -> delta1, restSetters )
                 -> ( State state, restStates )
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
             }
 tag2 label_ tag ( label1, control1 ) ( label2, control2 ) =
     tagHelper
@@ -4907,12 +4898,14 @@ tag3 :
                                         , ( State state9, ( State state8, End ) )
                                         )
                                 ->
-                                    Html
-                                        (Delta
-                                            ( Delta delta12
-                                            , ( Delta delta11
-                                              , ( Delta delta10, End )
-                                              )
+                                    List
+                                        (Html
+                                            (Delta
+                                                ( Delta delta12
+                                                , ( Delta delta11
+                                                  , ( Delta delta10, End )
+                                                  )
+                                                )
                                             )
                                         )
                           }
@@ -5002,13 +4995,13 @@ tag3 :
                         }
                 , viewer :
                     a
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
                     -> List Flag
                     -> Int
                     -> restFns
                     -> restSetters
                     -> restStates
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
             }
     ->
         Builder
@@ -5125,13 +5118,13 @@ tag3 :
                 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }
             , viewer :
                 a
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
                 -> List Flag
                 -> Int
                 -> ( ControlFns input state delta0 output, restFns )
                 -> ( Delta delta0 -> delta1, restSetters )
                 -> ( State state, restStates )
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
             }
 tag3 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) =
     tagHelper
@@ -5390,14 +5383,16 @@ tag4 :
                                           )
                                         )
                                 ->
-                                    Html
-                                        (Delta
-                                            ( Delta delta13
-                                            , ( Delta delta12
-                                              , ( Delta delta11
-                                                , ( Delta delta10, End )
+                                    List
+                                        (Html
+                                            (Delta
+                                                ( Delta delta13
+                                                , ( Delta delta12
+                                                  , ( Delta delta11
+                                                    , ( Delta delta10, End )
+                                                    )
+                                                  )
                                                 )
-                                              )
                                             )
                                         )
                           }
@@ -5498,13 +5493,13 @@ tag4 :
                         }
                 , viewer :
                     a
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
                     -> List Flag
                     -> Int
                     -> restFns
                     -> restSetters
                     -> restStates
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
             }
     ->
         Builder
@@ -5621,13 +5616,13 @@ tag4 :
                 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }
             , viewer :
                 a
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
                 -> List Flag
                 -> Int
                 -> ( ControlFns input state delta0 output, restFns )
                 -> ( Delta delta0 -> delta1, restSetters )
                 -> ( State state, restStates )
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
             }
 tag4 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( label4, control4 ) =
     tagHelper
@@ -5944,16 +5939,18 @@ tag5 :
                                           )
                                         )
                                 ->
-                                    Html
-                                        (Delta
-                                            ( Delta delta14
-                                            , ( Delta delta13
-                                              , ( Delta delta12
-                                                , ( Delta delta11
-                                                  , ( Delta delta10, End )
+                                    List
+                                        (Html
+                                            (Delta
+                                                ( Delta delta14
+                                                , ( Delta delta13
+                                                  , ( Delta delta12
+                                                    , ( Delta delta11
+                                                      , ( Delta delta10, End )
+                                                      )
+                                                    )
                                                   )
                                                 )
-                                              )
                                             )
                                         )
                           }
@@ -6059,13 +6056,13 @@ tag5 :
                         }
                 , viewer :
                     a
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
                     -> List Flag
                     -> Int
                     -> restFns
                     -> restSetters
                     -> restStates
-                    -> Maybe (Html delta1)
+                    -> Maybe (List (Html delta1))
             }
     ->
         Builder
@@ -6182,13 +6179,13 @@ tag5 :
                 -> { newCmds : List (Cmd recordDelta), newStates : recordState1 }
             , viewer :
                 a
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
                 -> List Flag
                 -> Int
                 -> ( ControlFns input state delta0 output, restFns )
                 -> ( Delta delta0 -> delta1, restSetters )
                 -> ( State state, restStates )
-                -> Maybe (Html delta1)
+                -> Maybe (List (Html delta1))
             }
 tag5 label_ tag ( label1, control1 ) ( label2, control2 ) ( label3, control3 ) ( label4, control4 ) ( label5, control5 ) =
     tagHelper
@@ -6686,50 +6683,50 @@ selectedTagParser next result_ selectedTag ( fns, restFns ) ( state, restStates 
 
 
 viewSelectedTagState :
-    ((Maybe (Html delta1)
+    ((Maybe (List (Html delta1))
       -> List Flag
       -> Int
       -> End
       -> End
       -> End
-      -> Maybe (Html delta1)
+      -> Maybe (List (Html delta1))
      )
-     -> Maybe (Html delta1)
+     -> Maybe (List (Html delta1))
      -> List Flag
      -> Int
      -> ( ControlFns input state delta0 output, restFns )
      -> ( Delta delta0 -> delta1, restSetters )
      -> ( State state, restStates )
-     -> Maybe (Html delta1)
+     -> Maybe (List (Html delta1))
     )
     -> List Flag
     -> Int
     -> ( ControlFns input state delta0 output, restFns )
     -> ( Delta delta0 -> delta1, restSetters )
     -> ( State state, restStates )
-    -> Html (Delta delta1)
+    -> List (Html (Delta delta1))
 viewSelectedTagState viewer flags selectedTag fns setters states =
     viewer (\maybeView _ _ End End End -> maybeView) Nothing flags selectedTag fns setters states
-        |> Maybe.map (H.map ChangeStateOnInput)
-        |> Maybe.withDefault (H.text "ERROR!")
+        |> Maybe.map (List.map (H.map ChangeStateOnInput))
+        |> Maybe.withDefault [ H.text "ERROR!" ]
 
 
 selectedTagViewer :
-    (Maybe (Html delta1)
+    (Maybe (List (Html delta1))
      -> List Flag
      -> Int
      -> restFns
      -> restSetters
      -> restStates
-     -> Maybe (Html delta1)
+     -> Maybe (List (Html delta1))
     )
-    -> Maybe (Html delta1)
+    -> Maybe (List (Html delta1))
     -> List Flag
     -> Int
     -> ( ControlFns input state delta0 output, restFns )
     -> ( Delta delta0 -> delta1, restSetters )
     -> ( State state, restStates )
-    -> Maybe (Html delta1)
+    -> Maybe (List (Html delta1))
 selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
         (if fns.index == selectedTag then
@@ -6745,7 +6742,7 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
                     , flags = flags
                     , selected = internalState.selected
                     }
-                    |> H.map setter
+                    |> List.map (H.map setter)
                 )
 
          else
@@ -6820,21 +6817,19 @@ customTypeView :
     -> ViewConfigStatic
     -> List ( Int, String )
     -> Int
-    -> Html (Delta variants)
-    -> Html (Delta variants)
+    -> List (Html (Delta variants))
+    -> List (Html (Delta variants))
 customTypeView path staticConfig options selectedTag selectedTagView =
     if List.length options > 1 then
-        H.div []
-            [ radioView
-                { options = options
-                , selectedOption = selectedTag
-                , toMsg = TagSelected
-                , id = Maybe.withDefault (Path.toString path) staticConfig.id
-                , name = Maybe.withDefault (Path.toString path) staticConfig.name
-                , label = staticConfig.label
-                }
-            , selectedTagView
-            ]
+        radioView
+            { options = options
+            , selectedOption = selectedTag
+            , toMsg = TagSelected
+            , id = Maybe.withDefault (Path.toString path) staticConfig.id
+            , name = Maybe.withDefault (Path.toString path) staticConfig.name
+            , label = staticConfig.label
+            }
+            :: selectedTagView
 
     else
         selectedTagView
@@ -6901,17 +6896,19 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                 List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
                         in
                         H.li []
-                            [ control.view
-                                { id = control.id
-                                , name = control.name
-                                , label = control.label
-                                , class = control.class
-                                }
-                                { state = state
-                                , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
-                                , flags = filteredFlags2
-                                , selected = internalState.selected
-                                }
+                            [ H.div []
+                                (control.view
+                                    { id = control.id
+                                    , name = control.name
+                                    , label = control.label
+                                    , class = control.class
+                                    }
+                                    { state = state
+                                    , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
+                                    , flags = filteredFlags2
+                                    , selected = internalState.selected
+                                    }
+                                )
                                 |> H.map (ChangeItem idx)
                             , button (DeleteItem idx) "Delete item"
                             , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
