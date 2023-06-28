@@ -393,8 +393,8 @@ submission of the form.
             }
 
 -}
-form : { control : Control state delta output, title : String, onUpdate : Delta delta -> msg, onSubmit : msg } -> Form state delta output msg
-form { title, onUpdate, onSubmit, control } =
+form : { control : Control state delta output, onUpdate : Delta delta -> msg, onSubmit : msg } -> Form state delta output msg
+form { onUpdate, onSubmit, control } =
     let
         (Control c) =
             control
@@ -429,8 +429,7 @@ form { title, onUpdate, onSubmit, control } =
                     List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
             in
             H.form [ HE.onSubmit onSubmit ]
-                [ H.h1 [] [ H.text title ]
-                , H.div []
+                [ H.div []
                     (fns.view
                         { id = fns.id
                         , name = fns.name
@@ -493,7 +492,7 @@ main `Model`and `Msg` types wherever appropriate.
 
 -}
 sandbox : { outputToString : output -> String, title : String, control : Control state delta output } -> Program () (State state) (Delta delta)
-sandbox { outputToString, title, control } =
+sandbox { outputToString, control } =
     let
         (Control c) =
             control
@@ -521,7 +520,8 @@ sandbox { outputToString, title, control } =
                         List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
                 in
                 H.div []
-                    [ H.h1 [] [ H.text title ]
+                    [ H.h1 [] [ H.text "Sandbox" ]
+                    , H.h2 [] [ H.text "Form" ]
                     , H.form []
                         (fns.view
                             { id = fns.id
