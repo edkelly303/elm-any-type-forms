@@ -50,7 +50,7 @@ type Enum
 
 type alias Example2 =
     { time : Time.Posix
-    , wrapper : Wrapper Int
+    , id : Id Int
     , tuple : ( Int, String )
     , triple : ( Int, String, Float )
     , result : Result Int String
@@ -65,7 +65,7 @@ type alias Example2 =
 example2Control =
     Control.record Example2
         |> Control.field .time (timeControl Time.utc)
-        |> Control.field .wrapper (Control.wrapper { wrap = Wrapper, unwrap = \(Wrapper x) -> x } Control.int)
+        |> Control.field .id ((Control.wrapper { wrap = Id, unwrap = \(Id x) -> x } (Control.int|> Control.label "Id")) )
         |> Control.field .tuple (Control.tuple Control.int Control.string)
         |> Control.field .triple (Control.triple Control.int Control.string Control.float)
         |> Control.field .result (Control.result Control.int Control.string)
@@ -77,8 +77,8 @@ example2Control =
         |> Control.end
 
 
-type Wrapper a
-    = Wrapper a
+type Id a
+    = Id a
 
 
 
