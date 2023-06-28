@@ -1824,6 +1824,7 @@ dict keyControl valueControl =
         (tuple
             (keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique")
             valueControl
+            |> layout (\kv _ _ -> kv)
         )
         |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
         |> label "Dict"
