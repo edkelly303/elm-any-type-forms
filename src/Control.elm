@@ -1404,7 +1404,7 @@ wrapper config control =
                         |> field config.unwrap control
                         |> end
             in
-            inner (path)
+            inner path
         )
 
 
@@ -1516,6 +1516,8 @@ tuple first second =
         |> field Tuple.first first
         |> field Tuple.second second
         |> end
+        |> label "Tuple"
+        |> layout (\fields staticConfig _ -> [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ])
 
 
 
@@ -1550,6 +1552,8 @@ triple first second third =
         |> field (\( _, b, _ ) -> b) second
         |> field (\( _, _, c ) -> c) third
         |> end
+        |> label "Triple"
+        |> layout (\fields staticConfig _ -> [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ])
 
 
 
