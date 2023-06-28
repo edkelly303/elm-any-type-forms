@@ -491,7 +491,7 @@ main `Model`and `Msg` types wherever appropriate.
             }
 
 -}
-sandbox : { outputToString : output -> String, title : String, control : Control state delta output } -> Program () (State state) (Delta delta)
+sandbox : { outputToString : output -> String, control : Control state delta output } -> Program () (State state) (Delta delta)
 sandbox { outputToString, control } =
     let
         (Control c) =
@@ -520,9 +520,8 @@ sandbox { outputToString, control } =
                         List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
                 in
                 H.div []
-                    [ H.h1 [] [ H.text "Sandbox" ]
-                    , H.h2 [] [ H.text "Form" ]
-                    , H.form []
+                    [ H.h1 [] [ H.text "Form" ]
+                    ,H.form []
                         (fns.view
                             { id = fns.id
                             , name = fns.name

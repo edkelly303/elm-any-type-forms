@@ -239,6 +239,5 @@ timeControl tz =
 main =
     Control.sandbox
         { control = exampleControl
-        , title = "My Lovely Form"
         , outputToString = Debug.toString
         }

@@ -90,7 +90,6 @@ type alias FormDelta =
 userForm =
     Control.form
         { control = userControl
-        , title = "Let's create a user!"
         , onUpdate = FormUpdated
         , onSubmit = FormSubmitted
         }
