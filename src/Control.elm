@@ -387,7 +387,6 @@ submission of the form.
     myForm =
         form
             { control = int
-            , title = "Just a simple Int control"
             , onUpdate = FormUpdated
             , onSubmit = FormSubmitted
             }
@@ -486,7 +485,6 @@ main `Model`and `Msg` types wherever appropriate.
     main =
         sandbox
             { control = int
-            , title = "Just a simple Int control"
             , outputToString = Debug.toString
             }
 
