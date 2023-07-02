@@ -157,7 +157,7 @@ type alias Form state delta output msg =
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
     , subscriptions : State state -> Sub msg
-    , submit : State state -> ( State state, Result (List ( String, String )) output )
+    , submit : State state -> ( State state, Result (List Feedback) output )
     }
 
 
@@ -215,11 +215,11 @@ type alias ControlFns input state delta output =
     , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
     , view : ViewConfigStatic (Delta delta) -> ViewConfigDynamic state -> List (Html (Delta delta))
     , childViews : ViewConfigStatic (Delta delta) -> ViewConfigDynamic state -> List (Html (Delta delta))
-    , parse : State state -> Result (List ( String, String )) output
+    , parse : State state -> Result (List Feedback) output
     , path : Path
     , emitFlags : State state -> List Flag
     , collectDebouncingReceivers : State state -> List Flag
-    , collectErrors : State state -> List Flag -> List ( String, String )
+    , collectErrors : State state -> List Flag -> List Feedback
     , receiverCount : Int
     , setAllIdle : State state -> State state
     , label : String
@@ -238,6 +238,18 @@ type Flag
     = FlagLabel String
     | FlagPath Path Int
     | FlagList Path String (List Int)
+
+
+type alias Feedback =
+    { path : String
+    , message : String
+    , outcome : Outcome
+    }
+
+
+type Outcome
+    = Pass
+    | Fail
 
 
 {-| Some internal stuff needed to view controls
@@ -267,7 +279,7 @@ type alias ViewConfigStatic delta =
 type Status
     = Intact
     | Debouncing
-    | Idle (List (Result ( String, String ) ( String, String )))
+    | Idle (List (Result Feedback Feedback))
 
 
 {-| an internal type needed to track the position of a control within a tree of
@@ -551,7 +563,7 @@ sandbox { outputToString, control } =
                         Err errs ->
                             H.div []
                                 [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                                , H.ul [] (List.map (\( path, err ) -> H.li [] [ H.text (path ++ ": " ++ err) ]) errs)
+                                , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) errs)
                                 ]
                     ]
         , subscriptions = fns.subscriptions
@@ -631,7 +643,7 @@ create config =
                 parse =
                     \(State _ state) ->
                         config.parse state
-                            |> Result.mapError (List.map (Tuple.pair (Path.toString path)))
+                            |> Result.mapError (List.map (\message -> { message = message, path = Path.toString path, outcome = Fail }))
             in
             { path = path
             , index = 0
@@ -873,7 +885,7 @@ flagReceiver flag message ctrl =
 
                     newReceiver =
                         if List.member flag flags then
-                            [ ( Path.toString ctrl.path, message ) ]
+                            [ { path = Path.toString ctrl.path, message = message, outcome = Fail } ]
 
                         else
                             []
@@ -1689,7 +1701,7 @@ list (Control ctrl) =
                             (\( idx, item ) res ->
                                 let
                                     identifyErrors e =
-                                        List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
+                                        List.map (\{ message } -> "item #" ++ String.fromInt idx ++ ": " ++ message) e
 
                                     itemControl =
                                         ctrl (Path.add (String.fromInt idx) path)
@@ -1713,7 +1725,7 @@ list (Control ctrl) =
                             )
                             (Ok [])
                             (List.indexedMap Tuple.pair state)
-                            |> Result.mapError (List.map (\feedback -> ( Path.toString path, feedback )))
+                            |> Result.mapError (List.map (\feedback -> { path = Path.toString path, message = feedback, outcome = Fail }))
 
                 collectDebouncingReceivers (State _ listState) =
                     List.indexedMap
@@ -2016,16 +2028,16 @@ end :
                 -> List (Cmd ( Delta delta, restDeltas ))
             , errorCollector :
                 (List Flag
-                 -> List ( String, String )
+                 -> List Feedback
                  -> End
                  -> End
-                 -> List ( String, String )
+                 -> List Feedback
                 )
                 -> List Flag
-                -> List ( String, String )
+                -> List Feedback
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
                 -> ( State state, restStates )
-                -> List ( String, String )
+                -> List Feedback
             , flagEmitter :
                 (List Flag -> End -> End -> List Flag)
                 -> List Flag
@@ -2054,15 +2066,15 @@ end :
                 -> afters1
                 -> ( Delta delta -> recordDelta, restDeltaSetters )
             , parser :
-                (Result (List ( String, String )) output
+                (Result (List Feedback) output
                  -> End
                  -> End
-                 -> Result (List ( String, String )) output
+                 -> Result (List Feedback) output
                 )
-                -> Result (List ( String, String )) output1_1
+                -> Result (List Feedback) output1_1
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
                 -> ( State state, restStates )
-                -> Result (List ( String, String )) output
+                -> Result (List Feedback) output
             , subscriptionCollector :
                 (j -> End -> End -> End -> j)
                 -> List k
@@ -2131,16 +2143,16 @@ end :
             , destructor : stateSetter -> state0
             , errorCollector :
                 (List Flag
-                 -> List ( String, String )
+                 -> List Feedback
                  -> End
                  -> End
-                 -> List ( String, String )
+                 -> List Feedback
                 )
                 -> List Flag
-                -> List ( String, String )
+                -> List Feedback
                 -> ( ControlFns input1 state delta output1, restFns )
                 -> ( State state, restStates )
-                -> List ( String, String )
+                -> List Feedback
             , flagEmitter :
                 (List Flag -> Int -> End -> End -> List Flag)
                 -> List Flag
@@ -2181,11 +2193,11 @@ end :
                 -> ( stateSetter, restStateSetters )
             , parser :
                 (a -> b -> End -> End -> a)
-                -> Result (List ( String, String )) value
+                -> Result (List Feedback) value
                 -> Int
                 -> ( ControlFns input1 state delta output1, restFns )
                 -> ( State state, restStates )
-                -> Result (List ( String, String )) output
+                -> Result (List Feedback) output
             , stateAfters : h
             , stateBefores : End -> g
             , stateInserter : c
@@ -2364,10 +2376,10 @@ field :
                 , errorCollector :
                     a12
                     -> List Flag
-                    -> List ( String, String )
+                    -> List Feedback
                     -> restFns6
                     -> restStates6
-                    -> List ( String, String )
+                    -> List Feedback
                 , flagEmitter :
                     a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
                 , fns :
@@ -2389,10 +2401,10 @@ field :
                 , makeSetters : a5 -> befores -> afters -> next
                 , parser :
                     a4
-                    -> Result (List ( String, String )) output1_1
+                    -> Result (List Feedback) output1_1
                     -> restFns2
                     -> restStates2
-                    -> Result (List ( String, String )) output2
+                    -> Result (List Feedback) output2
                 , subscriptionCollector : a3 -> List (Sub msg) -> i -> j -> k -> l
                 , toOutput : m
                 , updater :
@@ -2439,13 +2451,13 @@ field :
             , errorCollector :
                 a12
                 -> List Flag
-                -> List ( String, String )
+                -> List Feedback
                 ->
                     ( RecordFns input5 state6 delta7 output6 recordOutput5
                     , restFns6
                     )
                 -> ( State state6, restStates6 )
-                -> List ( String, String )
+                -> List Feedback
             , flagEmitter :
                 a11
                 -> List Flag
@@ -2483,13 +2495,13 @@ field :
                 -> ( value -> delta3, next )
             , parser :
                 a4
-                -> Result (List ( String, String )) (output0 -> output1_1)
+                -> Result (List Feedback) (output0 -> output1_1)
                 ->
                     ( RecordFns input2 state2 delta2 output0 recordOutput2
                     , restFns2
                     )
                 -> ( State state2, restStates2 )
-                -> Result (List ( String, String )) output2
+                -> Result (List Feedback) output2
             , subscriptionCollector :
                 a3
                 -> List (Sub msg)
@@ -2553,10 +2565,10 @@ hiddenField :
                 , errorCollector :
                     a12
                     -> List Flag
-                    -> List ( String, String )
+                    -> List Feedback
                     -> restFns6
                     -> restStates6
-                    -> List ( String, String )
+                    -> List Feedback
                 , flagEmitter :
                     a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
                 , fns :
@@ -2578,10 +2590,10 @@ hiddenField :
                 , makeSetters : a5 -> befores -> afters -> next
                 , parser :
                     a4
-                    -> Result (List ( String, String )) output1_1
+                    -> Result (List Feedback) output1_1
                     -> restFns2
                     -> restStates2
-                    -> Result (List ( String, String )) output2
+                    -> Result (List Feedback) output2
                 , subscriptionCollector : a3 -> List (Sub msg) -> i -> j -> k -> l
                 , toOutput : m
                 , updater :
@@ -2628,13 +2640,13 @@ hiddenField :
             , errorCollector :
                 a12
                 -> List Flag
-                -> List ( String, String )
+                -> List Feedback
                 ->
                     ( RecordFns input5 state6 delta7 output6 recordOutput5
                     , restFns6
                     )
                 -> ( State state6, restStates6 )
-                -> List ( String, String )
+                -> List Feedback
             , flagEmitter :
                 a11
                 -> List Flag
@@ -2672,13 +2684,13 @@ hiddenField :
                 -> ( value -> delta3, next )
             , parser :
                 a4
-                -> Result (List ( String, String )) (output0 -> output1_1)
+                -> Result (List Feedback) (output0 -> output1_1)
                 ->
                     ( RecordFns input2 state2 delta2 output0 recordOutput2
                     , restFns2
                     )
                 -> ( State state2, restStates2 )
-                -> Result (List ( String, String )) output2
+                -> Result (List Feedback) output2
             , subscriptionCollector :
                 a3
                 -> List (Sub msg)
@@ -2742,10 +2754,10 @@ readOnlyField :
                 , errorCollector :
                     a12
                     -> List Flag
-                    -> List ( String, String )
+                    -> List Feedback
                     -> restFns6
                     -> restStates6
-                    -> List ( String, String )
+                    -> List Feedback
                 , flagEmitter :
                     a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
                 , fns :
@@ -2767,10 +2779,10 @@ readOnlyField :
                 , makeSetters : a5 -> befores -> afters -> next
                 , parser :
                     a4
-                    -> Result (List ( String, String )) output1_1
+                    -> Result (List Feedback) output1_1
                     -> restFns2
                     -> restStates2
-                    -> Result (List ( String, String )) output2
+                    -> Result (List Feedback) output2
                 , subscriptionCollector : a3 -> List (Sub msg) -> i -> j -> k -> l
                 , toOutput : m
                 , updater :
@@ -2817,13 +2829,13 @@ readOnlyField :
             , errorCollector :
                 a12
                 -> List Flag
-                -> List ( String, String )
+                -> List Feedback
                 ->
                     ( RecordFns input5 state6 delta7 output6 recordOutput5
                     , restFns6
                     )
                 -> ( State state6, restStates6 )
-                -> List ( String, String )
+                -> List Feedback
             , flagEmitter :
                 a11
                 -> List Flag
@@ -2861,13 +2873,13 @@ readOnlyField :
                 -> ( value -> delta3, next )
             , parser :
                 a4
-                -> Result (List ( String, String )) (output0 -> output1_1)
+                -> Result (List Feedback) (output0 -> output1_1)
                 ->
                     ( RecordFns input2 state2 delta2 output0 recordOutput2
                     , restFns2
                     )
                 -> ( State state2, restStates2 )
-                -> Result (List ( String, String )) output2
+                -> Result (List Feedback) output2
             , subscriptionCollector :
                 a3
                 -> List (Sub msg)
@@ -3130,37 +3142,37 @@ recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restS
 
 collectErrorsForRecord :
     ((List Flag
-      -> List ( String, String )
+      -> List Feedback
       -> End
       -> End
-      -> List ( String, String )
+      -> List Feedback
      )
      -> List Flag
-     -> List ( String, String )
+     -> List Feedback
      -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( State state, restStates )
-     -> List ( String, String )
+     -> List Feedback
     )
     -> List Flag
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
-    -> List ( String, String )
+    -> List Feedback
 collectErrorsForRecord errorCollector_ flags fns states =
     errorCollector_ (\_ errors End End -> errors) flags [] fns states
 
 
 recordErrorCollector :
     (List Flag
-     -> List ( String, String )
+     -> List Feedback
      -> restFns
      -> restStates
-     -> List ( String, String )
+     -> List Feedback
     )
     -> List Flag
-    -> List ( String, String )
+    -> List Feedback
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
-    -> List ( String, String )
+    -> List Feedback
 recordErrorCollector next flags errors ( fns, restFns ) ( state, restStates ) =
     next flags (errors ++ fns.field.collectErrors state flags) restFns restStates
 
@@ -3271,34 +3283,34 @@ recordDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDeltas 
 
 
 validateRecordStates :
-    ((Result (List ( String, String )) output2
+    ((Result (List Feedback) output2
       -> End
       -> End
-      -> Result (List ( String, String )) output2
+      -> Result (List Feedback) output2
      )
-     -> Result (List ( String, String )) output1
+     -> Result (List Feedback) output1
      -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( State state, restStates )
-     -> Result (List ( String, String )) output2
+     -> Result (List Feedback) output2
     )
     -> output1
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
-    -> Result (List ( String, String )) output2
+    -> Result (List Feedback) output2
 validateRecordStates parser toOutput fns states =
     parser (\output End End -> output) (Ok toOutput) fns states
 
 
 recordStateValidator :
-    (Result (List ( String, String )) output1
+    (Result (List Feedback) output1
      -> restFns
      -> restStates
-     -> Result (List ( String, String )) output2
+     -> Result (List Feedback) output2
     )
-    -> Result (List ( String, String )) (output0 -> output1)
+    -> Result (List Feedback) (output0 -> output1)
     -> ( RecordFns input state delta output0 recordOutput, restFns )
     -> ( State state, restStates )
-    -> Result (List ( String, String )) output2
+    -> Result (List Feedback) output2
 recordStateValidator next toOutputResult ( fns, restFns ) ( state, restStates ) =
     next
         (case ( toOutputResult, fns.field.parse state ) of
@@ -3421,8 +3433,8 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
 
 
 getStatus :
-    (State state -> Result (List ( String, String )) output)
-    -> (State state -> List Flag -> List ( String, String ))
+    (State state -> Result (List Feedback) output)
+    -> (State state -> List Flag -> List Feedback)
     -> List Flag
     -> State state
     -> Status
@@ -4094,37 +4106,37 @@ customTypeDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDel
 
 collectErrorsForCustomType :
     ((List Flag
-      -> List ( String, String )
+      -> List Feedback
       -> End
       -> End
-      -> List ( String, String )
+      -> List Feedback
      )
      -> List Flag
-     -> List ( String, String )
+     -> List Feedback
      -> ( ControlFns input state delta output, restFns )
      -> ( State state, restStates )
-     -> List ( String, String )
+     -> List Feedback
     )
     -> List Flag
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
-    -> List ( String, String )
+    -> List Feedback
 collectErrorsForCustomType errorCollector_ flags fns states =
     errorCollector_ (\_ errors End End -> errors) flags [] fns states
 
 
 customTypeErrorCollector :
     (List Flag
-     -> List ( String, String )
+     -> List Feedback
      -> restFns
      -> restStates
-     -> List ( String, String )
+     -> List Feedback
     )
     -> List Flag
-    -> List ( String, String )
+    -> List Feedback
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
-    -> List ( String, String )
+    -> List Feedback
 customTypeErrorCollector next flags errors ( fns, restFns ) ( state, restStates ) =
     next flags (errors ++ fns.collectErrors state flags) restFns restStates
 
@@ -4401,7 +4413,7 @@ validateSelectedTagState :
       -> End
       -> a
      )
-     -> Result (List ( String, String )) value
+     -> Result (List Feedback) value
      -> Int
      -> c
      -> d
@@ -4414,24 +4426,24 @@ validateSelectedTagState :
 validateSelectedTagState parser selectedTag fns states =
     parser
         (\result_ _ End End -> result_)
-        (Err [ ( "FATAL ERROR", "tag index " ++ String.fromInt selectedTag ++ " not found" ) ])
+        (Err [ { path = "FATAL ERROR", message = "tag index " ++ String.fromInt selectedTag ++ " not found", outcome = Fail } ])
         selectedTag
         fns
         states
 
 
 selectedTagParser :
-    (Result (List ( String, String )) output
+    (Result (List Feedback) output
      -> Int
      -> restFns
      -> restStates
-     -> Result (List ( String, String )) output
+     -> Result (List Feedback) output
     )
-    -> Result (List ( String, String )) output
+    -> Result (List Feedback) output
     -> Int
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
-    -> Result (List ( String, String )) output
+    -> Result (List Feedback) output
 selectedTagParser next result_ selectedTag ( fns, restFns ) ( state, restStates ) =
     next
         (if fns.index == selectedTag then
@@ -4561,11 +4573,11 @@ wrappedView status innerView =
                             let
                                 ( icon, txt ) =
                                     case f of
-                                        Ok ( _, t ) ->
-                                            ( "💬", t )
+                                        Ok { message } ->
+                                            ( "💬", message )
 
-                                        Err ( _, t ) ->
-                                            ( "❌", t )
+                                        Err { message } ->
+                                            ( "❌", message )
                             in
                             H.div [] [ H.text (icon ++ " " ++ txt) ]
                         )
