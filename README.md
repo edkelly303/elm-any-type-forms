@@ -79,9 +79,9 @@ control =
             , role = role
             }
         )
-        |> Control.field "Name" .name (Control.string |> Control.failIf String.isEmpty "Name is required")
-        |> Control.field "Age" .age Control.int
-        |> Control.field "Role" .role roleControl
+        |> Control.field .name (Control.string |> Control.failIf String.isEmpty "Name is required")
+        |> Control.field .age Control.int
+        |> Control.field .role roleControl
         |> Control.end
 
 type Role
@@ -357,5 +357,4 @@ $ . run
 
 - `Control.initWith` doesn't send out initial Cmds for record fields or custom 
 type variants.
-- Lack of consistency in use of labels and headings in generated HTML.
 - Lack of consistency in list indices (should lists be 0- or 1-indexed?)
