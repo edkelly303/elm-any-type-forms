@@ -64,11 +64,10 @@ type alias Example2 =
     , tuple : ( Int, String )
     , triple : ( Int, String, Float )
     , result : Result Int String
-
-    -- , list : List Time.Posix
-    -- , dict : Dict.Dict String Int
-    -- , set : Set.Set String
-    -- , array : Array.Array Int
+    , list : List Time.Posix
+    , dict : Dict.Dict String Int
+    , set : Set.Set String
+    , array : Array.Array Int
     , counter : Int
     }
 
@@ -80,10 +79,14 @@ example2Control =
         |> Control.field .tuple (Control.tuple Control.int Control.string)
         |> Control.field .triple (Control.triple Control.int Control.string Control.float)
         |> Control.field .result (Control.result Control.int Control.string)
-        -- |> Control.field .list (Control.list (timeControl Time.utc) |> Control.htmlBefore (Html.h3 [] [Html.text "This is a heading before a list"]) |> Control.htmlAfter (Html.p [] [Html.text "This is some text after a list"]))
-        -- |> Control.field .dict (Control.dict Control.string Control.int)
-        -- |> Control.field .set (Control.set Control.string)
-        -- |> Control.field .array (Control.array Control.int)
+        |> Control.field .list
+            (Control.list (timeControl Time.utc)
+                |> Control.htmlBefore (Html.h3 [] [ Html.text "This is a heading before a list" ])
+                |> Control.htmlAfter (Html.p [] [ Html.text "This is some text after a list" ])
+            )
+        |> Control.field .dict (Control.dict Control.string Control.int)
+        |> Control.field .set (Control.set Control.string)
+        |> Control.field .array (Control.array Control.int)
         |> Control.field .counter counterControl
         |> Control.end
 

@@ -1,7 +1,7 @@
 module Control exposing
     ( Control, Form, sandbox, form
     , bool, int, float, string, char, enum
-    , wrapper, tuple, triple, maybe, result
+    , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
     , failIf
     , throwFlagIf, catchFlag
@@ -11,8 +11,7 @@ module Control exposing
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
-    , htmlAfter, htmlBefore
-      --, list, dict, set, array
+    , htmlAfter, htmlBefore, listView
     )
 
 {-|
@@ -1615,217 +1614,228 @@ triple first second third =
         list int
 
 -}
+list :
+    Control state delta output
+    -> Control (List (State state)) (ListDelta delta) (List output)
+list (Control ctrl) =
+    Control
+        (\path ->
+            let
+                update =
+                    wrapUpdate listUpdate
 
+                listUpdate delta state =
+                    case delta of
+                        InsertItem idx ->
+                            let
+                                ( initialState, initialCmd ) =
+                                    ctrl path
+                                        |> .init
 
+                                before =
+                                    List.take idx state
 
--- list :
---     Control state delta output
---     -> Control (List (State state)) (ListDelta delta) (List output)
--- list (Control ctrl) =
---     Control
---         (\path ->
---             let
---                 update =
---                     wrapUpdate listUpdate
---                 listUpdate delta state =
---                     case delta of
---                         InsertItem idx ->
---                             let
---                                 ( initialState, initialCmd ) =
---                                     ctrl path
---                                         |> .init
---                                 before =
---                                     List.take idx state
---                                 after =
---                                     List.drop idx state
---                             in
---                             ( before ++ initialState :: after
---                             , Cmd.map (ChangeItem idx) initialCmd
---                             )
---                         ChangeItem idx itemDelta ->
---                             let
---                                 ( newState, cmd ) =
---                                     List.Extra.indexedFoldr
---                                         (\thisIdx item ( items, prevCmd ) ->
---                                             if thisIdx == idx then
---                                                 let
---                                                     itemControl =
---                                                         ctrl (Path.add (String.fromInt idx) path)
---                                                     ( newItem, newCmd ) =
---                                                         itemControl.update itemDelta item
---                                                 in
---                                                 ( newItem :: items, newCmd )
---                                             else
---                                                 ( item :: items, prevCmd )
---                                         )
---                                         ( [], Cmd.none )
---                                         state
---                             in
---                             ( newState
---                             , Cmd.map (ChangeItem idx) cmd
---                             )
---                         DeleteItem idx ->
---                             ( List.Extra.removeAt idx state, Cmd.none )
---                 parse =
---                     \(State _ state) ->
---                         List.foldr
---                             (\( idx, item ) res ->
---                                 let
---                                     identifyErrors e =
---                                         List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
---                                     itemControl =
---                                         ctrl (Path.add (String.fromInt idx) path)
---                                 in
---                                 case res of
---                                     Ok outputs ->
---                                         case itemControl.parse item of
---                                             Ok output ->
---                                                 Ok (output :: outputs)
---                                             Err errs ->
---                                                 Err (identifyErrors errs)
---                                     Err errs ->
---                                         case itemControl.parse item of
---                                             Ok _ ->
---                                                 Err errs
---                                             Err newErrs ->
---                                                 Err (identifyErrors newErrs ++ errs)
---                             )
---                             (Ok [])
---                             (List.indexedMap Tuple.pair state)
---                             |> Result.mapError (List.map (\feedback -> ( Path.toString path, feedback )))
---                 collectDebouncingReceivers (State _ listState) =
---                     List.indexedMap
---                         (\idx itemState ->
---                             let
---                                 itemControl =
---                                     ctrl (Path.add (String.fromInt idx) path)
---                             in
---                             itemControl.collectDebouncingReceivers itemState
---                         )
---                         listState
---                         |> List.concat
---             in
---             { path = path
---             , index = 0
---             , initWith =
---                 \input ->
---                     let
---                         ( initialState, initialCmds ) =
---                             List.Extra.indexedFoldr
---                                 (\idx itemInput ( itemInputs, itemCmds ) ->
---                                     let
---                                         itemControl =
---                                             ctrl (Path.add (String.fromInt idx) path)
---                                         ( itemState, itemCmd ) =
---                                             itemControl.initWith itemInput
---                                     in
---                                     ( itemState :: itemInputs
---                                     , Cmd.map (ChangeItem idx) itemCmd :: itemCmds
---                                     )
---                                 )
---                                 ( [], [] )
---                                 input
---                     in
---                     ( State { status = Intact_, selected = 0 } initialState
---                     , Cmd.map ChangeStateInternally (Cmd.batch initialCmds)
---                     )
---             , init =
---                 ( State { status = Intact_, selected = 0 } []
---                 , Cmd.none
---                 )
---             , baseUpdate = update
---             , update = update 0
---             , childViews = \_ _ -> []
---             , view =
---                 \staticConfig dynamicConfig ->
---                     let
---                         debouncingReceivers =
---                             -- this is a total hack!
---                             collectDebouncingReceivers (State { status = Intact_, selected = dynamicConfig.selected } dynamicConfig.state)
---                     in
---                     [ listView path staticConfig dynamicConfig debouncingReceivers ctrl ]
---             , parse = parse
---             , setAllIdle =
---                 \(State i s) ->
---                     State { i | status = Idle_ }
---                         (List.indexedMap
---                             (\idx item ->
---                                 let
---                                     itemControl =
---                                         ctrl (Path.add (String.fromInt idx) path)
---                                 in
---                                 itemControl.setAllIdle item
---                             )
---                             s
---                         )
---             , emitFlags =
---                 \(State _ s) ->
---                     List.indexedMap
---                         (\idx item ->
---                             let
---                                 itemControl =
---                                     ctrl (Path.add (String.fromInt idx) path)
---                             in
---                             itemControl.emitFlags item
---                         )
---                         s
---                         |> List.concat
---             , collectErrors =
---                 \(State _ listState) flags ->
---                     List.indexedMap
---                         (\idx item ->
---                             let
---                                 itemControl =
---                                     ctrl (Path.add (String.fromInt idx) path)
---                                 filteredFlags =
---                                     List.filterMap
---                                         (\flag ->
---                                             case flag of
---                                                 FlagList flagPath flagLabel flagIndexes ->
---                                                     if flagPath == path then
---                                                         if List.member idx flagIndexes then
---                                                             Just (FlagLabel flagLabel)
---                                                         else
---                                                             Nothing
---                                                     else
---                                                         Just flag
---                                                 _ ->
---                                                     Just flag
---                                         )
---                                         flags
---                             in
---                             itemControl.collectErrors item filteredFlags
---                         )
---                         listState
---                         |> List.concat
---             , receiverCount = 0
---             , collectDebouncingReceivers = collectDebouncingReceivers
---             , label = "List"
---             , id = Nothing
---             , name = Nothing
---             , class = []
---             , subscriptions =
---                 \(State _ listState) ->
---                     List.indexedMap
---                         (\idx itemState ->
---                             let
---                                 itemControl =
---                                     ctrl (Path.add (String.fromInt idx) path)
---                             in
---                             itemControl.subscriptions itemState
---                                 |> Sub.map (ChangeItem idx)
---                         )
---                         listState
---                         |> Sub.batch
---                         |> Sub.map ChangeStateInternally
---             , htmlBefore = Nothing
---             , htmlAfter = Nothing
---             }
---         )
+                                after =
+                                    List.drop idx state
+                            in
+                            ( before ++ initialState :: after
+                            , Cmd.map (ChangeItem idx) initialCmd
+                            )
 
+                        ChangeItem idx itemDelta ->
+                            let
+                                ( newState, cmd ) =
+                                    List.Extra.indexedFoldr
+                                        (\thisIdx item ( items, prevCmd ) ->
+                                            if thisIdx == idx then
+                                                let
+                                                    itemControl =
+                                                        ctrl (Path.add (String.fromInt idx) path)
 
-z =
-    0
+                                                    ( newItem, newCmd ) =
+                                                        itemControl.update itemDelta item
+                                                in
+                                                ( newItem :: items, newCmd )
+
+                                            else
+                                                ( item :: items, prevCmd )
+                                        )
+                                        ( [], Cmd.none )
+                                        state
+                            in
+                            ( newState
+                            , Cmd.map (ChangeItem idx) cmd
+                            )
+
+                        DeleteItem idx ->
+                            ( List.Extra.removeAt idx state, Cmd.none )
+
+                parse =
+                    \(State _ state) ->
+                        List.foldr
+                            (\( idx, item ) res ->
+                                let
+                                    identifyErrors e =
+                                        List.map (\( _, feedback ) -> "item #" ++ String.fromInt idx ++ ": " ++ feedback) e
+
+                                    itemControl =
+                                        ctrl (Path.add (String.fromInt idx) path)
+                                in
+                                case res of
+                                    Ok outputs ->
+                                        case itemControl.parse item of
+                                            Ok output ->
+                                                Ok (output :: outputs)
+
+                                            Err errs ->
+                                                Err (identifyErrors errs)
+
+                                    Err errs ->
+                                        case itemControl.parse item of
+                                            Ok _ ->
+                                                Err errs
+
+                                            Err newErrs ->
+                                                Err (identifyErrors newErrs ++ errs)
+                            )
+                            (Ok [])
+                            (List.indexedMap Tuple.pair state)
+                            |> Result.mapError (List.map (\feedback -> ( Path.toString path, feedback )))
+
+                collectDebouncingReceivers (State _ listState) =
+                    List.indexedMap
+                        (\idx itemState ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.collectDebouncingReceivers itemState
+                        )
+                        listState
+                        |> List.concat
+            in
+            { path = path
+            , index = 0
+            , initWith =
+                \input ->
+                    let
+                        ( initialState, initialCmds ) =
+                            List.Extra.indexedFoldr
+                                (\idx itemInput ( itemInputs, itemCmds ) ->
+                                    let
+                                        itemControl =
+                                            ctrl (Path.add (String.fromInt idx) path)
+
+                                        ( itemState, itemCmd ) =
+                                            itemControl.initWith itemInput
+                                    in
+                                    ( itemState :: itemInputs
+                                    , Cmd.map (ChangeItem idx) itemCmd :: itemCmds
+                                    )
+                                )
+                                ( [], [] )
+                                input
+                    in
+                    ( State { status = Intact_, selected = 0 } initialState
+                    , Cmd.map ChangeStateInternally (Cmd.batch initialCmds)
+                    )
+            , init =
+                ( State { status = Intact_, selected = 0 } []
+                , Cmd.none
+                )
+            , baseUpdate = update
+            , update = update 0
+            , childViews = \_ _ -> []
+            , view =
+                \staticConfig dynamicConfig ->
+                    let
+                        debouncingReceivers =
+                            -- this is a total hack!
+                            collectDebouncingReceivers (State { status = Intact_, selected = dynamicConfig.selected } dynamicConfig.state)
+                    in
+                    listView path staticConfig dynamicConfig debouncingReceivers ctrl
+            , parse = parse
+            , setAllIdle =
+                \(State i s) ->
+                    State { i | status = Idle_ }
+                        (List.indexedMap
+                            (\idx item ->
+                                let
+                                    itemControl =
+                                        ctrl (Path.add (String.fromInt idx) path)
+                                in
+                                itemControl.setAllIdle item
+                            )
+                            s
+                        )
+            , emitFlags =
+                \(State _ s) ->
+                    List.indexedMap
+                        (\idx item ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.emitFlags item
+                        )
+                        s
+                        |> List.concat
+            , collectErrors =
+                \(State _ listState) flags ->
+                    List.indexedMap
+                        (\idx item ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+
+                                filteredFlags =
+                                    List.filterMap
+                                        (\flag ->
+                                            case flag of
+                                                FlagList flagPath flagLabel flagIndexes ->
+                                                    if flagPath == path then
+                                                        if List.member idx flagIndexes then
+                                                            Just (FlagLabel flagLabel)
+
+                                                        else
+                                                            Nothing
+
+                                                    else
+                                                        Just flag
+
+                                                _ ->
+                                                    Just flag
+                                        )
+                                        flags
+                            in
+                            itemControl.collectErrors item filteredFlags
+                        )
+                        listState
+                        |> List.concat
+            , receiverCount = 0
+            , collectDebouncingReceivers = collectDebouncingReceivers
+            , label = "List"
+            , id = Nothing
+            , name = Nothing
+            , class = []
+            , subscriptions =
+                \(State _ listState) ->
+                    List.indexedMap
+                        (\idx itemState ->
+                            let
+                                itemControl =
+                                    ctrl (Path.add (String.fromInt idx) path)
+                            in
+                            itemControl.subscriptions itemState
+                                |> Sub.map (ChangeItem idx)
+                        )
+                        listState
+                        |> Sub.batch
+                        |> Sub.map ChangeStateInternally
+            , htmlBefore = Nothing
+            , htmlAfter = Nothing
+            }
+        )
 
 
 
@@ -1846,31 +1856,24 @@ types. The key type must be `comparable`.
         dict ( "Key", int ) ( "Value", string )
 
 -}
-
-
-
--- dict :
---     Control keyState keyDelta comparable
---     -> Control valueState valueDelta value
---     ->
---         Control
---             ( State (List (State ( State keyState, ( State valueState, End ) ))), End )
---             ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
---             (Dict.Dict comparable value)
--- dict keyControl valueControl =
---     list
---         (tuple
---             (keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique")
---             valueControl
---             |> layout (\kv _ _ -> kv)
---         )
---         |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
---         |> label "Dict"
---         |> wrapper { wrap = Dict.fromList, unwrap = Dict.toList }
-
-
-zzzz =
-    0
+dict :
+    Control keyState keyDelta comparable
+    -> Control valueState valueDelta value
+    ->
+        Control
+            ( State (List (State ( State keyState, ( State valueState, End ) ))), End )
+            ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
+            (Dict.Dict comparable value)
+dict keyControl valueControl =
+    list
+        (tuple
+            (keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique")
+            valueControl
+            |> layout (\kv _ _ -> kv)
+        )
+        |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
+        |> label "Dict"
+        |> wrapper { wrap = Dict.fromList, unwrap = Dict.toList }
 
 
 nonUniqueIndexes : List comparable -> List Int
@@ -1917,22 +1920,15 @@ types. The member type must be `comparable`.
         set string
 
 -}
-
-
-
--- set :
---     Control state delta comparable
---     -> Control ( State (List (State state)), End ) ( Delta (ListDelta delta), End ) (Set.Set comparable)
--- set memberControl =
---     list
---         (memberControl |> catchFlag "@@set-unique-keys" "Set members must be unique")
---         |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
---         |> label "Set"
---         |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
-
-
-zzz =
-    0
+set :
+    Control state delta comparable
+    -> Control ( State (List (State state)), End ) ( Delta (ListDelta delta), End ) (Set.Set comparable)
+set memberControl =
+    list
+        (memberControl |> catchFlag "@@set-unique-keys" "Set members must be unique")
+        |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
+        |> label "Set"
+        |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
 
 
 
@@ -1952,24 +1948,17 @@ zzz =
         array int
 
 -}
-
-
-
--- array :
---     Control state delta output
---     ->
---         Control
---             ( State (List (State state)), End )
---             ( Delta (ListDelta delta), End )
---             (Array.Array output)
--- array itemControl =
---     list itemControl
---         |> label "Array"
---         |> wrapper { wrap = Array.fromList, unwrap = Array.toList }
-
-
-zz =
-    0
+array :
+    Control state delta output
+    ->
+        Control
+            ( State (List (State state)), End )
+            ( Delta (ListDelta delta), End )
+            (Array.Array output)
+array itemControl =
+    list itemControl
+        |> label "Array"
+        |> wrapper { wrap = Array.fromList, unwrap = Array.toList }
 
 
 
@@ -4609,79 +4598,86 @@ button msg text =
 
 listView :
     Path
-    -> ViewConfigStatic (Delta delta)
+    -> ViewConfigStatic (Delta (ListDelta delta))
     -> ViewConfigDynamic (List (State state))
     -> List Flag
     -> (Path -> ControlFns input state delta output)
-    -> Html (Delta (ListDelta delta))
+    -> List (Html (Delta (ListDelta delta)))
 listView path staticConfig dynamicConfig debouncingReceivers ctrl =
     let
         id_ =
             Maybe.withDefault (Path.toString path) staticConfig.id
+
+        view_ =
+            H.div
+                [ HA.id id_ ]
+                [ H.label
+                    [ HA.for id_ ]
+                    [ H.text staticConfig.label ]
+                , if List.isEmpty dynamicConfig.state then
+                    button (ChangeStateOnInput (InsertItem 0)) "Add item"
+
+                  else
+                    H.ol []
+                        (List.indexedMap
+                            (\idx (State internalState state) ->
+                                let
+                                    control =
+                                        ctrl (Path.add (String.fromInt idx) path)
+
+                                    filteredFlags1 =
+                                        List.filterMap
+                                            (\flag ->
+                                                case flag of
+                                                    FlagList flagPath flagLabel flagIndexes ->
+                                                        if flagPath == path then
+                                                            if List.member idx flagIndexes then
+                                                                Just (FlagLabel flagLabel)
+
+                                                            else
+                                                                Nothing
+
+                                                        else
+                                                            Just flag
+
+                                                    _ ->
+                                                        Just flag
+                                            )
+                                            dynamicConfig.flags
+
+                                    filteredFlags2 =
+                                        List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
+                                in
+                                H.li []
+                                    [ H.div []
+                                        (control.view
+                                            { id = control.id
+                                            , name = control.name
+                                            , label = control.label
+                                            , class = control.class
+                                            , before = control.htmlBefore
+                                            , after = control.htmlAfter
+                                            }
+                                            { state = state
+                                            , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
+                                            , flags = filteredFlags2
+                                            , selected = internalState.selected
+                                            }
+                                        )
+                                        |> H.map (ChangeItem idx)
+                                    , button (DeleteItem idx) "Delete item"
+                                    , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
+                                    ]
+                            )
+                            dynamicConfig.state
+                        )
+                        |> H.map ChangeStateOnInput
+                ]
     in
-    H.div
-        [ HA.id id_ ]
-        [ H.label
-            [ HA.for id_ ]
-            [ H.text staticConfig.label ]
-        , if List.isEmpty dynamicConfig.state then
-            button (ChangeStateOnInput (InsertItem 0)) "Add item"
-
-          else
-            H.ol []
-                (List.indexedMap
-                    (\idx (State internalState state) ->
-                        let
-                            control =
-                                ctrl (Path.add (String.fromInt idx) path)
-
-                            filteredFlags1 =
-                                List.filterMap
-                                    (\flag ->
-                                        case flag of
-                                            FlagList flagPath flagLabel flagIndexes ->
-                                                if flagPath == path then
-                                                    if List.member idx flagIndexes then
-                                                        Just (FlagLabel flagLabel)
-
-                                                    else
-                                                        Nothing
-
-                                                else
-                                                    Just flag
-
-                                            _ ->
-                                                Just flag
-                                    )
-                                    dynamicConfig.flags
-
-                            filteredFlags2 =
-                                List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
-                        in
-                        H.li []
-                            [ H.div []
-                                (control.view
-                                    { id = control.id
-                                    , name = control.name
-                                    , label = control.label
-                                    , class = control.class
-                                    , before = control.htmlBefore
-                                    , after = control.htmlAfter
-                                    }
-                                    { state = state
-                                    , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
-                                    , flags = filteredFlags2
-                                    , selected = internalState.selected
-                                    }
-                                )
-                                |> H.map (ChangeItem idx)
-                            , button (DeleteItem idx) "Delete item"
-                            , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
-                            ]
-                    )
-                    dynamicConfig.state
-                )
-                |> H.map ChangeStateOnInput
+    List.filterMap identity
+        [ staticConfig.before
+        , Just view_
+        , staticConfig.after
         ]
 
 
