@@ -6,12 +6,11 @@ module Control exposing
     , failIf
     , throwFlagIf, catchFlag
     , throwFlagsAt
-    , initWith, debounce, id, name, label, class, classList
+    , initWith, debounce, id, name, label, class, classList, htmlBefore, htmlAfter
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
-    , htmlAfter, htmlBefore, listView
     )
 
 {-|
@@ -89,7 +88,7 @@ as follows:
 
 # Configuring controls
 
-@docs initWith, debounce, id, name, label, class, classList
+@docs initWith, debounce, id, name, label, class, classList, htmlBefore, htmlAfter
 
 
 # Building record combinators
@@ -1101,6 +1100,13 @@ classList classList_ (Control control) =
 -}
 
 
+{-| Add an HTML element that will appear immediately before the control in the view.
+
+    intWithHeadingBefore =
+        int
+            |> htmlBefore (Html.h1 [] [ Html.text "I'm a heading" ])
+
+-}
 htmlBefore : Html Never -> Control state delta output -> Control state delta output
 htmlBefore html (Control control) =
     let
@@ -1110,6 +1116,13 @@ htmlBefore html (Control control) =
     Control (control >> htmlAdder)
 
 
+{-| Add an HTML element that will appear immediately after the control in the view.
+
+    intWithTextAfter =
+        int
+            |> htmlAfter (Html.p [] [ Html.text "I'm an explanatory note" ])
+
+-}
 htmlAfter : Html Never -> Control state delta output -> Control state delta output
 htmlAfter html (Control control) =
     let
