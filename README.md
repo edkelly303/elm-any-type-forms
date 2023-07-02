@@ -119,7 +119,6 @@ import User
 main = 
     Control.sandbox 
         { control = User.control
-        , title = "Let's create a user!"
         , outputToString = Debug.toString
         }
 ```
@@ -274,7 +273,6 @@ Use `Control.form` to create an embeddable version of your form:
 userForm = 
     Control.form 
         { control = User.control 
-        , title = "Let's create a user!"
         , onUpdate = FormUpdated
         , onSubmit = FormSubmitted
         }

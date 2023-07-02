@@ -19,9 +19,9 @@ userControl =
             , role = role
             }
         )
-        |> Control.field "Name" .name (Control.string |> Control.failIf String.isEmpty "Name is required")
-        |> Control.field "Age" .age Control.int
-        |> Control.field "Role" .role roleControl
+        |> Control.field .name (Control.string |> Control.label "Name" |> Control.failIf String.isEmpty "Name is required")
+        |> Control.field .age Control.int
+        |> Control.field .role roleControl
         |> Control.end
 
 
@@ -90,7 +90,6 @@ type alias FormDelta =
 userForm =
     Control.form
         { control = userControl
-        , title = "Let's create a user!"
         , onUpdate = FormUpdated
         , onSubmit = FormSubmitted
         }
