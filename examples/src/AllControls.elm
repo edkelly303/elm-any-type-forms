@@ -39,11 +39,17 @@ exampleControl =
         |> Control.field .bool Control.bool
         |> Control.field .enum
             (Control.enum ( "Red", Red ) ( "Green", Green ) [ ( "Blue", Blue ) ]
-                |> Control.htmlBefore (Html.h3 [] [Html.text "This is a heading before Enum"])
-                |> Control.htmlAfter (Html.p [] [Html.text "This is some text after Enum"])
+                |> Control.htmlBefore (Html.h3 [] [ Html.text "This is a heading before a control" ])
+                |> Control.htmlAfter (Html.p [] [ Html.text "This is some text after a primitive control" ])
             )
-        |> Control.field .maybe (Control.maybe example2Control)
+        |> Control.field .maybe
+            (Control.maybe example2Control
+                |> Control.htmlBefore (Html.h3 [] [ Html.text "This is a heading before a custom type" ])
+                |> Control.htmlAfter (Html.p [] [ Html.text "This is some text after a custom type" ])
+            )
         |> Control.end
+        |> Control.htmlBefore (Html.h3 [] [ Html.text "This is a heading before a record" ])
+        |> Control.htmlAfter (Html.p [] [ Html.text "This is some text after a record" ])
 
 
 type Enum
@@ -74,7 +80,7 @@ example2Control =
         |> Control.field .tuple (Control.tuple Control.int Control.string)
         |> Control.field .triple (Control.triple Control.int Control.string Control.float)
         |> Control.field .result (Control.result Control.int Control.string)
-        -- |> Control.field .list (Control.list (timeControl Time.utc))
+        -- |> Control.field .list (Control.list (timeControl Time.utc) |> Control.htmlBefore (Html.h3 [] [Html.text "This is a heading before a list"]) |> Control.htmlAfter (Html.p [] [Html.text "This is some text after a list"]))
         -- |> Control.field .dict (Control.dict Control.string Control.int)
         -- |> Control.field .set (Control.set Control.string)
         -- |> Control.field .array (Control.array Control.int)

@@ -653,17 +653,16 @@ create config =
                 \staticConfig dynamicConfig ->
                     List.filterMap identity
                         [ staticConfig.before
-                        , Just
-                            (config.view
-                                { state = dynamicConfig.state
-                                , label = staticConfig.label
-                                , id = Maybe.withDefault (Path.toString path) staticConfig.id
-                                , name = Maybe.withDefault (Path.toString path) staticConfig.name
-                                , class = String.join " " staticConfig.class
-                                }
-                                |> wrappedView dynamicConfig.status
-                                |> H.map ChangeStateOnInput
-                            )
+                        , config.view
+                            { state = dynamicConfig.state
+                            , label = staticConfig.label
+                            , id = Maybe.withDefault (Path.toString path) staticConfig.id
+                            , name = Maybe.withDefault (Path.toString path) staticConfig.name
+                            , class = String.join " " staticConfig.class
+                            }
+                            |> wrappedView dynamicConfig.status
+                            |> H.map ChangeStateOnInput
+                            |> Just
                         , staticConfig.after
                         ]
             , parse = parse
@@ -3025,7 +3024,13 @@ endRecord rec =
                     viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
 
                 view staticConfig dynamicConfig =
-                    viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
+                    List.filterMap identity
+                        [ staticConfig.before |> Maybe.map List.singleton
+                        , viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
+                            |> Just
+                        , staticConfig.after |> Maybe.map List.singleton
+                        ]
+                        |> List.concat
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
@@ -3734,7 +3739,13 @@ endCustomType rec =
                         options =
                             List.indexedMap Tuple.pair labels
                     in
-                    customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
+                    [ staticConfig.before |> Maybe.map List.singleton
+                    , customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
+                        |> Just
+                    , staticConfig.after |> Maybe.map List.singleton
+                    ]
+                        |> List.filterMap identity
+                        |> List.concat
 
                 parse =
                     \(State internalState state) -> validateSelectedTagState rec.parser internalState.selected fns state
