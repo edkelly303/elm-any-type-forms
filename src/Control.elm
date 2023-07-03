@@ -543,6 +543,12 @@ sandbox { outputToString, control } =
                         fns.emitFlags s
                             |> fns.collectErrors s
                             |> List.filter (\{ outcome } -> outcome == Fail)
+
+                    failView errs =
+                        H.div []
+                            [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
+                            , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) errs)
+                            ]
                 in
                 H.div []
                     [ H.h1 [] [ H.text "Form" ]
@@ -570,16 +576,10 @@ sandbox { outputToString, control } =
                                 ]
 
                         ( Ok _, vErrs ) ->
-                            H.div []
-                                [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                                , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) vErrs)
-                                ]
+                            failView vErrs
 
                         ( Err errs, vErrs ) ->
-                            H.div []
-                                [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                                , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) (errs ++ vErrs))
-                                ]
+                            failView (errs ++ vErrs)
                     ]
         , subscriptions = fns.subscriptions
         }
