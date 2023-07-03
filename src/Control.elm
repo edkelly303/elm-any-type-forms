@@ -4600,11 +4600,12 @@ wrappedView status innerView =
                 Debouncing ->
                     "control-debouncing"
 
-                Idle (_ :: _) ->
-                    "control-invalid"
+                Idle feedback ->
+                    if List.any (\{ outcome } -> outcome == Fail) feedback then
+                        "control-invalid"
 
-                Idle _ ->
-                    "control-valid"
+                    else
+                        "control-valid"
             )
         ]
         [ innerView
