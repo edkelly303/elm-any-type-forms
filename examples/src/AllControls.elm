@@ -135,15 +135,15 @@ counterControl =
                     [ Html.label [] [ Html.text label ]
                     , Html.button
                         [ Html.Attributes.type_ "button"
-                        , Html.Events.onClick Increment
-                        ]
-                        [ Html.text "+1" ]
-                    , Html.text <| String.fromInt state
-                    , Html.button
-                        [ Html.Attributes.type_ "button"
                         , Html.Events.onClick Decrement
                         ]
                         [ Html.text "-1" ]
+                    , Html.text <| String.fromInt state
+                    , Html.button
+                        [ Html.Attributes.type_ "button"
+                        , Html.Events.onClick Increment
+                        ]
+                        [ Html.text "+1" ]
                     ]
         , parse = Ok
         , subscriptions = \_ -> Sub.none
