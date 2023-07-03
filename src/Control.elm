@@ -1413,7 +1413,10 @@ bool =
         , view =
             \config ->
                 H.div []
-                    [ H.input
+                    [ H.label
+                        [ HA.for config.id ]
+                        [ H.text config.label ]
+                    , H.input
                         [ HA.type_ "checkbox"
                         , HA.id config.id
                         , HA.name config.name
@@ -1422,9 +1425,6 @@ bool =
                         , HE.onClick (not config.state)
                         ]
                         []
-                    , H.label
-                        [ HA.for config.id ]
-                        [ H.text config.label ]
                     ]
         , update = \delta _ -> ( delta, Cmd.none )
         , parse = Ok
