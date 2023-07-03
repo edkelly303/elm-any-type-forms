@@ -3,7 +3,7 @@ module Control exposing
     , bool, int, float, string, char, enum
     , wrapper, tuple, triple, maybe, result, list, dict, set, array
     , ControlConfig, create
-    , failIf
+    , failIf, noteIf
     , throwFlagIf, catchFlag
     , throwFlagsAt
     , initWith, debounce, id, name, label, class, classList, htmlBefore, htmlAfter
@@ -41,7 +41,7 @@ module Control exposing
 
 ## Simple validation
 
-@docs failIf
+@docs failIf, noteIf
 
 
 ## Multi-field validation
@@ -279,7 +279,7 @@ type alias ViewConfigStatic delta =
 type Status
     = Intact
     | Debouncing
-    | Idle (List (Result Feedback Feedback))
+    | Idle (List Feedback)
 
 
 {-| an internal type needed to track the position of a control within a tree of
@@ -471,6 +471,7 @@ form { onUpdate, onSubmit, control } =
                 validationErrors =
                     fns.emitFlags state
                         |> fns.collectErrors state
+                        |> List.filter (\{ outcome } -> outcome == Fail)
             in
             ( fns.setAllIdle state
             , case ( parsingResult, validationErrors ) of
@@ -534,6 +535,14 @@ sandbox { outputToString, control } =
 
                     flags =
                         List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
+
+                    parsingResult =
+                        fns.parse s
+
+                    validationErrors =
+                        fns.emitFlags s
+                            |> fns.collectErrors s
+                            |> List.filter (\{ outcome } -> outcome == Fail)
                 in
                 H.div []
                     [ H.h1 [] [ H.text "Form" ]
@@ -553,17 +562,23 @@ sandbox { outputToString, control } =
                             }
                         )
                     , H.h2 [] [ H.text "Output" ]
-                    , case fns.parse s of
-                        Ok output ->
+                    , case ( parsingResult, validationErrors ) of
+                        ( Ok output, [] ) ->
                             H.div []
                                 [ H.p [] [ H.text "Success! Your form produced the following value:" ]
                                 , H.pre [] [ H.text (outputToString output) ]
                                 ]
 
-                        Err errs ->
+                        ( Ok _, vErrs ) ->
                             H.div []
                                 [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                                , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) errs)
+                                , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) vErrs)
+                                ]
+
+                        ( Err errs, vErrs ) ->
+                            H.div []
+                                [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
+                                , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) (errs ++ vErrs))
                                 ]
                     ]
         , subscriptions = fns.subscriptions
@@ -869,13 +884,13 @@ control.
 This is meant to be used in combination with `throwFlagIf`, which throws the "flag".
 
 -}
-catchFlag : String -> String -> Control state delta output -> Control state delta output
-catchFlag flag message (Control control) =
-    Control (control >> flagReceiver (FlagLabel flag) message)
+catchFlag : String -> Outcome -> String -> Control state delta output -> Control state delta output
+catchFlag flag outcome message (Control control) =
+    Control (control >> flagReceiver (FlagLabel flag) outcome message)
 
 
-flagReceiver : Flag -> String -> ControlFns input state delta output -> ControlFns input state delta output
-flagReceiver flag message ctrl =
+flagReceiver : Flag -> Outcome -> String -> ControlFns input state delta output -> ControlFns input state delta output
+flagReceiver flag outcome message ctrl =
     { ctrl
         | collectErrors =
             \state flags ->
@@ -885,7 +900,7 @@ flagReceiver flag message ctrl =
 
                     newReceiver =
                         if List.member flag flags then
-                            [ { path = Path.toString ctrl.path, message = message, outcome = Fail } ]
+                            [ { path = Path.toString ctrl.path, message = message, outcome = outcome } ]
 
                         else
                             []
@@ -904,6 +919,8 @@ flagReceiver flag message ctrl =
 
 
 {-| Display an error on a `Control` if its output fails to meet the predicate.
+
+This causes the `Control` to fail validation.
 
     positiveInt =
         int
@@ -925,7 +942,36 @@ failIf check message (Control c) =
             in
             control
                 |> flagEmitter check flag
-                |> flagReceiver flag message
+                |> flagReceiver flag Fail message
+        )
+
+
+{-| Display an note on a `Control` if its output fails to meet the predicate.
+
+This just shows the user a message - it doesn't cause the `Control` to fail
+validation.
+
+    positiveInt =
+        int
+            |> failIf
+                (\x -> x < 1)
+                "Must be greater than zero!"
+
+-}
+noteIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
+noteIf check message (Control c) =
+    Control
+        (\path ->
+            let
+                control =
+                    c path
+
+                flag =
+                    FlagPath path control.receiverCount
+            in
+            control
+                |> flagEmitter check flag
+                |> flagReceiver flag Pass message
         )
 
 
@@ -1892,7 +1938,7 @@ dict :
 dict keyControl valueControl =
     list
         (tuple
-            (keyControl |> catchFlag "@@dict-unique-keys" "Keys must be unique")
+            (keyControl |> catchFlag "@@dict-unique-keys" Fail "Keys must be unique")
             valueControl
             |> layout (\kv _ _ -> kv)
         )
@@ -1950,7 +1996,7 @@ set :
     -> Control ( State (List (State state)), End ) ( Delta (ListDelta delta), End ) (Set.Set comparable)
 set memberControl =
     list
-        (memberControl |> catchFlag "@@set-unique-keys" "Set members must be unique")
+        (memberControl |> catchFlag "@@set-unique-keys" Fail "Set members must be unique")
         |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
         |> label "Set"
         |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
@@ -3459,7 +3505,7 @@ getStatus parse collectErrors flags ((State internalState _) as state) =
                 flaggedErrors =
                     collectErrors state flags
             in
-            Idle (List.map Err (parsedErrors ++ flaggedErrors))
+            Idle (parsedErrors ++ flaggedErrors)
 
 
 updateRecordStates :
@@ -4572,12 +4618,12 @@ wrappedView status innerView =
                         (\f ->
                             let
                                 ( icon, txt ) =
-                                    case f of
-                                        Ok { message } ->
-                                            ( "💬", message )
+                                    case f.outcome of
+                                        Pass ->
+                                            ( "💬", f.message )
 
-                                        Err { message } ->
-                                            ( "❌", message )
+                                        Fail ->
+                                            ( "❌", f.message )
                             in
                             H.div [] [ H.text (icon ++ " " ++ txt) ]
                         )

@@ -34,7 +34,11 @@ exampleControl =
         |> Control.field .time (timeControl Time.utc)
         |> Control.field .int Control.int
         |> Control.field .float Control.float
-        |> Control.field .string Control.string
+        |> Control.field .string
+            (Control.string
+                |> Control.failIf (String.isEmpty) "Mustn't be blank"
+                |> Control.noteIf (not << String.isEmpty) "Nice work!"
+            )
         |> Control.field .char Control.char
         |> Control.field .bool Control.bool
         |> Control.field .enum
