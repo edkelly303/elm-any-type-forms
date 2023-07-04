@@ -30,8 +30,8 @@ The package provides basic controls that produce primitive Elm types, such as
 control, you can easily create one from scratch using `Control.create`.
 
 It also provides combinators that allow the user to combine controls to create 
-more complex types. In addition to standard combinators for `List`, `Dict`, 
-`Maybe`, `Tuple` and `Wrapper` types, you can also create combinators 
+more complex types. In addition to standard combinators for `List`, `Array`, `Dict`, `Set`,
+`Maybe`, `Result`, `Tuple` and `Triple` types, you can also create combinators 
 for records and custom types, with an API similar to `miniBill/elm-codec`.
 
 Finally, it provides functions to validate and debounce controls, without 
