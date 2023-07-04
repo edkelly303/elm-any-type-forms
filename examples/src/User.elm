@@ -84,7 +84,10 @@ passwordControl =
         |> Control.field .password1 password1Control
         |> Control.field .password2 password2Control
         |> Control.end
-        |> Control.throwFlagIf (\{ password1, password2 } -> password1 /= password2) "passwords-do-not-match"
+        |> Control.throw
+            { when = \{ password1, password2 } -> password1 /= password2
+            , flag = "passwords-do-not-match"
+            }
         |> Control.map { convert = .password1, revert = \p -> { password1 = p, password2 = p } }
 
 
@@ -99,7 +102,7 @@ password2Control : Control.Control String String String
 password2Control =
     Control.string
         |> Control.label "Confirm password"
-        |> Control.catchFlag "passwords-do-not-match" Control.Fail "Passwords must match"
+        |> Control.catch { flag = "passwords-do-not-match", fail = True, message = "Passwords must match" }
 
 
 type alias Model =

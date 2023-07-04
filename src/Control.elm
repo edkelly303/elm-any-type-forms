@@ -4,14 +4,13 @@ module Control exposing
     , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, create
     , failIf, noteIf
-    , throwFlagIf, catchFlag
-    , throwFlagsAt
+    , throw, catch
+    , throwAtIndexes
     , initWith, debounce, id, name, label, class, classList, htmlBefore, htmlAfter
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
-    , Outcome(..)
     )
 
 {-|
@@ -64,29 +63,32 @@ as follows:
             )
             |> field
                 (string
-                    |> catchFlag
-                        "passwords-do-not-match"
-                        Fail
-                        "Must match 'Confirm password' field"
+                    |> catch
+                        { flag = "passwords-do-not-match"
+                        , fail = True
+                        , message = "Must match 'Confirm password' field"
+                        }
                 )
             |> field
                 (string
-                    |> catchFlag
-                        "passwords-do-not-match"
-                        Fail
-                        "Must match 'Enter password' field"
+                    |> catch
+                        { flag = "passwords-do-not-match"
+                        , fail = True
+                        , message = "Must match 'Enter password' field"
+                        }
                 )
             |> end
-            |> throwFlagIf
-                (\{ password, confirmation } -> password /= confirmation)
-                "passwords-do-not-match"
+            |> throw
+                { flag = "passwords-do-not-match"
+                , when = \{ password, confirmation } -> password /= confirmation
+                }
 
-@docs throwFlagIf, catchFlag
+@docs throw, catch
 
 
 ## List validation
 
-@docs throwFlagsAt
+@docs throwAtIndexes
 
 
 # Configuring controls
@@ -246,13 +248,8 @@ type Flag
 type alias Feedback =
     { path : String
     , message : String
-    , outcome : Outcome
+    , fail : Bool
     }
-
-
-type Outcome
-    = Pass
-    | Fail
 
 
 {-| Some internal stuff needed to view controls
@@ -474,7 +471,7 @@ form { onUpdate, onSubmit, control } =
                 validationErrors =
                     fns.emitFlags state
                         |> fns.collectErrors state
-                        |> List.filter (\{ outcome } -> outcome == Fail)
+                        |> List.filter .fail
             in
             ( fns.setAllIdle state
             , case ( parsingResult, validationErrors ) of
@@ -545,7 +542,7 @@ sandbox { outputToString, control } =
                     validationErrors =
                         fns.emitFlags s
                             |> fns.collectErrors s
-                            |> List.filter (\{ outcome } -> outcome == Fail)
+                            |> List.filter .fail
 
                     failView errs =
                         H.div []
@@ -661,7 +658,7 @@ create config =
                 parse =
                     \(State _ state) ->
                         config.parse state
-                            |> Result.mapError (List.map (\message -> { message = message, path = Path.toString path, outcome = Fail }))
+                            |> Result.mapError (List.map (\message -> { message = message, path = Path.toString path, fail = True }))
             in
             { path = path
             , index = 0
@@ -801,7 +798,7 @@ strings, if and only if those first two items are "hello" and "world":
                 "The first two items in the list must not be \"hello\" and \"world\".")
 
     list myString
-        |> throwFlagsAt
+        |> throwAtIndexes
             (\list_ ->
                 case list of
                     "hello" :: "world" :: _ -> [ 0, 1 ]
@@ -811,13 +808,14 @@ strings, if and only if those first two items are "hello" and "world":
             "flag-hello-world"
 
 -}
-throwFlagsAt :
-    (output -> List Int)
-    -> String
+throwAtIndexes :
+    { toIndexes : output -> List Int
+    , flag : String
+    }
     -> Control (List state) (ListDelta delta) output
     -> Control (List state) (ListDelta delta) output
-throwFlagsAt check flagLabel (Control control) =
-    Control (control >> listFlagEmitter check flagLabel)
+throwAtIndexes { toIndexes, flag } (Control control) =
+    Control (control >> listFlagEmitter toIndexes flag)
 
 
 listFlagEmitter :
@@ -851,9 +849,9 @@ This is meant to be used in combination with `catchFlag`, which catches the "fla
 and displays an error.
 
 -}
-throwFlagIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
-throwFlagIf check flag (Control control) =
-    Control (control >> flagEmitter check (FlagLabel flag))
+throw : { when : output -> Bool, flag : String } -> Control state delta output -> Control state delta output
+throw { when, flag } (Control control) =
+    Control (control >> flagEmitter when (FlagLabel flag))
 
 
 flagEmitter : (output -> Bool) -> Flag -> ControlFns input state delta output -> ControlFns input state delta output
@@ -887,13 +885,13 @@ control.
 This is meant to be used in combination with `throwFlagIf`, which throws the "flag".
 
 -}
-catchFlag : String -> Outcome -> String -> Control state delta output -> Control state delta output
-catchFlag flag outcome message (Control control) =
-    Control (control >> flagReceiver (FlagLabel flag) outcome message)
+catch : { flag : String, fail : Bool, message : String } -> Control state delta output -> Control state delta output
+catch { flag, fail, message } (Control control) =
+    Control (control >> flagReceiver (FlagLabel flag) fail message)
 
 
-flagReceiver : Flag -> Outcome -> String -> ControlFns input state delta output -> ControlFns input state delta output
-flagReceiver flag outcome message ctrl =
+flagReceiver : Flag -> Bool -> String -> ControlFns input state delta output -> ControlFns input state delta output
+flagReceiver flag fail message ctrl =
     { ctrl
         | collectErrors =
             \state flags ->
@@ -903,7 +901,7 @@ flagReceiver flag outcome message ctrl =
 
                     newReceiver =
                         if List.member flag flags then
-                            [ { path = Path.toString ctrl.path, message = message, outcome = outcome } ]
+                            [ { path = Path.toString ctrl.path, message = message, fail = fail } ]
 
                         else
                             []
@@ -945,7 +943,7 @@ failIf check message (Control c) =
             in
             control
                 |> flagEmitter check flag
-                |> flagReceiver flag Fail message
+                |> flagReceiver flag True message
         )
 
 
@@ -974,7 +972,7 @@ noteIf check message (Control c) =
             in
             control
                 |> flagEmitter check flag
-                |> flagReceiver flag Pass message
+                |> flagReceiver flag False message
         )
 
 
@@ -1776,7 +1774,7 @@ list (Control ctrl) =
                             )
                             (Ok [])
                             (List.indexedMap Tuple.pair state)
-                            |> Result.mapError (List.map (\feedback -> { path = Path.toString path, message = feedback, outcome = Fail }))
+                            |> Result.mapError (List.map (\feedback -> { path = Path.toString path, message = feedback, fail = True }))
 
                 collectDebouncingReceivers (State _ listState) =
                     List.indexedMap
@@ -1943,11 +1941,14 @@ dict :
 dict keyControl valueControl =
     list
         (tuple
-            (keyControl |> catchFlag "@@dict-unique-keys" Fail "Keys must be unique")
+            (keyControl |> catch { flag = "@@dict-unique-keys", fail = True, message = "Keys must be unique" })
             valueControl
             |> layout (\kv _ _ -> kv)
         )
-        |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
+        |> throwAtIndexes
+            { toIndexes = List.map Tuple.first >> nonUniqueIndexes
+            , flag = "@@dict-unique-keys"
+            }
         |> label "Dict"
         |> map { convert = Dict.fromList, revert = Dict.toList }
 
@@ -2001,8 +2002,8 @@ set :
     -> Control ( State (List (State state)), End ) ( Delta (ListDelta delta), End ) (Set.Set comparable)
 set memberControl =
     list
-        (memberControl |> catchFlag "@@set-unique-keys" Fail "Set members must be unique")
-        |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
+        (memberControl |> catch { flag = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
+        |> throwAtIndexes { toIndexes = nonUniqueIndexes, flag = "@@set-unique-keys" }
         |> label "Set"
         |> map { convert = Set.fromList, revert = Set.toList }
 
@@ -4477,7 +4478,7 @@ validateSelectedTagState :
 validateSelectedTagState parser selectedTag fns states =
     parser
         (\result_ _ End End -> result_)
-        (Err [ { path = "FATAL ERROR", message = "tag index " ++ String.fromInt selectedTag ++ " not found", outcome = Fail } ])
+        (Err [ { path = "FATAL ERROR", message = "tag index " ++ String.fromInt selectedTag ++ " not found", fail = True } ])
         selectedTag
         fns
         states
@@ -4606,7 +4607,7 @@ wrappedView status innerView =
                     "control-debouncing"
 
                 Idle feedback ->
-                    if List.any (\{ outcome } -> outcome == Fail) feedback then
+                    if List.any (\{ fail } -> fail) feedback then
                         "control-invalid"
 
                     else
@@ -4624,12 +4625,11 @@ wrappedView status innerView =
                         (\f ->
                             let
                                 ( icon, txt ) =
-                                    case f.outcome of
-                                        Pass ->
-                                            ( "💬", f.message )
+                                    if f.fail then
+                                        ( "❌", f.message )
 
-                                        Fail ->
-                                            ( "❌", f.message )
+                                    else
+                                        ( "💬", f.message )
                             in
                             H.div [] [ H.text (icon ++ " " ++ txt) ]
                         )
