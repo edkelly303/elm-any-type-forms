@@ -224,7 +224,9 @@ Say :help for help and :exit to exit! More at <https://elm-lang.org/0.19.1/repl>
           )
 ```
 
-Yeah. Those are our types. Sorry not sorry.
+So, those are our types.
+
+Yeah. Do you hate it yet?
 
 ### 2. Make some nice type aliases
 
