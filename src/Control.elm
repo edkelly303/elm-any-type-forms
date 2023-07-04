@@ -1,7 +1,7 @@
 module Control exposing
     ( Control, Form, sandbox, form
     , bool, int, float, string, char, enum
-    , wrapper, tuple, triple, maybe, result, list, dict, set, array
+    , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, create
     , failIf, noteIf
     , throwFlagIf, catchFlag
@@ -10,7 +10,8 @@ module Control exposing
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
-    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
+    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+    , Outcome(..)
     )
 
 {-|
@@ -28,7 +29,7 @@ module Control exposing
 
 # Basic combinators
 
-@docs wrapper, tuple, triple, maybe, result, list, dict, set, array
+@docs tuple, triple, maybe, result, list, dict, set, array, map
 
 
 # Creating a new control
@@ -61,22 +62,24 @@ as follows:
                 , confirmation = confirmation
                 }
             )
-            |> field "Enter password"
+            |> field
                 (string
                     |> catchFlag
-                        "flag-passwords-do-not-match"
+                        "passwords-do-not-match"
+                        Fail
                         "Must match 'Confirm password' field"
                 )
-            |> field "Confirm password"
+            |> field
                 (string
                     |> catchFlag
-                        "flag-passwords-do-not-match"
+                        "passwords-do-not-match"
+                        Fail
                         "Must match 'Enter password' field"
                 )
             |> end
             |> throwFlagIf
                 (\{ password, confirmation } -> password /= confirmation)
-                "flag-passwords-do-not-match"
+                "passwords-do-not-match"
 
 @docs throwFlagIf, catchFlag
 
@@ -113,7 +116,7 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path
+@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
 
 -}
 
@@ -1481,39 +1484,41 @@ bool =
 
 
 {-
-   db   d8b   db d8888b.  .d8b.  d8888b. d8888b. d88888b d8888b.
-   88   I8I   88 88  `8D d8' `8b 88  `8D 88  `8D 88'     88  `8D
-   88   I8I   88 88oobY' 88ooo88 88oodD' 88oodD' 88ooooo 88oobY'
-   Y8   I8I   88 88`8b   88~~~88 88~~~   88~~~   88~~~~~ 88`8b
-   `8b d8'8b d8' 88 `88. 88   88 88      88      88.     88 `88.
-    `8b8' `8d8'  88   YD YP   YP 88      88      Y88888P 88   YD
+   .88b  d88.  .d8b.  d8888b.
+   88'YbdP`88 d8' `8b 88  `8D
+   88  88  88 88ooo88 88oodD'
+   88  88  88 88~~~88 88~~~
+   88  88  88 88   88 88
+   YP  YP  YP YP   YP 88
 -}
 
 
-{-| A combinator that produces a wrapper type around a given type.
+{-| A combinator that converts a `Control` whose `output` is of type `a` to a `Control` whose `output` is of type `b`.
+
+This is particularly useful for implementing "wrapper" types, such as `Id`s.
+
+Note: with most common map functions, such as `List.map`, we only need to supply a function from `a -> b`. In this case,
+however, we need to supply two functions that will allow us to both `convert` the type from `a -> b` and
+`revert` it back from `b -> a`.
 
     type Id
         = Id Int
 
     idControl =
-        wrapper { wrap = Id, unwrap = \(Id i) -> i } int
+        map { convert = Id, revert = \(Id i) -> i } int
 
 -}
-wrapper :
-    { wrap : output -> wrapped, unwrap : wrapped -> output }
-    -> Control state delta output
-    ->
-        Control
-            ( State state, End )
-            ( Delta delta, End )
-            wrapped
-wrapper config control =
+map :
+    { convert : a -> b, revert : b -> a }
+    -> Control state delta a
+    -> Control ( State state, End ) ( Delta delta, End ) b
+map config control =
     Control
         (\path ->
             let
                 (Control inner) =
-                    record config.wrap
-                        |> field config.unwrap control
+                    record config.convert
+                        |> field config.revert control
                         |> end
             in
             inner path
@@ -1944,7 +1949,7 @@ dict keyControl valueControl =
         )
         |> throwFlagsAt (List.map Tuple.first >> nonUniqueIndexes) "@@dict-unique-keys"
         |> label "Dict"
-        |> wrapper { wrap = Dict.fromList, unwrap = Dict.toList }
+        |> map { convert = Dict.fromList, revert = Dict.toList }
 
 
 nonUniqueIndexes : List comparable -> List Int
@@ -1999,7 +2004,7 @@ set memberControl =
         (memberControl |> catchFlag "@@set-unique-keys" Fail "Set members must be unique")
         |> throwFlagsAt nonUniqueIndexes "@@set-unique-keys"
         |> label "Set"
-        |> wrapper { wrap = Set.fromList, unwrap = Set.toList }
+        |> map { convert = Set.fromList, revert = Set.toList }
 
 
 
@@ -2029,7 +2034,7 @@ array :
 array itemControl =
     list itemControl
         |> label "Array"
-        |> wrapper { wrap = Array.fromList, unwrap = Array.toList }
+        |> map { convert = Array.fromList, revert = Array.toList }
 
 
 
