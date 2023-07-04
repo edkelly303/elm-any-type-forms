@@ -104,7 +104,7 @@ roleControl =
 
 ## How do I turn a control into a form?
 
-Taking the example of the `userControl` defined in the previous section, we'll 
+Taking the example of the `User.control` defined in the previous section, we'll 
 start by using `Control.sandbox` to turn it into a form that we can test in the 
 browser.
 
