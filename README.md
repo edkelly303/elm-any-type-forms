@@ -79,11 +79,21 @@ control =
             , role = role
             }
         )
-        |> Control.field .name (Control.string |> Control.failIf String.isEmpty "Name is required")
-        |> Control.field .age Control.int
+        |> Control.field .name nameControl
+        |> Control.field .age ageControl
         |> Control.field .role roleControl
         |> Control.end
 
+nameControl = 
+    Control.string 
+        |> Control.label "Name"
+        |> Control.failIf String.isEmpty "Name cannot be blank"
+
+ageControl =
+    Control.int
+        |> Control.label "Age"
+        |> Control.failIf (\age -> age < 0) "Age cannot be a negative number"
+            
 type Role
     = Regular
     | AdminLevel Int
@@ -98,7 +108,10 @@ roleControl =
                     adminLevel level
         )
         |> Control.tag0 "Regular" Regular
-        |> Control.tag1 "Admin" AdminLevel (Control.int |> Control.label "Security clearance level")
+        |> Control.tag1 "Admin" AdminLevel 
+            (Control.int 
+                |> Control.label "Security clearance level"
+            )
         |> Control.end
 ```
 

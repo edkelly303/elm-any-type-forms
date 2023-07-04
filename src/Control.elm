@@ -785,6 +785,82 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 -}
 
 
+{-| Throw a "flag" from a `Control` if its output fails to meet the predicate.
+
+This is meant to be used in combination with `catch`, which catches the "flag"
+and displays an error.
+
+-}
+throw : { when : output -> Bool, flag : String } -> Control state delta output -> Control state delta output
+throw { when, flag } (Control control) =
+    Control (control >> flagEmitter when (FlagLabel flag))
+
+
+flagEmitter : (output -> Bool) -> Flag -> ControlFns input state delta output -> ControlFns input state delta output
+flagEmitter check flag ctrl =
+    { ctrl
+        | emitFlags =
+            \state ->
+                let
+                    oldFlags =
+                        ctrl.emitFlags state
+
+                    newFlags =
+                        case ctrl.parse state of
+                            Ok output ->
+                                if check output then
+                                    [ flag ]
+
+                                else
+                                    []
+
+                            Err _ ->
+                                []
+                in
+                List.Extra.unique (oldFlags ++ newFlags)
+    }
+
+
+{-| Catch a "flag" thrown by another `Control`, display a message on this
+control, and if desired, cause validation to fail.
+
+This is meant to be used in combination with `throw`, which throws the "flag".
+
+-}
+catch : { flag : String, fail : Bool, message : String } -> Control state delta output -> Control state delta output
+catch { flag, fail, message } (Control control) =
+    Control (control >> flagReceiver (FlagLabel flag) fail message)
+
+
+flagReceiver : Flag -> Bool -> String -> ControlFns input state delta output -> ControlFns input state delta output
+flagReceiver flag fail message ctrl =
+    { ctrl
+        | collectErrors =
+            \state flags ->
+                let
+                    oldReceiver =
+                        ctrl.collectErrors state flags
+
+                    newReceiver =
+                        if List.member flag flags then
+                            [ { path = Path.toString ctrl.path, message = message, fail = fail } ]
+
+                        else
+                            []
+                in
+                List.Extra.unique (oldReceiver ++ newReceiver)
+        , receiverCount = ctrl.receiverCount + 1
+        , collectDebouncingReceivers =
+            \((State internalState _) as state) ->
+                case internalState.status of
+                    DebouncingSince _ ->
+                        flag :: ctrl.collectDebouncingReceivers state
+
+                    _ ->
+                        ctrl.collectDebouncingReceivers state
+    }
+
+
 {-| Conditionally display an error on one or more items in a `list` control,
 based on the output of the `list` control.
 
@@ -793,19 +869,21 @@ strings, if and only if those first two items are "hello" and "world":
 
     myString =
         string
-            |> catchFlag
-                "flag-hello-world"
-                "The first two items in the list must not be \"hello\" and \"world\".")
+            |> catch
+                { flag = "flag-hello-world"
+                , fail = True
+                , message = "The first two items in the list must not be \"hello\" and \"world\"."
+                }
 
     list myString
         |> throwAtIndexes
-            (\list_ ->
+            { toIndexes = \list_ ->
                 case list of
                     "hello" :: "world" :: _ -> [ 0, 1 ]
 
                     _ -> []
-            )
-            "flag-hello-world"
+            , flag = "flag-hello-world"
+            }
 
 -}
 throwAtIndexes :
@@ -840,82 +918,6 @@ listFlagEmitter check flagLabel ctrl =
                                 []
                 in
                 List.Extra.unique (oldFlags ++ newFlags)
-    }
-
-
-{-| Throw a "flag" from a `Control` if its output fails to meet the predicate.
-
-This is meant to be used in combination with `catchFlag`, which catches the "flag"
-and displays an error.
-
--}
-throw : { when : output -> Bool, flag : String } -> Control state delta output -> Control state delta output
-throw { when, flag } (Control control) =
-    Control (control >> flagEmitter when (FlagLabel flag))
-
-
-flagEmitter : (output -> Bool) -> Flag -> ControlFns input state delta output -> ControlFns input state delta output
-flagEmitter check flag ctrl =
-    { ctrl
-        | emitFlags =
-            \state ->
-                let
-                    oldFlags =
-                        ctrl.emitFlags state
-
-                    newFlags =
-                        case ctrl.parse state of
-                            Ok output ->
-                                if check output then
-                                    [ flag ]
-
-                                else
-                                    []
-
-                            Err _ ->
-                                []
-                in
-                List.Extra.unique (oldFlags ++ newFlags)
-    }
-
-
-{-| Catch a "flag" thrown by another `Control` and display an error on this
-control.
-
-This is meant to be used in combination with `throwFlagIf`, which throws the "flag".
-
--}
-catch : { flag : String, fail : Bool, message : String } -> Control state delta output -> Control state delta output
-catch { flag, fail, message } (Control control) =
-    Control (control >> flagReceiver (FlagLabel flag) fail message)
-
-
-flagReceiver : Flag -> Bool -> String -> ControlFns input state delta output -> ControlFns input state delta output
-flagReceiver flag fail message ctrl =
-    { ctrl
-        | collectErrors =
-            \state flags ->
-                let
-                    oldReceiver =
-                        ctrl.collectErrors state flags
-
-                    newReceiver =
-                        if List.member flag flags then
-                            [ { path = Path.toString ctrl.path, message = message, fail = fail } ]
-
-                        else
-                            []
-                in
-                List.Extra.unique (oldReceiver ++ newReceiver)
-        , receiverCount = ctrl.receiverCount + 1
-        , collectDebouncingReceivers =
-            \((State internalState _) as state) ->
-                case internalState.status of
-                    DebouncingSince _ ->
-                        flag :: ctrl.collectDebouncingReceivers state
-
-                    _ ->
-                        ctrl.collectDebouncingReceivers state
     }
 
 
