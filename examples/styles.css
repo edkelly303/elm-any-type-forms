@@ -2,10 +2,6 @@ body {
     font-family: Arial, Helvetica, sans-serif;
 }
 
-input {
-    margin-bottom: 10px;
-}
-
 label {
     margin-right: 10px;
     display: flex;
@@ -13,9 +9,31 @@ label {
 }
 
 fieldset {
-    margin-bottom: 10px;
+    margin: 0px;
 }
 
 fieldset label {
     display: inline;
+}
+
+.control-container {
+    margin-bottom: 10px;
+    padding: 10px;
+}
+
+.control-invalid {
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+.control-valid {
+    background-color: rgba(0, 255, 0, 0.1);
+}
+
+.control-feedback {
+    margin-top: 5px;
+    margin-bottom: 0px;
+}
+
+.control-feedback-fail {
+    color: red
 }

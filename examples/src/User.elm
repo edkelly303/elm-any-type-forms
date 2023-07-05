@@ -39,6 +39,7 @@ nameControl =
     Control.string
         |> Control.label "Name"
         |> Control.failIf String.isEmpty "Name is required"
+        |> Control.noteIf (String.uncons >> Maybe.map (Tuple.first >> Char.isLower) >> Maybe.withDefault False) "Should your name begin with an uppercase letter?"
 
 
 type Role
@@ -217,6 +218,9 @@ main =
                             ( newFormState, Err errors ) ->
                                 -- in a real app, you might choose to do
                                 -- something with the `errors` here.
+                                let
+                                    _ = Debug.log "errors" errors
+                                in
                                 ( { model | formState = newFormState }
                                 , Cmd.none
                                 )

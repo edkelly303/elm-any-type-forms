@@ -1290,7 +1290,7 @@ int =
                         Ok i
 
                     Nothing ->
-                        Err [ "must be a whole number" ]
+                        Err [ "Must be a whole number" ]
         , subscriptions = \state -> Sub.none
         , label = "Int"
         }
@@ -1325,7 +1325,7 @@ float =
                         Ok i
 
                     Nothing ->
-                        Err [ "must be a number" ]
+                        Err [ "Must be a number" ]
         , subscriptions = \state -> Sub.none
         , label = "Float"
         }
@@ -1387,10 +1387,10 @@ char =
                             Ok char_
 
                         else
-                            Err [ "must be exactly one character" ]
+                            Err [ "Must be exactly one character" ]
 
                     Nothing ->
-                        Err [ "must not be blank" ]
+                        Err [ "Must not be blank" ]
         , subscriptions = \state -> Sub.none
         , label = "Char"
         }
@@ -4615,6 +4615,7 @@ wrappedView status innerView =
                     else
                         "control-valid"
             )
+        , HA.class "control-container"
         ]
         [ innerView
         , case status of
@@ -4622,18 +4623,22 @@ wrappedView status innerView =
                 H.text ""
 
             Idle feedback ->
-                H.div []
+                H.div [ HA.class "control-feedback-container" ]
                     (List.map
                         (\f ->
                             let
-                                ( icon, txt ) =
+                                ( class_, text_ ) =
                                     if f.fail then
-                                        ( "❌", f.message )
+                                        ( "control-feedback-fail", f.message )
 
                                     else
-                                        ( "💬", f.message )
+                                        ( "control-feedback-note", f.message )
                             in
-                            H.div [] [ H.text (icon ++ " " ++ txt) ]
+                            H.p
+                                [ HA.class class_
+                                , HA.class "control-feedback"
+                                ]
+                                [ H.text text_ ]
                         )
                         feedback
                     )
