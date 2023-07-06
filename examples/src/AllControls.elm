@@ -128,7 +128,7 @@ counterControl =
                 )
         , view =
             \{ state, label, id, name } ->
-                Html.div
+                [ Html.div
                     [ Html.Attributes.id id
                     , Html.Attributes.name name
                     ]
@@ -145,6 +145,7 @@ counterControl =
                         ]
                         [ Html.text "+1" ]
                     ]
+                ]
         , parse = Ok
         , subscriptions = \_ -> Sub.none
         , label = "Counter"
@@ -190,25 +191,24 @@ timeControl tz =
                             |> String.fromInt
                             |> String.padLeft 2 '0'
                 in
-                Html.div []
-                    [ Html.label [ Html.Attributes.for id ] [ Html.text label ]
-                    , Html.input
-                        [ Html.Attributes.id id
-                        , Html.Attributes.name name
-                        , Html.Attributes.class class
-                        , Html.Events.onInput InputUpdated
-                        ]
-                        [ Html.text state.input ]
-                    , Html.small []
-                        [ Html.text
-                            ("(Current time is "
-                                ++ showTime Time.toHour
-                                ++ ":"
-                                ++ showTime Time.toMinute
-                                ++ ")"
-                            )
-                        ]
+                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]
+                , Html.input
+                    [ Html.Attributes.id id
+                    , Html.Attributes.name name
+                    , Html.Attributes.class class
+                    , Html.Events.onInput InputUpdated
                     ]
+                    [ Html.text state.input ]
+                , Html.small []
+                    [ Html.text
+                        ("(Current time is "
+                            ++ showTime Time.toHour
+                            ++ ":"
+                            ++ showTime Time.toMinute
+                            ++ ")"
+                        )
+                    ]
+                ]
         , parse =
             \{ input, now } ->
                 case String.split ":" input of

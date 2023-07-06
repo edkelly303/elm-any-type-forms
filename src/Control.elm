@@ -180,7 +180,7 @@ type alias ControlConfig state delta output =
     { initEmpty : ( state, Cmd delta )
     , initWith : output -> ( state, Cmd delta )
     , update : delta -> state -> ( state, Cmd delta )
-    , view : { label : String, id : String, name : String, class : String, state : state } -> Html delta
+    , view : { label : String, id : String, name : String, class : String, state : state } -> List (Html delta)
     , subscriptions : state -> Sub delta
     , parse : state -> Result (List String) output
     , label : String
@@ -1461,20 +1461,19 @@ bool =
         , initWith = \b -> ( b, Cmd.none )
         , view =
             \config ->
-                H.div []
-                    [ H.label
-                        [ HA.for config.id ]
-                        [ H.text config.label ]
-                    , H.input
-                        [ HA.type_ "checkbox"
-                        , HA.id config.id
-                        , HA.name config.name
-                        , HA.class config.class
-                        , HA.checked config.state
-                        , HE.onClick (not config.state)
-                        ]
-                        []
+                [ H.label
+                    [ HA.for config.id ]
+                    [ H.text config.label ]
+                , H.input
+                    [ HA.type_ "checkbox"
+                    , HA.id config.id
+                    , HA.name config.name
+                    , HA.class config.class
+                    , HA.checked config.state
+                    , HE.onClick (not config.state)
                     ]
+                    []
+                ]
         , update = \delta _ -> ( delta, Cmd.none )
         , parse = Ok
         , subscriptions = \state -> Sub.none
@@ -3901,7 +3900,7 @@ null tag =
         { initEmpty = ( (), Cmd.none )
         , initWith = \_ -> ( (), Cmd.none )
         , update = \() () -> ( (), Cmd.none )
-        , view = \_ -> H.text ""
+        , view = \_ -> []
         , parse = \() -> Ok tag
         , subscriptions = \() -> Sub.none
         , label = ""
@@ -4597,7 +4596,7 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
 -}
 
 
-wrappedView : Status -> Html delta -> Html delta
+wrappedView : Status -> List (Html delta) -> Html delta
 wrappedView status innerView =
     H.div
         [ HA.class
@@ -4617,35 +4616,36 @@ wrappedView status innerView =
             )
         , HA.class "control-container"
         ]
-        [ innerView
-        , case status of
-            Idle [] ->
-                H.text ""
+        (innerView
+            ++ [ case status of
+                    Idle [] ->
+                        H.text ""
 
-            Idle feedback ->
-                H.div [ HA.class "control-feedback-container" ]
-                    (List.map
-                        (\f ->
-                            let
-                                ( class_, text_ ) =
-                                    if f.fail then
-                                        ( "control-feedback-fail", f.message )
+                    Idle feedback ->
+                        H.div [ HA.class "control-feedback-container" ]
+                            (List.map
+                                (\f ->
+                                    let
+                                        ( class_, text_ ) =
+                                            if f.fail then
+                                                ( "control-feedback-fail", f.message )
 
-                                    else
-                                        ( "control-feedback-note", f.message )
-                            in
-                            H.p
-                                [ HA.class class_
-                                , HA.class "control-feedback"
-                                ]
-                                [ H.text text_ ]
-                        )
-                        feedback
-                    )
+                                            else
+                                                ( "control-feedback-note", f.message )
+                                    in
+                                    H.p
+                                        [ HA.class class_
+                                        , HA.class "control-feedback"
+                                        ]
+                                        [ H.text text_ ]
+                                )
+                                feedback
+                            )
 
-            _ ->
-                H.text ""
-        ]
+                    _ ->
+                        H.text ""
+               ]
+        )
 
 
 customTypeView :
@@ -4665,7 +4665,7 @@ customTypeView path staticConfig options selectedTag selectedTagView =
             , name = Maybe.withDefault (Path.toString path) staticConfig.name
             , label = staticConfig.label
             }
-            :: selectedTagView
+            ++ selectedTagView
 
     else
         selectedTagView
@@ -4765,23 +4765,22 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
         ]
 
 
-textControlView : String -> { state : String, id : String, label : String, name : String, class : String } -> Html String
+textControlView : String -> { state : String, id : String, label : String, name : String, class : String } -> List (Html String)
 textControlView type_ config =
-    H.div []
-        [ H.label [ HA.for config.id ] [ H.text config.label ]
-        , H.input
-            [ HE.onInput identity
-            , HA.name config.name
-            , HA.id config.id
-            , HA.class config.class
-            , HA.type_ type_
-            , HA.value config.state
-            ]
-            [ H.text config.state ]
+    [ H.label [ HA.for config.id ] [ H.text config.label ]
+    , H.input
+        [ HE.onInput identity
+        , HA.name config.name
+        , HA.id config.id
+        , HA.class config.class
+        , HA.type_ type_
+        , HA.value config.state
         ]
+        [ H.text config.state ]
+    ]
 
 
-enumView : List ( String, enum ) -> { state : enum, id : String, label : String, name : String, class : String } -> Html enum
+enumView : List ( String, enum ) -> { state : enum, id : String, label : String, name : String, class : String } -> List (Html enum)
 enumView tags config =
     radioView
         { options = List.map (\( a, b ) -> ( b, a )) tags
@@ -4801,9 +4800,9 @@ radioView :
     , label : String
     , name : String
     }
-    -> Html msg
+    -> List (Html msg)
 radioView config =
-    H.fieldset
+    [ H.fieldset
         [ HA.id config.id ]
         (H.legend [] [ H.text config.label ]
             :: List.map
@@ -4823,6 +4822,7 @@ radioView config =
                 )
                 config.options
         )
+    ]
 
 
 onChecked : msg -> H.Attribute msg
