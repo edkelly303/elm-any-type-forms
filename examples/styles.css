@@ -37,3 +37,17 @@ fieldset label {
 .control-feedback-fail {
     color: red
 }
+
+pre {
+    border: 1px gray solid;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: aliceblue;
+}
+
+code {
+    border: 1px gray solid;
+    border-radius: 3px;
+    padding: 2px;
+    background-color: aliceblue;
+}
