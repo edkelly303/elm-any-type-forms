@@ -53,6 +53,11 @@ pre {
     background-color: aliceblue;
 }
 
+pre code {
+    border: none;
+    padding: 0px;
+}
+
 code {
     border: 1px gray solid;
     border-radius: 3px;

@@ -4,6 +4,8 @@ import Browser
 import Control as C
 import Html as H
 import Html.Attributes as HA
+import Markdown.Parser as Markdown
+import Markdown.Renderer
 
 
 main =
@@ -108,157 +110,60 @@ lessons =
 basicControls =
     C.record (\bool string char int float -> { bool = bool, string = string, char = char, int = int, float = float })
         |> C.field .bool
-            (C.bool
-                |> C.htmlBefore
-                    (para
-                        [ text "The most basic control is probably "
-                        , code "Control.bool"
-                        , text ", which we render using a standard HTML "
-                        , code "<input type=\"checkbox\">"
-                        , text " element."
-                        ]
-                    )
-            )
+            (C.bool |> mdBefore """
+The most basic control is probably `Control.bool`, which we render using a standard HTML `<input type="checkbox">` element.""")
         |> C.field .string
-            (C.string
-                |> C.htmlBefore
-                    (para
-                        [ code "Control.string"
-                        , text " is rendered as "
-                        , code "<input type=\"text\">"
-                        , text "."
-                        ]
-                    )
-            )
+            (C.string |> mdBefore """
+`Control.string` is rendered as `<input type="text">`.""")
         |> C.field .char
-            (C.char
-                |> C.htmlBefore
-                    (para
-                        [ code "Control.char"
-                        , text " is very similar, except that it provides built-in validation to ensure that the user enters exactly one character."
-                        ]
-                    )
-            )
+            (C.char |> mdBefore """
+`Control.char` is very similar, except that it provides built-in validation to ensure that the user enters exactly one character.""")
         |> C.field .int
-            (C.int
-                |> C.htmlBefore
-                    (para
-                        [ code "Control.int"
-                        , text " and "
-                        , code "Control.float"
-                        , text " are both rendered as "
-                        , code "<input type=\"number\">"
-                        , text ". Both provide built-in validation to ensure that the user enters the right type of number."
-                        ]
-                    )
-            )
+            (C.int |> mdBefore """
+`Control.int` and `Control.float` are both rendered as `<input type="number">`. Both provide built-in validation to ensure that the user enters the right type of number.""")
         |> C.field .float C.float
         |> C.end
-        |> C.htmlBefore
-            (H.div []
-                [ h2 "Basic controls"
-                , para
-                    [ text "Let's start by looking at the simple controls that "
-                    , code "elm-any-type-forms"
-                    , text " provides for Elm's primitive types: "
-                    , code "Bool"
-                    , text ", "
-                    , code "String"
-                    , text ", "
-                    , code "Char"
-                    , text ", "
-                    , code "Int"
-                    , text " and "
-                    , code "Float"
-                    , text "."
-                    ]
-                ]
-            )
-        |> C.htmlAfter
-            (H.div []
-                [ para
-                    [ text "All controls are displayed with "
-                    , code "<label>"
-                    , text " elements to help with accessibility. Each control is wrapped in a "
-                    , code "<div class=\"control-container\">"
-                    , text ", which contains the label, the input, and potentially also a "
-                    , code "<div class=\"control-feedback-container\">"
-                    , text " that contains a list of feedback from validation."
-                    ]
-                , para
-                    [ text "But how do we actually use a control? First, we need to convert it into a form..." ]
-                ]
-            )
+        |> mdBefore """
+## Basic controls
+Let's start by looking at the simple controls that `elm-any-type-forms` provides for Elm's primitive types: `Bool`, `String`, `Char`, `Int` and `Float`.
+"""
+        |> mdAfter """
+All controls are displayed with `<label>` elements to help with accessibility. Each control is wrapped in a `<div class="control-container">`, which contains the label, the input, and potentially also a `<div class="control-feedback-container">` that contains a list of feedback from validation.
+
+But how do we actually use a control? First, we need to convert it into a form..."""
 
 
 yourFirstForm =
     C.bool
-        |> C.htmlBefore
-            (H.div []
-                [ h2 "Your first form"
-                , para
-                    [ text "Let's get up and running by building the simplest possible thing: a form that consists of just a single "
-                    , code "Bool"
-                    , text " input."
-                    ]
-                , para
-                    [ text "Create a new project folder, run "
-                    , code "elm init"
-                    , text " and then "
-                    , code "elm install edkelly303/elm-any-type-forms"
-                    , text "."
-                    ]
-                , para
-                    [ text "Next, create a file called 'Main.elm' in the "
-                    , code "/src"
-                    , text " folder."
-                    ]
-                , para
-                    [ text "Open 'Main.elm' in your code editor and paste in the following:"
-                    ]
-                , pre
-                    [ "module Main exposing (main)"
-                    , ""
-                    , "import Control"
-                    , ""
-                    , "main ="
-                    , "    Control.sandbox"
-                    , "        { control = Control.bool"
-                    , "        , outputToString = Debug.toString"
-                    , "        }"
-                    ]
-                , para
-                    [ text "If you now run "
-                    , code "elm reactor"
-                    , text " from the root of your project folder and visit "
-                    , link "http://localhost:8000/src/Main.elm"
-                    , text ", you should see a webpage with a control something like this:"
-                    ]
-                ]
-            )
-        |> C.htmlAfter
-            (H.div []
-                [ para
-                    [ text "(Although the styling will be different, because "
-                    , code "elm reactor"
-                    , text " doesn't include any CSS.)"
-                    ]
-                , para
-                    [ text "Try swapping "
-                    , code "Control.bool"
-                    , text " for "
-                    , code "Control.string"
-                    , text " or "
-                    , code "Control.int"
-                    , text " to see different types of controls in action."
-                    ]
-                , para
-                    [ text "However, most useful forms contain more than one control. How can we "
-                    , H.em [] [ text "combine" ]
-                    , text " controls to make something a bit more interesting?"
-                    ]
-                ]
-            )
+        |> mdBefore """
+## Your first form
+Let's get up and running by building the simplest possible thing: a form that consists of just a single `Bool` input.
+
+Create a new project folder, run `elm init` and then `elm install edkelly303/elm-any-type-forms`.
+
+Next, create a file called 'Main.elm' in the `/src` folder. Open `Main.elm` in your code editor and paste in the following:
+
+```
+module Main exposing (main)
+
+import Control
+
+main =
+    Control.sandbox
+        { control = Control.bool
+        , outputToString = Debug.toString
+        }
+```
+
+If you now run `elm reactor` from the root of your project folder and visit [http://localhost:8000/src/Main.elm](http://localhost:8000/src/Main.elm), you should see a webpage with a control something like this:
+"""
+        |> mdAfter """
+(Although the styling will be different, because `elm reactor` doesn't include any CSS.)
+
+Try swapping `Control.bool` for `Control.string` or `Control.int` to see different types of controls in action.
+
+However, most useful forms contain more than one control. How can we _combine_ controls to make something a bit more interesting?
+"""
 
 
 tuplesAndTriples =
@@ -338,3 +243,50 @@ link address =
 
 pre strings =
     H.pre [] [ H.text (String.join "\n" strings) ]
+
+
+
+{-
+   .88b  d88.  .d8b.  d8888b. db   dD d8888b.  .d88b.  db   d8b   db d8b   db      db   db d88888b db      d8888b. d88888b d8888b. .d8888.
+   88'YbdP`88 d8' `8b 88  `8D 88 ,8P' 88  `8D .8P  Y8. 88   I8I   88 888o  88      88   88 88'     88      88  `8D 88'     88  `8D 88'  YP
+   88  88  88 88ooo88 88oobY' 88,8P   88   88 88    88 88   I8I   88 88V8o 88      88ooo88 88ooooo 88      88oodD' 88ooooo 88oobY' `8bo.
+   88  88  88 88~~~88 88`8b   88`8b   88   88 88    88 Y8   I8I   88 88 V8o88      88~~~88 88~~~~~ 88      88~~~   88~~~~~ 88`8b     `Y8b.
+   88  88  88 88   88 88 `88. 88 `88. 88  .8D `8b  d8' `8b d8'8b d8' 88  V888      88   88 88.     88booo. 88      88.     88 `88. db   8D
+   YP  YP  YP YP   YP 88   YD YP   YD Y8888D'  `Y88P'   `8b8' `8d8'  VP   V8P      YP   YP Y88888P Y88888P 88      Y88888P 88   YD `8888Y'
+
+
+-}
+
+
+mdBefore str =
+    C.htmlBefore (md str)
+
+
+mdAfter str =
+    C.htmlAfter (md str)
+
+
+md : String -> H.Html msg
+md markdownInput =
+    case
+        markdownInput
+            |> Markdown.parse
+            |> Result.mapError deadEndsToString
+            |> Result.andThen
+                (\ast ->
+                    Markdown.Renderer.render
+                        Markdown.Renderer.defaultHtmlRenderer
+                        ast
+                )
+    of
+        Ok rendered ->
+            H.div [] rendered
+
+        Err errors ->
+            text errors
+
+
+deadEndsToString deadEnds =
+    deadEnds
+        |> List.map Markdown.deadEndToString
+        |> String.join "\n"
