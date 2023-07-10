@@ -1633,7 +1633,15 @@ tuple first second =
         |> field Tuple.second second
         |> end
         |> label "Tuple"
-        |> layout (\fields staticConfig _ -> [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ])
+        |> layout
+            (\fields staticConfig _ ->
+                [ staticConfig.before |> Maybe.map List.singleton
+                , Just [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
+                , staticConfig.after |> Maybe.map List.singleton
+                ]
+                    |> List.filterMap identity
+                    |> List.concat
+            )
 
 
 
@@ -1669,7 +1677,15 @@ triple first second third =
         |> field (\( _, _, c ) -> c) third
         |> end
         |> label "Triple"
-        |> layout (\fields staticConfig _ -> [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ])
+        |> layout
+            (\fields staticConfig _ ->
+                [ staticConfig.before |> Maybe.map List.singleton
+                , Just [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
+                , staticConfig.after |> Maybe.map List.singleton
+                ]
+                    |> List.filterMap identity
+                    |> List.concat
+            )
 
 
 
@@ -4694,7 +4710,9 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
 
         view_ =
             H.div
-                [ HA.id id_ ]
+                [ HA.id id_
+                , HA.class "control-container"
+                ]
                 [ H.label
                     [ HA.for id_ ]
                     [ H.text staticConfig.label ]
