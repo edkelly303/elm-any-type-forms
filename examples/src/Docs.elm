@@ -677,7 +677,7 @@ multivalidation =
         |> Control.end
         |> Control.throw
             { flag = "password"
-            , when = \{ choosePassword, confirmPassword } -> choosePassword == confirmPassword
+            , when = \{ choosePassword, confirmPassword } -> choosePassword /= confirmPassword
             }
         |> mdBefore multivalidationIntro
         |> mdAfter multivalidationOutro
