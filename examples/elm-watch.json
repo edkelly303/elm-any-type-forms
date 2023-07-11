@@ -9,5 +9,6 @@
             ],
             "output": "main.js"
         }
-    }
+    },
+    "serve": "."
 }
