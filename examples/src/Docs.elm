@@ -2,7 +2,9 @@ module Docs exposing (main)
 
 import Browser
 import Control
+import Date
 import Html as H
+import Html.Attributes as HA
 import Markdown.Parser as Markdown
 import Markdown.Renderer
 
@@ -437,8 +439,9 @@ bit daunting at first, but we'll walk through it step by step:
 
 ```
 productControl =
-    -- First, we provide a function that can destructure a `Product` tag
-    -- and give us access to its arguments:
+    
+    -- First, we call `Control.customType` and pass it a function that can 
+    -- destructure a `Product` tag and give us access to its arguments.
     
     Control.customType
         (\\circle triangle rectangle tag ->
@@ -477,7 +480,8 @@ productControl =
             (Control.int |> Control.label "Width")
             (Control.int |> Control.label "Height")
 
-        -- Now just declare that we're done and give the control an appropriate
+        -- Now just call `Control.end` to declare that we've finished adding 
+        -- tags, and then `Control.label` to give the control an appropriate 
         -- label.
         
         |> Control.end
@@ -934,11 +938,225 @@ And you should see something a little like this:
 
 multivalidationOutro =
     """
+We're nearly done with this tutorial - just one more lesson to go. The final thing we'll cover is what to do when you 
+want to create a completely new type of control from scratch.
 """
 
 
 createYourOwn =
-    Control.int
+    Control.record
+        (\name dateOfBirth products id password ->
+            { name = name
+            , dateOfBirth = dateOfBirth
+            , products = products
+            , id = id
+            , password = password
+            }
+        )
+        |> Control.field .name nameControl
+        |> Control.field .dateOfBirth dateControl
+        |> Control.field .products productListControl
+        |> Control.field .id idControl
+        |> Control.field .password passwordControl
+        |> Control.end
+        |> mdBefore createYourOwnIntro
+        |> mdAfter createYourOwnOutro
+
+
+dateControl =
+    Control.create
+        { label = "Date of birth"
+        , initEmpty = ( "1970-01-01", Cmd.none )
+        , initWith = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
+        , update = \delta state -> ( delta, Cmd.none )
+        , view =
+            \{ state, id, label, name, class } ->
+                [ H.label [ HA.for id ] [ H.text label ]
+                , H.input
+                    [ HA.type_ "date"
+                    , HA.value state
+                    , HA.id id
+                    , HA.class class
+                    , HA.name name
+                    ]
+                    []
+                ]
+        , subscriptions = \state -> Sub.none
+        , parse =
+            \state ->
+                case Date.fromIsoString state of
+                    Ok date ->
+                        Ok date
+
+                    Err error ->
+                        Err [ error ]
+        }
+
+
+
+
+
+createYourOwnIntro =
+    """
+## Creating your own controls
+
+One final issue with our `customerControl`: why the heck are we including the customer's current age? In a year's time, 
+that data is going to be completely stale and useless. Instead, it would be much better to capture their date of birth. 
+
+### Playing the dating game
+
+The first thing we'll need is a `Date` type. There isn't one in `elm/core`, so let's go to the terminal and do 
+`elm install justinmimbs/date`. 
+
+Once the package has been installed, add a few imports to the top of the `Main.elm` module:
+```
+import Date
+import Html
+import Html.Attributes
+```
+
+Now, change our `Customer` type as follows:
+
+```
+type alias Customer = 
+    { name : String
+    , dateOfBirth : Date.Date
+    , products : List Product
+    , id : Id
+    , password : String
+    }
+```
+
+### Building a Date control
+
+We _could_ pull together a date control using the combinators we've already learned - something like this:
+
+```
+boringDateControl =
+    Control.record Date.fromCalendarDate
+        |> Control.field Date.year
+            (Control.int
+                |> Control.label "Year"
+            )
+        |> Control.field Date.month
+            (Control.int
+                |> Control.label "Month"
+                |> Control.map
+                    { convert = Date.numberToMonth
+                    , revert = Date.monthToNumber
+                    }
+            )
+        |> Control.field Date.day
+            (Control.int
+                |> Control.label "Day"
+            )
+        |> Control.end
+```
+
+(Notice that although we're using `Control.record`, we're not actually creating a record here! We're passing the values 
+produced by the three fields to the `Date.fromCalendarDate` function.)
+
+### Building a Date control _from scratch_
+
+But let's not use `Control.record` - let's say we want to use HTML's built-in `<input type="date">` element to render 
+our `Date` control. 
+
+We can do this with `Control.create`, which gives us the flexibility to build completely bespoke controls for any Elm 
+type.
+
+```
+dateControl =
+    Control.create
+        { label = "Date of birth"
+        , initEmpty = ( "1970-01-01", Cmd.none )
+        , initWith = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
+        , update = \\delta state -> ( delta, Cmd.none )
+        , view =
+            \\{ state, id, label, name, class } ->
+                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]
+                , Html.input
+                    [ Html.Attributes.type_ "date"
+                    , Html.Attributes.value state
+                    , Html.Attributes.id id
+                    , Html.Attributes.class class
+                    , Html.Attributes.name name
+                    ]
+                    []
+                ]
+        , subscriptions = \\state -> Sub.none
+        , parse =
+            \\state ->
+                case Date.fromIsoString state of
+                    Ok date ->
+                        Ok date
+
+                    Err error ->
+                        Err [ error ]
+        }
+```
+
+This looks like a lot to digest, but we can take it one field at a time.
+
+`label : String` - this is the default label that will be displayed on the control.
+
+`initEmpty : ( state, Cmd delta )` - this specifies the default internal `state` of the control when it's initialised, 
+together with a `Cmd` to send during initialisation (if necessary). In our case, the `state` is just a `String`, and we 
+don't need to send any `Cmd`s.
+
+`initWith : output -> ( state, Cmd delta )` - this defines how to initialise the `state` of the control from a value of 
+its `output` type. In this case, we're teaching it how to turn a `Date` into a `String`.
+
+`update : delta -> state -> ( state, Cmd delta )` - this is exactly like a normal Elm app's `update` function - for 
+`delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all 
+we need to do in our update function is replace the existing `state` with the new `delta`.
+
+`view : { state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` - this is 
+very similar to a normal Elm app's `view` function, but with two differences. First, in addition to the `state`, it also 
+gives us access to some other stuff that we can include in our view's HTML attributes. Second, it produces a list of 
+HTML elements, rather than a single element.
+
+`subscriptions: state -> Sub delta` - this is exactly like a normal Elm app's `subscriptions` function. Here, we don't 
+need to manage any subscriptions, so we can just return `Sub.none`.
+
+`parse: state -> Result (List String) output` - this attempts to turn the control's `state` into a value of the 
+control's `output` type, returning a list of errors if it fails. In this case, it's trying to parse a `String` into a 
+`Date`.
+
+### Wiring it up
+
+Finally, let's update `customerControl` to replace the `age` field with our new `dateOfBirth` field:
+
+```
+customerControl = 
+    Control.record
+        (\\name dateOfBirth products id password ->
+            { name = name
+            , dateOfBirth = dateOfBirth
+            , products = products
+            , id = id
+            , password = password
+            }
+        )
+        |> Control.field .name nameControl
+        |> Control.field .dateOfBirth dateControl
+        |> Control.field .products productListControl
+        |> Control.field .id idControl
+        |> Control.field .password passwordControl
+        |> Control.end
+        |> mdBefore createYourOwnIntro
+        |> mdAfter createYourOwnOutro
+```
+
+And the final result should look like this:
+"""
+
+
+createYourOwnOutro =
+    """
+Congratulations! You made it through the tutorial. There's quite a lot more to learn about this package, but that's 
+beyond the scope of this introduction. For a deeper dive, check out the docs at 
+[package.elm-lang.org](https://package.elm-lang.org/packages/edkelly303/elm-any-type-forms/latest).
+"""
 
 
 
