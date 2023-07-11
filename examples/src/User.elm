@@ -85,10 +85,9 @@ passwordControl =
         |> Control.field .password1 password1Control
         |> Control.field .password2 password2Control
         |> Control.end
-        |> Control.throw
-            { when = \{ password1, password2 } -> password1 /= password2
-            , flag = "passwords-do-not-match"
-            }
+        |> Control.alertIf
+            (\{ password1, password2 } -> password1 /= password2)
+            "passwords-do-not-match"
         |> Control.map { convert = .password1, revert = \p -> { password1 = p, password2 = p } }
 
 
@@ -103,7 +102,7 @@ password2Control : Control.Control String String String
 password2Control =
     Control.string
         |> Control.label "Confirm password"
-        |> Control.catch { flag = "passwords-do-not-match", fail = True, message = "Passwords must match" }
+        |> Control.respond { alert = "passwords-do-not-match", fail = True, message = "Passwords must match" }
 
 
 type alias Model =
@@ -219,7 +218,8 @@ main =
                                 -- in a real app, you might choose to do
                                 -- something with the `errors` here.
                                 let
-                                    _ = Debug.log "errors" errors
+                                    _ =
+                                        Debug.log "errors" errors
                                 in
                                 ( { model | formState = newFormState }
                                 , Cmd.none

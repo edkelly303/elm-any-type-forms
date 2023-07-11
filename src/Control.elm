@@ -4,13 +4,13 @@ module Control exposing
     , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, create
     , failIf, noteIf
-    , throw, catch
-    , throwAtIndexes
+    , alertIf, respond
+    , alertAtIndexes
     , initWith, debounce, id, name, label, class, classList, htmlBefore, htmlAfter
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
-    , Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+    , Access, AdvancedControl, Builder, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
     )
 
 {-|
@@ -63,32 +63,29 @@ as follows:
             )
             |> field
                 (string
-                    |> catch
-                        { flag = "passwords-do-not-match"
+                    |> respond
+                        { alert = "passwords-do-not-match"
                         , fail = True
                         , message = "Must match 'Confirm password' field"
                         }
                 )
             |> field
                 (string
-                    |> catch
-                        { flag = "passwords-do-not-match"
+                    |> respond
+                        { alert = "passwords-do-not-match"
                         , fail = True
                         , message = "Must match 'Enter password' field"
                         }
                 )
             |> end
-            |> throw
-                { flag = "passwords-do-not-match"
-                , when = \{ password, confirmation } -> password /= confirmation
-                }
+            |> alertIf (\{ password, confirmation } -> password /= confirmation) "passwords-do-not-match"
 
-@docs throw, catch
+@docs alertIf, respond
 
 
 ## List validation
 
-@docs throwAtIndexes
+@docs alertAtIndexes
 
 
 # Configuring controls
@@ -118,7 +115,7 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs Access, AdvancedControl, Builder, ControlFns, Flag, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+@docs Access, AdvancedControl, Builder, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
 
 -}
 
@@ -222,9 +219,9 @@ type alias ControlFns input state delta output =
     , childViews : ViewConfigStatic (Delta delta) -> ViewConfigDynamic state -> List (Html (Delta delta))
     , parse : State state -> Result (List Feedback) output
     , path : Path
-    , emitFlags : State state -> List Flag
-    , collectDebouncingReceivers : State state -> List Flag
-    , collectErrors : State state -> List Flag -> List Feedback
+    , emitAlerts : State state -> List Alert
+    , collectDebouncingReceivers : State state -> List Alert
+    , collectErrors : State state -> List Alert -> List Feedback
     , receiverCount : Int
     , setAllIdle : State state -> State state
     , label : String
@@ -239,10 +236,10 @@ type alias ControlFns input state delta output =
 
 {-| Some internal stuff needed to handle validations
 -}
-type Flag
-    = FlagLabel String
-    | FlagPath Path Int
-    | FlagList Path String (List Int)
+type Alert
+    = AlertLabel String
+    | AlertPath Path Int
+    | AlertList Path String (List Int)
 
 
 type alias Feedback =
@@ -257,7 +254,7 @@ type alias Feedback =
 type alias ViewConfigDynamic state =
     { state : state
     , status : Status
-    , flags : List Flag
+    , alerts : List Alert
     , selected : Int
     }
 
@@ -434,34 +431,33 @@ form { onUpdate, onSubmit, control } =
     , view =
         \((State internalState state) as s) ->
             let
-                emittedFlags =
-                    fns.emitFlags s
+                emittedAlerts =
+                    fns.emitAlerts s
 
                 debouncingReceivers =
                     fns.collectDebouncingReceivers s
 
-                flags =
-                    List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
+                alerts =
+                    List.filter (\f -> not <| List.member f debouncingReceivers) emittedAlerts
             in
             H.form [ HE.onSubmit onSubmit ]
-                [ H.div []
-                    (fns.view
-                        { id = fns.id
-                        , name = fns.name
-                        , label = fns.label
-                        , class = fns.class
-                        , before = fns.htmlBefore
-                        , after = fns.htmlAfter
-                        }
-                        { state = state
-                        , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
-                        , flags = flags
-                        , selected = internalState.selected
-                        }
-                    )
-                    |> H.map onUpdate
-                , button onSubmit "Submit"
-                ]
+                ((fns.view
+                    { id = fns.id
+                    , name = fns.name
+                    , label = fns.label
+                    , class = fns.class
+                    , before = fns.htmlBefore
+                    , after = fns.htmlAfter
+                    }
+                    { state = state
+                    , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
+                    , alerts = alerts
+                    , selected = internalState.selected
+                    }
+                    |> List.map (H.map onUpdate)
+                 )
+                    ++ [ button onSubmit "Submit" ]
+                )
     , submit =
         \state ->
             let
@@ -469,7 +465,7 @@ form { onUpdate, onSubmit, control } =
                     fns.parse state
 
                 validationErrors =
-                    fns.emitFlags state
+                    fns.emitAlerts state
                         |> fns.collectErrors state
                         |> List.filter .fail
             in
@@ -527,20 +523,20 @@ sandbox { outputToString, control } =
         , view =
             \((State internalState state) as s) ->
                 let
-                    emittedFlags =
-                        fns.emitFlags s
+                    emittedAlerts =
+                        fns.emitAlerts s
 
                     debouncingReceivers =
                         fns.collectDebouncingReceivers s
 
-                    flags =
-                        List.filter (\f -> not <| List.member f debouncingReceivers) emittedFlags
+                    alerts =
+                        List.filter (\f -> not <| List.member f debouncingReceivers) emittedAlerts
 
                     parsingResult =
                         fns.parse s
 
                     validationErrors =
-                        fns.emitFlags s
+                        fns.emitAlerts s
                             |> fns.collectErrors s
                             |> List.filter .fail
 
@@ -562,8 +558,8 @@ sandbox { outputToString, control } =
                             , after = fns.htmlAfter
                             }
                             { state = state
-                            , status = getStatus fns.parse fns.collectErrors flags (State internalState state)
-                            , flags = flags
+                            , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
+                            , alerts = alerts
                             , selected = internalState.selected
                             }
                         )
@@ -692,7 +688,7 @@ create config =
                         ]
             , parse = parse
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
-            , emitFlags = \_ -> []
+            , emitAlerts = \_ -> []
             , collectDebouncingReceivers = \_ -> []
             , collectErrors = \_ _ -> []
             , receiverCount = 0
@@ -785,31 +781,32 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
 -}
 
 
-{-| Throw a "flag" from a `Control` if its output fails to meet the predicate.
+{-| Emit an alert from a `Control` if its output fails to meet the predicate.
 
-This is meant to be used in combination with `catch`, which catches the "flag"
-and displays an error.
+This is meant to be used in combination with `respond`, which listens for the
+alert and displays an error or notification message on the appropriate
+control(s).
 
 -}
-throw : { when : output -> Bool, flag : String } -> Control state delta output -> Control state delta output
-throw { when, flag } (Control control) =
-    Control (control >> flagEmitter when (FlagLabel flag))
+alertIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
+alertIf when alert (Control control) =
+    Control (control >> alertEmitter when (AlertLabel alert))
 
 
-flagEmitter : (output -> Bool) -> Flag -> ControlFns input state delta output -> ControlFns input state delta output
-flagEmitter check flag ctrl =
+alertEmitter : (output -> Bool) -> Alert -> ControlFns input state delta output -> ControlFns input state delta output
+alertEmitter check alert ctrl =
     { ctrl
-        | emitFlags =
+        | emitAlerts =
             \state ->
                 let
-                    oldFlags =
-                        ctrl.emitFlags state
+                    oldAlerts =
+                        ctrl.emitAlerts state
 
-                    newFlags =
+                    newAlerts =
                         case ctrl.parse state of
                             Ok output ->
                                 if check output then
-                                    [ flag ]
+                                    [ alert ]
 
                                 else
                                     []
@@ -817,32 +814,32 @@ flagEmitter check flag ctrl =
                             Err _ ->
                                 []
                 in
-                List.Extra.unique (oldFlags ++ newFlags)
+                List.Extra.unique (oldAlerts ++ newAlerts)
     }
 
 
-{-| Catch a "flag" thrown by another `Control`, display a message on this
-control, and if desired, cause validation to fail.
+{-| Respond to an alert emitted by another `Control`, display an error or
+notification message on this control, and if desired, cause validation to fail.
 
-This is meant to be used in combination with `throw`, which throws the "flag".
+This is meant to be used in combination with `alertIf`, which emits the alert.
 
 -}
-catch : { flag : String, fail : Bool, message : String } -> Control state delta output -> Control state delta output
-catch { flag, fail, message } (Control control) =
-    Control (control >> flagReceiver (FlagLabel flag) fail message)
+respond : { alert : String, fail : Bool, message : String } -> Control state delta output -> Control state delta output
+respond { alert, fail, message } (Control control) =
+    Control (control >> alertReceiver (AlertLabel alert) fail message)
 
 
-flagReceiver : Flag -> Bool -> String -> ControlFns input state delta output -> ControlFns input state delta output
-flagReceiver flag fail message ctrl =
+alertReceiver : Alert -> Bool -> String -> ControlFns input state delta output -> ControlFns input state delta output
+alertReceiver alert fail message ctrl =
     { ctrl
         | collectErrors =
-            \state flags ->
+            \state alerts ->
                 let
                     oldReceiver =
-                        ctrl.collectErrors state flags
+                        ctrl.collectErrors state alerts
 
                     newReceiver =
-                        if List.member flag flags then
+                        if List.member alert alerts then
                             [ { path = Path.toString ctrl.path, message = message, fail = fail } ]
 
                         else
@@ -854,7 +851,7 @@ flagReceiver flag fail message ctrl =
             \((State internalState _) as state) ->
                 case internalState.status of
                     DebouncingSince _ ->
-                        flag :: ctrl.collectDebouncingReceivers state
+                        alert :: ctrl.collectDebouncingReceivers state
 
                     _ ->
                         ctrl.collectDebouncingReceivers state
@@ -870,54 +867,53 @@ strings, if and only if those first two items are "hello" and "world":
     myString =
         string
             |> catch
-                { flag = "flag-hello-world"
+                { alert = "no-hello-world"
                 , fail = True
                 , message = "The first two items in the list must not be \"hello\" and \"world\"."
                 }
 
     list myString
-        |> throwAtIndexes
-            { toIndexes = \list_ ->
+        |> alertAtIndexes
+            (\list_ ->
                 case list of
                     "hello" :: "world" :: _ -> [ 0, 1 ]
 
                     _ -> []
-            , flag = "flag-hello-world"
-            }
+            )
+            "no-hello-world"
 
 -}
-throwAtIndexes :
-    { toIndexes : output -> List Int
-    , flag : String
-    }
+alertAtIndexes :
+    (output -> List Int)
+    -> String
     -> Control (List state) (ListDelta delta) output
     -> Control (List state) (ListDelta delta) output
-throwAtIndexes { toIndexes, flag } (Control control) =
-    Control (control >> listFlagEmitter toIndexes flag)
+alertAtIndexes toIndexes alert (Control control) =
+    Control (control >> listAlertEmitter toIndexes alert)
 
 
-listFlagEmitter :
+listAlertEmitter :
     (output -> List Int)
     -> String
     -> ControlFns input (List state) (ListDelta delta) output
     -> ControlFns input (List state) (ListDelta delta) output
-listFlagEmitter check flagLabel ctrl =
+listAlertEmitter check alertLabel ctrl =
     { ctrl
-        | emitFlags =
+        | emitAlerts =
             \state ->
                 let
-                    oldFlags =
-                        ctrl.emitFlags state
+                    oldAlerts =
+                        ctrl.emitAlerts state
 
-                    newFlags =
+                    newAlerts =
                         case ctrl.parse state of
                             Ok output ->
-                                [ FlagList ctrl.path flagLabel (check output) ]
+                                [ AlertList ctrl.path alertLabel (check output) ]
 
                             Err _ ->
                                 []
                 in
-                List.Extra.unique (oldFlags ++ newFlags)
+                List.Extra.unique (oldAlerts ++ newAlerts)
     }
 
 
@@ -940,12 +936,12 @@ failIf check message (Control c) =
                 control =
                     c path
 
-                flag =
-                    FlagPath path control.receiverCount
+                alert =
+                    AlertPath path control.receiverCount
             in
             control
-                |> flagEmitter check flag
-                |> flagReceiver flag True message
+                |> alertEmitter check alert
+                |> alertReceiver alert True message
         )
 
 
@@ -969,12 +965,12 @@ noteIf check message (Control c) =
                 control =
                     c path
 
-                flag =
-                    FlagPath path control.receiverCount
+                alert =
+                    AlertPath path control.receiverCount
             in
             control
-                |> flagEmitter check flag
-                |> flagReceiver flag False message
+                |> alertEmitter check alert
+                |> alertReceiver alert False message
         )
 
 
@@ -1859,7 +1855,7 @@ list (Control ctrl) =
                             )
                             s
                         )
-            , emitFlags =
+            , emitAlerts =
                 \(State _ s) ->
                     List.indexedMap
                         (\idx item ->
@@ -1867,39 +1863,39 @@ list (Control ctrl) =
                                 itemControl =
                                     ctrl (Path.add (String.fromInt idx) path)
                             in
-                            itemControl.emitFlags item
+                            itemControl.emitAlerts item
                         )
                         s
                         |> List.concat
             , collectErrors =
-                \(State _ listState) flags ->
+                \(State _ listState) alerts ->
                     List.indexedMap
                         (\idx item ->
                             let
                                 itemControl =
                                     ctrl (Path.add (String.fromInt idx) path)
 
-                                filteredFlags =
+                                filteredAlerts =
                                     List.filterMap
-                                        (\flag ->
-                                            case flag of
-                                                FlagList flagPath flagLabel flagIndexes ->
-                                                    if flagPath == path then
-                                                        if List.member idx flagIndexes then
-                                                            Just (FlagLabel flagLabel)
+                                        (\alert ->
+                                            case alert of
+                                                AlertList alertPath alertLabel alertIndexes ->
+                                                    if alertPath == path then
+                                                        if List.member idx alertIndexes then
+                                                            Just (AlertLabel alertLabel)
 
                                                         else
                                                             Nothing
 
                                                     else
-                                                        Just flag
+                                                        Just alert
 
                                                 _ ->
-                                                    Just flag
+                                                    Just alert
                                         )
-                                        flags
+                                        alerts
                             in
-                            itemControl.collectErrors item filteredFlags
+                            itemControl.collectErrors item filteredAlerts
                         )
                         listState
                         |> List.concat
@@ -1958,14 +1954,13 @@ dict :
 dict keyControl valueControl =
     list
         (tuple
-            (keyControl |> catch { flag = "@@dict-unique-keys", fail = True, message = "Keys must be unique" })
+            (keyControl |> respond { alert = "@@dict-unique-keys", fail = True, message = "Keys must be unique" })
             valueControl
             |> layout (\kv _ _ -> kv)
         )
-        |> throwAtIndexes
-            { toIndexes = List.map Tuple.first >> nonUniqueIndexes
-            , flag = "@@dict-unique-keys"
-            }
+        |> alertAtIndexes
+            (List.map Tuple.first >> nonUniqueIndexes)
+            "@@dict-unique-keys"
         |> label "Dict"
         |> map { convert = Dict.fromList, revert = Dict.toList }
 
@@ -2019,8 +2014,8 @@ set :
     -> Control ( State (List (State state)), End ) ( Delta (ListDelta delta), End ) (Set.Set comparable)
 set memberControl =
     list
-        (memberControl |> catch { flag = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
-        |> throwAtIndexes { toIndexes = nonUniqueIndexes, flag = "@@set-unique-keys" }
+        (memberControl |> respond { alert = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
+        |> alertAtIndexes nonUniqueIndexes "@@set-unique-keys"
         |> label "Set"
         |> map { convert = Set.fromList, revert = Set.toList }
 
@@ -2084,11 +2079,11 @@ end :
             | afters : afters1
             , befores : End -> befores1
             , debouncingReceiverCollector :
-                (List Flag -> End -> End -> List Flag)
-                -> List Flag
+                (List Alert -> End -> End -> List Alert)
+                -> List Alert
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
                 -> ( State state, restStates )
-                -> List Flag
+                -> List Alert
             , deltaInitialiser :
                 (d -> End -> End -> d)
                 -> List e
@@ -2096,23 +2091,23 @@ end :
                 -> i
                 -> List (Cmd ( Delta delta, restDeltas ))
             , errorCollector :
-                (List Flag
+                (List Alert
                  -> List Feedback
                  -> End
                  -> End
                  -> List Feedback
                 )
-                -> List Flag
+                -> List Alert
                 -> List Feedback
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
                 -> ( State state, restStates )
                 -> List Feedback
-            , flagEmitter :
-                (List Flag -> End -> End -> List Flag)
-                -> List Flag
+            , alertEmitter :
+                (List Alert -> End -> End -> List Alert)
+                -> List Alert
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
                 -> ( State state, restStates )
-                -> List Flag
+                -> List Alert
             , fns :
                 Path
                 -> End
@@ -2181,14 +2176,14 @@ end :
                     }
             , viewer :
                 (List (Html (Delta ( Delta delta, restDeltas )))
-                 -> List Flag
+                 -> List Alert
                  -> End
                  -> End
                  -> End
                  -> List (Html (Delta ( Delta delta, restDeltas )))
                 )
                 -> List (Html (Delta ( Delta delta, restDeltas )))
-                -> List Flag
+                -> List Alert
                 -> ( RecordFns input2 state delta output2 recordOutput, restFns1 )
                 -> ( Delta delta -> recordDelta, restDeltaSetters )
                 -> ( State state, restStates )
@@ -2202,33 +2197,33 @@ end :
                 -> input
                 -> State ( State state, restStates )
             , debouncingReceiverCollector :
-                (List Flag -> End -> End -> List Flag)
-                -> List Flag
+                (List Alert -> End -> End -> List Alert)
+                -> List Alert
                 -> ( ControlFns input1 state delta output1, restFns )
                 -> ( State state, restStates )
-                -> List Flag
+                -> List Alert
             , deltaAfters : afters
             , deltaBefores : End -> befores
             , destructor : stateSetter -> state0
             , errorCollector :
-                (List Flag
+                (List Alert
                  -> List Feedback
                  -> End
                  -> End
                  -> List Feedback
                 )
-                -> List Flag
+                -> List Alert
                 -> List Feedback
                 -> ( ControlFns input1 state delta output1, restFns )
                 -> ( State state, restStates )
                 -> List Feedback
-            , flagEmitter :
-                (List Flag -> Int -> End -> End -> List Flag)
-                -> List Flag
+            , alertEmitter :
+                (List Alert -> Int -> End -> End -> List Alert)
+                -> List Alert
                 -> Int
                 -> ( ControlFns input1 state delta output1, restFns )
                 -> ( State state, restStates )
-                -> List Flag
+                -> List Alert
             , fns :
                 Path -> End -> ( ControlFns input1 state delta output1, restFns )
             , idleSetter :
@@ -2307,7 +2302,7 @@ end :
                     }
             , viewer :
                 (Maybe (List (Html ( Delta delta, restDeltas )))
-                 -> List Flag
+                 -> List Alert
                  -> Int
                  -> End
                  -> End
@@ -2315,7 +2310,7 @@ end :
                  -> Maybe (List (Html ( Delta delta, restDeltas )))
                 )
                 -> Maybe (List (Html ( Delta delta, restDeltas )))
-                -> List Flag
+                -> List Alert
                 -> Int
                 -> ( ControlFns input1 state delta output1, restFns )
                 -> ( Delta delta -> ( Delta delta, restDeltas ), restSetters )
@@ -2376,7 +2371,7 @@ record :
             , debouncingReceiverCollector : a10 -> a10
             , deltaInitialiser : a9 -> a9
             , errorCollector : a8 -> a8
-            , flagEmitter : a7 -> a7
+            , alertEmitter : a7 -> a7
             , fns : d -> e -> e
             , idleSetter : a6 -> a6
             , index : Int
@@ -2411,7 +2406,7 @@ record toOutput =
         , after = End
         , afters = End
         , makeSetters = identity
-        , flagEmitter = identity
+        , alertEmitter = identity
         , errorCollector = identity
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
@@ -2440,17 +2435,17 @@ field :
                 , before : ( Delta delta11, a17 ) -> c5
                 , befores : ( ( Delta delta11, a17 ) -> c5, a16 ) -> c4
                 , debouncingReceiverCollector :
-                    a15 -> List Flag -> restFns7 -> restStates7 -> List Flag
+                    a15 -> List Alert -> restFns7 -> restStates7 -> List Alert
                 , deltaInitialiser : a14 -> List (Cmd msg1) -> f -> g -> h
                 , errorCollector :
                     a12
-                    -> List Flag
+                    -> List Alert
                     -> List Feedback
                     -> restFns6
                     -> restStates6
                     -> List Feedback
-                , flagEmitter :
-                    a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
+                , alertEmitter :
+                    a11 -> List Alert -> restFns5 -> restStates5 -> List Alert
                 , fns :
                     Path
                     ->
@@ -2493,7 +2488,7 @@ field :
                 , viewer :
                     a
                     -> List (Html (Delta recordDelta))
-                    -> List Flag
+                    -> List Alert
                     -> restFns
                     -> restDeltaSetters
                     -> restStates
@@ -2508,18 +2503,18 @@ field :
             , befores : a16 -> c4
             , debouncingReceiverCollector :
                 a15
-                -> List Flag
+                -> List Alert
                 ->
                     ( RecordFns input6 state7 delta8 output7 recordOutput6
                     , restFns7
                     )
                 -> ( State state7, restStates7 )
-                -> List Flag
+                -> List Alert
             , deltaInitialiser :
                 a14 -> List (Cmd msg1) -> ( a13 -> msg1, f ) -> ( Cmd a13, g ) -> h
             , errorCollector :
                 a12
-                -> List Flag
+                -> List Alert
                 -> List Feedback
                 ->
                     ( RecordFns input5 state6 delta7 output6 recordOutput5
@@ -2527,15 +2522,15 @@ field :
                     )
                 -> ( State state6, restStates6 )
                 -> List Feedback
-            , flagEmitter :
+            , alertEmitter :
                 a11
-                -> List Flag
+                -> List Alert
                 ->
                     ( RecordFns input4 state5 delta6 output5 recordOutput4
                     , restFns5
                     )
                 -> ( State state5, restStates5 )
-                -> List Flag
+                -> List Alert
             , fns : Path -> a10 -> c3
             , idleSetter :
                 a9
@@ -2596,7 +2591,7 @@ field :
             , viewer :
                 a
                 -> List (Html (Delta recordDelta))
-                -> List Flag
+                -> List Alert
                 -> ( RecordFns input state delta output recordOutput, restFns )
                 -> ( Delta delta -> recordDelta, restDeltaSetters )
                 -> ( State state, restStates )
@@ -2629,17 +2624,17 @@ hiddenField :
                 , before : ( Delta delta11, a17 ) -> c5
                 , befores : ( ( Delta delta11, a17 ) -> c5, a16 ) -> c4
                 , debouncingReceiverCollector :
-                    a15 -> List Flag -> restFns7 -> restStates7 -> List Flag
+                    a15 -> List Alert -> restFns7 -> restStates7 -> List Alert
                 , deltaInitialiser : a14 -> List (Cmd msg1) -> f -> g -> h
                 , errorCollector :
                     a12
-                    -> List Flag
+                    -> List Alert
                     -> List Feedback
                     -> restFns6
                     -> restStates6
                     -> List Feedback
-                , flagEmitter :
-                    a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
+                , alertEmitter :
+                    a11 -> List Alert -> restFns5 -> restStates5 -> List Alert
                 , fns :
                     Path
                     ->
@@ -2682,7 +2677,7 @@ hiddenField :
                 , viewer :
                     a
                     -> List (Html (Delta recordDelta))
-                    -> List Flag
+                    -> List Alert
                     -> restFns
                     -> restDeltaSetters
                     -> restStates
@@ -2697,18 +2692,18 @@ hiddenField :
             , befores : a16 -> c4
             , debouncingReceiverCollector :
                 a15
-                -> List Flag
+                -> List Alert
                 ->
                     ( RecordFns input6 state7 delta8 output7 recordOutput6
                     , restFns7
                     )
                 -> ( State state7, restStates7 )
-                -> List Flag
+                -> List Alert
             , deltaInitialiser :
                 a14 -> List (Cmd msg1) -> ( a13 -> msg1, f ) -> ( Cmd a13, g ) -> h
             , errorCollector :
                 a12
-                -> List Flag
+                -> List Alert
                 -> List Feedback
                 ->
                     ( RecordFns input5 state6 delta7 output6 recordOutput5
@@ -2716,15 +2711,15 @@ hiddenField :
                     )
                 -> ( State state6, restStates6 )
                 -> List Feedback
-            , flagEmitter :
+            , alertEmitter :
                 a11
-                -> List Flag
+                -> List Alert
                 ->
                     ( RecordFns input4 state5 delta6 output5 recordOutput4
                     , restFns5
                     )
                 -> ( State state5, restStates5 )
-                -> List Flag
+                -> List Alert
             , fns : Path -> a10 -> c3
             , idleSetter :
                 a9
@@ -2785,7 +2780,7 @@ hiddenField :
             , viewer :
                 a
                 -> List (Html (Delta recordDelta))
-                -> List Flag
+                -> List Alert
                 -> ( RecordFns input state delta output recordOutput, restFns )
                 -> ( Delta delta -> recordDelta, restDeltaSetters )
                 -> ( State state, restStates )
@@ -2818,17 +2813,17 @@ readOnlyField :
                 , before : ( Delta delta11, a17 ) -> c5
                 , befores : ( ( Delta delta11, a17 ) -> c5, a16 ) -> c4
                 , debouncingReceiverCollector :
-                    a15 -> List Flag -> restFns7 -> restStates7 -> List Flag
+                    a15 -> List Alert -> restFns7 -> restStates7 -> List Alert
                 , deltaInitialiser : a14 -> List (Cmd msg1) -> f -> g -> h
                 , errorCollector :
                     a12
-                    -> List Flag
+                    -> List Alert
                     -> List Feedback
                     -> restFns6
                     -> restStates6
                     -> List Feedback
-                , flagEmitter :
-                    a11 -> List Flag -> restFns5 -> restStates5 -> List Flag
+                , alertEmitter :
+                    a11 -> List Alert -> restFns5 -> restStates5 -> List Alert
                 , fns :
                     Path
                     ->
@@ -2871,7 +2866,7 @@ readOnlyField :
                 , viewer :
                     a
                     -> List (Html (Delta recordDelta))
-                    -> List Flag
+                    -> List Alert
                     -> restFns
                     -> restDeltaSetters
                     -> restStates
@@ -2886,18 +2881,18 @@ readOnlyField :
             , befores : a16 -> c4
             , debouncingReceiverCollector :
                 a15
-                -> List Flag
+                -> List Alert
                 ->
                     ( RecordFns input6 state7 delta8 output7 recordOutput6
                     , restFns7
                     )
                 -> ( State state7, restStates7 )
-                -> List Flag
+                -> List Alert
             , deltaInitialiser :
                 a14 -> List (Cmd msg1) -> ( a13 -> msg1, f ) -> ( Cmd a13, g ) -> h
             , errorCollector :
                 a12
-                -> List Flag
+                -> List Alert
                 -> List Feedback
                 ->
                     ( RecordFns input5 state6 delta7 output6 recordOutput5
@@ -2905,15 +2900,15 @@ readOnlyField :
                     )
                 -> ( State state6, restStates6 )
                 -> List Feedback
-            , flagEmitter :
+            , alertEmitter :
                 a11
-                -> List Flag
+                -> List Alert
                 ->
                     ( RecordFns input4 state5 delta6 output5 recordOutput4
                     , restFns5
                     )
                 -> ( State state5, restStates5 )
-                -> List Flag
+                -> List Alert
             , fns : Path -> a10 -> c3
             , idleSetter :
                 a9
@@ -2974,7 +2969,7 @@ readOnlyField :
             , viewer :
                 a
                 -> List (Html (Delta recordDelta))
-                -> List Flag
+                -> List Alert
                 -> ( RecordFns input state delta output recordOutput, restFns )
                 -> ( Delta delta -> recordDelta, restDeltaSetters )
                 -> ( State state, restStates )
@@ -3054,7 +3049,7 @@ fieldHelper access fromInput (Control control) builder =
                 , after = ( Skip, rec.after )
                 , afters = ( rec.after, rec.afters )
                 , makeSetters = rec.makeSetters >> deltaSetterMaker
-                , flagEmitter = rec.flagEmitter >> recordFlagEmitter
+                , alertEmitter = rec.alertEmitter >> recordAlertEmitter
                 , errorCollector = rec.errorCollector >> recordErrorCollector
                 , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
                 , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
@@ -3104,12 +3099,12 @@ endRecord rec =
                             ( State s state, Cmd.none )
 
                 childViews _ dynamicConfig =
-                    viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
+                    viewRecordStates rec.viewer dynamicConfig.alerts fns deltaSetters dynamicConfig.state
 
                 view staticConfig dynamicConfig =
                     List.filterMap identity
                         [ staticConfig.before |> Maybe.map List.singleton
-                        , viewRecordStates rec.viewer dynamicConfig.flags fns deltaSetters dynamicConfig.state
+                        , viewRecordStates rec.viewer dynamicConfig.alerts fns deltaSetters dynamicConfig.state
                             |> Just
                         , staticConfig.after |> Maybe.map List.singleton
                         ]
@@ -3121,8 +3116,8 @@ endRecord rec =
                 setAllIdle (State i state) =
                     State { i | status = Idle_ } (setAllRecordStatesToIdle rec.idleSetter fns state)
 
-                emitFlags (State _ state) =
-                    emitFlagsForRecord rec.flagEmitter fns state
+                emitAlerts (State _ state) =
+                    emitAlertsForRecord rec.alertEmitter fns state
             in
             { path = path
             , index = 0
@@ -3141,8 +3136,8 @@ endRecord rec =
             , view = \staticConfig dynamicConfig -> view staticConfig dynamicConfig
             , parse = parse
             , setAllIdle = setAllIdle
-            , emitFlags = emitFlags
-            , collectErrors = \(State _ states) flags -> collectErrorsForRecord rec.errorCollector flags fns states
+            , emitAlerts = emitAlerts
+            , collectErrors = \(State _ states) alerts -> collectErrorsForRecord rec.errorCollector alerts fns states
             , receiverCount = 0
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.debouncingReceiverCollector fns states
             , label = "Record"
@@ -3178,108 +3173,108 @@ recordSubscriptionCollector next listSubs ( setter, restSetters ) ( fns, restFns
 
 
 collectDebouncingReceiversForRecord :
-    ((List Flag
+    ((List Alert
       -> End
       -> End
-      -> List Flag
+      -> List Alert
      )
-     -> List Flag
+     -> List Alert
      -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( State state, restStates )
-     -> List Flag
+     -> List Alert
     )
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
-    -> List Flag
+    -> List Alert
 collectDebouncingReceiversForRecord debouncingReceiverCollector_ fns states =
     debouncingReceiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
 recordDebouncingReceiverCollector :
-    (List Flag
+    (List Alert
      -> restFns
      -> restStates
-     -> List Flag
+     -> List Alert
     )
-    -> List Flag
+    -> List Alert
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
-    -> List Flag
+    -> List Alert
 recordDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
     next (receivers ++ fns.field.collectDebouncingReceivers state) restFns restStates
 
 
 collectErrorsForRecord :
-    ((List Flag
+    ((List Alert
       -> List Feedback
       -> End
       -> End
       -> List Feedback
      )
-     -> List Flag
+     -> List Alert
      -> List Feedback
      -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( State state, restStates )
      -> List Feedback
     )
-    -> List Flag
+    -> List Alert
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List Feedback
-collectErrorsForRecord errorCollector_ flags fns states =
-    errorCollector_ (\_ errors End End -> errors) flags [] fns states
+collectErrorsForRecord errorCollector_ alerts fns states =
+    errorCollector_ (\_ errors End End -> errors) alerts [] fns states
 
 
 recordErrorCollector :
-    (List Flag
+    (List Alert
      -> List Feedback
      -> restFns
      -> restStates
      -> List Feedback
     )
-    -> List Flag
+    -> List Alert
     -> List Feedback
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List Feedback
-recordErrorCollector next flags errors ( fns, restFns ) ( state, restStates ) =
-    next flags (errors ++ fns.field.collectErrors state flags) restFns restStates
+recordErrorCollector next alerts errors ( fns, restFns ) ( state, restStates ) =
+    next alerts (errors ++ fns.field.collectErrors state alerts) restFns restStates
 
 
-emitFlagsForRecord :
-    ((List Flag
+emitAlertsForRecord :
+    ((List Alert
       -> End
       -> End
-      -> List Flag
+      -> List Alert
      )
-     -> List Flag
+     -> List Alert
      -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( State state, restStates )
-     -> List Flag
+     -> List Alert
     )
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
-    -> List Flag
-emitFlagsForRecord flagEmitter_ fns states =
-    flagEmitter_ (\flags End End -> flags) [] fns states
+    -> List Alert
+emitAlertsForRecord alertEmitter_ fns states =
+    alertEmitter_ (\alerts End End -> alerts) [] fns states
 
 
-recordFlagEmitter :
-    (List Flag
+recordAlertEmitter :
+    (List Alert
      -> restFns
      -> restStates
-     -> List Flag
+     -> List Alert
     )
-    -> List Flag
+    -> List Alert
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( State state, restStates )
-    -> List Flag
-recordFlagEmitter next flags ( fns, restFns ) ( state, restStates ) =
+    -> List Alert
+recordAlertEmitter next alerts ( fns, restFns ) ( state, restStates ) =
     let
-        newFlags =
-            fns.field.emitFlags state
+        newAlerts =
+            fns.field.emitAlerts state
     in
-    next (flags ++ newFlags) restFns restStates
+    next (alerts ++ newAlerts) restFns restStates
 
 
 makeDeltaSetters :
@@ -3428,43 +3423,43 @@ recordStateIdleSetter next ( fns, restFns ) ( state, restStates ) =
 
 viewRecordStates :
     ((List (Html msg)
-      -> List Flag
+      -> List Alert
       -> End
       -> End
       -> End
       -> List (Html msg)
      )
      -> List (Html msg)
-     -> List Flag
+     -> List Alert
      -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( Delta delta -> recordDelta, restDeltaSetters )
      -> ( State state, restStates )
      -> List (Html msg)
     )
-    -> List Flag
+    -> List Alert
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( State state, restStates )
     -> List (Html msg)
-viewRecordStates viewer flags fns setters states =
-    viewer (\views _ End End End -> views) [] flags fns setters states
+viewRecordStates viewer alerts fns setters states =
+    viewer (\views _ End End End -> views) [] alerts fns setters states
 
 
 recordStateViewer :
     (List (Html (Delta recordDelta))
-     -> List Flag
+     -> List Alert
      -> restFns
      -> restDeltaSetters
      -> restStates
      -> List (Html (Delta recordDelta))
     )
     -> List (Html (Delta recordDelta))
-    -> List Flag
+    -> List Alert
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( State state, restStates )
     -> List (Html (Delta recordDelta))
-recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
+recordStateViewer next views alerts ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     let
         view =
             fns.field.view
@@ -3476,8 +3471,8 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
                 , after = fns.field.htmlAfter
                 }
                 { state = state
-                , status = getStatus fns.field.parse fns.field.collectErrors flags (State internalState state)
-                , flags = flags
+                , status = getStatus fns.field.parse fns.field.collectErrors alerts (State internalState state)
+                , alerts = alerts
                 , selected = internalState.selected
                 }
                 |> List.map (H.map (\delta -> ChangeStateOnInput (setter delta)))
@@ -3495,7 +3490,7 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
                         [ H.div [ HA.disabled True ] view ]
                )
         )
-        flags
+        alerts
         restFns
         restSetters
         restStates
@@ -3503,11 +3498,11 @@ recordStateViewer next views flags ( fns, restFns ) ( setter, restSetters ) ( St
 
 getStatus :
     (State state -> Result (List Feedback) output)
-    -> (State state -> List Flag -> List Feedback)
-    -> List Flag
+    -> (State state -> List Alert -> List Feedback)
+    -> List Alert
     -> State state
     -> Status
-getStatus parse collectErrors flags ((State internalState _) as state) =
+getStatus parse collectErrors alerts ((State internalState _) as state) =
     case internalState.status of
         Intact_ ->
             Intact
@@ -3526,7 +3521,7 @@ getStatus parse collectErrors flags ((State internalState _) as state) =
                             errs
 
                 flaggedErrors =
-                    collectErrors state flags
+                    collectErrors state alerts
             in
             Idle (parsedErrors ++ flaggedErrors)
 
@@ -3648,7 +3643,7 @@ customType :
             , deltaBefores : a14 -> a14
             , destructor : b
             , errorCollector : a13 -> a13
-            , flagEmitter : a12 -> a12
+            , alertEmitter : a12 -> a12
             , fns : c -> d -> d
             , idleSetter : a11 -> a11
             , index : Int
@@ -3694,7 +3689,7 @@ customType destructor =
         , makeStateSetters = identity
         , stateInserter = identity
         , applyInputs = identity
-        , flagEmitter = identity
+        , alertEmitter = identity
         , errorCollector = identity
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
@@ -3754,7 +3749,7 @@ tagHelper label_ (Control control) toArgState builder =
                 , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
                 , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
                 , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
-                , flagEmitter = rec.flagEmitter >> customTypeFlagEmitter
+                , alertEmitter = rec.alertEmitter >> customTypeAlertEmitter
                 , errorCollector = rec.errorCollector >> customTypeErrorCollector
                 , debouncingReceiverCollector = rec.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
                 , subscriptionCollector = rec.subscriptionCollector >> customTypeSubscriptionCollector
@@ -3815,7 +3810,7 @@ endCustomType rec =
                                 ( State internalState state, Cmd.none )
 
                 childView _ dynamicConfig =
-                    viewSelectedTagState rec.viewer dynamicConfig.flags dynamicConfig.selected fns deltaSetters dynamicConfig.state
+                    viewSelectedTagState rec.viewer dynamicConfig.alerts dynamicConfig.selected fns deltaSetters dynamicConfig.state
 
                 view staticConfig dynamicConfig =
                     let
@@ -3839,8 +3834,8 @@ endCustomType rec =
                             { internalState | status = Idle_ }
                             (setSelectedTagStateIdle rec.idleSetter internalState.selected fns state)
 
-                emitFlags (State internalState state) =
-                    emitFlagsForCustomType rec.flagEmitter internalState.selected fns state
+                emitAlerts (State internalState state) =
+                    emitAlertsForCustomType rec.alertEmitter internalState.selected fns state
             in
             { path = path
             , index = 0
@@ -3859,8 +3854,8 @@ endCustomType rec =
             , view = \staticConfig dynamicConfig -> view staticConfig dynamicConfig
             , parse = parse
             , setAllIdle = setAllIdle
-            , emitFlags = emitFlags
-            , collectErrors = \(State _ states) flags -> collectErrorsForCustomType rec.errorCollector flags fns states
+            , emitAlerts = emitAlerts
+            , collectErrors = \(State _ states) alerts -> collectErrorsForCustomType rec.errorCollector alerts fns states
             , receiverCount = 0
             , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.debouncingReceiverCollector fns states
             , label = "Custom Type"
@@ -4069,33 +4064,33 @@ customTypeSubscriptionCollector next listSubs ( setter, restSetters ) ( fns, res
 
 
 collectDebouncingReceiversForCustomType :
-    ((List Flag
+    ((List Alert
       -> End
       -> End
-      -> List Flag
+      -> List Alert
      )
-     -> List Flag
+     -> List Alert
      -> ( ControlFns input state delta output, restFns )
      -> ( State state, restStates )
-     -> List Flag
+     -> List Alert
     )
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
-    -> List Flag
+    -> List Alert
 collectDebouncingReceiversForCustomType debouncingReceiverCollector_ fns states =
     debouncingReceiverCollector_ (\receivers End End -> receivers) [] fns states
 
 
 customTypeDebouncingReceiverCollector :
-    (List Flag
+    (List Alert
      -> restFns
      -> restStates
-     -> List Flag
+     -> List Alert
     )
-    -> List Flag
+    -> List Alert
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
-    -> List Flag
+    -> List Alert
 customTypeDebouncingReceiverCollector next receivers ( fns, restFns ) ( state, restStates ) =
     next (receivers ++ fns.collectDebouncingReceivers state) restFns restStates
 
@@ -4174,85 +4169,85 @@ customTypeDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDel
 
 
 collectErrorsForCustomType :
-    ((List Flag
+    ((List Alert
       -> List Feedback
       -> End
       -> End
       -> List Feedback
      )
-     -> List Flag
+     -> List Alert
      -> List Feedback
      -> ( ControlFns input state delta output, restFns )
      -> ( State state, restStates )
      -> List Feedback
     )
-    -> List Flag
+    -> List Alert
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List Feedback
-collectErrorsForCustomType errorCollector_ flags fns states =
-    errorCollector_ (\_ errors End End -> errors) flags [] fns states
+collectErrorsForCustomType errorCollector_ alerts fns states =
+    errorCollector_ (\_ errors End End -> errors) alerts [] fns states
 
 
 customTypeErrorCollector :
-    (List Flag
+    (List Alert
      -> List Feedback
      -> restFns
      -> restStates
      -> List Feedback
     )
-    -> List Flag
+    -> List Alert
     -> List Feedback
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
     -> List Feedback
-customTypeErrorCollector next flags errors ( fns, restFns ) ( state, restStates ) =
-    next flags (errors ++ fns.collectErrors state flags) restFns restStates
+customTypeErrorCollector next alerts errors ( fns, restFns ) ( state, restStates ) =
+    next alerts (errors ++ fns.collectErrors state alerts) restFns restStates
 
 
-emitFlagsForCustomType :
-    ((List Flag
+emitAlertsForCustomType :
+    ((List Alert
       -> Int
       -> End
       -> End
-      -> List Flag
+      -> List Alert
      )
-     -> List Flag
+     -> List Alert
      -> Int
      -> ( ControlFns input state delta output, restFns )
      -> ( State state, restStates )
-     -> List Flag
+     -> List Alert
     )
     -> Int
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
-    -> List Flag
-emitFlagsForCustomType flagEmitter_ selectedTag fns tagStates =
-    flagEmitter_ (\flags _ End End -> flags) [] selectedTag fns tagStates
+    -> List Alert
+emitAlertsForCustomType alertEmitter_ selectedTag fns tagStates =
+    alertEmitter_ (\alerts _ End End -> alerts) [] selectedTag fns tagStates
 
 
-customTypeFlagEmitter :
-    (List Flag
+customTypeAlertEmitter :
+    (List Alert
      -> Int
      -> restFns
      -> restStates
-     -> List Flag
+     -> List Alert
     )
-    -> List Flag
+    -> List Alert
     -> Int
     -> ( ControlFns input state delta output, restFns )
     -> ( State state, restStates )
-    -> List Flag
-customTypeFlagEmitter next flags selectedTag ( fns, restFns ) ( tagState, restTagStates ) =
+    -> List Alert
+customTypeAlertEmitter next alerts selectedTag ( fns, restFns ) ( tagState, restTagStates ) =
     let
-        newFlags =
+        newAlerts =
             if fns.index == selectedTag then
-                fns.emitFlags tagState
+                fns.emitAlerts tagState
 
             else
                 []
     in
-    next (flags ++ newFlags) selectedTag restFns restTagStates
+    next (alerts ++ newAlerts) selectedTag restFns restTagStates
 
 
 applyStateSettersToInitialiser :
@@ -4528,7 +4523,7 @@ selectedTagParser next result_ selectedTag ( fns, restFns ) ( state, restStates 
 
 viewSelectedTagState :
     ((Maybe (List (Html delta1))
-      -> List Flag
+      -> List Alert
       -> Int
       -> End
       -> End
@@ -4536,28 +4531,28 @@ viewSelectedTagState :
       -> Maybe (List (Html delta1))
      )
      -> Maybe (List (Html delta1))
-     -> List Flag
+     -> List Alert
      -> Int
      -> ( ControlFns input state delta0 output, restFns )
      -> ( Delta delta0 -> delta1, restSetters )
      -> ( State state, restStates )
      -> Maybe (List (Html delta1))
     )
-    -> List Flag
+    -> List Alert
     -> Int
     -> ( ControlFns input state delta0 output, restFns )
     -> ( Delta delta0 -> delta1, restSetters )
     -> ( State state, restStates )
     -> List (Html (Delta delta1))
-viewSelectedTagState viewer flags selectedTag fns setters states =
-    viewer (\maybeView _ _ End End End -> maybeView) Nothing flags selectedTag fns setters states
+viewSelectedTagState viewer alerts selectedTag fns setters states =
+    viewer (\maybeView _ _ End End End -> maybeView) Nothing alerts selectedTag fns setters states
         |> Maybe.map (List.map (H.map ChangeStateOnInput))
         |> Maybe.withDefault [ H.text "ERROR!" ]
 
 
 selectedTagViewer :
     (Maybe (List (Html delta1))
-     -> List Flag
+     -> List Alert
      -> Int
      -> restFns
      -> restSetters
@@ -4565,13 +4560,13 @@ selectedTagViewer :
      -> Maybe (List (Html delta1))
     )
     -> Maybe (List (Html delta1))
-    -> List Flag
+    -> List Alert
     -> Int
     -> ( ControlFns input state delta0 output, restFns )
     -> ( Delta delta0 -> delta1, restSetters )
     -> ( State state, restStates )
     -> Maybe (List (Html delta1))
-selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
+selectedTagViewer next maybeView alerts selectedTag ( fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
         (if fns.index == selectedTag then
             Just
@@ -4585,7 +4580,7 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
                     }
                     { state = state
                     , status = Intact
-                    , flags = flags
+                    , alerts = alerts
                     , selected = internalState.selected
                     }
                     |> List.map (H.map setter)
@@ -4594,7 +4589,7 @@ selectedTagViewer next maybeView flags selectedTag ( fns, restFns ) ( setter, re
          else
             maybeView
         )
-        flags
+        alerts
         selectedTag
         restFns
         restSetters
@@ -4700,7 +4695,7 @@ listView :
     Path
     -> ViewConfigStatic (Delta (ListDelta delta))
     -> ViewConfigDynamic (List (State state))
-    -> List Flag
+    -> List Alert
     -> (Path -> ControlFns input state delta output)
     -> List (Html (Delta (ListDelta delta)))
 listView path staticConfig dynamicConfig debouncingReceivers ctrl =
@@ -4727,28 +4722,28 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                     control =
                                         ctrl (Path.add (String.fromInt idx) path)
 
-                                    filteredFlags1 =
+                                    filteredAlerts1 =
                                         List.filterMap
-                                            (\flag ->
-                                                case flag of
-                                                    FlagList flagPath flagLabel flagIndexes ->
-                                                        if flagPath == path then
-                                                            if List.member idx flagIndexes then
-                                                                Just (FlagLabel flagLabel)
+                                            (\alert ->
+                                                case alert of
+                                                    AlertList alertPath alertLabel alertIndexes ->
+                                                        if alertPath == path then
+                                                            if List.member idx alertIndexes then
+                                                                Just (AlertLabel alertLabel)
 
                                                             else
                                                                 Nothing
 
                                                         else
-                                                            Just flag
+                                                            Just alert
 
                                                     _ ->
-                                                        Just flag
+                                                        Just alert
                                             )
-                                            dynamicConfig.flags
+                                            dynamicConfig.alerts
 
-                                    filteredFlags2 =
-                                        List.filter (\f -> not <| List.member f debouncingReceivers) filteredFlags1
+                                    filteredAlerts2 =
+                                        List.filter (\f -> not <| List.member f debouncingReceivers) filteredAlerts1
                                 in
                                 H.li []
                                     [ H.div []
@@ -4761,8 +4756,8 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                             , after = control.htmlAfter
                                             }
                                             { state = state
-                                            , status = getStatus control.parse control.collectErrors filteredFlags2 (State internalState state)
-                                            , flags = filteredFlags2
+                                            , status = getStatus control.parse control.collectErrors filteredAlerts2 (State internalState state)
+                                            , alerts = filteredAlerts2
                                             , selected = internalState.selected
                                             }
                                         )
