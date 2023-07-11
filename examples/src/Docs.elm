@@ -14,7 +14,11 @@ main =
             \msg model ->
                 case msg of
                     Nothing ->
-                        ( model, Cmd.none )
+                        let
+                            ( newModel, result ) =
+                                form.submit model
+                        in
+                        ( newModel, Cmd.none )
 
                     Just delta ->
                         form.update delta model
@@ -94,7 +98,7 @@ lessons =
         |> Control.tag1 "10: Creating your own controls" CreateYourOwn createYourOwn
         |> Control.end
         |> Control.label "Lessons"
-        |> mdBefore "# Tutorial"
+        |> Control.id "lessons"
 
 
 basicControls =
@@ -252,7 +256,10 @@ recordIntro =
     """
 ## Records and labels
 
-Imagine we have a record type:
+Imagine we are building a customer relationship management system for a company called Shapes.com. The company sells 
+a comprehensive range of circles, triangles and rectangles to happy customers worldwide.
+
+To represent our customers, let's use a record type:
 
 ```
 type alias Customer = 
@@ -264,7 +271,7 @@ type alias Customer =
 We can build a control that produces these `Customer` records with the `Control.record` combinator:
 
 ```    
-control =
+customerControl =
     Control.record (\\name age -> { name = name, age = age })
         |> Control.field .name Control.string
         |> Control.field .age Control.int
@@ -274,25 +281,39 @@ control =
 Or if you prefer brevity to explicitness, you could even use the `Customer` constructor directly:
 
 ```
-control =
+customerControl =
     Control.record Customer
         |> Control.field .name Control.string
         |> Control.field .age Control.int
         |> Control.end
 ```
-This code will generate a form that looks like this:
+
+### Wiring it up
+
+Let's take a look at this `customerControl` in our sandbox:
+
+```
+main =
+    Control.sandbox
+        { control = customerControl
+        , outputToString = Debug.toString
+        }
+```
+
+And you should see a form that looks like this:
 """
 
 
 recordMiddle =
     """
+### Labelling controls
 That's ok...ish. But one of the nice things about records is that their fields are _named_. So really, we want the 
 controls to be labelled with the names of the fields. 
 
 That's where `Control.label` comes in. Change your code to:
 
 ```    
-control =
+customerControl =
     Control.record (\\name age -> { name = name, age = age })
         |> Control.field .name (Control.string |> Control.label "Name")
         |> Control.field .age (Control.int |> Control.label "Age")
@@ -308,13 +329,15 @@ recordOutro =
 **Note:** We're going to see other functions that work like `Control.label` later - this is a common pattern for 
 configuring controls. 
 
+### A bit of refactoring
+
 To keep things tidy, it's often better to pull out each control into a separate function, where 
 you can apply as many configuration functions as you like without making your `Control.record` definitions too complex. 
 
 With that in mind, let's refactor our code to this:
 
 ```    
-control =
+customerControl =
     Control.record (\\name age -> { name = name, age = age })
         |> Control.field .name nameControl
         |> Control.field .age ageControl
@@ -336,9 +359,10 @@ But Elm also has another kind of complex type: the custom type. How do we model 
 """
 
 
-type SecurityChallenge
-    = FavouriteWord String
-    | PIN Char Char Char
+type Product
+    = Circle Int
+    | Triangle Int Int Int
+    | Rectangle Int Int
 
 
 customTypes =
@@ -349,100 +373,133 @@ customTypes =
 
 customTypesCustomerControl =
     Control.record
-        (\name age securityChallenge ->
+        (\name age product ->
             { name = name
             , age = age
-            , securityChallenge = securityChallenge
+            , product = product
             }
         )
         |> Control.field .name (Control.string |> Control.label "Name")
         |> Control.field .age (Control.int |> Control.label "Age")
-        |> Control.field .securityChallenge securityChallengeControl
+        |> Control.field .product productControl
         |> Control.end
 
 
-securityChallengeControl =
+productControl =
     Control.customType
-        (\favouriteWord pin tag ->
+        (\circle triangle rectangle tag ->
             case tag of
-                FavouriteWord string ->
-                    favouriteWord string
+                Circle radius ->
+                    circle radius
 
-                PIN digit1 digit2 digit3 ->
-                    pin digit1 digit2 digit3
+                Triangle side1 side2 side3 ->
+                    triangle side1 side2 side3
+
+                Rectangle width height ->
+                    rectangle width height
         )
-        |> Control.tag1 "Favourite word"
-            FavouriteWord
-            (Control.string |> Control.label "What is your favourite word?")
-        |> Control.tag3 "PIN"
-            PIN
-            (Control.char |> Control.label "First digit")
-            (Control.char |> Control.label "Second digit")
-            (Control.char |> Control.label "Third digit")
+        |> Control.tag1 "Circle"
+            Circle
+            (Control.int |> Control.label "Radius")
+        |> Control.tag3 "Triangle"
+            Triangle
+            (Control.int |> Control.label "First side")
+            (Control.int |> Control.label "Second side")
+            (Control.int |> Control.label "Third side")
+        |> Control.tag2 "Rectangle"
+            Rectangle
+            (Control.int |> Control.label "Width")
+            (Control.int |> Control.label "Height")
         |> Control.end
-        |> Control.label "Security challenge"
+        |> Control.label "Product"
 
 
 customTypesIntro =
     """
 ## Custom types
 
-Let's imagine that we want to improve security by asking our `Customer`s to nominate either a favourite word or a 
-three-digit PIN that we can use to verify their identity.
+As we mentioned in the last lesson, Shapes.com sells circles, triangles and rectangles to its customers. The company's
+unique selling point is that it can custom-engineer these shapes in any size the customer desires! 
+
+We need to capture the required dimensions of each shape in our system, to be sure that we're giving the customer 
+exactly what they want. So we'll specify circles by their radius (a single `Int`), triangles by the lengths of their 
+sides (three `Int`s), and rectangles by their width and height (two `Ints`):
 
 ```
-type alias Customer = 
-    { name : String
-    , age : Int 
-    , securityChallenge : SecurityChallenge
-    }
-
-type SecurityChallenge
-    = FavouriteWord String
-    | PIN Char Char Char
+type Product
+    = Circle Int
+    | Triangle Int Int Int
+    | Rectangle Int Int
 ```
 
-We can create a control for this `SecurityChallenge` type using `Control.customType`. 
+Let's see how we can build a control to represent these exciting products with `Control.customType`. This might look a 
+bit daunting at first, but we'll walk through it step by step:
 
 ```
-securityChallengeControl = 
+productControl =
+    -- First, we provide a function that can destructure a `Product` tag
+    -- and give us access to its arguments:
+    
     Control.customType
-        (\\favouriteWord pin tag ->
+        (\\circle triangle rectangle tag ->
             case tag of
-                FavouriteWord string ->
-                    favouriteWord string
+                Circle radius ->
+                    circle radius
 
-                PIN digit1 digit2 digit3 ->
-                    pin digit1 digit2 digit3
+                Triangle side1 side2 side3 ->
+                    triangle side1 side2 side3
+
+                Rectangle width height ->
+                    rectangle width height
         )
-        |> Control.tag1 "Favourite word" 
-            FavouriteWord 
-            (Control.string |> Control.label "Customer's favourite word")
-        |> Control.tag3 "PIN"
-            PIN
-            (Control.char |> Control.label "First digit of PIN")
-            (Control.char |> Control.label "Second digit of PIN")
-            (Control.char |> Control.label "Third digit of PIN")
+
+        -- Next, we teach the control how to construct a `Circle` from a single
+        -- `Control.int` control, using `Control.tag1`.
+        
+        |> Control.tag1 "Circle"
+            Circle
+            (Control.int |> Control.label "Radius")
+
+        -- Now we do the same for `Triangle` - this time, it's composed of three
+        -- `Control.int` controls, so we use `Control.tag3`.
+
+        |> Control.tag3 "Triangle"
+            Triangle
+            (Control.int |> Control.label "First side")
+            (Control.int |> Control.label "Second side")
+            (Control.int |> Control.label "Third side")
+
+        -- And finally, we handle `Rectangle`'s two `Control.int` controls with 
+        -- `Control.tag2`.
+
+        |> Control.tag2 "Rectangle"
+            Rectangle
+            (Control.int |> Control.label "Width")
+            (Control.int |> Control.label "Height")
+
+        -- Now just declare that we're done and give the control an appropriate
+        -- label.
+        
         |> Control.end
-        |> Control.label "Security challenge"
+        |> Control.label "Product"
 ```
 
-(Notice how the `FavouriteWord` tag has one argument (a `String`), so we use `Control.tag1`. But for the `PIN` tag, which 
-has three arguments, we use `Control.tag3`.)
+### Wiring it up
 
 Now we can add the new field to our `Customer` control as follows:
+
 ```
-control =
+customerControl =
     Control.record 
-        (\\name age securityChallenge -> 
+        (\\name age product -> 
             { name = name
             , age = age
-            , securityChallenge = securityChallenge 
+            , product = product
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age ageControl
-        |> Control.field .securityChallenge securityChallengeControl
+        |> Control.field .product productControl
         |> Control.end
 ```
 
@@ -452,7 +509,8 @@ And you'll see something like this:
 
 customTypesOutro =
     """
-**Side note:** You could easily implement Elm's `Maybe` and `Result` custom types using `Control.customType`. But 
+### Maybe and Result
+You could easily implement Elm's `Maybe` and `Result` custom types using `Control.customType`. But 
 there's no need - they're included as `Control.maybe` and `Control.result`.
 
 Next up, we'll look at controls for data structures that can include multiple values of a given type: `List`, and other 
@@ -462,44 +520,74 @@ list-like things.
 
 
 listsDictsSetsAndArrays =
-    Control.list customTypesCustomerControl
-        |> Control.label "List of customers"
+    productListControl
         |> mdBefore listsIntro
         |> mdAfter listsOutro
+
+
+productListControl =
+    Control.list productControl
+        |> Control.label "List of products"
 
 
 listsIntro =
     """
 ## Lists, Dicts, Sets and Arrays
 
-It's easy to turn any control into a list of controls by passing it to `Control.list`:
+Hang on a minute - if each Shapes.com customer can only purchase a single product, the company is probably not going to
+be very successful! 
+
+What we really want our system to do is keep track of _all_ the products that each customer buys. Perhaps we could use 
+some nifty data structure like a `List`?
 
 ```
-control = 
-    Control.list customerControl
-
-customerControl =
-    Control.record 
-        (\\name age securityChallenge -> 
-            { name = name
-            , age = age
-            , securityChallenge = securityChallenge 
-            }
-        )
-        |> Control.field .name nameControl
-        |> Control.field .age ageControl
-        |> Control.field .securityChallenge securityChallengeControl
-        |> Control.end
+type alias Customer = 
+    { name : String
+    , age : Int 
+    , products : List Product
+    , id : Id
+    }
 ```
 
-This will give you a form that produces a list of customers:
+Fortunately, it's easy to turn any control into a list of controls by passing it to `Control.list`:
+
+```
+productListControl = 
+    Control.list productControl
+```
+
+This will give you a form that produces a list of products:
 """
 
 
 listsOutro =
     """
-`Control.array` and `Control.set` have exactly the same API - just pass them a control of any type and you'll get a 
-control that produces an `Array` or `Set` of that type. 
+### Wiring it up 
+
+Now you can add your new `productListControl` to your `customerControl` as follows:
+
+```
+customerControl =
+    Control.record 
+        (\\name age products -> 
+            { name = name
+            , age = age
+            , products = products
+            }
+        )
+        |> Control.field .name nameControl
+        |> Control.field .age ageControl
+        |> Control.field .products productListControl
+        |> Control.end
+```
+
+### Other list-like things
+
+The package includes built-in combinators for three other list-like data structures from Elm's standard library: 
+`Array`, `Set` and `Dict`.
+
+`Control.array` and `Control.set` have exactly the same API as `Control.list` - just pass them a control of any type and 
+you'll get a control that produces an `Array` or `Set` of that type. 
 
 `Control.dict` is similar, except that it takes _two_ controls as arguments. It uses the first as the key and the second 
 as the value for the `Dict` it produces.
@@ -542,7 +630,7 @@ type Id =
 type alias Customer = 
     { name : String
     , age : Int 
-    , securityChallenge : SecurityChallenge
+    , products : List Product
     , id : Id
     }
 ```
@@ -566,21 +654,23 @@ It'll look something like this:
 
 mappingOutro =
     """
-And again, you can add this new field to your `Customer` control as follows:
+### Wiring it up
+
+You can add this new field to your `Customer` control as follows:
 
 ```
-customer =
+customerControl =
     Control.record 
-        (\\name age securityChallenge id -> 
+        (\\name age products id -> 
             { name = name
             , age = age
-            , securityChallenge = securityChallenge 
+            , products = products 
             , id = id
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age ageControl
-        |> Control.field .securityChallenge securityChallengeControl
+        |> Control.field .products productListControl
         |> Control.field .id idControl
         |> Control.end
 ```        
@@ -607,6 +697,8 @@ validationIntro =
 We've shown how we can build controls that produce pretty much any Elm type - but what if just producing any old value 
 of that type isn't enough? What if we want to be more specific about which values we want our controls to accept?
 
+### Showing errors
+
 It's time to introduce some validation. For example, perhaps we want to ensure that our customer's name isn't left blank. 
 We can do that with a function called `Control.failIf`:
 
@@ -617,7 +709,9 @@ nameControl =
         |> Control.failIf (\\name -> String.isEmpty name) "Name cannot be blank"
 ```
 
-There might also be occasions where we want to alert the user that the data they've input might not be correct - but 
+### Showing notifications
+
+There might also be occasions where we want to notify the user that the data they've input might not be correct - but 
 we're not _certain_ that the input is actually invalid. 
 
 In these cases, we can use `Control.noteIf`:
@@ -629,22 +723,29 @@ nameControl =
         |> Control.failIf (\\name -> String.isEmpty name) "Name cannot be blank"
         |> Control.noteIf (\\name -> String.length name == 1) "Is that the full name?"
 ```
+
+### What's the difference?
+
 The difference between the two functions is that `Control.failIf` will cause the control to fail validation when the 
 form is submitted, while `Control.noteIf` will allow it to pass. 
 
 There's also a difference in the HTML produced by each function. Messages produced by `Control.failIf` are assigned an 
 HTML attribute `class="control-feedback-fail"`, while those produced by `Control.noteIf` are given 
 `class="control-feedback-note"`.
+
+This makes it easy to style errors and notifications differently with CSS, as you can see below:
 """
 
 
 validationOutro =
     """
-**Side note:** You'll notice that the field doesn't validate itself instantly when you type into it. This is because by 
+### Debouncing
+
+You'll notice that the field doesn't validate itself instantly when you type into it. This is because by 
 default, `Control.string` is set to debounce for 500 milliseconds before it shows the results of validation. 
 
-You can configure the debouncing interval with `Control.debounce`, providing a value in milliseconds. For example, this
-will show the validation messages immediately:
+You can configure the debouncing interval with `Control.debounce`, providing a value in milliseconds. For example, the
+following code will create a control that displays validation messages immediately:
 
 ```
 nameControl =
@@ -659,45 +760,48 @@ nameControl =
 
 multivalidation =
     Control.record
-        (\name age securityChallenge id choosePassword confirmPassword ->
+        (\name age products id password ->
             { name = name
             , age = age
-            , securityChallenge = securityChallenge
+            , products = products
             , id = id
-            , choosePassword = choosePassword
-            , confirmPassword = confirmPassword
+            , password = password
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age (Control.int |> Control.label "Age")
-        |> Control.field .securityChallenge securityChallengeControl
+        |> Control.field .products productListControl
         |> Control.field .id idControl
-        |> Control.field .choosePassword choosePasswordControl
-        |> Control.field .confirmPassword confirmPasswordControl
+        |> Control.field .password passwordControl
         |> Control.end
-        |> Control.throw
-            { flag = "password"
-            , when = \{ choosePassword, confirmPassword } -> choosePassword /= confirmPassword
-            }
         |> mdBefore multivalidationIntro
         |> mdAfter multivalidationOutro
+
+
+passwordControl =
+    Control.record (\choose confirm -> { choose = choose, confirm = confirm })
+        |> Control.field .choose choosePasswordControl
+        |> Control.field .confirm confirmPasswordControl
+        |> Control.end
+        |> Control.alertIf
+            (\{ choose, confirm } -> choose /= confirm)
+            "password-mismatch"
+        |> Control.map
+            { convert = .choose
+            , revert = \p -> { choose = p, confirm = p }
+            }
 
 
 choosePasswordControl =
     Control.string
         |> Control.label "Choose password"
-        |> Control.catch
-            { flag = "password"
-            , fail = True
-            , message = "Passwords must match"
-            }
 
 
 confirmPasswordControl =
     Control.string
         |> Control.label "Confirm password"
-        |> Control.catch
-            { flag = "password"
+        |> Control.respond
+            { alert = "password-mismatch"
             , fail = True
             , message = "Passwords must match"
             }
@@ -708,35 +812,18 @@ multivalidationIntro =
 ## Multi-control validation
 
 Sometimes you might need to validate the input of one control based on the input of another. The classic example is
-checking that passwords match, so let's add some password fields to our `Customer` record:
+checking that passwords match, so let's try that:
 
 ```
-type alias Customer = 
-    { name : String
-    , age : Int 
-    , securityChallenge : SecurityChallenge
-    , id : Id
-    , choosePassword : String
-    , confirmPassword : String
+type alias Passwords =
+    { choose : String
+    , confirm : String
     }
 
-customerControl =
-    Control.record 
-        (\\name age securityChallenge id choosePassword confirmPassword -> 
-            { name = name
-            , age = age
-            , securityChallenge = securityChallenge 
-            , id = id
-            , choosePassword = choosePassword
-            , confirmPassword = confirmPassword
-            }
-        )
-        |> Control.field .name nameControl
-        |> Control.field .age ageControl
-        |> Control.field .securityChallenge securityChallengeControl
-        |> Control.field .id idControl
-        |> Control.field .choosePassword choosePasswordControl
-        |> Control.field .confirmPassword confirmPasswordControl
+passwordControl =
+    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })
+        |> Control.field .choose choosePasswordControl
+        |> Control.field .confirm confirmPasswordControl
         |> Control.end
 
 choosePasswordControl =
@@ -747,38 +834,101 @@ confirmPasswordControl =
     Control.string
         |> Control.label "Confirm password"
 ```
+
 The challenge here is that `confirmPasswordControl` has no way of knowing what's been entered in 
-`choosePasswordControl`, so it can't tell whether the contents of the two controls match or not.
+`choosePasswordControl`, so it can't tell whether the contents of the two controls match or not. That means we can't use
+`Control.failIf` to handle this validation rule.
 
-We can solve this problem by going up a level and checking the contents of both fields in `customerControl`. If they 
-don't match, we can use `Control.throw` to throw a "flag" - a message that other controls can listen out for and react 
-to:
+### Going up a level
+
+We can solve this problem by moving the validation into the `passwordControl` record, which contains both fields and can
+therefore check the data in both of them. If the fields don't match, we can use `Control.alertIf` to emit an alert:
 
 ```
-customerControl =
-    Control.record 
-        ...
-        |> Control.field .choosePassword choosePasswordControl
-        |> Control.field .confirmPassword confirmPasswordControl
+passwordControl =
+    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })
+        |> Control.field .choose choosePasswordControl
+        |> Control.field .confirm confirmPasswordControl
         |> Control.end
-        |> Control.throw
-            { flag = "passwords-don't-match"
-            , when = \\{ choosePassword, confirmPassword } -> choosePassword /= confirmPassword
-            }
+        |> Control.alertIf
+            (\\{ choose, confirm } -> choose /= confirm)
+            "password-mismatch"
 ```
 
-Now, we just need `confirmPasswordControl` to listen out for the `"passwords-don't-match"` flag, and respond by alerting
-the user and causing the form to fail validation. We can do this using `Control.catch`:
+Now, we use `Control.respond` to tell `confirmPasswordControl` to listen out for the `"password-mismatch"` alert. It can 
+then respond by showing an error message to the user and causing the form to fail validation:
 
 ```
 confirmPasswordControl =
     Control.string
-        |> Control.catch 
-            { flag = "passwords-don't-match"
+        |> Control.label "Confirm password"
+        |> Control.respond
+            { alert = "password-mismatch"
             , fail = True
             , message = "Passwords must match"
             }
 ```
+
+### Wiring it up
+
+Finally, let's add the password to our `Customer` type, represented as a `String`. So our type will be:
+
+```
+type alias Customer = 
+    { name : String
+    , age : Int 
+    , products : List Product
+    , id : Id
+    , password : String
+    }
+```
+
+But... our `passwordControl` doesn't produce a `String`, it produces `{ choose : String, confirm : String }`. Uh oh!
+
+### Control.map to the rescue!
+
+Fortunately, all is not lost. We can use `Control.map` to convert the output type of `passwordControl` to a `String`, 
+as we learned in the previous lesson:
+
+```
+passwordControl =
+    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })
+        |> Control.field .choose choosePasswordControl
+        |> Control.field .confirm confirmPasswordControl
+        |> Control.end
+        |> Control.alertIf
+            (\\{ choose, confirm } -> choose /= confirm)
+            "password-mismatch"
+        |> Control.map
+            { convert = \\{ choose, confirm } -> choose
+            , revert = \\password -> { choose = password, confirm = password }
+            }
+```
+
+### Wiring it up... again
+
+And now we just add `passwordControl` to `customerControl`, as usual:
+
+```
+customerControl =
+    Control.record
+        (\\name age products id password ->
+            { name = name
+            , age = age
+            , products = products
+            , id = id
+            , password = password
+            }
+        )
+        |> Control.field .name nameControl
+        |> Control.field .age ageControl
+        |> Control.field .products productListControl
+        |> Control.field .id idControl
+        |> Control.field .password passwordControl
+        |> Control.end
+```
+
+And you should see something a little like this:
 """
 
 
