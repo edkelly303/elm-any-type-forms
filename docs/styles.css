@@ -73,7 +73,7 @@ ol {
     content: "";
     display: inline-block;
     background-color: red;
-    mask: url('./prohibit.svg');
+    mask: url('icons/prohibit.svg');
     mask-size: 20px;
     width: 20px;
     height: 20px;
@@ -88,7 +88,7 @@ ol {
     content: "";
     display: block;
     background-color: green;
-    mask: url('./question.svg');
+    mask: url('icons/question.svg');
     mask-size: 20px;
     width: 20px;
     height: 20px;
