@@ -1,0 +1,115 @@
+body {
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+p {
+    line-height: 22px;
+}
+
+label {
+    margin-right: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+fieldset {
+    margin: 0px;
+    margin-bottom: 10px;
+    margin-left: 20px;
+    border: 1px lightpink solid;
+    border-radius: 3px;
+}
+
+fieldset .control-container {
+    margin: 0px;
+    border: none;
+}
+
+fieldset label {
+    display: inline;
+}
+
+.control-container {
+    margin-bottom: 10px;
+    margin-left: 20px;
+    padding: 10px;
+    border: 1px lightpink solid;
+    border-radius: 3px;
+}
+
+li .control-container,
+li fieldset {
+    margin-left: 0px;
+}
+
+li {
+    margin-bottom: 10px;
+}
+
+ol {
+    padding-left: 20px;
+}
+
+.control-invalid {
+    background-color: rgba(255, 0, 0, 0.1);
+}
+
+.control-valid {
+    background-color: rgba(0, 255, 0, 0.1);
+}
+
+.control-feedback {
+    margin-top: 5px;
+    margin-bottom: 0px;
+    display: flex;
+    flex-direction: row;
+}
+
+.control-feedback-fail {
+    color: red
+}
+
+.control-feedback-fail::before {
+    content: "";
+    display: inline-block;
+    background-color: red;
+    mask: url('./prohibit.svg');
+    mask-size: 20px;
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+}
+
+.control-feedback-note {
+    color: green
+}
+
+.control-feedback-note::before {
+    content: "";
+    display: block;
+    background-color: green;
+    mask: url('./question.svg');
+    mask-size: 20px;
+    width: 20px;
+    height: 20px;
+    margin-right: 5px;
+}
+
+pre {
+    border: 1px gray solid;
+    border-radius: 5px;
+    padding: 10px;
+    background-color: aliceblue;
+}
+
+pre code {
+    border: none;
+    padding: 0px;
+}
+
+code {
+    border: 1px gray solid;
+    border-radius: 3px;
+    padding: 2px;
+    background-color: aliceblue;
+}
