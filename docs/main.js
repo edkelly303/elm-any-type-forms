@@ -1,2881 +1,5 @@
-// elm-watch hot {"version":"1.2.0-beta.2","targetName":"elm-any-type-forms","webSocketPort":8000}
-"use strict";
-(() => {
-  // node_modules/tiny-decoders/index.mjs
-  function boolean(value) {
-    if (typeof value !== "boolean") {
-      throw new DecoderError({ tag: "boolean", got: value });
-    }
-    return value;
-  }
-  function number(value) {
-    if (typeof value !== "number") {
-      throw new DecoderError({ tag: "number", got: value });
-    }
-    return value;
-  }
-  function string(value) {
-    if (typeof value !== "string") {
-      throw new DecoderError({ tag: "string", got: value });
-    }
-    return value;
-  }
-  function stringUnion(mapping) {
-    return function stringUnionDecoder(value) {
-      const str = string(value);
-      if (!Object.prototype.hasOwnProperty.call(mapping, str)) {
-        throw new DecoderError({
-          tag: "unknown stringUnion variant",
-          knownVariants: Object.keys(mapping),
-          got: str
-        });
-      }
-      return str;
-    };
-  }
-  function unknownArray(value) {
-    if (!Array.isArray(value)) {
-      throw new DecoderError({ tag: "array", got: value });
-    }
-    return value;
-  }
-  function unknownRecord(value) {
-    if (typeof value !== "object" || value === null || Array.isArray(value)) {
-      throw new DecoderError({ tag: "object", got: value });
-    }
-    return value;
-  }
-  function array(decoder) {
-    return function arrayDecoder(value) {
-      const arr = unknownArray(value);
-      const result = [];
-      for (let index = 0; index < arr.length; index++) {
-        try {
-          result.push(decoder(arr[index]));
-        } catch (error) {
-          throw DecoderError.at(error, index);
-        }
-      }
-      return result;
-    };
-  }
-  function record(decoder) {
-    return function recordDecoder(value) {
-      const object = unknownRecord(value);
-      const keys = Object.keys(object);
-      const result = {};
-      for (const key of keys) {
-        if (key === "__proto__") {
-          continue;
-        }
-        try {
-          result[key] = decoder(object[key]);
-        } catch (error) {
-          throw DecoderError.at(error, key);
-        }
-      }
-      return result;
-    };
-  }
-  function fields(callback, { exact = "allow extra", allow = "object" } = {}) {
-    return function fieldsDecoder(value) {
-      const object = allow === "array" ? unknownArray(value) : unknownRecord(value);
-      const knownFields = /* @__PURE__ */ Object.create(null);
-      function field(key, decoder) {
-        try {
-          const result2 = decoder(object[key]);
-          knownFields[key] = null;
-          return result2;
-        } catch (error) {
-          throw DecoderError.at(error, key);
-        }
-      }
-      const result = callback(field, object);
-      if (exact !== "allow extra") {
-        const unknownFields = Object.keys(object).filter((key) => !Object.prototype.hasOwnProperty.call(knownFields, key));
-        if (unknownFields.length > 0) {
-          throw new DecoderError({
-            tag: "exact fields",
-            knownFields: Object.keys(knownFields),
-            got: unknownFields
-          });
-        }
-      }
-      return result;
-    };
-  }
-  function fieldsAuto(mapping, { exact = "allow extra" } = {}) {
-    return function fieldsAutoDecoder(value) {
-      const object = unknownRecord(value);
-      const keys = Object.keys(mapping);
-      const result = {};
-      for (const key of keys) {
-        if (key === "__proto__") {
-          continue;
-        }
-        const decoder = mapping[key];
-        try {
-          result[key] = decoder(object[key]);
-        } catch (error) {
-          throw DecoderError.at(error, key);
-        }
-      }
-      if (exact !== "allow extra") {
-        const unknownFields = Object.keys(object).filter((key) => !Object.prototype.hasOwnProperty.call(mapping, key));
-        if (unknownFields.length > 0) {
-          throw new DecoderError({
-            tag: "exact fields",
-            knownFields: keys,
-            got: unknownFields
-          });
-        }
-      }
-      return result;
-    };
-  }
-  function fieldsUnion(key, mapping) {
-    return fields(function fieldsUnionFields(field, object) {
-      const tag = field(key, string);
-      if (Object.prototype.hasOwnProperty.call(mapping, tag)) {
-        const decoder = mapping[tag];
-        return decoder(object);
-      }
-      throw new DecoderError({
-        tag: "unknown fieldsUnion tag",
-        knownTags: Object.keys(mapping),
-        got: tag,
-        key
-      });
-    });
-  }
-  function multi(mapping) {
-    return function multiDecoder(value) {
-      if (value === void 0) {
-        if (mapping.undefined !== void 0) {
-          return mapping.undefined(value);
-        }
-      } else if (value === null) {
-        if (mapping.null !== void 0) {
-          return mapping.null(value);
-        }
-      } else if (typeof value === "boolean") {
-        if (mapping.boolean !== void 0) {
-          return mapping.boolean(value);
-        }
-      } else if (typeof value === "number") {
-        if (mapping.number !== void 0) {
-          return mapping.number(value);
-        }
-      } else if (typeof value === "string") {
-        if (mapping.string !== void 0) {
-          return mapping.string(value);
-        }
-      } else if (Array.isArray(value)) {
-        if (mapping.array !== void 0) {
-          return mapping.array(value);
-        }
-      } else {
-        if (mapping.object !== void 0) {
-          return mapping.object(value);
-        }
-      }
-      throw new DecoderError({
-        tag: "unknown multi type",
-        knownTypes: Object.keys(mapping),
-        got: value
-      });
-    };
-  }
-  function optional(decoder, defaultValue) {
-    return function optionalDecoder(value) {
-      if (value === void 0) {
-        return defaultValue;
-      }
-      try {
-        return decoder(value);
-      } catch (error) {
-        const newError = DecoderError.at(error);
-        if (newError.path.length === 0) {
-          newError.optional = true;
-        }
-        throw newError;
-      }
-    };
-  }
-  function chain(decoder, next) {
-    return function chainDecoder(value) {
-      return next(decoder(value));
-    };
-  }
-  function formatDecoderErrorVariant(variant, options) {
-    const formatGot = (value) => {
-      const formatted = repr(value, options);
-      return (options === null || options === void 0 ? void 0 : options.sensitive) === true ? `${formatted}
-(Actual values are hidden in sensitive mode.)` : formatted;
-    };
-    const stringList = (strings) => strings.length === 0 ? "(none)" : strings.map((s) => JSON.stringify(s)).join(", ");
-    const got = (message, value) => value === DecoderError.MISSING_VALUE ? message : `${message}
-Got: ${formatGot(value)}`;
-    switch (variant.tag) {
-      case "boolean":
-      case "number":
-      case "string":
-        return got(`Expected a ${variant.tag}`, variant.got);
-      case "array":
-      case "object":
-        return got(`Expected an ${variant.tag}`, variant.got);
-      case "unknown multi type":
-        return `Expected one of these types: ${variant.knownTypes.length === 0 ? "never" : variant.knownTypes.join(", ")}
-Got: ${formatGot(variant.got)}`;
-      case "unknown fieldsUnion tag":
-        return `Expected one of these tags: ${stringList(variant.knownTags)}
-Got: ${formatGot(variant.got)}`;
-      case "unknown stringUnion variant":
-        return `Expected one of these variants: ${stringList(variant.knownVariants)}
-Got: ${formatGot(variant.got)}`;
-      case "exact fields":
-        return `Expected only these fields: ${stringList(variant.knownFields)}
-Found extra fields: ${formatGot(variant.got).replace(/^\[|\]$/g, "")}`;
-      case "tuple size":
-        return `Expected ${variant.expected} items
-Got: ${variant.got}`;
-      case "custom":
-        return got(variant.message, variant.got);
-    }
-  }
-  var DecoderError = class extends TypeError {
-    constructor({ key, ...params }) {
-      const variant = "tag" in params ? params : { tag: "custom", message: params.message, got: params.value };
-      super(`${formatDecoderErrorVariant(
-        variant,
-        { sensitive: true }
-      )}
-
-For better error messages, see https://github.com/lydell/tiny-decoders#error-messages`);
-      this.path = key === void 0 ? [] : [key];
-      this.variant = variant;
-      this.nullable = false;
-      this.optional = false;
-    }
-    static at(error, key) {
-      if (error instanceof DecoderError) {
-        if (key !== void 0) {
-          error.path.unshift(key);
-        }
-        return error;
-      }
-      return new DecoderError({
-        tag: "custom",
-        message: error instanceof Error ? error.message : String(error),
-        got: DecoderError.MISSING_VALUE,
-        key
-      });
-    }
-    format(options) {
-      const path = this.path.map((part) => `[${JSON.stringify(part)}]`).join("");
-      const nullableString = this.nullable ? " (nullable)" : "";
-      const optionalString = this.optional ? " (optional)" : "";
-      const variant = formatDecoderErrorVariant(this.variant, options);
-      return `At root${path}${nullableString}${optionalString}:
-${variant}`;
-    }
-  };
-  DecoderError.MISSING_VALUE = Symbol("DecoderError.MISSING_VALUE");
-  function repr(value, { recurse = true, maxArrayChildren = 5, maxObjectChildren = 3, maxLength = 100, recurseMaxLength = 20, sensitive = false } = {}) {
-    const type = typeof value;
-    const toStringType = Object.prototype.toString.call(value).replace(/^\[object\s+(.+)\]$/, "$1");
-    try {
-      if (value == null || type === "number" || type === "boolean" || type === "symbol" || toStringType === "RegExp") {
-        return sensitive ? toStringType.toLowerCase() : truncate(String(value), maxLength);
-      }
-      if (type === "string") {
-        return sensitive ? type : truncate(JSON.stringify(value), maxLength);
-      }
-      if (typeof value === "function") {
-        return `function ${truncate(JSON.stringify(value.name), maxLength)}`;
-      }
-      if (Array.isArray(value)) {
-        const arr = value;
-        if (!recurse && arr.length > 0) {
-          return `${toStringType}(${arr.length})`;
-        }
-        const lastIndex = arr.length - 1;
-        const items = [];
-        const end = Math.min(maxArrayChildren - 1, lastIndex);
-        for (let index = 0; index <= end; index++) {
-          const item = index in arr ? repr(arr[index], {
-            recurse: false,
-            maxLength: recurseMaxLength,
-            sensitive
-          }) : "<empty>";
-          items.push(item);
-        }
-        if (end < lastIndex) {
-          items.push(`(${lastIndex - end} more)`);
-        }
-        return `[${items.join(", ")}]`;
-      }
-      if (toStringType === "Object") {
-        const object = value;
-        const keys = Object.keys(object);
-        const { name } = object.constructor;
-        if (!recurse && keys.length > 0) {
-          return `${name}(${keys.length})`;
-        }
-        const numHidden = Math.max(0, keys.length - maxObjectChildren);
-        const items = keys.slice(0, maxObjectChildren).map((key2) => `${truncate(JSON.stringify(key2), recurseMaxLength)}: ${repr(object[key2], {
-          recurse: false,
-          maxLength: recurseMaxLength,
-          sensitive
-        })}`).concat(numHidden > 0 ? `(${numHidden} more)` : []);
-        const prefix = name === "Object" ? "" : `${name} `;
-        return `${prefix}{${items.join(", ")}}`;
-      }
-      return toStringType;
-    } catch (_error) {
-      return toStringType;
-    }
-  }
-  function truncate(str, maxLength) {
-    const half = Math.floor(maxLength / 2);
-    return str.length <= maxLength ? str : `${str.slice(0, half)}\u2026${str.slice(-half)}`;
-  }
-
-  // src/Helpers.ts
-  function join(array2, separator) {
-    return array2.join(separator);
-  }
-  function pad(number2) {
-    return number2.toString().padStart(2, "0");
-  }
-  function formatDate(date) {
-    return join(
-      [pad(date.getFullYear()), pad(date.getMonth() + 1), pad(date.getDate())],
-      "-"
-    );
-  }
-  function formatTime(date) {
-    return join(
-      [pad(date.getHours()), pad(date.getMinutes()), pad(date.getSeconds())],
-      ":"
-    );
-  }
-
-  // src/TeaProgram.ts
-  async function runTeaProgram(options) {
-    return new Promise((resolve, reject) => {
-      const [initialModel, initialCmds] = options.init;
-      let model = initialModel;
-      const msgQueue = [];
-      let killed = false;
-      const dispatch = (dispatchedMsg) => {
-        if (killed) {
-          return;
-        }
-        const alreadyRunning = msgQueue.length > 0;
-        msgQueue.push(dispatchedMsg);
-        if (alreadyRunning) {
-          return;
-        }
-        for (const msg of msgQueue) {
-          const [newModel, cmds] = options.update(msg, model);
-          model = newModel;
-          runCmds(cmds);
-        }
-        msgQueue.length = 0;
-      };
-      const runCmds = (cmds) => {
-        for (const cmd of cmds) {
-          options.runCmd(
-            cmd,
-            mutable,
-            dispatch,
-            (result) => {
-              cmds.length = 0;
-              killed = true;
-              resolve(result);
-            },
-            (error) => {
-              cmds.length = 0;
-              killed = true;
-              reject(error);
-            }
-          );
-          if (killed) {
-            break;
-          }
-        }
-      };
-      const mutable = options.initMutable(
-        dispatch,
-        (result) => {
-          killed = true;
-          resolve(result);
-        },
-        (error) => {
-          killed = true;
-          reject(error);
-        }
-      );
-      runCmds(initialCmds);
-    });
-  }
-
-  // src/Types.ts
-  var AbsolutePath = fieldsAuto({
-    tag: () => "AbsolutePath",
-    absolutePath: string
-  });
-  var CompilationMode = stringUnion({
-    debug: null,
-    standard: null,
-    optimize: null
-  });
-  var BrowserUiPosition = stringUnion({
-    TopLeft: null,
-    TopRight: null,
-    BottomLeft: null,
-    BottomRight: null
-  });
-
-  // client/WebSocketMessages.ts
-  var FocusedTabAcknowledged = fieldsAuto({
-    tag: () => "FocusedTabAcknowledged"
-  });
-  var OpenEditorError = fieldsUnion("tag", {
-    EnvNotSet: fieldsAuto({
-      tag: () => "EnvNotSet"
-    }),
-    CommandFailed: fieldsAuto({
-      tag: () => "CommandFailed",
-      message: string
-    })
-  });
-  var OpenEditorFailed = fieldsAuto({
-    tag: () => "OpenEditorFailed",
-    error: OpenEditorError
-  });
-  var ErrorLocation = fieldsUnion("tag", {
-    FileOnly: fieldsAuto({
-      tag: () => "FileOnly",
-      file: AbsolutePath
-    }),
-    FileWithLineAndColumn: fieldsAuto({
-      tag: () => "FileWithLineAndColumn",
-      file: AbsolutePath,
-      line: number,
-      column: number
-    }),
-    Target: fieldsAuto({
-      tag: () => "Target",
-      targetName: string
-    })
-  });
-  var CompileError = fieldsAuto({
-    title: string,
-    location: optional(ErrorLocation),
-    htmlContent: string
-  });
-  var StatusChanged = fieldsAuto({
-    tag: () => "StatusChanged",
-    status: fieldsUnion("tag", {
-      AlreadyUpToDate: fieldsAuto({
-        tag: () => "AlreadyUpToDate",
-        compilationMode: CompilationMode,
-        browserUiPosition: BrowserUiPosition
-      }),
-      Busy: fieldsAuto({
-        tag: () => "Busy",
-        compilationMode: CompilationMode,
-        browserUiPosition: BrowserUiPosition
-      }),
-      CompileError: fieldsAuto({
-        tag: () => "CompileError",
-        compilationMode: CompilationMode,
-        browserUiPosition: BrowserUiPosition,
-        openErrorOverlay: boolean,
-        errors: array(CompileError),
-        foregroundColor: string,
-        backgroundColor: string
-      }),
-      ElmJsonError: fieldsAuto({
-        tag: () => "ElmJsonError",
-        error: string
-      }),
-      ClientError: fieldsAuto({
-        tag: () => "ClientError",
-        message: string
-      })
-    })
-  });
-  var SuccessfullyCompiled = fieldsAuto({
-    tag: () => "SuccessfullyCompiled",
-    code: string,
-    elmCompiledTimestamp: number,
-    compilationMode: CompilationMode,
-    browserUiPosition: BrowserUiPosition
-  });
-  var SuccessfullyCompiledButRecordFieldsChanged = fieldsAuto({
-    tag: () => "SuccessfullyCompiledButRecordFieldsChanged"
-  });
-  var WebSocketToClientMessage = fieldsUnion("tag", {
-    FocusedTabAcknowledged,
-    OpenEditorFailed,
-    StatusChanged,
-    SuccessfullyCompiled,
-    SuccessfullyCompiledButRecordFieldsChanged
-  });
-  var WebSocketToServerMessage = fieldsUnion("tag", {
-    ChangedCompilationMode: fieldsAuto({
-      tag: () => "ChangedCompilationMode",
-      compilationMode: CompilationMode
-    }),
-    ChangedBrowserUiPosition: fieldsAuto({
-      tag: () => "ChangedBrowserUiPosition",
-      browserUiPosition: BrowserUiPosition
-    }),
-    ChangedOpenErrorOverlay: fieldsAuto({
-      tag: () => "ChangedOpenErrorOverlay",
-      openErrorOverlay: boolean
-    }),
-    FocusedTab: fieldsAuto({
-      tag: () => "FocusedTab"
-    }),
-    PressedOpenEditor: fieldsAuto({
-      tag: () => "PressedOpenEditor",
-      file: AbsolutePath,
-      line: number,
-      column: number
-    })
-  });
-  function decodeWebSocketToClientMessage(message) {
-    if (message.startsWith("//")) {
-      const newlineIndexRaw = message.indexOf("\n");
-      const newlineIndex = newlineIndexRaw === -1 ? message.length : newlineIndexRaw;
-      const jsonString = message.slice(2, newlineIndex);
-      const parsed = SuccessfullyCompiled(JSON.parse(jsonString));
-      return { ...parsed, code: message };
-    } else {
-      return WebSocketToClientMessage(JSON.parse(message));
-    }
-  }
-
-  // client/client.ts
-  var window = globalThis;
-  var IS_WEB_WORKER = window.window === void 0;
-  var { __ELM_WATCH } = window;
-  if (typeof __ELM_WATCH !== "object" || __ELM_WATCH === null) {
-    __ELM_WATCH = {};
-    Object.defineProperty(window, "__ELM_WATCH", { value: __ELM_WATCH });
-  }
-  __ELM_WATCH.MOCKED_TIMINGS ?? (__ELM_WATCH.MOCKED_TIMINGS = false);
-  __ELM_WATCH.WEBSOCKET_TIMEOUT ?? (__ELM_WATCH.WEBSOCKET_TIMEOUT = 1e3);
-  __ELM_WATCH.ON_INIT ?? (__ELM_WATCH.ON_INIT = () => {
-  });
-  __ELM_WATCH.ON_RENDER ?? (__ELM_WATCH.ON_RENDER = () => {
-  });
-  __ELM_WATCH.ON_REACHED_IDLE_STATE ?? (__ELM_WATCH.ON_REACHED_IDLE_STATE = () => {
-  });
-  __ELM_WATCH.RELOAD_STATUSES ?? (__ELM_WATCH.RELOAD_STATUSES = {});
-  var RELOAD_MESSAGE_KEY = "__elmWatchReloadMessage";
-  var RELOAD_TARGET_NAME_KEY_PREFIX = "__elmWatchReloadTarget__";
-  __ELM_WATCH.RELOAD_PAGE ?? (__ELM_WATCH.RELOAD_PAGE = (message) => {
-    if (message !== void 0) {
-      try {
-        window.sessionStorage.setItem(RELOAD_MESSAGE_KEY, message);
-      } catch {
-      }
-    }
-    if (IS_WEB_WORKER) {
-      if (message !== void 0) {
-        console.info(message);
-      }
-      console.error(
-        message === void 0 ? "elm-watch: You need to reload the page! I seem to be running in a Web Worker, so I can\u2019t do it for you." : `elm-watch: You need to reload the page! I seem to be running in a Web Worker, so I couldn\u2019t actually reload the page (see above).`
-      );
-    } else {
-      window.location.reload();
-    }
-  });
-  __ELM_WATCH.KILL_MATCHING ?? (__ELM_WATCH.KILL_MATCHING = () => Promise.resolve());
-  __ELM_WATCH.DISCONNECT ?? (__ELM_WATCH.DISCONNECT = () => {
-  });
-  __ELM_WATCH.LOG_DEBUG ?? (__ELM_WATCH.LOG_DEBUG = console.debug);
-  var VERSION = "1.2.0-beta.2";
-  var TARGET_NAME = "elm-any-type-forms";
-  var INITIAL_ELM_COMPILED_TIMESTAMP = Number(
-    "1689078217876"
-  );
-  var ORIGINAL_COMPILATION_MODE = "standard";
-  var ORIGINAL_BROWSER_UI_POSITION = "BottomLeft";
-  var WEBSOCKET_PORT = "8000";
-  var CONTAINER_ID = "elm-watch";
-  var DEBUG = String("false") === "true";
-  var BROWSER_UI_MOVED_EVENT = "BROWSER_UI_MOVED_EVENT";
-  var CLOSE_ALL_ERROR_OVERLAYS_EVENT = "CLOSE_ALL_ERROR_OVERLAYS_EVENT";
-  var JUST_CHANGED_BROWSER_UI_POSITION_TIMEOUT = 2e3;
-  var SEND_KEY_DO_NOT_USE_ALL_THE_TIME = Symbol(
-    "This value is supposed to only be obtained via `Status`."
-  );
-  function logDebug(...args) {
-    if (DEBUG) {
-      __ELM_WATCH.LOG_DEBUG(...args);
-    }
-  }
-  function parseBrowseUiPositionWithFallback(value) {
-    try {
-      return BrowserUiPosition(value);
-    } catch {
-      return ORIGINAL_BROWSER_UI_POSITION;
-    }
-  }
-  function run() {
-    let elmCompiledTimestampBeforeReload = void 0;
-    try {
-      const message = window.sessionStorage.getItem(RELOAD_MESSAGE_KEY);
-      if (message !== null) {
-        console.info(message);
-        window.sessionStorage.removeItem(RELOAD_MESSAGE_KEY);
-      }
-      const key = RELOAD_TARGET_NAME_KEY_PREFIX + TARGET_NAME;
-      const previous = window.sessionStorage.getItem(key);
-      if (previous !== null) {
-        const number2 = Number(previous);
-        if (Number.isFinite(number2)) {
-          elmCompiledTimestampBeforeReload = number2;
-        }
-        window.sessionStorage.removeItem(key);
-      }
-    } catch {
-    }
-    const elements = IS_WEB_WORKER ? void 0 : getOrCreateTargetRoot();
-    const browserUiPosition = elements === void 0 ? ORIGINAL_BROWSER_UI_POSITION : parseBrowseUiPositionWithFallback(elements.container.dataset.position);
-    const getNow = () => new Date();
-    runTeaProgram({
-      initMutable: initMutable(getNow, elements),
-      init: init(getNow(), browserUiPosition, elmCompiledTimestampBeforeReload),
-      update: (msg, model) => {
-        const [updatedModel, cmds] = update(msg, model);
-        const modelChanged = updatedModel !== model;
-        const reloadTrouble = model.status.tag !== updatedModel.status.tag && updatedModel.status.tag === "WaitingForReload" && updatedModel.elmCompiledTimestamp === updatedModel.elmCompiledTimestampBeforeReload;
-        const newModel = modelChanged ? {
-          ...updatedModel,
-          previousStatusTag: model.status.tag,
-          uiExpanded: reloadTrouble ? true : updatedModel.uiExpanded
-        } : model;
-        const oldErrorOverlay = getErrorOverlay(model.status);
-        const newErrorOverlay = getErrorOverlay(newModel.status);
-        const allCmds = modelChanged ? [
-          ...cmds,
-          {
-            tag: "UpdateGlobalStatus",
-            reloadStatus: statusToReloadStatus(newModel),
-            elmCompiledTimestamp: newModel.elmCompiledTimestamp
-          },
-          newModel.status.tag === newModel.previousStatusTag && oldErrorOverlay?.openErrorOverlay === newErrorOverlay?.openErrorOverlay ? { tag: "NoCmd" } : {
-            tag: "UpdateErrorOverlay",
-            errors: newErrorOverlay === void 0 || !newErrorOverlay.openErrorOverlay ? /* @__PURE__ */ new Map() : newErrorOverlay.errors,
-            sendKey: statusToSpecialCaseSendKey(newModel.status)
-          },
-          {
-            tag: "Render",
-            model: newModel,
-            manageFocus: msg.tag === "UiMsg"
-          },
-          model.browserUiPosition === newModel.browserUiPosition ? { tag: "NoCmd" } : {
-            tag: "SetBrowserUiPosition",
-            browserUiPosition: newModel.browserUiPosition
-          },
-          reloadTrouble ? { tag: "TriggerReachedIdleState", reason: "ReloadTrouble" } : { tag: "NoCmd" }
-        ] : cmds;
-        logDebug(`${msg.tag} (${TARGET_NAME})`, msg, newModel, allCmds);
-        return [newModel, allCmds];
-      },
-      runCmd: runCmd(getNow, elements)
-    }).catch((error) => {
-      console.error("elm-watch: Unexpectedly exited with error:", error);
-    });
-  }
-  function getErrorOverlay(status) {
-    return "errorOverlay" in status ? status.errorOverlay : void 0;
-  }
-  function statusToReloadStatus(model) {
-    switch (model.status.tag) {
-      case "Busy":
-      case "Connecting":
-        return { tag: "MightWantToReload" };
-      case "CompileError":
-      case "ElmJsonError":
-      case "EvalError":
-      case "Idle":
-      case "SleepingBeforeReconnect":
-      case "UnexpectedError":
-        return { tag: "NoReloadWanted" };
-      case "WaitingForReload":
-        return model.elmCompiledTimestamp === model.elmCompiledTimestampBeforeReload ? { tag: "NoReloadWanted" } : { tag: "ReloadRequested", reasons: model.status.reasons };
-    }
-  }
-  function statusToStatusType(statusTag) {
-    switch (statusTag) {
-      case "Idle":
-        return "Success";
-      case "Busy":
-      case "Connecting":
-      case "SleepingBeforeReconnect":
-      case "WaitingForReload":
-        return "Waiting";
-      case "CompileError":
-      case "ElmJsonError":
-      case "EvalError":
-      case "UnexpectedError":
-        return "Error";
-    }
-  }
-  function statusToSpecialCaseSendKey(status) {
-    switch (status.tag) {
-      case "CompileError":
-      case "Idle":
-        return status.sendKey;
-      case "Busy":
-        return SEND_KEY_DO_NOT_USE_ALL_THE_TIME;
-      case "Connecting":
-      case "SleepingBeforeReconnect":
-      case "WaitingForReload":
-      case "ElmJsonError":
-      case "EvalError":
-      case "UnexpectedError":
-        return void 0;
-    }
-  }
-  function getOrCreateContainer() {
-    const existing = document.getElementById(CONTAINER_ID);
-    if (existing !== null) {
-      return existing;
-    }
-    const container = h(HTMLDivElement, { id: CONTAINER_ID });
-    container.style.all = "unset";
-    container.style.position = "fixed";
-    container.style.zIndex = "2147483647";
-    const shadowRoot = container.attachShadow({ mode: "open" });
-    shadowRoot.append(h(HTMLStyleElement, {}, CSS));
-    document.documentElement.append(container);
-    return container;
-  }
-  function getOrCreateTargetRoot() {
-    const container = getOrCreateContainer();
-    const { shadowRoot } = container;
-    if (shadowRoot === null) {
-      throw new Error(
-        `elm-watch: Cannot set up hot reload, because an element with ID ${CONTAINER_ID} exists, but \`.shadowRoot\` is null!`
-      );
-    }
-    let overlay = shadowRoot.querySelector(`.${CLASS.overlay}`);
-    if (overlay === null) {
-      overlay = h(HTMLDivElement, {
-        className: CLASS.overlay,
-        attrs: { "data-test-id": "Overlay" }
-      });
-      shadowRoot.append(overlay);
-    }
-    let overlayCloseButton = shadowRoot.querySelector(
-      `.${CLASS.overlayCloseButton}`
-    );
-    if (overlayCloseButton === null) {
-      const closeAllErrorOverlays = () => {
-        shadowRoot.dispatchEvent(new CustomEvent(CLOSE_ALL_ERROR_OVERLAYS_EVENT));
-      };
-      overlayCloseButton = h(HTMLButtonElement, {
-        className: CLASS.overlayCloseButton,
-        attrs: {
-          "aria-label": "Close error overlay",
-          "data-test-id": "OverlayCloseButton"
-        },
-        onclick: closeAllErrorOverlays
-      });
-      shadowRoot.append(overlayCloseButton);
-      const overlayNonNull = overlay;
-      window.addEventListener(
-        "keydown",
-        (event) => {
-          if (overlayNonNull.hasChildNodes() && event.key === "Escape") {
-            event.preventDefault();
-            event.stopImmediatePropagation();
-            closeAllErrorOverlays();
-          }
-        },
-        true
-      );
-    }
-    let root = shadowRoot.querySelector(`.${CLASS.root}`);
-    if (root === null) {
-      root = h(HTMLDivElement, { className: CLASS.root });
-      shadowRoot.append(root);
-    }
-    const targetRoot = createTargetRoot(TARGET_NAME);
-    root.append(targetRoot);
-    const elements = {
-      container,
-      shadowRoot,
-      overlay,
-      overlayCloseButton,
-      root,
-      targetRoot
-    };
-    setBrowserUiPosition(ORIGINAL_BROWSER_UI_POSITION, elements);
-    return elements;
-  }
-  function createTargetRoot(targetName) {
-    return h(HTMLDivElement, {
-      className: CLASS.targetRoot,
-      attrs: { "data-target": targetName }
-    });
-  }
-  function browserUiPositionToCss(browserUiPosition) {
-    switch (browserUiPosition) {
-      case "TopLeft":
-        return { top: "-1px", bottom: "auto", left: "-1px", right: "auto" };
-      case "TopRight":
-        return { top: "-1px", bottom: "auto", left: "auto", right: "-1px" };
-      case "BottomLeft":
-        return { top: "auto", bottom: "-1px", left: "-1px", right: "auto" };
-      case "BottomRight":
-        return { top: "auto", bottom: "-1px", left: "auto", right: "-1px" };
-    }
-  }
-  function browserUiPositionToCssForChooser(browserUiPosition) {
-    switch (browserUiPosition) {
-      case "TopLeft":
-        return { top: "auto", bottom: "0", left: "auto", right: "0" };
-      case "TopRight":
-        return { top: "auto", bottom: "0", left: "0", right: "auto" };
-      case "BottomLeft":
-        return { top: "0", bottom: "auto", left: "auto", right: "0" };
-      case "BottomRight":
-        return { top: "0", bottom: "auto", left: "0", right: "auto" };
-    }
-  }
-  function setBrowserUiPosition(browserUiPosition, elements) {
-    const isFirstTargetRoot = elements.targetRoot.previousElementSibling === null;
-    if (!isFirstTargetRoot) {
-      return;
-    }
-    elements.container.dataset.position = browserUiPosition;
-    for (const [key, value] of Object.entries(
-      browserUiPositionToCss(browserUiPosition)
-    )) {
-      elements.container.style.setProperty(key, value);
-    }
-    const isInBottomHalf = browserUiPosition === "BottomLeft" || browserUiPosition === "BottomRight";
-    elements.root.classList.toggle(CLASS.rootBottomHalf, isInBottomHalf);
-    elements.shadowRoot.dispatchEvent(
-      new CustomEvent(BROWSER_UI_MOVED_EVENT, { detail: browserUiPosition })
-    );
-  }
-  var initMutable = (getNow, elements) => (dispatch, resolvePromise) => {
-    let removeListeners = [];
-    const mutable = {
-      removeListeners: () => {
-        for (const removeListener of removeListeners) {
-          removeListener();
-        }
-      },
-      webSocket: initWebSocket(
-        getNow,
-        INITIAL_ELM_COMPILED_TIMESTAMP,
-        dispatch
-      ),
-      webSocketTimeoutId: void 0
-    };
-    mutable.webSocket.addEventListener(
-      "open",
-      () => {
-        removeListeners = [
-          addEventListener(window, "focus", (event) => {
-            if (event instanceof CustomEvent && event.detail !== TARGET_NAME) {
-              return;
-            }
-            dispatch({ tag: "FocusedTab" });
-          }),
-          addEventListener(window, "visibilitychange", () => {
-            if (document.visibilityState === "visible") {
-              dispatch({
-                tag: "PageVisibilityChangedToVisible",
-                date: getNow()
-              });
-            }
-          }),
-          ...elements === void 0 ? [] : [
-            addEventListener(
-              elements.shadowRoot,
-              BROWSER_UI_MOVED_EVENT,
-              (event) => {
-                dispatch({
-                  tag: "BrowserUiMoved",
-                  browserUiPosition: fields(
-                    (field) => field("detail", parseBrowseUiPositionWithFallback)
-                  )(event)
-                });
-              }
-            ),
-            addEventListener(
-              elements.shadowRoot,
-              CLOSE_ALL_ERROR_OVERLAYS_EVENT,
-              () => {
-                dispatch({
-                  tag: "UiMsg",
-                  date: getNow(),
-                  msg: {
-                    tag: "ChangedOpenErrorOverlay",
-                    openErrorOverlay: false
-                  }
-                });
-              }
-            )
-          ]
-        ];
-      },
-      { once: true }
-    );
-    __ELM_WATCH.RELOAD_STATUSES[TARGET_NAME] = {
-      tag: "MightWantToReload"
-    };
-    const originalOnInit = __ELM_WATCH.ON_INIT;
-    __ELM_WATCH.ON_INIT = () => {
-      dispatch({ tag: "AppInit" });
-      originalOnInit();
-    };
-    const originalKillMatching = __ELM_WATCH.KILL_MATCHING;
-    __ELM_WATCH.KILL_MATCHING = (targetName) => new Promise((resolve, reject) => {
-      if (targetName.test(TARGET_NAME) && mutable.webSocket.readyState !== WebSocket.CLOSED) {
-        mutable.webSocket.addEventListener("close", () => {
-          originalKillMatching(targetName).then(resolve).catch(reject);
-        });
-        mutable.removeListeners();
-        mutable.webSocket.close();
-        if (mutable.webSocketTimeoutId !== void 0) {
-          clearTimeout(mutable.webSocketTimeoutId);
-          mutable.webSocketTimeoutId = void 0;
-        }
-        elements?.targetRoot.remove();
-        resolvePromise(void 0);
-      } else {
-        originalKillMatching(targetName).then(resolve).catch(reject);
-      }
-    });
-    const originalDisconnect = __ELM_WATCH.DISCONNECT;
-    __ELM_WATCH.DISCONNECT = (targetName) => {
-      if (targetName.test(TARGET_NAME) && mutable.webSocket.readyState !== WebSocket.CLOSED) {
-        mutable.webSocket.close();
-      } else {
-        originalDisconnect(targetName);
-      }
-    };
-    return mutable;
-  };
-  function addEventListener(target, eventName, listener) {
-    target.addEventListener(eventName, listener);
-    return () => {
-      target.removeEventListener(eventName, listener);
-    };
-  }
-  function initWebSocket(getNow, elmCompiledTimestamp, dispatch) {
-    const hostname = window.location.hostname === "" ? "localhost" : window.location.hostname;
-    const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-    const url = new URL(`${protocol}://${hostname}:${WEBSOCKET_PORT}/elm-watch`);
-    url.searchParams.set("elmWatchVersion", VERSION);
-    url.searchParams.set("targetName", TARGET_NAME);
-    url.searchParams.set("elmCompiledTimestamp", elmCompiledTimestamp.toString());
-    const webSocket = new WebSocket(url);
-    webSocket.addEventListener("open", () => {
-      dispatch({ tag: "WebSocketConnected", date: getNow() });
-    });
-    webSocket.addEventListener("close", () => {
-      dispatch({
-        tag: "WebSocketClosed",
-        date: getNow()
-      });
-    });
-    webSocket.addEventListener("message", (event) => {
-      dispatch({
-        tag: "WebSocketMessageReceived",
-        date: getNow(),
-        data: event.data
-      });
-    });
-    return webSocket;
-  }
-  var init = (date, browserUiPosition, elmCompiledTimestampBeforeReload) => {
-    const model = {
-      status: { tag: "Connecting", date, attemptNumber: 1 },
-      previousStatusTag: "Idle",
-      compilationMode: ORIGINAL_COMPILATION_MODE,
-      browserUiPosition,
-      lastBrowserUiPositionChangeDate: void 0,
-      elmCompiledTimestamp: INITIAL_ELM_COMPILED_TIMESTAMP,
-      elmCompiledTimestampBeforeReload,
-      uiExpanded: false
-    };
-    return [model, [{ tag: "Render", model, manageFocus: false }]];
-  };
-  function update(msg, model) {
-    switch (msg.tag) {
-      case "AppInit":
-        return [{ ...model }, []];
-      case "BrowserUiMoved":
-        return [{ ...model, browserUiPosition: msg.browserUiPosition }, []];
-      case "EvalErrored":
-        return [
-          {
-            ...model,
-            status: { tag: "EvalError", date: msg.date },
-            uiExpanded: true
-          },
-          [
-            {
-              tag: "TriggerReachedIdleState",
-              reason: "EvalErrored"
-            }
-          ]
-        ];
-      case "EvalNeedsReload":
-        return [
-          {
-            ...model,
-            status: {
-              tag: "WaitingForReload",
-              date: msg.date,
-              reasons: msg.reasons
-            }
-          },
-          []
-        ];
-      case "EvalSucceeded":
-        return [
-          {
-            ...model,
-            status: {
-              tag: "Idle",
-              date: msg.date,
-              sendKey: SEND_KEY_DO_NOT_USE_ALL_THE_TIME
-            }
-          },
-          [
-            {
-              tag: "TriggerReachedIdleState",
-              reason: "EvalSucceeded"
-            }
-          ]
-        ];
-      case "FocusedTab":
-        return [
-          statusToStatusType(model.status.tag) === "Error" ? { ...model } : model,
-          [
-            {
-              tag: "SendMessage",
-              message: { tag: "FocusedTab" },
-              sendKey: SEND_KEY_DO_NOT_USE_ALL_THE_TIME
-            },
-            {
-              tag: "WebSocketTimeoutBegin"
-            }
-          ]
-        ];
-      case "PageVisibilityChangedToVisible":
-        return reconnect(model, msg.date, { force: true });
-      case "SleepBeforeReconnectDone":
-        return reconnect(model, msg.date, { force: false });
-      case "UiMsg":
-        return onUiMsg(msg.date, msg.msg, model);
-      case "WebSocketClosed": {
-        const attemptNumber = "attemptNumber" in model.status ? model.status.attemptNumber + 1 : 1;
-        return [
-          {
-            ...model,
-            status: {
-              tag: "SleepingBeforeReconnect",
-              date: msg.date,
-              attemptNumber
-            }
-          },
-          [{ tag: "SleepBeforeReconnect", attemptNumber }]
-        ];
-      }
-      case "WebSocketConnected":
-        return [
-          {
-            ...model,
-            status: { tag: "Busy", date: msg.date, errorOverlay: void 0 }
-          },
-          []
-        ];
-      case "WebSocketMessageReceived": {
-        const result = parseWebSocketMessageData(msg.data);
-        switch (result.tag) {
-          case "Success":
-            return onWebSocketToClientMessage(msg.date, result.message, model);
-          case "Error":
-            return [
-              {
-                ...model,
-                status: {
-                  tag: "UnexpectedError",
-                  date: msg.date,
-                  message: result.message
-                },
-                uiExpanded: true
-              },
-              []
-            ];
-        }
-      }
-    }
-  }
-  function onUiMsg(date, msg, model) {
-    switch (msg.tag) {
-      case "ChangedBrowserUiPosition":
-        return [
-          {
-            ...model,
-            browserUiPosition: msg.browserUiPosition,
-            lastBrowserUiPositionChangeDate: date
-          },
-          [
-            {
-              tag: "SendMessage",
-              message: {
-                tag: "ChangedBrowserUiPosition",
-                browserUiPosition: msg.browserUiPosition
-              },
-              sendKey: msg.sendKey
-            }
-          ]
-        ];
-      case "ChangedCompilationMode":
-        return [
-          {
-            ...model,
-            status: {
-              tag: "Busy",
-              date,
-              errorOverlay: getErrorOverlay(model.status)
-            },
-            compilationMode: msg.compilationMode
-          },
-          [
-            {
-              tag: "SendMessage",
-              message: {
-                tag: "ChangedCompilationMode",
-                compilationMode: msg.compilationMode
-              },
-              sendKey: msg.sendKey
-            }
-          ]
-        ];
-      case "ChangedOpenErrorOverlay":
-        return "errorOverlay" in model.status && model.status.errorOverlay !== void 0 ? [
-          {
-            ...model,
-            status: {
-              ...model.status,
-              errorOverlay: {
-                ...model.status.errorOverlay,
-                openErrorOverlay: msg.openErrorOverlay
-              }
-            },
-            uiExpanded: false
-          },
-          [
-            {
-              tag: "SendMessage",
-              message: {
-                tag: "ChangedOpenErrorOverlay",
-                openErrorOverlay: msg.openErrorOverlay
-              },
-              sendKey: model.status.tag === "Busy" ? SEND_KEY_DO_NOT_USE_ALL_THE_TIME : model.status.sendKey
-            }
-          ]
-        ] : [model, []];
-      case "PressedChevron":
-        return [{ ...model, uiExpanded: !model.uiExpanded }, []];
-      case "PressedOpenEditor":
-        return [
-          model,
-          [
-            {
-              tag: "SendMessage",
-              message: {
-                tag: "PressedOpenEditor",
-                file: msg.file,
-                line: msg.line,
-                column: msg.column
-              },
-              sendKey: msg.sendKey
-            }
-          ]
-        ];
-      case "PressedReconnectNow":
-        return reconnect(model, date, { force: true });
-    }
-  }
-  function onWebSocketToClientMessage(date, msg, model) {
-    switch (msg.tag) {
-      case "FocusedTabAcknowledged":
-        return [model, [{ tag: "WebSocketTimeoutClear" }]];
-      case "OpenEditorFailed":
-        return [
-          model.status.tag === "CompileError" ? {
-            ...model,
-            status: { ...model.status, openEditorError: msg.error },
-            uiExpanded: true
-          } : model,
-          [
-            {
-              tag: "TriggerReachedIdleState",
-              reason: "OpenEditorFailed"
-            }
-          ]
-        ];
-      case "StatusChanged":
-        return statusChanged(date, msg, model);
-      case "SuccessfullyCompiled": {
-        const justChangedBrowserUiPosition = model.lastBrowserUiPositionChangeDate !== void 0 && date.getTime() - model.lastBrowserUiPositionChangeDate.getTime() < JUST_CHANGED_BROWSER_UI_POSITION_TIMEOUT;
-        return msg.compilationMode !== ORIGINAL_COMPILATION_MODE ? [
-          {
-            ...model,
-            status: {
-              tag: "WaitingForReload",
-              date,
-              reasons: ORIGINAL_COMPILATION_MODE === "proxy" ? [] : [
-                `compilation mode changed from ${ORIGINAL_COMPILATION_MODE} to ${msg.compilationMode}.`
-              ]
-            },
-            compilationMode: msg.compilationMode
-          },
-          []
-        ] : [
-          {
-            ...model,
-            compilationMode: msg.compilationMode,
-            elmCompiledTimestamp: msg.elmCompiledTimestamp,
-            browserUiPosition: msg.browserUiPosition,
-            lastBrowserUiPositionChangeDate: void 0
-          },
-          [
-            { tag: "Eval", code: msg.code },
-            justChangedBrowserUiPosition ? {
-              tag: "SetBrowserUiPosition",
-              browserUiPosition: msg.browserUiPosition
-            } : { tag: "NoCmd" }
-          ]
-        ];
-      }
-      case "SuccessfullyCompiledButRecordFieldsChanged":
-        return [
-          {
-            ...model,
-            status: {
-              tag: "WaitingForReload",
-              date,
-              reasons: [
-                `record field mangling in optimize mode was different than last time.`
-              ]
-            }
-          },
-          []
-        ];
-    }
-  }
-  function statusChanged(date, { status }, model) {
-    switch (status.tag) {
-      case "AlreadyUpToDate":
-        return [
-          {
-            ...model,
-            status: {
-              tag: "Idle",
-              date,
-              sendKey: SEND_KEY_DO_NOT_USE_ALL_THE_TIME
-            },
-            compilationMode: status.compilationMode,
-            browserUiPosition: status.browserUiPosition
-          },
-          [
-            {
-              tag: "TriggerReachedIdleState",
-              reason: "AlreadyUpToDate"
-            }
-          ]
-        ];
-      case "Busy":
-        return [
-          {
-            ...model,
-            status: {
-              tag: "Busy",
-              date,
-              errorOverlay: getErrorOverlay(model.status)
-            },
-            compilationMode: status.compilationMode,
-            browserUiPosition: status.browserUiPosition
-          },
-          []
-        ];
-      case "ClientError":
-        return [
-          {
-            ...model,
-            status: { tag: "UnexpectedError", date, message: status.message },
-            uiExpanded: true
-          },
-          [
-            {
-              tag: "TriggerReachedIdleState",
-              reason: "ClientError"
-            }
-          ]
-        ];
-      case "CompileError":
-        return [
-          {
-            ...model,
-            status: {
-              tag: "CompileError",
-              date,
-              sendKey: SEND_KEY_DO_NOT_USE_ALL_THE_TIME,
-              errorOverlay: {
-                errors: new Map(
-                  status.errors.map((error) => {
-                    const overlayError = {
-                      title: error.title,
-                      location: error.location,
-                      htmlContent: error.htmlContent,
-                      foregroundColor: status.foregroundColor,
-                      backgroundColor: status.backgroundColor
-                    };
-                    const id = JSON.stringify(overlayError);
-                    return [id, overlayError];
-                  })
-                ),
-                openErrorOverlay: status.openErrorOverlay
-              },
-              openEditorError: void 0
-            },
-            compilationMode: status.compilationMode,
-            browserUiPosition: status.browserUiPosition
-          },
-          [
-            {
-              tag: "TriggerReachedIdleState",
-              reason: "CompileError"
-            }
-          ]
-        ];
-      case "ElmJsonError":
-        return [
-          {
-            ...model,
-            status: { tag: "ElmJsonError", date, error: status.error }
-          },
-          [
-            {
-              tag: "TriggerReachedIdleState",
-              reason: "ElmJsonError"
-            }
-          ]
-        ];
-    }
-  }
-  function reconnect(model, date, { force }) {
-    return model.status.tag === "SleepingBeforeReconnect" && (date.getTime() - model.status.date.getTime() >= retryWaitMs(model.status.attemptNumber) || force) ? [
-      {
-        ...model,
-        status: {
-          tag: "Connecting",
-          date,
-          attemptNumber: model.status.attemptNumber
-        }
-      },
-      [
-        {
-          tag: "Reconnect",
-          elmCompiledTimestamp: model.elmCompiledTimestamp
-        }
-      ]
-    ] : [model, []];
-  }
-  function retryWaitMs(attemptNumber) {
-    return Math.min(1e3 + 10 * attemptNumber ** 2, 1e3 * 60);
-  }
-  function printRetryWaitMs(attemptNumber) {
-    return `${retryWaitMs(attemptNumber) / 1e3} seconds`;
-  }
-  var runCmd = (getNow, elements) => (cmd, mutable, dispatch, _resolvePromise, rejectPromise) => {
-    switch (cmd.tag) {
-      case "Eval": {
-        try {
-          const f = new Function(cmd.code);
-          f();
-          dispatch({ tag: "EvalSucceeded", date: getNow() });
-        } catch (unknownError) {
-          if (unknownError instanceof Error && unknownError.message.startsWith("ELM_WATCH_RELOAD_NEEDED")) {
-            dispatch({
-              tag: "EvalNeedsReload",
-              date: getNow(),
-              reasons: unknownError.message.split("\n\n---\n\n").slice(1)
-            });
-          } else {
-            void Promise.reject(unknownError);
-            dispatch({ tag: "EvalErrored", date: getNow() });
-          }
-        }
-        return;
-      }
-      case "NoCmd":
-        return;
-      case "Reconnect":
-        mutable.webSocket = initWebSocket(
-          getNow,
-          cmd.elmCompiledTimestamp,
-          dispatch
-        );
-        return;
-      case "Render": {
-        const { model } = cmd;
-        const info = {
-          version: VERSION,
-          webSocketUrl: new URL(mutable.webSocket.url),
-          targetName: TARGET_NAME,
-          originalCompilationMode: ORIGINAL_COMPILATION_MODE,
-          initializedElmAppsStatus: checkInitializedElmAppsStatus(),
-          errorOverlayVisible: elements !== void 0 && !elements.overlay.hidden
-        };
-        if (elements === void 0) {
-          if (model.status.tag !== model.previousStatusTag) {
-            const isError = statusToStatusType(model.status.tag) === "Error";
-            const consoleMethod = isError ? console.error : console.info;
-            consoleMethod(renderWebWorker(model, info));
-          }
-        } else {
-          const { targetRoot } = elements;
-          render(getNow, targetRoot, dispatch, model, info, cmd.manageFocus);
-        }
-        return;
-      }
-      case "SendMessage": {
-        const json = JSON.stringify(cmd.message);
-        try {
-          mutable.webSocket.send(json);
-        } catch (error) {
-          console.error("elm-watch: Failed to send WebSocket message:", error);
-        }
-        return;
-      }
-      case "SetBrowserUiPosition":
-        if (elements !== void 0) {
-          setBrowserUiPosition(cmd.browserUiPosition, elements);
-        }
-        return;
-      case "SleepBeforeReconnect":
-        setTimeout(() => {
-          if (typeof document === "undefined" || document.visibilityState === "visible") {
-            dispatch({ tag: "SleepBeforeReconnectDone", date: getNow() });
-          }
-        }, retryWaitMs(cmd.attemptNumber));
-        return;
-      case "TriggerReachedIdleState":
-        Promise.resolve().then(() => {
-          __ELM_WATCH.ON_REACHED_IDLE_STATE(cmd.reason);
-        }).catch(rejectPromise);
-        return;
-      case "UpdateErrorOverlay":
-        if (elements !== void 0) {
-          updateErrorOverlay(
-            TARGET_NAME,
-            (msg) => {
-              dispatch({ tag: "UiMsg", date: getNow(), msg });
-            },
-            cmd.sendKey,
-            cmd.errors,
-            elements.overlay,
-            elements.overlayCloseButton
-          );
-        }
-        return;
-      case "UpdateGlobalStatus":
-        __ELM_WATCH.RELOAD_STATUSES[TARGET_NAME] = cmd.reloadStatus;
-        switch (cmd.reloadStatus.tag) {
-          case "NoReloadWanted":
-          case "MightWantToReload":
-            break;
-          case "ReloadRequested":
-            try {
-              window.sessionStorage.setItem(
-                RELOAD_TARGET_NAME_KEY_PREFIX + TARGET_NAME,
-                cmd.elmCompiledTimestamp.toString()
-              );
-            } catch {
-            }
-        }
-        reloadPageIfNeeded();
-        return;
-      case "WebSocketTimeoutBegin":
-        if (mutable.webSocketTimeoutId === void 0) {
-          mutable.webSocketTimeoutId = setTimeout(() => {
-            mutable.webSocketTimeoutId = void 0;
-            mutable.webSocket.close();
-            dispatch({
-              tag: "WebSocketClosed",
-              date: getNow()
-            });
-          }, __ELM_WATCH.WEBSOCKET_TIMEOUT);
-        }
-        return;
-      case "WebSocketTimeoutClear":
-        if (mutable.webSocketTimeoutId !== void 0) {
-          clearTimeout(mutable.webSocketTimeoutId);
-          mutable.webSocketTimeoutId = void 0;
-        }
-        return;
-    }
-  };
-  function parseWebSocketMessageData(data) {
-    try {
-      return {
-        tag: "Success",
-        message: decodeWebSocketToClientMessage(string(data))
-      };
-    } catch (unknownError) {
-      return {
-        tag: "Error",
-        message: `Failed to decode web socket message sent from the server:
-${possiblyDecodeErrorToString(
-          unknownError
-        )}`
-      };
-    }
-  }
-  function possiblyDecodeErrorToString(unknownError) {
-    return unknownError instanceof DecoderError ? unknownError.format() : unknownError instanceof Error ? unknownError.message : repr(unknownError);
-  }
-  function functionToNull(value) {
-    return typeof value === "function" ? null : value;
-  }
-  var ProgramType = stringUnion({
-    "Platform.worker": null,
-    "Browser.sandbox": null,
-    "Browser.element": null,
-    "Browser.document": null,
-    "Browser.application": null,
-    Html: null
-  });
-  var ElmModule = chain(
-    record(
-      chain(
-        functionToNull,
-        multi({
-          null: () => [],
-          array: array(
-            fields((field) => field("__elmWatchProgramType", ProgramType))
-          ),
-          object: (value) => ElmModule(value)
-        })
-      )
-    ),
-    (record2) => Object.values(record2).flat()
-  );
-  var ProgramTypes = fields((field) => field("Elm", ElmModule));
-  function checkInitializedElmAppsStatus() {
-    if (window.Elm !== void 0 && "__elmWatchProxy" in window.Elm) {
-      return {
-        tag: "DebuggerModeStatus",
-        status: {
-          tag: "Disabled",
-          reason: noDebuggerYetReason
-        }
-      };
-    }
-    if (window.Elm === void 0) {
-      return { tag: "MissingWindowElm" };
-    }
-    let programTypes;
-    try {
-      programTypes = ProgramTypes(window);
-    } catch (unknownError) {
-      return {
-        tag: "DecodeError",
-        message: possiblyDecodeErrorToString(unknownError)
-      };
-    }
-    if (programTypes.length === 0) {
-      return { tag: "NoProgramsAtAll" };
-    }
-    const noDebugger = programTypes.filter((programType) => {
-      switch (programType) {
-        case "Platform.worker":
-        case "Html":
-          return true;
-        case "Browser.sandbox":
-        case "Browser.element":
-        case "Browser.document":
-        case "Browser.application":
-          return false;
-      }
-    });
-    return {
-      tag: "DebuggerModeStatus",
-      status: noDebugger.length === programTypes.length ? {
-        tag: "Disabled",
-        reason: noDebuggerReason(new Set(noDebugger))
-      } : { tag: "Enabled" }
-    };
-  }
-  function reloadPageIfNeeded() {
-    let shouldReload = false;
-    const reasons = [];
-    for (const [targetName, reloadStatus] of Object.entries(
-      __ELM_WATCH.RELOAD_STATUSES
-    )) {
-      switch (reloadStatus.tag) {
-        case "MightWantToReload":
-          return;
-        case "NoReloadWanted":
-          break;
-        case "ReloadRequested":
-          shouldReload = true;
-          if (reloadStatus.reasons.length > 0) {
-            reasons.push([targetName, reloadStatus.reasons]);
-          }
-          break;
-      }
-    }
-    if (!shouldReload) {
-      return;
-    }
-    const first = reasons[0];
-    const [separator, reasonString] = reasons.length === 1 && first !== void 0 && first[1].length === 1 ? [" ", `${first[1].join("")}
-(target: ${first[0]})`] : [
-      ":\n\n",
-      reasons.map(
-        ([targetName, subReasons]) => [
-          targetName,
-          ...subReasons.map((subReason) => `- ${subReason}`)
-        ].join("\n")
-      ).join("\n\n")
-    ];
-    const message = reasons.length === 0 ? void 0 : `elm-watch: I did a full page reload because${separator}${reasonString}`;
-    __ELM_WATCH.RELOAD_STATUSES = {};
-    __ELM_WATCH.RELOAD_PAGE(message);
-  }
-  function h(t, {
-    attrs,
-    style,
-    localName,
-    ...props
-  }, ...children) {
-    const element = document.createElement(
-      localName ?? t.name.replace(/^HTML(\w+)Element$/, "$1").replace("Anchor", "a").replace("Paragraph", "p").replace(/^([DOU])List$/, "$1l").toLowerCase()
-    );
-    Object.assign(element, props);
-    if (attrs !== void 0) {
-      for (const [key, value] of Object.entries(attrs)) {
-        element.setAttribute(key, value);
-      }
-    }
-    if (style !== void 0) {
-      for (const [key, value] of Object.entries(style)) {
-        element.style[key] = value;
-      }
-    }
-    for (const child of children) {
-      if (child !== void 0) {
-        element.append(
-          typeof child === "string" ? document.createTextNode(child) : child
-        );
-      }
-    }
-    return element;
-  }
-  function renderWebWorker(model, info) {
-    const statusData = statusIconAndText(model, info);
-    return `${statusData.icon} elm-watch: ${statusData.status} ${formatTime(
-      model.status.date
-    )} (${info.targetName})`;
-  }
-  function render(getNow, targetRoot, dispatch, model, info, manageFocus) {
-    targetRoot.replaceChildren(
-      view(
-        (msg) => {
-          dispatch({ tag: "UiMsg", date: getNow(), msg });
-        },
-        model,
-        info,
-        manageFocus
-      )
-    );
-    const firstFocusableElement = targetRoot.querySelector(`button, [tabindex]`);
-    if (manageFocus && firstFocusableElement instanceof HTMLElement) {
-      firstFocusableElement.focus();
-    }
-    __ELM_WATCH.ON_RENDER(TARGET_NAME);
-  }
-  var CLASS = {
-    browserUiPositionButton: "browserUiPositionButton",
-    browserUiPositionChooser: "browserUiPositionChooser",
-    chevronButton: "chevronButton",
-    compilationModeWithIcon: "compilationModeWithIcon",
-    container: "container",
-    debugModeIcon: "debugModeIcon",
-    envNotSet: "envNotSet",
-    errorLocationButton: "errorLocationButton",
-    errorTitle: "errorTitle",
-    expandedUiContainer: "expandedUiContainer",
-    flashError: "flashError",
-    flashSuccess: "flashSuccess",
-    overlay: "overlay",
-    overlayCloseButton: "overlayCloseButton",
-    root: "root",
-    rootBottomHalf: "rootBottomHalf",
-    shortStatusContainer: "shortStatusContainer",
-    targetName: "targetName",
-    targetRoot: "targetRoot"
-  };
-  function getStatusClass({
-    statusType,
-    statusTypeChanged,
-    hasReceivedHotReload,
-    uiRelatedUpdate,
-    errorOverlayVisible
-  }) {
-    switch (statusType) {
-      case "Success":
-        return statusTypeChanged && hasReceivedHotReload ? CLASS.flashSuccess : void 0;
-      case "Error":
-        return errorOverlayVisible ? statusTypeChanged && hasReceivedHotReload ? CLASS.flashError : void 0 : uiRelatedUpdate ? void 0 : CLASS.flashError;
-      case "Waiting":
-        return void 0;
-    }
-  }
-  var CHEVRON_UP = "\u25B2";
-  var CHEVRON_DOWN = "\u25BC";
-  var CSS = `
-input,
-button,
-select,
-textarea {
-  font-family: inherit;
-  font-size: inherit;
-  font-weight: inherit;
-  letter-spacing: inherit;
-  line-height: inherit;
-  color: inherit;
-  margin: 0;
-}
-
-fieldset {
-  display: grid;
-  gap: 0.25em;
-  margin: 0;
-  border: 1px solid var(--grey);
-  padding: 0.25em 0.75em 0.5em;
-}
-
-fieldset:disabled {
-  color: var(--grey);
-}
-
-p,
-dd {
-  margin: 0;
-}
-
-dl {
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: 0.25em 1em;
-  margin: 0;
-  white-space: nowrap;
-}
-
-dt {
-  text-align: right;
-  color: var(--grey);
-}
-
-time {
-  display: inline-grid;
-  overflow: hidden;
-}
-
-time::after {
-  content: attr(data-format);
-  visibility: hidden;
-  height: 0;
-}
-
-.${CLASS.overlay} {
-  position: fixed;
-  z-index: -2;
-  inset: 0;
-  overflow-y: auto;
-  padding: 2ch 0;
-}
-
-.${CLASS.overlayCloseButton} {
-  position: fixed;
-  z-index: -1;
-  top: 0;
-  right: 0;
-  appearance: none;
-  padding: 1em;
-  border: none;
-  border-radius: 0;
-  background: none;
-  cursor: pointer;
-  font-size: 1.25em;
-  filter: drop-shadow(0 0 0.125em var(--backgroundColor));
-}
-
-.${CLASS.overlayCloseButton}::before,
-.${CLASS.overlayCloseButton}::after {
-  content: "";
-  display: block;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 0.125em;
-  height: 1em;
-  background-color: var(--foregroundColor);
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-.${CLASS.overlayCloseButton}::after {
-  transform: translate(-50%, -50%) rotate(-45deg);
-}
-
-.${CLASS.overlay},
-.${CLASS.overlay} pre {
-  font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
-}
-
-.${CLASS.overlay} details {
-  --border-thickness: 0.125em;
-  border-top: var(--border-thickness) solid;
-  margin: 2ch 0;
-}
-
-.${CLASS.overlay} summary {
-  cursor: pointer;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 0 2ch;
-  word-break: break-word;
-}
-
-.${CLASS.overlay} summary::-webkit-details-marker {
-  display: none;
-}
-
-.${CLASS.overlay} summary::marker {
-  content: none;
-}
-
-.${CLASS.overlay} summary > * {
-  pointer-events: auto;
-}
-
-.${CLASS.errorTitle} {
-  display: inline-block;
-  font-weight: bold;
-  --padding: 1ch;
-  padding: 0 var(--padding);
-  transform: translate(calc(var(--padding) * -1), calc(-50% - var(--border-thickness) / 2));
-}
-
-.${CLASS.errorTitle}::before {
-  content: "${CHEVRON_DOWN}";
-  display: inline-block;
-  margin-right: 1ch;
-  transform: translateY(-0.0625em);
-}
-
-details[open] > summary > .${CLASS.errorTitle}::before {
-  content: "${CHEVRON_UP}";
-}
-
-.${CLASS.errorLocationButton} {
-  appearance: none;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: none;
-  text-align: left;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-.${CLASS.overlay} pre {
-  margin: 0;
-  padding: 2ch;
-  overflow-x: auto;
-}
-
-.${CLASS.root} {
-  --grey: #767676;
-  display: flex;
-  align-items: start;
-  overflow: auto;
-  max-height: 100vh;
-  max-width: 100vw;
-  color: black;
-  font-family: system-ui;
-}
-
-.${CLASS.rootBottomHalf} {
-  align-items: end;
-}
-
-.${CLASS.targetRoot} + .${CLASS.targetRoot} {
-  margin-left: -1px;
-}
-
-.${CLASS.targetRoot}:only-of-type .${CLASS.debugModeIcon},
-.${CLASS.targetRoot}:only-of-type .${CLASS.targetName} {
-  display: none;
-}
-
-.${CLASS.container} {
-  display: flex;
-  flex-direction: column-reverse;
-  background-color: white;
-  border: 1px solid var(--grey);
-}
-
-.${CLASS.rootBottomHalf} .${CLASS.container} {
-  flex-direction: column;
-}
-
-.${CLASS.envNotSet} {
-  display: grid;
-  gap: 0.75em;
-  margin: 2em 0;
-}
-
-.${CLASS.envNotSet},
-.${CLASS.root} pre {
-  border-left: 0.25em solid var(--grey);
-  padding-left: 0.5em;
-}
-
-.${CLASS.root} pre {
-  margin: 0;
-  white-space: pre-wrap;
-}
-
-.${CLASS.expandedUiContainer} {
-  padding: 1em;
-  padding-top: 0.75em;
-  display: grid;
-  gap: 0.75em;
-  outline: none;
-  contain: paint;
-}
-
-.${CLASS.rootBottomHalf} .${CLASS.expandedUiContainer} {
-  padding-bottom: 0.75em;
-}
-
-.${CLASS.expandedUiContainer}:is(.length0, .length1) {
-  grid-template-columns: min-content;
-}
-
-.${CLASS.expandedUiContainer} > dl {
-  justify-self: start;
-}
-
-.${CLASS.expandedUiContainer} label {
-  display: grid;
-  grid-template-columns: min-content auto;
-  align-items: center;
-  gap: 0.25em;
-}
-
-.${CLASS.expandedUiContainer} label.Disabled {
-  color: var(--grey);
-}
-
-.${CLASS.expandedUiContainer} label > small {
-  grid-column: 2;
-}
-
-.${CLASS.compilationModeWithIcon} {
-  display: flex;
-  align-items: center;
-  gap: 0.25em;
-}
-
-.${CLASS.browserUiPositionChooser} {
-  position: absolute;
-  display: grid;
-  grid-template-columns: min-content min-content;
-  pointer-events: none;
-}
-
-.${CLASS.browserUiPositionButton} {
-  appearance: none;
-  padding: 0;
-  border: none;
-  background: none;
-  border-radius: none;
-  pointer-events: auto;
-  width: 1em;
-  height: 1em;
-  text-align: center;
-  line-height: 1em;
-}
-
-.${CLASS.browserUiPositionButton}:hover {
-  background-color: rgba(0, 0, 0, 0.25);
-}
-
-.${CLASS.targetRoot}:not(:first-child) .${CLASS.browserUiPositionChooser} {
-  display: none;
-}
-
-.${CLASS.shortStatusContainer} {
-  line-height: 1;
-  padding: 0.25em;
-  cursor: pointer;
-  user-select: none;
-  display: flex;
-  align-items: center;
-  gap: 0.25em;
-}
-
-.${CLASS.flashError}::before,
-.${CLASS.flashSuccess}::before {
-  content: "";
-  position: absolute;
-  margin-top: 0.5em;
-  margin-left: 0.5em;
-  --size: min(500px, 100vmin);
-  width: var(--size);
-  height: var(--size);
-  border-radius: 50%;
-  animation: flash 0.7s 0.05s ease-out both;
-  pointer-events: none;
-}
-
-.${CLASS.flashError}::before {
-  background-color: #eb0000;
-}
-
-.${CLASS.flashSuccess}::before {
-  background-color: #00b600;
-}
-
-@keyframes flash {
-  from {
-    transform: translate(-50%, -50%) scale(0);
-    opacity: 0.9;
-  }
-
-  to {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 0;
-  }
-}
-
-@keyframes nudge {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 0.8;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .${CLASS.flashError}::before,
-  .${CLASS.flashSuccess}::before {
-    transform: translate(-50%, -50%);
-    width: 2em;
-    height: 2em;
-    animation: nudge 0.25s ease-in-out 4 alternate forwards;
-  }
-}
-
-.${CLASS.chevronButton} {
-  appearance: none;
-  border: none;
-  border-radius: 0;
-  background: none;
-  padding: 0;
-  cursor: pointer;
-}
-`;
-  function view(dispatch, passedModel, info, manageFocus) {
-    const model = __ELM_WATCH.MOCKED_TIMINGS ? {
-      ...passedModel,
-      status: {
-        ...passedModel.status,
-        date: new Date("2022-02-05T13:10:05Z")
-      }
-    } : passedModel;
-    const statusData = {
-      ...statusIconAndText(model, info),
-      ...viewStatus(dispatch, model, info)
-    };
-    const statusType = statusToStatusType(model.status.tag);
-    const statusTypeChanged = statusType !== statusToStatusType(model.previousStatusTag);
-    const statusClass = getStatusClass({
-      statusType,
-      statusTypeChanged,
-      hasReceivedHotReload: model.elmCompiledTimestamp !== INITIAL_ELM_COMPILED_TIMESTAMP,
-      uiRelatedUpdate: manageFocus,
-      errorOverlayVisible: info.errorOverlayVisible
-    });
-    return h(
-      HTMLDivElement,
-      { className: CLASS.container },
-      model.uiExpanded ? viewExpandedUi(
-        model.status,
-        statusData,
-        info,
-        model.browserUiPosition,
-        dispatch
-      ) : void 0,
-      h(
-        HTMLDivElement,
-        {
-          className: CLASS.shortStatusContainer,
-          onclick: () => {
-            dispatch({ tag: "PressedChevron" });
-          }
-        },
-        h(
-          HTMLButtonElement,
-          {
-            className: CLASS.chevronButton,
-            attrs: { "aria-expanded": model.uiExpanded.toString() }
-          },
-          icon(
-            model.uiExpanded ? CHEVRON_UP : CHEVRON_DOWN,
-            model.uiExpanded ? "Collapse elm-watch" : "Expand elm-watch"
-          )
-        ),
-        compilationModeIcon(model.compilationMode),
-        icon(
-          statusData.icon,
-          statusData.status,
-          statusClass === void 0 ? {} : {
-            className: statusClass,
-            onanimationend: (event) => {
-              if (event.currentTarget instanceof HTMLElement) {
-                event.currentTarget.classList.remove(statusClass);
-              }
-            }
-          }
-        ),
-        h(
-          HTMLTimeElement,
-          { dateTime: model.status.date.toISOString() },
-          formatTime(model.status.date)
-        ),
-        h(HTMLSpanElement, { className: CLASS.targetName }, TARGET_NAME)
-      )
-    );
-  }
-  function icon(emoji, alt, props) {
-    return h(
-      HTMLSpanElement,
-      { attrs: { "aria-label": alt }, ...props },
-      h(HTMLSpanElement, { attrs: { "aria-hidden": "true" } }, emoji)
-    );
-  }
-  function viewExpandedUi(status, statusData, info, browserUiPosition, dispatch) {
-    const items = [
-      ["target", info.targetName],
-      ["elm-watch", info.version],
-      ["web socket", printWebSocketUrl(info.webSocketUrl)],
-      [
-        "updated",
-        h(
-          HTMLTimeElement,
-          {
-            dateTime: status.date.toISOString(),
-            attrs: { "data-format": "2044-04-30 04:44:44" }
-          },
-          `${formatDate(status.date)} ${formatTime(status.date)}`
-        )
-      ],
-      ["status", statusData.status],
-      ...statusData.dl
-    ];
-    const browserUiPositionSendKey = statusToSpecialCaseSendKey(status);
-    return h(
-      HTMLDivElement,
-      {
-        className: `${CLASS.expandedUiContainer} length${statusData.content.length}`,
-        attrs: {
-          tabindex: "-1"
-        }
-      },
-      h(
-        HTMLDListElement,
-        {},
-        ...items.flatMap(([key, value]) => [
-          h(HTMLElement, { localName: "dt" }, key),
-          h(HTMLElement, { localName: "dd" }, value)
-        ])
-      ),
-      ...statusData.content,
-      browserUiPositionSendKey === void 0 ? void 0 : viewBrowserUiPositionChooser(
-        browserUiPosition,
-        dispatch,
-        browserUiPositionSendKey
-      )
-    );
-  }
-  var allBrowserUiPositionsInOrder = [
-    "TopLeft",
-    "TopRight",
-    "BottomLeft",
-    "BottomRight"
-  ];
-  function viewBrowserUiPositionChooser(currentPosition, dispatch, sendKey) {
-    const arrows = getBrowserUiPositionArrows(currentPosition);
-    return h(
-      HTMLDivElement,
-      {
-        className: CLASS.browserUiPositionChooser,
-        style: browserUiPositionToCssForChooser(currentPosition)
-      },
-      ...allBrowserUiPositionsInOrder.map((position) => {
-        const arrow = arrows[position];
-        return arrow === void 0 ? h(HTMLDivElement, { style: { visibility: "hidden" } }, "\xB7") : h(
-          HTMLButtonElement,
-          {
-            className: CLASS.browserUiPositionButton,
-            attrs: { "data-position": position },
-            onclick: () => {
-              dispatch({
-                tag: "ChangedBrowserUiPosition",
-                browserUiPosition: position,
-                sendKey
-              });
-            }
-          },
-          arrow
-        );
-      })
-    );
-  }
-  var ARROW_UP = "\u2191";
-  var ARROW_DOWN = "\u2193";
-  var ARROW_LEFT = "\u2190";
-  var ARROW_RIGHT = "\u2192";
-  var ARROW_UP_LEFT = "\u2196";
-  var ARROW_UP_RIGHT = "\u2197";
-  var ARROW_DOWN_LEFT = "\u2199";
-  var ARROW_DOWN_RIGHT = "\u2198";
-  function getBrowserUiPositionArrows(browserUiPosition) {
-    switch (browserUiPosition) {
-      case "TopLeft":
-        return {
-          TopLeft: void 0,
-          TopRight: ARROW_RIGHT,
-          BottomLeft: ARROW_DOWN,
-          BottomRight: ARROW_DOWN_RIGHT
-        };
-      case "TopRight":
-        return {
-          TopLeft: ARROW_LEFT,
-          TopRight: void 0,
-          BottomLeft: ARROW_DOWN_LEFT,
-          BottomRight: ARROW_DOWN
-        };
-      case "BottomLeft":
-        return {
-          TopLeft: ARROW_UP,
-          TopRight: ARROW_UP_RIGHT,
-          BottomLeft: void 0,
-          BottomRight: ARROW_RIGHT
-        };
-      case "BottomRight":
-        return {
-          TopLeft: ARROW_UP_LEFT,
-          TopRight: ARROW_UP,
-          BottomLeft: ARROW_LEFT,
-          BottomRight: void 0
-        };
-    }
-  }
-  function statusIconAndText(model, info) {
-    switch (model.status.tag) {
-      case "Busy":
-        return {
-          icon: "\u23F3",
-          status: "Waiting for compilation"
-        };
-      case "CompileError":
-        return {
-          icon: "\u{1F6A8}",
-          status: "Compilation error"
-        };
-      case "Connecting":
-        return {
-          icon: "\u{1F50C}",
-          status: "Connecting"
-        };
-      case "ElmJsonError":
-        return {
-          icon: "\u{1F6A8}",
-          status: "elm.json or inputs error"
-        };
-      case "EvalError":
-        return {
-          icon: "\u26D4\uFE0F",
-          status: "Eval error"
-        };
-      case "Idle":
-        return {
-          icon: idleIcon(info.initializedElmAppsStatus),
-          status: "Successfully compiled"
-        };
-      case "SleepingBeforeReconnect":
-        return {
-          icon: "\u{1F50C}",
-          status: "Sleeping"
-        };
-      case "UnexpectedError":
-        return {
-          icon: "\u274C",
-          status: "Unexpected error"
-        };
-      case "WaitingForReload":
-        return model.elmCompiledTimestamp === model.elmCompiledTimestampBeforeReload ? {
-          icon: "\u274C",
-          status: "Reload trouble"
-        } : {
-          icon: "\u23F3",
-          status: "Waiting for reload"
-        };
-    }
-  }
-  function viewStatus(dispatch, model, info) {
-    const { status, compilationMode } = model;
-    switch (status.tag) {
-      case "Busy":
-        return {
-          dl: [],
-          content: [
-            ...viewCompilationModeChooser({
-              dispatch,
-              sendKey: void 0,
-              compilationMode,
-              warnAboutCompilationModeMismatch: false,
-              info
-            }),
-            ...status.errorOverlay === void 0 ? [] : [viewErrorOverlayToggleButton(dispatch, status.errorOverlay)]
-          ]
-        };
-      case "CompileError":
-        return {
-          dl: [],
-          content: [
-            ...viewCompilationModeChooser({
-              dispatch,
-              sendKey: status.sendKey,
-              compilationMode,
-              warnAboutCompilationModeMismatch: true,
-              info
-            }),
-            viewErrorOverlayToggleButton(dispatch, status.errorOverlay),
-            ...status.openEditorError === void 0 ? [] : viewOpenEditorError(status.openEditorError)
-          ]
-        };
-      case "Connecting":
-        return {
-          dl: [
-            ["attempt", status.attemptNumber.toString()],
-            ["sleep", printRetryWaitMs(status.attemptNumber)]
-          ],
-          content: [
-            ...viewHttpsInfo(info.webSocketUrl),
-            h(HTMLButtonElement, { disabled: true }, "Connecting web socket\u2026")
-          ]
-        };
-      case "ElmJsonError":
-        return {
-          dl: [],
-          content: [
-            h(HTMLPreElement, { style: { minWidth: "80ch" } }, status.error)
-          ]
-        };
-      case "EvalError":
-        return {
-          dl: [],
-          content: [
-            h(
-              HTMLParagraphElement,
-              {},
-              "Check the console in the browser developer tools to see errors!"
-            )
-          ]
-        };
-      case "Idle":
-        return {
-          dl: [],
-          content: viewCompilationModeChooser({
-            dispatch,
-            sendKey: status.sendKey,
-            compilationMode,
-            warnAboutCompilationModeMismatch: true,
-            info
-          })
-        };
-      case "SleepingBeforeReconnect":
-        return {
-          dl: [
-            ["attempt", status.attemptNumber.toString()],
-            ["sleep", printRetryWaitMs(status.attemptNumber)]
-          ],
-          content: [
-            ...viewHttpsInfo(info.webSocketUrl),
-            h(
-              HTMLButtonElement,
-              {
-                onclick: () => {
-                  dispatch({ tag: "PressedReconnectNow" });
-                }
-              },
-              "Reconnect web socket now"
-            )
-          ]
-        };
-      case "UnexpectedError":
-        return {
-          dl: [],
-          content: [
-            h(
-              HTMLParagraphElement,
-              {},
-              "I ran into an unexpected error! This is the error message:"
-            ),
-            h(HTMLPreElement, {}, status.message)
-          ]
-        };
-      case "WaitingForReload":
-        return {
-          dl: [],
-          content: model.elmCompiledTimestamp === model.elmCompiledTimestampBeforeReload ? [
-            "A while ago I reloaded the page to get new compiled JavaScript.",
-            "But it looks like after the last page reload I got the same JavaScript as before, instead of new stuff!",
-            `The old JavaScript was compiled ${new Date(
-              model.elmCompiledTimestamp
-            ).toLocaleString()}, and so was the JavaScript currently running.`,
-            "I currently need to reload the page again, but fear a reload loop if I try.",
-            "Do you have accidental HTTP caching enabled maybe?",
-            "Try hard refreshing the page and see if that helps, and consider disabling HTTP caching during development."
-          ].map((text) => h(HTMLParagraphElement, {}, text)) : [h(HTMLParagraphElement, {}, "Waiting for other targets\u2026")]
-        };
-    }
-  }
-  function viewErrorOverlayToggleButton(dispatch, errorOverlay) {
-    return h(
-      HTMLButtonElement,
-      {
-        attrs: {
-          "data-test-id": errorOverlay.openErrorOverlay ? "HideErrorOverlayButton" : "ShowErrorOverlayButton"
-        },
-        onclick: () => {
-          dispatch({
-            tag: "ChangedOpenErrorOverlay",
-            openErrorOverlay: !errorOverlay.openErrorOverlay
-          });
-        }
-      },
-      errorOverlay.openErrorOverlay ? "Hide errors" : "Show errors"
-    );
-  }
-  function viewOpenEditorError(error) {
-    switch (error.tag) {
-      case "EnvNotSet":
-        return [
-          h(
-            HTMLDivElement,
-            { className: CLASS.envNotSet },
-            h(
-              HTMLParagraphElement,
-              {},
-              "\u2139\uFE0F Clicking error locations only works if you set it up."
-            ),
-            h(
-              HTMLParagraphElement,
-              {},
-              "Check this out: ",
-              h(
-                HTMLAnchorElement,
-                {
-                  href: "https://lydell.github.io/elm-watch/browser-ui/#clickable-error-locations",
-                  target: "_blank",
-                  rel: "noreferrer"
-                },
-                h(
-                  HTMLElement,
-                  { localName: "strong" },
-                  "Clickable error locations"
-                )
-              )
-            )
-          )
-        ];
-      case "CommandFailed":
-        return [
-          h(
-            HTMLParagraphElement,
-            {},
-            h(
-              HTMLElement,
-              { localName: "strong" },
-              "Opening the location in your editor failed!"
-            )
-          ),
-          h(HTMLPreElement, {}, error.message)
-        ];
-    }
-  }
-  function idleIcon(status) {
-    switch (status.tag) {
-      case "DecodeError":
-      case "MissingWindowElm":
-        return "\u274C";
-      case "NoProgramsAtAll":
-        return "\u2753";
-      case "DebuggerModeStatus":
-        return "\u2705";
-    }
-  }
-  function compilationModeIcon(compilationMode) {
-    switch (compilationMode) {
-      case "proxy":
-        return void 0;
-      case "debug":
-        return icon("\u{1F41B}", "Debug mode", { className: CLASS.debugModeIcon });
-      case "standard":
-        return void 0;
-      case "optimize":
-        return icon("\u{1F680}", "Optimize mode");
-    }
-  }
-  function printWebSocketUrl(url) {
-    const hostname = url.hostname.endsWith(".localhost") ? "localhost" : url.hostname;
-    return `${url.protocol}//${hostname}:${url.port}`;
-  }
-  function viewHttpsInfo(webSocketUrl) {
-    return webSocketUrl.protocol === "wss:" ? [
-      h(
-        HTMLParagraphElement,
-        {},
-        h(HTMLElement, { localName: "strong" }, "Having trouble connecting?")
-      ),
-      h(
-        HTMLParagraphElement,
-        {},
-        " You might need to ",
-        h(
-          HTMLAnchorElement,
-          {
-            href: new URL(
-              `https://${webSocketUrl.host}/elm-watch-https-accept`
-            ).href
-          },
-          "accept elm-watch\u2019s self-signed certificate"
-        ),
-        ". "
-      ),
-      h(
-        HTMLParagraphElement,
-        {},
-        h(
-          HTMLAnchorElement,
-          {
-            href: "https://lydell.github.io/elm-watch/https/",
-            target: "_blank",
-            rel: "noreferrer"
-          },
-          "More information"
-        ),
-        "."
-      )
-    ] : [];
-  }
-  var noDebuggerYetReason = "The Elm debugger isn't available at this point.";
-  function noDebuggerReason(noDebuggerProgramTypes) {
-    return `The Elm debugger isn't supported by ${humanList(
-      Array.from(noDebuggerProgramTypes, (programType) => `\`${programType}\``),
-      "and"
-    )} programs.`;
-  }
-  function humanList(list, joinWord) {
-    const { length } = list;
-    return length <= 1 ? list.join("") : length === 2 ? list.join(` ${joinWord} `) : `${list.slice(0, length - 2).join(", ")}, ${list.slice(-2).join(` ${joinWord} `)}`;
-  }
-  function viewCompilationModeChooser({
-    dispatch,
-    sendKey,
-    compilationMode: selectedMode,
-    warnAboutCompilationModeMismatch,
-    info
-  }) {
-    switch (info.initializedElmAppsStatus.tag) {
-      case "DecodeError":
-        return [
-          h(
-            HTMLParagraphElement,
-            {},
-            "window.Elm does not look like expected! This is the error message:"
-          ),
-          h(HTMLPreElement, {}, info.initializedElmAppsStatus.message)
-        ];
-      case "MissingWindowElm":
-        return [
-          h(
-            HTMLParagraphElement,
-            {},
-            "elm-watch requires ",
-            h(
-              HTMLAnchorElement,
-              {
-                href: "https://lydell.github.io/elm-watch/window.Elm/",
-                target: "_blank",
-                rel: "noreferrer"
-              },
-              "window.Elm"
-            ),
-            " to exist, but it is undefined!"
-          )
-        ];
-      case "NoProgramsAtAll":
-        return [
-          h(
-            HTMLParagraphElement,
-            {},
-            "It looks like no Elm apps were initialized by elm-watch. Check the console in the browser developer tools to see potential errors!"
-          )
-        ];
-      case "DebuggerModeStatus": {
-        const compilationModes = [
-          {
-            mode: "debug",
-            name: "Debug",
-            status: info.initializedElmAppsStatus.status
-          },
-          { mode: "standard", name: "Standard", status: { tag: "Enabled" } },
-          { mode: "optimize", name: "Optimize", status: { tag: "Enabled" } }
-        ];
-        return [
-          h(
-            HTMLFieldSetElement,
-            { disabled: sendKey === void 0 },
-            h(HTMLLegendElement, {}, "Compilation mode"),
-            ...compilationModes.map(({ mode, name, status }) => {
-              const nameWithIcon = h(
-                HTMLSpanElement,
-                { className: CLASS.compilationModeWithIcon },
-                name,
-                mode === selectedMode ? compilationModeIcon(mode) : void 0
-              );
-              return h(
-                HTMLLabelElement,
-                { className: status.tag },
-                h(HTMLInputElement, {
-                  type: "radio",
-                  name: `CompilationMode-${info.targetName}`,
-                  value: mode,
-                  checked: mode === selectedMode,
-                  disabled: sendKey === void 0 || status.tag === "Disabled",
-                  onchange: sendKey === void 0 ? void 0 : () => {
-                    dispatch({
-                      tag: "ChangedCompilationMode",
-                      compilationMode: mode,
-                      sendKey
-                    });
-                  }
-                }),
-                ...status.tag === "Enabled" ? [
-                  nameWithIcon,
-                  warnAboutCompilationModeMismatch && mode === selectedMode && selectedMode !== info.originalCompilationMode && info.originalCompilationMode !== "proxy" ? h(
-                    HTMLElement,
-                    { localName: "small" },
-                    `Note: The code currently running is in ${ORIGINAL_COMPILATION_MODE} mode.`
-                  ) : void 0
-                ] : [
-                  nameWithIcon,
-                  h(HTMLElement, { localName: "small" }, status.reason)
-                ]
-              );
-            })
-          )
-        ];
-      }
-    }
-  }
-  var DATA_TARGET_NAMES = "data-target-names";
-  function updateErrorOverlay(targetName, dispatch, sendKey, errors, overlay, overlayCloseButton) {
-    const existingErrorElements = new Map(
-      Array.from(overlay.children, (element) => [
-        element.id,
-        {
-          targetNames: new Set(
-            (element.getAttribute(DATA_TARGET_NAMES) ?? "").split("\n")
-          ),
-          element
-        }
-      ])
-    );
-    for (const [id, { targetNames, element }] of existingErrorElements) {
-      if (targetNames.has(targetName) && !errors.has(id)) {
-        targetNames.delete(targetName);
-        if (targetNames.size === 0) {
-          element.remove();
-        } else {
-          element.setAttribute(DATA_TARGET_NAMES, [...targetNames].join("\n"));
-        }
-      }
-    }
-    let previousElement = void 0;
-    for (const [id, error] of errors) {
-      const maybeExisting = existingErrorElements.get(id);
-      if (maybeExisting === void 0) {
-        const element = viewOverlayError(
-          targetName,
-          dispatch,
-          sendKey,
-          id,
-          error
-        );
-        if (previousElement === void 0) {
-          overlay.prepend(element);
-        } else {
-          previousElement.after(element);
-        }
-        overlay.style.backgroundColor = error.backgroundColor;
-        overlayCloseButton.style.setProperty(
-          "--foregroundColor",
-          error.foregroundColor
-        );
-        overlayCloseButton.style.setProperty(
-          "--backgroundColor",
-          error.backgroundColor
-        );
-        previousElement = element;
-      } else {
-        if (!maybeExisting.targetNames.has(targetName)) {
-          maybeExisting.element.setAttribute(
-            DATA_TARGET_NAMES,
-            [...maybeExisting.targetNames, targetName].join("\n")
-          );
-        }
-        previousElement = maybeExisting.element;
-      }
-    }
-    const hidden = !overlay.hasChildNodes();
-    overlay.hidden = hidden;
-    overlayCloseButton.hidden = hidden;
-    overlayCloseButton.style.right = `${overlay.offsetWidth - overlay.clientWidth}px`;
-  }
-  function viewOverlayError(targetName, dispatch, sendKey, id, error) {
-    return h(
-      HTMLDetailsElement,
-      {
-        open: true,
-        id,
-        style: {
-          backgroundColor: error.backgroundColor,
-          color: error.foregroundColor
-        },
-        attrs: {
-          [DATA_TARGET_NAMES]: targetName
-        }
-      },
-      h(
-        HTMLElement,
-        { localName: "summary" },
-        h(
-          HTMLSpanElement,
-          {
-            className: CLASS.errorTitle,
-            style: {
-              backgroundColor: error.backgroundColor
-            }
-          },
-          error.title
-        ),
-        error.location === void 0 ? void 0 : h(
-          HTMLParagraphElement,
-          {},
-          viewErrorLocation(dispatch, sendKey, error.location)
-        )
-      ),
-      h(HTMLPreElement, { innerHTML: error.htmlContent })
-    );
-  }
-  function viewErrorLocation(dispatch, sendKey, location) {
-    switch (location.tag) {
-      case "FileOnly":
-        return viewErrorLocationButton(
-          dispatch,
-          sendKey,
-          {
-            file: location.file,
-            line: 1,
-            column: 1
-          },
-          location.file.absolutePath
-        );
-      case "FileWithLineAndColumn": {
-        return viewErrorLocationButton(
-          dispatch,
-          sendKey,
-          location,
-          `${location.file.absolutePath}:${location.line}:${location.column}`
-        );
-      }
-      case "Target":
-        return `Target: ${location.targetName}`;
-    }
-  }
-  function viewErrorLocationButton(dispatch, sendKey, location, text) {
-    return sendKey === void 0 ? text : h(
-      HTMLButtonElement,
-      {
-        className: CLASS.errorLocationButton,
-        onclick: () => {
-          dispatch({
-            tag: "PressedOpenEditor",
-            file: location.file,
-            line: location.line,
-            column: location.column,
-            sendKey
-          });
-        }
-      },
-      text
-    );
-  }
-  if (typeof WebSocket !== "undefined") {
-    run();
-  }
-})();
 (function(scope){
 'use strict';
-
-var _Platform_effectManagers = {}, _Scheduler_enqueue; // added by elm-watch
 
 function F(arity, fun, wrapper) {
   wrapper.a = arity;
@@ -2954,87 +78,6 @@ function A9(fun, a, b, c, d, e, f, g, h, i) {
 }
 
 console.warn('Compiled in DEV mode. Follow the advice at https://elm-lang.org/0.19.1/optimize for better performance and smaller assets.');
-
-
-var _List_Nil_UNUSED = { $: 0 };
-var _List_Nil = { $: '[]' };
-
-function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
-function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
-
-
-var _List_cons = F2(_List_Cons);
-
-function _List_fromArray(arr)
-{
-	var out = _List_Nil;
-	for (var i = arr.length; i--; )
-	{
-		out = _List_Cons(arr[i], out);
-	}
-	return out;
-}
-
-function _List_toArray(xs)
-{
-	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		out.push(xs.a);
-	}
-	return out;
-}
-
-var _List_map2 = F3(function(f, xs, ys)
-{
-	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
-	{
-		arr.push(A2(f, xs.a, ys.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map3 = F4(function(f, xs, ys, zs)
-{
-	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A3(f, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map4 = F5(function(f, ws, xs, ys, zs)
-{
-	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
-{
-	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_sortBy = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		return _Utils_cmp(f(a), f(b));
-	}));
-});
-
-var _List_sortWith = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		var ord = A2(f, a, b);
-		return ord === $elm$core$Basics$EQ ? 0 : ord === $elm$core$Basics$LT ? -1 : 1;
-	}));
-});
-
 
 
 var _JsArray_empty = [];
@@ -3666,6 +709,87 @@ function _Utils_ap(xs, ys)
 	}
 	return root;
 }
+
+
+
+var _List_Nil_UNUSED = { $: 0 };
+var _List_Nil = { $: '[]' };
+
+function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
+function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
+
+
+var _List_cons = F2(_List_Cons);
+
+function _List_fromArray(arr)
+{
+	var out = _List_Nil;
+	for (var i = arr.length; i--; )
+	{
+		out = _List_Cons(arr[i], out);
+	}
+	return out;
+}
+
+function _List_toArray(xs)
+{
+	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		out.push(xs.a);
+	}
+	return out;
+}
+
+var _List_map2 = F3(function(f, xs, ys)
+{
+	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
+	{
+		arr.push(A2(f, xs.a, ys.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map3 = F4(function(f, xs, ys, zs)
+{
+	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A3(f, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map4 = F5(function(f, ws, xs, ys, zs)
+{
+	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
+{
+	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_sortBy = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		return _Utils_cmp(f(a), f(b));
+	}));
+});
+
+var _List_sortWith = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		var ord = A2(f, a, b);
+		return ord === $elm$core$Basics$EQ ? 0 : ord === $elm$core$Basics$LT ? -1 : 1;
+	}));
+});
 
 
 
@@ -4538,14 +1662,12 @@ function _Scheduler_fail(error)
 	};
 }
 
-// This function was slightly modified by elm-watch.
 function _Scheduler_binding(callback)
 {
 	return {
 		$: 2,
 		b: callback,
-		// c: null // commented out by elm-watch
-		c: Function.prototype // added by elm-watch
+		c: null
 	};
 }
 
@@ -4688,8 +1810,7 @@ function _Scheduler_step(proc)
 			proc.f.c = proc.f.b(function(newRoot) {
 				proc.f = newRoot;
 				_Scheduler_enqueue(proc);
-			// }); // commented out by elm-watch
-			}) || Function.prototype; // added by elm-watch
+			});
 			return;
 		}
 		else if (rootTag === 5)
@@ -4731,19 +1852,14 @@ function _Process_sleep(time)
 // PROGRAMS
 
 
-// This function was slightly modified by elm-watch.
 var _Platform_worker = F4(function(impl, flagDecoder, debugMetadata, args)
 {
 	return _Platform_initialize(
-		"Platform.worker", // added by elm-watch
-		false, // isDebug, added by elm-watch
-		debugMetadata, // added by elm-watch
 		flagDecoder,
 		args,
 		impl.init,
-		// impl.update, // commented out by elm-watch
-		// impl.subscriptions, // commented out by elm-watch
-		impl, // added by elm-watch
+		impl.update,
+		impl.subscriptions,
 		function() { return function() {} }
 	);
 });
@@ -4753,178 +1869,26 @@ var _Platform_worker = F4(function(impl, flagDecoder, debugMetadata, args)
 // INITIALIZE A PROGRAM
 
 
-// This whole function was changed by elm-watch.
-function _Platform_initialize(programType, isDebug, debugMetadata, flagDecoder, args, init, impl, stepperBuilder)
+function _Platform_initialize(flagDecoder, args, init, update, subscriptions, stepperBuilder)
 {
-	if (args === "__elmWatchReturnData") {
-		return { impl: impl, debugMetadata: debugMetadata, flagDecoder : flagDecoder, programType: programType };
-	}
-
-	var flags = _Json_wrap(args ? args['flags'] : undefined);
-	var flagResult = A2(_Json_run, flagDecoder, flags);
-	$elm$core$Result$isOk(flagResult) || _Debug_crash(2 /**/, _Json_errorToString(flagResult.a) /**/);
+	var result = A2(_Json_run, flagDecoder, _Json_wrap(args ? args['flags'] : undefined));
+	$elm$core$Result$isOk(result) || _Debug_crash(2 /**/, _Json_errorToString(result.a) /**/);
 	var managers = {};
-	var initUrl = programType === "Browser.application" ? _Browser_getUrl() : undefined;
-	globalThis.__ELM_WATCH.INIT_URL = initUrl;
-	var initPair = init(flagResult.a);
+	var initPair = init(result.a);
 	var model = initPair.a;
 	var stepper = stepperBuilder(sendToApp, model);
 	var ports = _Platform_setupEffects(managers, sendToApp);
-	var update;
-	var subscriptions;
 
-	function setUpdateAndSubscriptions() {
-		update = impl.update || impl._impl.update;
-		subscriptions = impl.subscriptions || impl._impl.subscriptions;
-		if (isDebug) {
-			update = $elm$browser$Debugger$Main$wrapUpdate(update);
-			subscriptions = $elm$browser$Debugger$Main$wrapSubs(subscriptions);
-		}
-	}
-
-	function sendToApp(msg, viewMetadata) {
+	function sendToApp(msg, viewMetadata)
+	{
 		var pair = A2(update, msg, model);
 		stepper(model = pair.a, viewMetadata);
 		_Platform_enqueueEffects(managers, pair.b, subscriptions(model));
 	}
 
-	setUpdateAndSubscriptions();
 	_Platform_enqueueEffects(managers, initPair.b, subscriptions(model));
 
-	function __elmWatchHotReload(newData, new_Platform_effectManagers, new_Scheduler_enqueue, moduleName) {
-		_Platform_enqueueEffects(managers, _Platform_batch(_List_Nil), _Platform_batch(_List_Nil));
-		_Scheduler_enqueue = new_Scheduler_enqueue;
-
-		var reloadReasons = [];
-
-		for (var key in new_Platform_effectManagers) {
-			var manager = new_Platform_effectManagers[key];
-			if (!(key in _Platform_effectManagers)) {
-				_Platform_effectManagers[key] = manager;
-				managers[key] = _Platform_instantiateManager(manager, sendToApp);
-				if (manager.a) {
-					reloadReasons.push("a new port '" + key + "' was added. The idea is to give JavaScript code a chance to set it up!");
-					manager.a(key, sendToApp)
-				}
-			}
-		}
-
-		for (var key in newData.impl) {
-			if (key === "_impl" && impl._impl) {
-				for (var subKey in newData.impl[key]) {
-					impl._impl[subKey] = newData.impl[key][subKey];
-				}
-			} else {
-				impl[key] = newData.impl[key];
-			}
-		}
-
-		var newFlagResult = A2(_Json_run, newData.flagDecoder, flags);
-		if (!$elm$core$Result$isOk(newFlagResult)) {
-			return reloadReasons.concat("the flags type in `" + moduleName + "` changed and now the passed flags aren't correct anymore. The idea is to try to run with new flags!\nThis is the error:\n" + _Json_errorToString(newFlagResult.a));
-		}
-		if (!_Utils_eq_elmWatchInternal(debugMetadata, newData.debugMetadata)) {
-			return reloadReasons.concat("the message type in `" + moduleName + '` changed in debug mode ("debug metadata" changed).');
-		}
-		init = impl.init || impl._impl.init;
-		if (isDebug) {
-			init = A3($elm$browser$Debugger$Main$wrapInit, _Json_wrap(newData.debugMetadata), initPair.a.popout, init);
-		}
-		globalThis.__ELM_WATCH.INIT_URL = initUrl;
-		var newInitPair = init(newFlagResult.a);
-		if (!_Utils_eq_elmWatchInternal(initPair, newInitPair)) {
-			return reloadReasons.concat("`" + moduleName + ".init` returned something different than last time. Let's start fresh!");
-		}
-
-		setUpdateAndSubscriptions();
-		stepper(model, true /* isSync */);
-		_Platform_enqueueEffects(managers, _Platform_batch(_List_Nil), subscriptions(model));
-		return reloadReasons;
-	}
-
-	return Object.defineProperties(
-		ports ? { ports: ports } : {},
-		{
-			__elmWatchHotReload: { value: __elmWatchHotReload },
-			__elmWatchProgramType: { value: programType },
-		}
-	);
-}
-
-// This whole function was added by elm-watch.
-// Copy-paste of _Utils_eq but does not assume that x and y have the same type,
-// and considers functions to always be equal.
-function _Utils_eq_elmWatchInternal(x, y)
-{
-	for (
-		var pair, stack = [], isEqual = _Utils_eqHelp_elmWatchInternal(x, y, 0, stack);
-		isEqual && (pair = stack.pop());
-		isEqual = _Utils_eqHelp_elmWatchInternal(pair.a, pair.b, 0, stack)
-		)
-	{}
-
-	return isEqual;
-}
-
-// This whole function was added by elm-watch.
-function _Utils_eqHelp_elmWatchInternal(x, y, depth, stack)
-{
-	if (x === y) {
-		return true;
-	}
-
-	var xType = _Utils_typeof_elmWatchInternal(x);
-	var yType = _Utils_typeof_elmWatchInternal(y);
-
-	if (xType !== yType) {
-		return false;
-	}
-
-	switch (xType) {
-		case "primitive":
-			return false;
-		case "function":
-			return true;
-	}
-
-	if (x.$ !== y.$) {
-		return false;
-	}
-
-	if (x.$ === 'Set_elm_builtin') {
-		x = $elm$core$Set$toList(x);
-		y = $elm$core$Set$toList(y);
-	} else if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin' || x.$ < 0) {
-		x = $elm$core$Dict$toList(x);
-		y = $elm$core$Dict$toList(y);
-	}
-
-	if (Object.keys(x).length !== Object.keys(y).length) {
-		return false;
-	}
-
-	if (depth > 100) {
-		stack.push(_Utils_Tuple2(x, y));
-		return true;
-	}
-
-	for (var key in x) {
-		if (!_Utils_eqHelp_elmWatchInternal(x[key], y[key], depth + 1, stack)) {
-			return false;
-		}
-	}
-	return true;
-}
-
-// This whole function was added by elm-watch.
-function _Utils_typeof_elmWatchInternal(x)
-{
-	var type = typeof x;
-	return type === "function"
-		? "function"
-		: type !== "object" || type === null
-		? "primitive"
-		: "objectOrArray";
+	return ports ? { ports: ports } : {};
 }
 
 
@@ -5373,55 +2337,11 @@ function _Platform_mergeExportsProd(obj, exports)
 }
 
 
-// This whole function was changed by elm-watch.
 function _Platform_export(exports)
 {
-	var reloadReasons = _Platform_mergeExportsElmWatch('Elm', scope['Elm'] || (scope['Elm'] = {}), exports);
-	if (reloadReasons.length > 0) {
-		throw new Error(["ELM_WATCH_RELOAD_NEEDED"].concat(Array.from(new Set(reloadReasons))).join("\n\n---\n\n"));
-	}
-}
-
-// This whole function was added by elm-watch.
-function _Platform_mergeExportsElmWatch(moduleName, obj, exports)
-{
-	var reloadReasons = [];
-	for (var name in exports) {
-		if (name === "init") {
-			if ("init" in obj) {
-				if ("__elmWatchApps" in obj) {
-					var data = exports.init("__elmWatchReturnData");
-					for (var index = 0; index < obj.__elmWatchApps.length; index++) {
-						var app = obj.__elmWatchApps[index];
-						if (app.__elmWatchProgramType !== data.programType) {
-							reloadReasons.push("`" + moduleName + ".main` changed from `" + app.__elmWatchProgramType + "` to `" + data.programType + "`.");
-						} else {
-							try {
-								var innerReasons = app.__elmWatchHotReload(data, _Platform_effectManagers, _Scheduler_enqueue, moduleName);
-								reloadReasons = reloadReasons.concat(innerReasons);
-							} catch (error) {
-								reloadReasons.push("hot reload for `" + moduleName + "` failed, probably because of incompatible model changes.\nThis is the error:\n" + error + "\n" + (error ? error.stack : ""));
-							}
-						}
-					}
-				} else {
-					throw new Error("elm-watch: I'm trying to create `" + moduleName + ".init`, but it already exists and wasn't created by elm-watch. Maybe a duplicate script is getting loaded accidentally?");
-				}
-			} else {
-				obj.__elmWatchApps = [];
-				obj.init = function() {
-					var app = exports.init.apply(exports, arguments);
-					obj.__elmWatchApps.push(app);
-					globalThis.__ELM_WATCH.ON_INIT();
-					return app;
-				};
-			}
-		} else {
-			var innerReasons = _Platform_mergeExportsElmWatch(moduleName + "." + name, obj[name] || (obj[name] = {}), exports[name]);
-			reloadReasons = reloadReasons.concat(innerReasons);
-		}
-	}
-	return reloadReasons;
+	scope['Elm']
+		? _Platform_mergeExportsDebug('Elm', scope['Elm'], exports)
+		: scope['Elm'] = exports;
 }
 
 
@@ -5453,41 +2373,23 @@ function _VirtualDom_appendChild(parent, child)
 	parent.appendChild(child);
 }
 
-// This whole function was changed by elm-watch.
 var _VirtualDom_init = F4(function(virtualNode, flagDecoder, debugMetadata, args)
 {
-	var programType = "Html";
+	// NOTE: this function needs _Platform_export available to work
 
-	if (args === "__elmWatchReturnData") {
-		return { virtualNode: virtualNode, programType: programType };
-	}
-
-	/**_UNUSED/ // always UNUSED with elm-watch
+	/**_UNUSED/
 	var node = args['node'];
 	//*/
 	/**/
 	var node = args && args['node'] ? args['node'] : _Debug_crash(0);
 	//*/
 
-	var nextNode = _VirtualDom_render(virtualNode, function() {});
-	node.parentNode.replaceChild(nextNode, node);
-	node = nextNode;
-	var sendToApp = function() {};
-
-	function __elmWatchHotReload(newData) {
-		var patches = _VirtualDom_diff(virtualNode, newData.virtualNode);
-		node = _VirtualDom_applyPatches(node, virtualNode, patches, sendToApp);
-		virtualNode = newData.virtualNode;
-		return [];
-	}
-
-	return Object.defineProperties(
-		{},
-		{
-			__elmWatchHotReload: { value: __elmWatchHotReload },
-			__elmWatchProgramType: { value: programType },
-		}
+	node.parentNode.replaceChild(
+		_VirtualDom_render(virtualNode, function() {}),
+		node
 	);
+
+	return {};
 });
 
 
@@ -7036,22 +3938,17 @@ function _VirtualDom_dekey(keyedNode)
 
 var _Debugger_element;
 
-// This function was slightly modified by elm-watch.
 var _Browser_element = _Debugger_element || F4(function(impl, flagDecoder, debugMetadata, args)
 {
 	return _Platform_initialize(
-		impl._impl ? "Browser.sandbox" : "Browser.element", // added by elm-watch
-		false, // isDebug, added by elm-watch
-		debugMetadata, // added by elm-watch
 		flagDecoder,
 		args,
 		impl.init,
-		// impl.update, // commented out by elm-watch
-		// impl.subscriptions, // commented out by elm-watch
-		impl, // added by elm-watch
+		impl.update,
+		impl.subscriptions,
 		function(sendToApp, initialModel) {
-			// var view = impl.view; // commented out by elm-watch
-			/**_UNUSED/ // always UNUSED with elm-watch
+			var view = impl.view;
+			/**_UNUSED/
 			var domNode = args['node'];
 			//*/
 			/**/
@@ -7061,8 +3958,7 @@ var _Browser_element = _Debugger_element || F4(function(impl, flagDecoder, debug
 
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
-				// var nextNode = view(model); // commented out by elm-watch
-				var nextNode = impl.view(model); // added by elm-watch
+				var nextNode = view(model);
 				var patches = _VirtualDom_diff(currNode, nextNode);
 				domNode = _VirtualDom_applyPatches(domNode, currNode, patches, sendToApp);
 				currNode = nextNode;
@@ -7078,30 +3974,24 @@ var _Browser_element = _Debugger_element || F4(function(impl, flagDecoder, debug
 
 var _Debugger_document;
 
-// This function was slightly modified by elm-watch.
 var _Browser_document = _Debugger_document || F4(function(impl, flagDecoder, debugMetadata, args)
 {
 	return _Platform_initialize(
-		impl._impl ? "Browser.application" : "Browser.document", // added by elm-watch
-		false, // isDebug, added by elm-watch
-		debugMetadata, // added by elm-watch
 		flagDecoder,
 		args,
 		impl.init,
-		// impl.update, // commented out by elm-watch
-		// impl.subscriptions, // commented out by elm-watch
-		impl, // added by elm-watch
+		impl.update,
+		impl.subscriptions,
 		function(sendToApp, initialModel) {
 			var divertHrefToApp = impl.setup && impl.setup(sendToApp)
-			// var view = impl.view; // commented out by elm-watch
+			var view = impl.view;
 			var title = _VirtualDom_doc.title;
 			var bodyNode = _VirtualDom_doc.body;
 			var currNode = _VirtualDom_virtualize(bodyNode);
 			return _Browser_makeAnimator(initialModel, function(model)
 			{
 				_VirtualDom_divertHrefToApp = divertHrefToApp;
-				// var doc = view(model); // commented out by elm-watch
-				var doc = impl.view(model); // added by elm-watch
+				var doc = view(model);
 				var nextNode = _VirtualDom_node('body')(_List_Nil)(doc.body);
 				var patches = _VirtualDom_diff(currNode, nextNode);
 				bodyNode = _VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
@@ -7161,13 +4051,11 @@ function _Browser_makeAnimator(model, draw)
 // APPLICATION
 
 
-// This function was slightly modified by elm-watch.
 function _Browser_application(impl)
 {
-	// var onUrlChange = impl.onUrlChange; // commented out by elm-watch
-	// var onUrlRequest = impl.onUrlRequest; // commented out by elm-watch
-	// var key = function() { key.a(onUrlChange(_Browser_getUrl())); }; // commented out by elm-watch
-	var key = function() { key.a(impl.onUrlChange(_Browser_getUrl())); }; // added by elm-watch
+	var onUrlChange = impl.onUrlChange;
+	var onUrlRequest = impl.onUrlRequest;
+	var key = function() { key.a(onUrlChange(_Browser_getUrl())); };
 
 	return _Browser_document({
 		setup: function(sendToApp)
@@ -7184,7 +4072,7 @@ function _Browser_application(impl)
 					var href = domNode.href;
 					var curr = _Browser_getUrl();
 					var next = $elm$url$Url$fromString(href).a;
-					sendToApp(impl.onUrlRequest(
+					sendToApp(onUrlRequest(
 						(next
 							&& curr.protocol === next.protocol
 							&& curr.host === next.host
@@ -7198,14 +4086,11 @@ function _Browser_application(impl)
 		},
 		init: function(flags)
 		{
-			// return A3(impl.init, flags, _Browser_getUrl(), key); // commented out by elm-watch
-			return A3(impl.init, flags, globalThis.__ELM_WATCH.INIT_URL, key); // added by elm-watch
+			return A3(impl.init, flags, _Browser_getUrl(), key);
 		},
-		// view: impl.view, // commented out by elm-watch
-		// update: impl.update, // commented out by elm-watch
-		// subscriptions: impl.subscriptions // commented out by elm-watch
-		view: function(model) { return impl.view(model); }, // added by elm-watch
-		_impl: impl // added by elm-watch
+		view: impl.view,
+		update: impl.update,
+		subscriptions: impl.subscriptions
 	});
 }
 
@@ -7816,9 +4701,7 @@ function _Url_percentDecode(string)
 	{
 		return $elm$core$Maybe$Nothing;
 	}
-}var $elm$core$Basics$EQ = {$: 'EQ'};
-var $elm$core$Basics$LT = {$: 'LT'};
-var $elm$core$List$cons = _List_cons;
+}var $elm$core$List$cons = _List_cons;
 var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
 var $elm$core$Array$foldr = F3(
 	function (func, baseCase, _v0) {
@@ -7895,7 +4778,9 @@ var $elm$core$Set$toList = function (_v0) {
 	var dict = _v0.a;
 	return $elm$core$Dict$keys(dict);
 };
+var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
+var $elm$core$Basics$LT = {$: 'LT'};
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -8604,14 +5489,7 @@ var $elm$core$Task$perform = F2(
 			$elm$core$Task$Perform(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
-var $elm$browser$Browser$element = _Browser_element;
-var $elm$core$Debug$log = _Debug_log;
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
-var $author$project$User$FormSubmitted = {$: 'FormSubmitted'};
-var $author$project$User$FormUpdated = function (a) {
-	return {$: 'FormUpdated', a: a};
-};
+var $elm$browser$Browser$document = _Browser_document;
 var $author$project$Control$State = F2(
 	function (a, b) {
 		return {$: 'State', a: a, b: b};
@@ -8899,132 +5777,46 @@ var $author$project$Control$form = function (_v0) {
 		}
 	};
 };
-var $author$project$User$User = F4(
-	function (name, age, role, password) {
-		return {age: age, name: name, password: password, role: role};
-	});
-var $author$project$Control$FlagPath = F2(
-	function (a, b) {
-		return {$: 'FlagPath', a: a, b: b};
-	});
-var $elm_community$list_extra$List$Extra$uniqueHelp = F4(
-	function (f, existing, remaining, accumulator) {
-		uniqueHelp:
-		while (true) {
-			if (!remaining.b) {
-				return $elm$core$List$reverse(accumulator);
-			} else {
-				var first = remaining.a;
-				var rest = remaining.b;
-				var computedFirst = f(first);
-				if (A2($elm$core$List$member, computedFirst, existing)) {
-					var $temp$f = f,
-						$temp$existing = existing,
-						$temp$remaining = rest,
-						$temp$accumulator = accumulator;
-					f = $temp$f;
-					existing = $temp$existing;
-					remaining = $temp$remaining;
-					accumulator = $temp$accumulator;
-					continue uniqueHelp;
-				} else {
-					var $temp$f = f,
-						$temp$existing = A2($elm$core$List$cons, computedFirst, existing),
-						$temp$remaining = rest,
-						$temp$accumulator = A2($elm$core$List$cons, first, accumulator);
-					f = $temp$f;
-					existing = $temp$existing;
-					remaining = $temp$remaining;
-					accumulator = $temp$accumulator;
-					continue uniqueHelp;
-				}
-			}
-		}
-	});
-var $elm_community$list_extra$List$Extra$unique = function (list) {
-	return A4($elm_community$list_extra$List$Extra$uniqueHelp, $elm$core$Basics$identity, _List_Nil, list, _List_Nil);
+var $author$project$Docs$BasicControls = function (a) {
+	return {$: 'BasicControls', a: a};
 };
-var $author$project$Control$flagEmitter = F3(
-	function (check, flag, ctrl) {
-		return _Utils_update(
-			ctrl,
-			{
-				emitFlags: function (state) {
-					var oldFlags = ctrl.emitFlags(state);
-					var newFlags = function () {
-						var _v0 = ctrl.parse(state);
-						if (_v0.$ === 'Ok') {
-							var output = _v0.a;
-							return check(output) ? _List_fromArray(
-								[flag]) : _List_Nil;
-						} else {
-							return _List_Nil;
-						}
-					}();
-					return $elm_community$list_extra$List$Extra$unique(
-						_Utils_ap(oldFlags, newFlags));
-				}
-			});
-	});
-var $elm$core$String$toLower = _String_toLower;
-var $author$project$Path$toString = function (_v0) {
-	var path = _v0.a;
-	return $elm$core$String$toLower(
-		A2(
-			$elm$core$String$join,
-			'-',
-			$elm$core$List$reverse(path)));
+var $author$project$Docs$CreateYourOwn = function (a) {
+	return {$: 'CreateYourOwn', a: a};
 };
-var $author$project$Control$flagReceiver = F4(
-	function (flag, fail, message, ctrl) {
-		return _Utils_update(
-			ctrl,
-			{
-				collectDebouncingReceivers: function (state) {
-					var internalState = state.a;
-					var _v0 = internalState.status;
-					if (_v0.$ === 'DebouncingSince') {
-						return A2(
-							$elm$core$List$cons,
-							flag,
-							ctrl.collectDebouncingReceivers(state));
-					} else {
-						return ctrl.collectDebouncingReceivers(state);
-					}
-				},
-				collectErrors: F2(
-					function (state, flags) {
-						var oldReceiver = A2(ctrl.collectErrors, state, flags);
-						var newReceiver = A2($elm$core$List$member, flag, flags) ? _List_fromArray(
-							[
-								{
-								fail: fail,
-								message: message,
-								path: $author$project$Path$toString(ctrl.path)
-							}
-							]) : _List_Nil;
-						return $elm_community$list_extra$List$Extra$unique(
-							_Utils_ap(oldReceiver, newReceiver));
-					}),
-				receiverCount: ctrl.receiverCount + 1
-			});
+var $author$project$Docs$CustomTypes = function (a) {
+	return {$: 'CustomTypes', a: a};
+};
+var $author$project$Docs$ListsDictsSetsAndArrays = function (a) {
+	return {$: 'ListsDictsSetsAndArrays', a: a};
+};
+var $author$project$Docs$Mapping = function (a) {
+	return {$: 'Mapping', a: a};
+};
+var $author$project$Docs$MultiValidation = function (a) {
+	return {$: 'MultiValidation', a: a};
+};
+var $author$project$Docs$Records = function (a) {
+	return {$: 'Records', a: a};
+};
+var $author$project$Docs$TuplesAndTriples = function (a) {
+	return {$: 'TuplesAndTriples', a: a};
+};
+var $author$project$Docs$Validation = function (a) {
+	return {$: 'Validation', a: a};
+};
+var $author$project$Docs$YourFirstForm = function (a) {
+	return {$: 'YourFirstForm', a: a};
+};
+var $elm$json$Json$Encode$bool = _Json_wrap;
+var $elm$html$Html$Attributes$boolProperty = F2(
+	function (key, bool) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$bool(bool));
 	});
-var $author$project$Control$failIf = F3(
-	function (check, message, _v0) {
-		var c = _v0.a;
-		return $author$project$Control$Control(
-			function (path) {
-				var control = c(path);
-				var flag = A2($author$project$Control$FlagPath, path, control.receiverCount);
-				return A4(
-					$author$project$Control$flagReceiver,
-					flag,
-					true,
-					message,
-					A3($author$project$Control$flagEmitter, check, flag, control));
-			});
-	});
-var $elm$core$Basics$ge = _Utils_ge;
+var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
+var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $author$project$Control$ChangeStateInternally = function (a) {
 	return {$: 'ChangeStateInternally', a: a};
 };
@@ -9070,6 +5862,15 @@ var $elm$core$Tuple$mapFirst = F2(
 			func(x),
 			y);
 	});
+var $elm$core$String$toLower = _String_toLower;
+var $author$project$Path$toString = function (_v0) {
+	var path = _v0.a;
+	return $elm$core$String$toLower(
+		A2(
+			$elm$core$String$join,
+			'-',
+			$elm$core$List$reverse(path)));
+};
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
 		if (maybe.$ === 'Just') {
@@ -9088,6 +5889,8 @@ var $author$project$Control$DebouncingSince = function (a) {
 var $author$project$Control$StartDebouncing = function (a) {
 	return {$: 'StartDebouncing', a: a};
 };
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $elm$time$Time$Name = function (a) {
 	return {$: 'Name', a: a};
 };
@@ -9191,7 +5994,6 @@ var $author$project$Control$wrapUpdate = F4(
 					$elm$core$Platform$Cmd$none);
 		}
 	});
-var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $elm$html$Html$p = _VirtualDom_node('p');
 var $author$project$Control$wrappedView = F2(
 	function (status, innerView) {
@@ -9376,6 +6178,56 @@ var $author$project$Control$create = function (config) {
 			};
 		});
 };
+var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
+var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
+var $elm$html$Html$input = _VirtualDom_node('input');
+var $elm$html$Html$label = _VirtualDom_node('label');
+var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
+var $elm$core$Platform$Sub$batch = _Platform_batch;
+var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
+var $author$project$Control$bool = $author$project$Control$create(
+	{
+		initEmpty: _Utils_Tuple2(false, $elm$core$Platform$Cmd$none),
+		initWith: function (b) {
+			return _Utils_Tuple2(b, $elm$core$Platform$Cmd$none);
+		},
+		label: 'Bool',
+		parse: $elm$core$Result$Ok,
+		subscriptions: function (state) {
+			return $elm$core$Platform$Sub$none;
+		},
+		update: F2(
+			function (delta, _v0) {
+				return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
+			}),
+		view: function (config) {
+			return _List_fromArray(
+				[
+					A2(
+					$elm$html$Html$label,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$for(config.id)
+						]),
+					_List_fromArray(
+						[
+							$elm$html$Html$text(config.label)
+						])),
+					A2(
+					$elm$html$Html$input,
+					_List_fromArray(
+						[
+							$elm$html$Html$Attributes$type_('checkbox'),
+							$elm$html$Html$Attributes$id(config.id),
+							$elm$html$Html$Attributes$name(config.name),
+							$elm$html$Html$Attributes$class(config._class),
+							$elm$html$Html$Attributes$checked(config.state),
+							$elm$html$Html$Events$onClick(!config.state)
+						]),
+					_List_Nil)
+				]);
+		}
+	});
 var $author$project$Control$debounce = F2(
 	function (millis, _v0) {
 		var control = _v0.a;
@@ -9389,13 +6241,10 @@ var $author$project$Control$debounce = F2(
 		return $author$project$Control$Control(
 			A2($elm$core$Basics$composeR, control, debouncer));
 	});
-var $elm$core$Platform$Sub$batch = _Platform_batch;
-var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
-var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
-var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
-var $elm$html$Html$input = _VirtualDom_node('input');
-var $elm$html$Html$label = _VirtualDom_node('label');
-var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
+var $elm$core$String$cons = _String_cons;
+var $elm$core$String$fromChar = function (_char) {
+	return A2($elm$core$String$cons, _char, '');
+};
 var $elm$html$Html$Events$alwaysStop = function (x) {
 	return _Utils_Tuple2(x, true);
 };
@@ -9461,77 +6310,42 @@ var $author$project$Control$textControlView = F2(
 					]))
 			]);
 	});
-var $author$project$Control$int = A2(
+var $author$project$Control$char = A2(
 	$author$project$Control$debounce,
 	500,
 	$author$project$Control$create(
 		{
 			initEmpty: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
-			initWith: function (s) {
+			initWith: function (c) {
 				return _Utils_Tuple2(
-					$elm$core$String$fromInt(s),
+					$elm$core$String$fromChar(c),
 					$elm$core$Platform$Cmd$none);
 			},
-			label: 'Int',
-			parse: function (state) {
-				var _v0 = $elm$core$String$toInt(state);
+			label: 'Char',
+			parse: function (str) {
+				var _v0 = $elm$core$String$uncons(str);
 				if (_v0.$ === 'Just') {
-					var i = _v0.a;
-					return $elm$core$Result$Ok(i);
+					var _v1 = _v0.a;
+					var char_ = _v1.a;
+					var rest = _v1.b;
+					return $elm$core$String$isEmpty(rest) ? $elm$core$Result$Ok(char_) : $elm$core$Result$Err(
+						_List_fromArray(
+							['Must be exactly one character']));
 				} else {
 					return $elm$core$Result$Err(
 						_List_fromArray(
-							['Must be a whole number']));
+							['Must not be blank']));
 				}
 			},
 			subscriptions: function (state) {
 				return $elm$core$Platform$Sub$none;
 			},
 			update: F2(
-				function (delta, _v1) {
+				function (delta, _v2) {
 					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
 				}),
-			view: $author$project$Control$textControlView('number')
+			view: $author$project$Control$textControlView('text')
 		}));
-var $author$project$Control$label = F2(
-	function (label_, _v0) {
-		var control = _v0.a;
-		var labeller = function (i) {
-			return _Utils_update(
-				i,
-				{label: label_});
-		};
-		return $author$project$Control$Control(
-			A2($elm$core$Basics$composeR, control, labeller));
-	});
-var $author$project$Control$noteIf = F3(
-	function (check, message, _v0) {
-		var c = _v0.a;
-		return $author$project$Control$Control(
-			function (path) {
-				var control = c(path);
-				var flag = A2($author$project$Control$FlagPath, path, control.receiverCount);
-				return A4(
-					$author$project$Control$flagReceiver,
-					flag,
-					false,
-					message,
-					A3($author$project$Control$flagEmitter, check, flag, control));
-			});
-	});
-var $author$project$User$ageControl = A3(
-	$author$project$Control$noteIf,
-	function (a) {
-		return a >= 100;
-	},
-	'Gosh, that\'s a ripe old age!',
-	A3(
-		$author$project$Control$failIf,
-		function (a) {
-			return a < 0;
-		},
-		'Age must be at least 0',
-		A2($author$project$Control$label, 'Age', $author$project$Control$int)));
 var $author$project$Control$End = {$: 'End'};
 var $author$project$Control$applyStateSettersToInitialiser = F4(
 	function (stateSetterToInitialiserApplier_, initialiser, stateSetters, tag) {
@@ -9601,15 +6415,6 @@ var $elm$core$List$concat = function (lists) {
 var $author$project$Control$TagSelected = function (a) {
 	return {$: 'TagSelected', a: a};
 };
-var $elm$json$Json$Encode$bool = _Json_wrap;
-var $elm$html$Html$Attributes$boolProperty = F2(
-	function (key, bool) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$bool(bool));
-	});
-var $elm$html$Html$Attributes$checked = $elm$html$Html$Attributes$boolProperty('checked');
 var $elm$html$Html$fieldset = _VirtualDom_node('fieldset');
 var $elm$html$Html$legend = _VirtualDom_node('legend');
 var $elm$json$Json$Decode$andThen = _Json_andThen;
@@ -10624,812 +7429,6 @@ var $author$project$Control$fieldHelper = F4(
 		}
 	});
 var $author$project$Control$field = $author$project$Control$fieldHelper($author$project$Control$Open);
-var $author$project$Control$string = A2(
-	$author$project$Control$debounce,
-	500,
-	$author$project$Control$create(
-		{
-			initEmpty: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
-			initWith: function (s) {
-				return _Utils_Tuple2(s, $elm$core$Platform$Cmd$none);
-			},
-			label: 'String',
-			parse: $elm$core$Result$Ok,
-			subscriptions: function (state) {
-				return $elm$core$Platform$Sub$none;
-			},
-			update: F2(
-				function (delta, _v0) {
-					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
-				}),
-			view: $author$project$Control$textControlView('text')
-		}));
-var $author$project$User$nameControl = A3(
-	$author$project$Control$noteIf,
-	A2(
-		$elm$core$Basics$composeR,
-		$elm$core$String$uncons,
-		A2(
-			$elm$core$Basics$composeR,
-			$elm$core$Maybe$map(
-				A2($elm$core$Basics$composeR, $elm$core$Tuple$first, $elm$core$Char$isLower)),
-			$elm$core$Maybe$withDefault(false))),
-	'Should your name begin with an uppercase letter?',
-	A3(
-		$author$project$Control$failIf,
-		$elm$core$String$isEmpty,
-		'Name is required',
-		A2($author$project$Control$label, 'Name', $author$project$Control$string)));
-var $author$project$Control$record = function (toOutput) {
-	return $author$project$Control$Rec(
-		{
-			after: $author$project$Control$End,
-			afters: $author$project$Control$End,
-			before: $elm$core$Basics$identity,
-			befores: $elm$core$Basics$identity,
-			debouncingReceiverCollector: $elm$core$Basics$identity,
-			deltaInitialiser: $elm$core$Basics$identity,
-			errorCollector: $elm$core$Basics$identity,
-			flagEmitter: $elm$core$Basics$identity,
-			fns: F2(
-				function (_v0, x) {
-					return x;
-				}),
-			idleSetter: $elm$core$Basics$identity,
-			index: 0,
-			initialDeltas: F2(
-				function (_v1, x) {
-					return x;
-				}),
-			initialStates: F2(
-				function (_v2, x) {
-					return x;
-				}),
-			initialiser: $elm$core$Basics$identity,
-			labels: _List_Nil,
-			makeSetters: $elm$core$Basics$identity,
-			parser: $elm$core$Basics$identity,
-			subscriptionCollector: $elm$core$Basics$identity,
-			toOutput: toOutput,
-			updater: $elm$core$Basics$identity,
-			viewer: $elm$core$Basics$identity
-		});
-};
-var $author$project$Control$map = F2(
-	function (config, control) {
-		return $author$project$Control$Control(
-			function (path) {
-				var _v0 = $author$project$Control$end(
-					A3(
-						$author$project$Control$field,
-						config.revert,
-						control,
-						$author$project$Control$record(config.convert)));
-				var inner = _v0.a;
-				return inner(path);
-			});
-	});
-var $elm$core$Basics$neq = _Utils_notEqual;
-var $author$project$User$password1Control = A3(
-	$author$project$Control$failIf,
-	function (p) {
-		return $elm$core$String$length(p) < 12;
-	},
-	'Password must be at least 12 characters',
-	A2($author$project$Control$label, 'Password', $author$project$Control$string));
-var $author$project$Control$FlagLabel = function (a) {
-	return {$: 'FlagLabel', a: a};
-};
-var $author$project$Control$catch = F2(
-	function (_v0, _v1) {
-		var flag = _v0.flag;
-		var fail = _v0.fail;
-		var message = _v0.message;
-		var control = _v1.a;
-		return $author$project$Control$Control(
-			A2(
-				$elm$core$Basics$composeR,
-				control,
-				A3(
-					$author$project$Control$flagReceiver,
-					$author$project$Control$FlagLabel(flag),
-					fail,
-					message)));
-	});
-var $author$project$User$password2Control = A2(
-	$author$project$Control$catch,
-	{fail: true, flag: 'passwords-do-not-match', message: 'Passwords must match'},
-	A2($author$project$Control$label, 'Confirm password', $author$project$Control$string));
-var $author$project$Control$throw = F2(
-	function (_v0, _v1) {
-		var when = _v0.when;
-		var flag = _v0.flag;
-		var control = _v1.a;
-		return $author$project$Control$Control(
-			A2(
-				$elm$core$Basics$composeR,
-				control,
-				A2(
-					$author$project$Control$flagEmitter,
-					when,
-					$author$project$Control$FlagLabel(flag))));
-	});
-var $author$project$User$passwordControl = A2(
-	$author$project$Control$map,
-	{
-		convert: function ($) {
-			return $.password1;
-		},
-		revert: function (p) {
-			return {password1: p, password2: p};
-		}
-	},
-	A2(
-		$author$project$Control$throw,
-		{
-			flag: 'passwords-do-not-match',
-			when: function (_v0) {
-				var password1 = _v0.password1;
-				var password2 = _v0.password2;
-				return !_Utils_eq(password1, password2);
-			}
-		},
-		$author$project$Control$end(
-			A3(
-				$author$project$Control$field,
-				function ($) {
-					return $.password2;
-				},
-				$author$project$User$password2Control,
-				A3(
-					$author$project$Control$field,
-					function ($) {
-						return $.password1;
-					},
-					$author$project$User$password1Control,
-					$author$project$Control$record(
-						F2(
-							function (p1, p2) {
-								return {password1: p1, password2: p2};
-							})))))));
-var $author$project$User$AdminLevel = function (a) {
-	return {$: 'AdminLevel', a: a};
-};
-var $author$project$User$Regular = {$: 'Regular'};
-var $author$project$Control$customType = function (destructor) {
-	return $author$project$Control$Cus(
-		{
-			applyInputs: $elm$core$Basics$identity,
-			debouncingReceiverCollector: $elm$core$Basics$identity,
-			deltaAfter: $author$project$Control$End,
-			deltaAfters: $author$project$Control$End,
-			deltaBefore: $elm$core$Basics$identity,
-			deltaBefores: $elm$core$Basics$identity,
-			destructor: destructor,
-			errorCollector: $elm$core$Basics$identity,
-			flagEmitter: $elm$core$Basics$identity,
-			fns: F2(
-				function (_v0, x) {
-					return x;
-				}),
-			idleSetter: $elm$core$Basics$identity,
-			index: 0,
-			initialDeltas: F2(
-				function (_v1, x) {
-					return x;
-				}),
-			initialStates: F2(
-				function (_v2, x) {
-					return x;
-				}),
-			initialiseDeltas: $elm$core$Basics$identity,
-			labels: _List_Nil,
-			makeDeltaSetters: $elm$core$Basics$identity,
-			makeStateSetters: $elm$core$Basics$identity,
-			parser: $elm$core$Basics$identity,
-			stateAfter: $author$project$Control$End,
-			stateAfters: $author$project$Control$End,
-			stateBefore: $elm$core$Basics$identity,
-			stateBefores: $elm$core$Basics$identity,
-			stateInserter: $elm$core$Basics$identity,
-			subscriptionCollector: $elm$core$Basics$identity,
-			toArgStates: $elm$core$Basics$identity,
-			updater: $elm$core$Basics$identity,
-			viewer: $elm$core$Basics$identity
-		});
-};
-var $author$project$User$levelControl = A3(
-	$author$project$Control$failIf,
-	function (l) {
-		return !A2(
-			$elm$core$List$member,
-			l,
-			_List_fromArray(
-				[1, 2, 3]));
-	},
-	'The only valid clearance levels are 1, 2 and 3',
-	A2($author$project$Control$label, 'Security clearance level', $author$project$Control$int));
-var $author$project$Control$null = function (tag) {
-	return $author$project$Control$create(
-		{
-			initEmpty: _Utils_Tuple2(_Utils_Tuple0, $elm$core$Platform$Cmd$none),
-			initWith: function (_v0) {
-				return _Utils_Tuple2(_Utils_Tuple0, $elm$core$Platform$Cmd$none);
-			},
-			label: '',
-			parse: function (_v1) {
-				return $elm$core$Result$Ok(tag);
-			},
-			subscriptions: function (_v2) {
-				return $elm$core$Platform$Sub$none;
-			},
-			update: F2(
-				function (_v3, _v4) {
-					return _Utils_Tuple2(_Utils_Tuple0, $elm$core$Platform$Cmd$none);
-				}),
-			view: function (_v5) {
-				return _List_Nil;
-			}
-		});
-};
-var $author$project$Control$argStateIntoTagStateInserter = F6(
-	function (next, thisTagIndex, currentlySelectedTagIndex, tagStates, _v0, _v1) {
-		var maybeArgState = _v0.a;
-		var restMaybeArgStates = _v0.b;
-		var init = _v1.a;
-		var restInits = _v1.b;
-		var _v2 = function () {
-			if (maybeArgState.$ === 'Just') {
-				var state = maybeArgState.a;
-				return _Utils_Tuple2(thisTagIndex, state);
-			} else {
-				return _Utils_Tuple2(currentlySelectedTagIndex, init);
-			}
-		}();
-		var selectedTag = _v2.a;
-		var tagArgState = _v2.b;
-		return A5(
-			next,
-			thisTagIndex + 1,
-			selectedTag,
-			A2(
-				$elm$core$Basics$composeL,
-				tagStates,
-				$elm$core$Tuple$pair(tagArgState)),
-			restMaybeArgStates,
-			restInits);
-	});
-var $author$project$Control$customTypeDebouncingReceiverCollector = F4(
-	function (next, receivers, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var state = _v1.a;
-		var restStates = _v1.b;
-		return A3(
-			next,
-			_Utils_ap(
-				receivers,
-				fns.collectDebouncingReceivers(state)),
-			restFns,
-			restStates);
-	});
-var $author$project$Control$customTypeDeltaInitialiser = F4(
-	function (next, cmdList, _v0, _v1) {
-		var setter = _v0.a;
-		var restSetters = _v0.b;
-		var delta = _v1.a;
-		var restDeltas = _v1.b;
-		return A3(
-			next,
-			A2(
-				$elm$core$List$cons,
-				A2($elm$core$Platform$Cmd$map, setter, delta),
-				cmdList),
-			restSetters,
-			restDeltas);
-	});
-var $author$project$Control$customTypeErrorCollector = F5(
-	function (next, flags, errors, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var state = _v1.a;
-		var restStates = _v1.b;
-		return A4(
-			next,
-			flags,
-			_Utils_ap(
-				errors,
-				A2(fns.collectErrors, state, flags)),
-			restFns,
-			restStates);
-	});
-var $author$project$Control$customTypeFlagEmitter = F5(
-	function (next, flags, selectedTag, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var tagState = _v1.a;
-		var restTagStates = _v1.b;
-		var newFlags = _Utils_eq(fns.index, selectedTag) ? fns.emitFlags(tagState) : _List_Nil;
-		return A4(
-			next,
-			_Utils_ap(flags, newFlags),
-			selectedTag,
-			restFns,
-			restTagStates);
-	});
-var $author$project$Control$customTypeStateUpdater = F6(
-	function (next, _v0, _v1, _v2, _v3, _v4) {
-		var newStates = _v0.newStates;
-		var newCmds = _v0.newCmds;
-		var fns = _v1.a;
-		var restFns = _v1.b;
-		var deltaSetter = _v2.a;
-		var restDeltaSetters = _v2.b;
-		var delta = _v3.a;
-		var restDeltas = _v3.b;
-		var state = _v4.a;
-		var restStates = _v4.b;
-		var _v5 = A2(fns.update, delta, state);
-		var newState = _v5.a;
-		var newCmd = _v5.b;
-		return A5(
-			next,
-			{
-				newCmds: A2(
-					$elm$core$List$cons,
-					A2($elm$core$Platform$Cmd$map, deltaSetter, newCmd),
-					newCmds),
-				newStates: A2(
-					$elm$core$Basics$composeL,
-					newStates,
-					$elm$core$Tuple$pair(newState))
-			},
-			restFns,
-			restDeltaSetters,
-			restDeltas,
-			restStates);
-	});
-var $author$project$Control$customTypeSubscriptionCollector = F5(
-	function (next, listSubs, _v0, _v1, _v2) {
-		var setter = _v0.a;
-		var restSetters = _v0.b;
-		var fns = _v1.a;
-		var restFns = _v1.b;
-		var state = _v2.a;
-		var restStates = _v2.b;
-		return A4(
-			next,
-			A2(
-				$elm$core$List$cons,
-				A2(
-					$elm$core$Platform$Sub$map,
-					setter,
-					fns.subscriptions(state)),
-				listSubs),
-			restSetters,
-			restFns,
-			restStates);
-	});
-var $author$project$Control$selectedTagIdleSetter = F4(
-	function (next, selectedTag, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var state = _v1.a;
-		var restStates = _v1.b;
-		return _Utils_Tuple2(
-			_Utils_eq(fns.index, selectedTag) ? fns.setAllIdle(state) : state,
-			A3(next, selectedTag, restFns, restStates));
-	});
-var $author$project$Control$selectedTagParser = F5(
-	function (next, result_, selectedTag, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var state = _v1.a;
-		var restStates = _v1.b;
-		return A4(
-			next,
-			_Utils_eq(fns.index, selectedTag) ? fns.parse(state) : result_,
-			selectedTag,
-			restFns,
-			restStates);
-	});
-var $author$project$Control$selectedTagViewer = F7(
-	function (next, maybeView, flags, selectedTag, _v0, _v1, _v2) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var setter = _v1.a;
-		var restSetters = _v1.b;
-		var _v3 = _v2.a;
-		var internalState = _v3.a;
-		var state = _v3.b;
-		var restStates = _v2.b;
-		return A6(
-			next,
-			_Utils_eq(fns.index, selectedTag) ? $elm$core$Maybe$Just(
-				A2(
-					$elm$core$List$map,
-					$elm$html$Html$map(setter),
-					A2(
-						fns.view,
-						{after: fns.htmlAfter, before: fns.htmlBefore, _class: fns._class, id: fns.id, label: fns.label, name: fns.name},
-						{flags: flags, selected: internalState.selected, state: state, status: $author$project$Control$Intact}))) : maybeView,
-			flags,
-			selectedTag,
-			restFns,
-			restSetters,
-			restStates);
-	});
-var $author$project$Control$insertArgStateIntoTagState = F3(
-	function (stateInserter_, maybeArgStates, inits) {
-		return A6(
-			stateInserter_,
-			F5(
-				function (_v0, selectedTag, tagStates, _v1, _v2) {
-					return A2(
-						$author$project$Control$State,
-						{selected: selectedTag, status: $author$project$Control$Intact_},
-						tagStates($author$project$Control$End));
-				}),
-			0,
-			0,
-			$elm$core$Basics$identity,
-			maybeArgStates,
-			inits);
-	});
-var $author$project$Control$stateSetterMaker = F7(
-	function (next, argStateIntoTagStateInserter_, inits, _v0, _v1, _v2, _v3) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var toArgState = _v1.a;
-		var restToArgStates = _v1.b;
-		var before = _v2.a;
-		var befores = _v2.b;
-		var after = _v3.a;
-		var afters = _v3.b;
-		return _Utils_Tuple2(
-			toArgState(
-				function (argState) {
-					var initialState = fns.initWith(argState).a;
-					var maybes = before(
-						_Utils_Tuple2(
-							$elm$core$Maybe$Just(initialState),
-							after));
-					return A3($author$project$Control$insertArgStateIntoTagState, argStateIntoTagStateInserter_, maybes, inits);
-				}),
-			A6(next, argStateIntoTagStateInserter_, inits, restFns, restToArgStates, befores, afters));
-	});
-var $author$project$Control$stateSetterToInitialiserApplier = F3(
-	function (next, initialiser, _v0) {
-		var stateSetter = _v0.a;
-		var stateSetters = _v0.b;
-		return A2(
-			next,
-			initialiser(stateSetter),
-			stateSetters);
-	});
-var $author$project$Control$tagHelper = F4(
-	function (label_, _v0, toArgState, builder) {
-		var control = _v0.a;
-		if (builder.$ === 'Rec') {
-			var r = builder.a;
-			return $author$project$Control$Rec(r);
-		} else {
-			var rec = builder.a;
-			return $author$project$Control$Cus(
-				{
-					applyInputs: A2($elm$core$Basics$composeR, rec.applyInputs, $author$project$Control$stateSetterToInitialiserApplier),
-					debouncingReceiverCollector: A2($elm$core$Basics$composeR, rec.debouncingReceiverCollector, $author$project$Control$customTypeDebouncingReceiverCollector),
-					deltaAfter: _Utils_Tuple2($author$project$Control$Skip, rec.deltaAfter),
-					deltaAfters: _Utils_Tuple2(rec.deltaAfter, rec.deltaAfters),
-					deltaBefore: A2(
-						$elm$core$Basics$composeL,
-						rec.deltaBefore,
-						$elm$core$Tuple$pair($author$project$Control$Skip)),
-					deltaBefores: A2(
-						$elm$core$Basics$composeL,
-						rec.deltaBefores,
-						$elm$core$Tuple$pair(rec.deltaBefore)),
-					destructor: rec.destructor,
-					errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$customTypeErrorCollector),
-					flagEmitter: A2($elm$core$Basics$composeR, rec.flagEmitter, $author$project$Control$customTypeFlagEmitter),
-					fns: function (path) {
-						var control_ = control(
-							A2($author$project$Path$add, label_, path));
-						return A2(
-							$elm$core$Basics$composeL,
-							rec.fns(path),
-							$elm$core$Tuple$pair(
-								_Utils_update(
-									control_,
-									{index: rec.index})));
-					},
-					idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$selectedTagIdleSetter),
-					index: rec.index + 1,
-					initialDeltas: function (path) {
-						return A2(
-							$elm$core$Basics$composeL,
-							rec.initialDeltas(path),
-							$elm$core$Tuple$pair(
-								control(
-									A2($author$project$Path$add, label_, path)).init.b));
-					},
-					initialStates: function (path) {
-						return A2(
-							$elm$core$Basics$composeL,
-							rec.initialStates(path),
-							$elm$core$Tuple$pair(
-								control(
-									A2($author$project$Path$add, label_, path)).init.a));
-					},
-					initialiseDeltas: A2($elm$core$Basics$composeR, rec.initialiseDeltas, $author$project$Control$customTypeDeltaInitialiser),
-					labels: A2($elm$core$List$cons, label_, rec.labels),
-					makeDeltaSetters: A2($elm$core$Basics$composeR, rec.makeDeltaSetters, $author$project$Control$deltaSetterMaker),
-					makeStateSetters: A2($elm$core$Basics$composeR, rec.makeStateSetters, $author$project$Control$stateSetterMaker),
-					parser: A2($elm$core$Basics$composeR, rec.parser, $author$project$Control$selectedTagParser),
-					stateAfter: _Utils_Tuple2($elm$core$Maybe$Nothing, rec.stateAfter),
-					stateAfters: _Utils_Tuple2(rec.stateAfter, rec.stateAfters),
-					stateBefore: A2(
-						$elm$core$Basics$composeL,
-						rec.stateBefore,
-						$elm$core$Tuple$pair($elm$core$Maybe$Nothing)),
-					stateBefores: A2(
-						$elm$core$Basics$composeL,
-						rec.stateBefores,
-						$elm$core$Tuple$pair(rec.stateBefore)),
-					stateInserter: A2($elm$core$Basics$composeR, rec.stateInserter, $author$project$Control$argStateIntoTagStateInserter),
-					subscriptionCollector: A2($elm$core$Basics$composeR, rec.subscriptionCollector, $author$project$Control$customTypeSubscriptionCollector),
-					toArgStates: A2(
-						$elm$core$Basics$composeL,
-						rec.toArgStates,
-						$elm$core$Tuple$pair(toArgState)),
-					updater: A2($elm$core$Basics$composeR, rec.updater, $author$project$Control$customTypeStateUpdater),
-					viewer: A2($elm$core$Basics$composeR, rec.viewer, $author$project$Control$selectedTagViewer)
-				});
-		}
-	});
-var $author$project$Control$tag0 = F2(
-	function (label_, tag) {
-		return A3(
-			$author$project$Control$tagHelper,
-			label_,
-			$author$project$Control$null(tag),
-			function (insertArgStateIntoTagStates) {
-				return insertArgStateIntoTagStates(tag);
-			});
-	});
-var $author$project$Control$tag1 = F3(
-	function (label_, tag, control) {
-		return A3(
-			$author$project$Control$tagHelper,
-			label_,
-			$author$project$Control$end(
-				A3(
-					$author$project$Control$field,
-					$elm$core$Tuple$first,
-					control,
-					$author$project$Control$record(tag))),
-			F2(
-				function (insertArgStateIntoTagStates, arg1) {
-					return insertArgStateIntoTagStates(
-						_Utils_Tuple2(arg1, $author$project$Control$End));
-				}));
-	});
-var $author$project$User$roleControl = A2(
-	$author$project$Control$label,
-	'Role',
-	$author$project$Control$end(
-		A4(
-			$author$project$Control$tag1,
-			'Admin',
-			$author$project$User$AdminLevel,
-			$author$project$User$levelControl,
-			A3(
-				$author$project$Control$tag0,
-				'Regular',
-				$author$project$User$Regular,
-				$author$project$Control$customType(
-					F3(
-						function (regular, adminLevel, tag) {
-							if (tag.$ === 'Regular') {
-								return regular;
-							} else {
-								var level = tag.a;
-								return adminLevel(level);
-							}
-						}))))));
-var $author$project$User$userControl = $author$project$Control$end(
-	A3(
-		$author$project$Control$field,
-		function ($) {
-			return $.password;
-		},
-		$author$project$User$passwordControl,
-		A3(
-			$author$project$Control$field,
-			function ($) {
-				return $.role;
-			},
-			$author$project$User$roleControl,
-			A3(
-				$author$project$Control$field,
-				function ($) {
-					return $.age;
-				},
-				$author$project$User$ageControl,
-				A3(
-					$author$project$Control$field,
-					function ($) {
-						return $.name;
-					},
-					$author$project$User$nameControl,
-					$author$project$Control$record($author$project$User$User))))));
-var $author$project$User$userForm = $author$project$Control$form(
-	{control: $author$project$User$userControl, onSubmit: $author$project$User$FormSubmitted, onUpdate: $author$project$User$FormUpdated});
-var $author$project$User$main = $elm$browser$Browser$element(
-	{
-		init: function (_v0) {
-			var _v1 = $author$project$User$userForm.init;
-			var formState = _v1.a;
-			var formCmd = _v1.b;
-			return _Utils_Tuple2(
-				{formState: formState},
-				formCmd);
-		},
-		subscriptions: function (model) {
-			return $author$project$User$userForm.subscriptions(model.formState);
-		},
-		update: F2(
-			function (msg, model) {
-				if (msg.$ === 'FormUpdated') {
-					var delta = msg.a;
-					var _v3 = A2($author$project$User$userForm.update, delta, model.formState);
-					var newFormState = _v3.a;
-					var formCmd = _v3.b;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{formState: newFormState}),
-						formCmd);
-				} else {
-					var _v4 = $author$project$User$userForm.submit(model.formState);
-					if (_v4.b.$ === 'Ok') {
-						var newFormState = _v4.a;
-						var user = _v4.b.a;
-						return _Utils_Tuple2(
-							_Utils_update(
-								model,
-								{formState: newFormState}),
-							$elm$core$Platform$Cmd$none);
-					} else {
-						var newFormState = _v4.a;
-						var errors = _v4.b.a;
-						var _v5 = A2($elm$core$Debug$log, 'errors', errors);
-						return _Utils_Tuple2(
-							_Utils_update(
-								model,
-								{formState: newFormState}),
-							$elm$core$Platform$Cmd$none);
-					}
-				}
-			}),
-		view: function (model) {
-			return $author$project$User$userForm.view(model.formState);
-		}
-	});
-var $elm$browser$Browser$document = _Browser_document;
-var $author$project$Docs$BasicControls = function (a) {
-	return {$: 'BasicControls', a: a};
-};
-var $author$project$Docs$CreateYourOwn = function (a) {
-	return {$: 'CreateYourOwn', a: a};
-};
-var $author$project$Docs$CustomTypes = function (a) {
-	return {$: 'CustomTypes', a: a};
-};
-var $author$project$Docs$ListsDictsSetsAndArrays = function (a) {
-	return {$: 'ListsDictsSetsAndArrays', a: a};
-};
-var $author$project$Docs$Mapping = function (a) {
-	return {$: 'Mapping', a: a};
-};
-var $author$project$Docs$MultiValidation = function (a) {
-	return {$: 'MultiValidation', a: a};
-};
-var $author$project$Docs$Records = function (a) {
-	return {$: 'Records', a: a};
-};
-var $author$project$Docs$TuplesAndTriples = function (a) {
-	return {$: 'TuplesAndTriples', a: a};
-};
-var $author$project$Docs$Validation = function (a) {
-	return {$: 'Validation', a: a};
-};
-var $author$project$Docs$YourFirstForm = function (a) {
-	return {$: 'YourFirstForm', a: a};
-};
-var $author$project$Control$bool = $author$project$Control$create(
-	{
-		initEmpty: _Utils_Tuple2(false, $elm$core$Platform$Cmd$none),
-		initWith: function (b) {
-			return _Utils_Tuple2(b, $elm$core$Platform$Cmd$none);
-		},
-		label: 'Bool',
-		parse: $elm$core$Result$Ok,
-		subscriptions: function (state) {
-			return $elm$core$Platform$Sub$none;
-		},
-		update: F2(
-			function (delta, _v0) {
-				return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
-			}),
-		view: function (config) {
-			return _List_fromArray(
-				[
-					A2(
-					$elm$html$Html$label,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$for(config.id)
-						]),
-					_List_fromArray(
-						[
-							$elm$html$Html$text(config.label)
-						])),
-					A2(
-					$elm$html$Html$input,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$type_('checkbox'),
-							$elm$html$Html$Attributes$id(config.id),
-							$elm$html$Html$Attributes$name(config.name),
-							$elm$html$Html$Attributes$class(config._class),
-							$elm$html$Html$Attributes$checked(config.state),
-							$elm$html$Html$Events$onClick(!config.state)
-						]),
-					_List_Nil)
-				]);
-		}
-	});
-var $elm$core$String$cons = _String_cons;
-var $elm$core$String$fromChar = function (_char) {
-	return A2($elm$core$String$cons, _char, '');
-};
-var $author$project$Control$char = A2(
-	$author$project$Control$debounce,
-	500,
-	$author$project$Control$create(
-		{
-			initEmpty: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
-			initWith: function (c) {
-				return _Utils_Tuple2(
-					$elm$core$String$fromChar(c),
-					$elm$core$Platform$Cmd$none);
-			},
-			label: 'Char',
-			parse: function (str) {
-				var _v0 = $elm$core$String$uncons(str);
-				if (_v0.$ === 'Just') {
-					var _v1 = _v0.a;
-					var char_ = _v1.a;
-					var rest = _v1.b;
-					return $elm$core$String$isEmpty(rest) ? $elm$core$Result$Ok(char_) : $elm$core$Result$Err(
-						_List_fromArray(
-							['Must be exactly one character']));
-				} else {
-					return $elm$core$Result$Err(
-						_List_fromArray(
-							['Must not be blank']));
-				}
-			},
-			subscriptions: function (state) {
-				return $elm$core$Platform$Sub$none;
-			},
-			update: F2(
-				function (delta, _v2) {
-					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
-				}),
-			view: $author$project$Control$textControlView('text')
-		}));
 var $elm$core$String$fromFloat = _String_fromNumber;
 var $elm$core$String$toFloat = _String_toFloat;
 var $author$project$Control$float = A2(
@@ -11453,6 +7452,38 @@ var $author$project$Control$float = A2(
 					return $elm$core$Result$Err(
 						_List_fromArray(
 							['Must be a number']));
+				}
+			},
+			subscriptions: function (state) {
+				return $elm$core$Platform$Sub$none;
+			},
+			update: F2(
+				function (delta, _v1) {
+					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
+				}),
+			view: $author$project$Control$textControlView('number')
+		}));
+var $author$project$Control$int = A2(
+	$author$project$Control$debounce,
+	500,
+	$author$project$Control$create(
+		{
+			initEmpty: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
+			initWith: function (s) {
+				return _Utils_Tuple2(
+					$elm$core$String$fromInt(s),
+					$elm$core$Platform$Cmd$none);
+			},
+			label: 'Int',
+			parse: function (state) {
+				var _v0 = $elm$core$String$toInt(state);
+				if (_v0.$ === 'Just') {
+					var i = _v0.a;
+					return $elm$core$Result$Ok(i);
+				} else {
+					return $elm$core$Result$Err(
+						_List_fromArray(
+							['Must be a whole number']));
 				}
 			},
 			subscriptions: function (state) {
@@ -12782,6 +8813,7 @@ var $elm$parser$Parser$Advanced$loop = F2(
 				return A4($elm$parser$Parser$Advanced$loopHelp, false, state, callback, s);
 			});
 	});
+var $elm$core$Basics$neq = _Utils_notEqual;
 var $dillonkearns$elm_markdown$HtmlParser$entities = $elm$core$Dict$fromList(
 	_List_fromArray(
 		[
@@ -14411,6 +10443,7 @@ var $dillonkearns$elm_markdown$Markdown$Entity$decimalRegex = A2(
 	$elm$regex$Regex$never,
 	$elm$regex$Regex$fromString('&#([0-9]{1,8});'));
 var $elm$regex$Regex$replace = _Regex_replaceAtMost(_Regex_infinity);
+var $elm$core$Basics$ge = _Utils_ge;
 var $dillonkearns$elm_markdown$Markdown$Entity$isBadEndUnicode = function (_int) {
 	var remain_ = A2($elm$core$Basics$modBy, 16, _int);
 	var remain = A2($elm$core$Basics$modBy, 131070, _int);
@@ -20973,6 +17006,61 @@ var $author$project$Docs$mdBefore = function (str) {
 	return $author$project$Control$htmlBefore(
 		$author$project$Docs$md(str));
 };
+var $author$project$Control$record = function (toOutput) {
+	return $author$project$Control$Rec(
+		{
+			after: $author$project$Control$End,
+			afters: $author$project$Control$End,
+			before: $elm$core$Basics$identity,
+			befores: $elm$core$Basics$identity,
+			debouncingReceiverCollector: $elm$core$Basics$identity,
+			deltaInitialiser: $elm$core$Basics$identity,
+			errorCollector: $elm$core$Basics$identity,
+			flagEmitter: $elm$core$Basics$identity,
+			fns: F2(
+				function (_v0, x) {
+					return x;
+				}),
+			idleSetter: $elm$core$Basics$identity,
+			index: 0,
+			initialDeltas: F2(
+				function (_v1, x) {
+					return x;
+				}),
+			initialStates: F2(
+				function (_v2, x) {
+					return x;
+				}),
+			initialiser: $elm$core$Basics$identity,
+			labels: _List_Nil,
+			makeSetters: $elm$core$Basics$identity,
+			parser: $elm$core$Basics$identity,
+			subscriptionCollector: $elm$core$Basics$identity,
+			toOutput: toOutput,
+			updater: $elm$core$Basics$identity,
+			viewer: $elm$core$Basics$identity
+		});
+};
+var $author$project$Control$string = A2(
+	$author$project$Control$debounce,
+	500,
+	$author$project$Control$create(
+		{
+			initEmpty: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
+			initWith: function (s) {
+				return _Utils_Tuple2(s, $elm$core$Platform$Cmd$none);
+			},
+			label: 'String',
+			parse: $elm$core$Result$Ok,
+			subscriptions: function (state) {
+				return $elm$core$Platform$Sub$none;
+			},
+			update: F2(
+				function (delta, _v0) {
+					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
+				}),
+			view: $author$project$Control$textControlView('text')
+		}));
 var $author$project$Docs$basicControls = A2(
 	$author$project$Docs$mdAfter,
 	'\r\nAll controls are displayed with `<label>` elements to help with accessibility. Each control is wrapped in a \r\n`<div class="control-container">`, which contains the label, the input, and potentially also a \r\n`<div class="control-feedback-container">` that contains a list of feedback from validation.\r\n\r\nBut how do we actually use a control? First, we need to convert it into a form...',
@@ -21016,12 +17104,397 @@ var $author$project$Docs$basicControls = A2(
 											return {bool: bool, _char: _char, _float: _float, _int: _int, string: string};
 										}))))))))));
 var $author$project$Docs$createYourOwn = $author$project$Control$int;
+var $author$project$Control$customType = function (destructor) {
+	return $author$project$Control$Cus(
+		{
+			applyInputs: $elm$core$Basics$identity,
+			debouncingReceiverCollector: $elm$core$Basics$identity,
+			deltaAfter: $author$project$Control$End,
+			deltaAfters: $author$project$Control$End,
+			deltaBefore: $elm$core$Basics$identity,
+			deltaBefores: $elm$core$Basics$identity,
+			destructor: destructor,
+			errorCollector: $elm$core$Basics$identity,
+			flagEmitter: $elm$core$Basics$identity,
+			fns: F2(
+				function (_v0, x) {
+					return x;
+				}),
+			idleSetter: $elm$core$Basics$identity,
+			index: 0,
+			initialDeltas: F2(
+				function (_v1, x) {
+					return x;
+				}),
+			initialStates: F2(
+				function (_v2, x) {
+					return x;
+				}),
+			initialiseDeltas: $elm$core$Basics$identity,
+			labels: _List_Nil,
+			makeDeltaSetters: $elm$core$Basics$identity,
+			makeStateSetters: $elm$core$Basics$identity,
+			parser: $elm$core$Basics$identity,
+			stateAfter: $author$project$Control$End,
+			stateAfters: $author$project$Control$End,
+			stateBefore: $elm$core$Basics$identity,
+			stateBefores: $elm$core$Basics$identity,
+			stateInserter: $elm$core$Basics$identity,
+			subscriptionCollector: $elm$core$Basics$identity,
+			toArgStates: $elm$core$Basics$identity,
+			updater: $elm$core$Basics$identity,
+			viewer: $elm$core$Basics$identity
+		});
+};
+var $author$project$Control$label = F2(
+	function (label_, _v0) {
+		var control = _v0.a;
+		var labeller = function (i) {
+			return _Utils_update(
+				i,
+				{label: label_});
+		};
+		return $author$project$Control$Control(
+			A2($elm$core$Basics$composeR, control, labeller));
+	});
 var $author$project$Docs$FavouriteWord = function (a) {
 	return {$: 'FavouriteWord', a: a};
 };
 var $author$project$Docs$PIN = F3(
 	function (a, b, c) {
 		return {$: 'PIN', a: a, b: b, c: c};
+	});
+var $author$project$Control$argStateIntoTagStateInserter = F6(
+	function (next, thisTagIndex, currentlySelectedTagIndex, tagStates, _v0, _v1) {
+		var maybeArgState = _v0.a;
+		var restMaybeArgStates = _v0.b;
+		var init = _v1.a;
+		var restInits = _v1.b;
+		var _v2 = function () {
+			if (maybeArgState.$ === 'Just') {
+				var state = maybeArgState.a;
+				return _Utils_Tuple2(thisTagIndex, state);
+			} else {
+				return _Utils_Tuple2(currentlySelectedTagIndex, init);
+			}
+		}();
+		var selectedTag = _v2.a;
+		var tagArgState = _v2.b;
+		return A5(
+			next,
+			thisTagIndex + 1,
+			selectedTag,
+			A2(
+				$elm$core$Basics$composeL,
+				tagStates,
+				$elm$core$Tuple$pair(tagArgState)),
+			restMaybeArgStates,
+			restInits);
+	});
+var $author$project$Control$customTypeDebouncingReceiverCollector = F4(
+	function (next, receivers, _v0, _v1) {
+		var fns = _v0.a;
+		var restFns = _v0.b;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		return A3(
+			next,
+			_Utils_ap(
+				receivers,
+				fns.collectDebouncingReceivers(state)),
+			restFns,
+			restStates);
+	});
+var $author$project$Control$customTypeDeltaInitialiser = F4(
+	function (next, cmdList, _v0, _v1) {
+		var setter = _v0.a;
+		var restSetters = _v0.b;
+		var delta = _v1.a;
+		var restDeltas = _v1.b;
+		return A3(
+			next,
+			A2(
+				$elm$core$List$cons,
+				A2($elm$core$Platform$Cmd$map, setter, delta),
+				cmdList),
+			restSetters,
+			restDeltas);
+	});
+var $author$project$Control$customTypeErrorCollector = F5(
+	function (next, flags, errors, _v0, _v1) {
+		var fns = _v0.a;
+		var restFns = _v0.b;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		return A4(
+			next,
+			flags,
+			_Utils_ap(
+				errors,
+				A2(fns.collectErrors, state, flags)),
+			restFns,
+			restStates);
+	});
+var $author$project$Control$customTypeFlagEmitter = F5(
+	function (next, flags, selectedTag, _v0, _v1) {
+		var fns = _v0.a;
+		var restFns = _v0.b;
+		var tagState = _v1.a;
+		var restTagStates = _v1.b;
+		var newFlags = _Utils_eq(fns.index, selectedTag) ? fns.emitFlags(tagState) : _List_Nil;
+		return A4(
+			next,
+			_Utils_ap(flags, newFlags),
+			selectedTag,
+			restFns,
+			restTagStates);
+	});
+var $author$project$Control$customTypeStateUpdater = F6(
+	function (next, _v0, _v1, _v2, _v3, _v4) {
+		var newStates = _v0.newStates;
+		var newCmds = _v0.newCmds;
+		var fns = _v1.a;
+		var restFns = _v1.b;
+		var deltaSetter = _v2.a;
+		var restDeltaSetters = _v2.b;
+		var delta = _v3.a;
+		var restDeltas = _v3.b;
+		var state = _v4.a;
+		var restStates = _v4.b;
+		var _v5 = A2(fns.update, delta, state);
+		var newState = _v5.a;
+		var newCmd = _v5.b;
+		return A5(
+			next,
+			{
+				newCmds: A2(
+					$elm$core$List$cons,
+					A2($elm$core$Platform$Cmd$map, deltaSetter, newCmd),
+					newCmds),
+				newStates: A2(
+					$elm$core$Basics$composeL,
+					newStates,
+					$elm$core$Tuple$pair(newState))
+			},
+			restFns,
+			restDeltaSetters,
+			restDeltas,
+			restStates);
+	});
+var $author$project$Control$customTypeSubscriptionCollector = F5(
+	function (next, listSubs, _v0, _v1, _v2) {
+		var setter = _v0.a;
+		var restSetters = _v0.b;
+		var fns = _v1.a;
+		var restFns = _v1.b;
+		var state = _v2.a;
+		var restStates = _v2.b;
+		return A4(
+			next,
+			A2(
+				$elm$core$List$cons,
+				A2(
+					$elm$core$Platform$Sub$map,
+					setter,
+					fns.subscriptions(state)),
+				listSubs),
+			restSetters,
+			restFns,
+			restStates);
+	});
+var $author$project$Control$selectedTagIdleSetter = F4(
+	function (next, selectedTag, _v0, _v1) {
+		var fns = _v0.a;
+		var restFns = _v0.b;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		return _Utils_Tuple2(
+			_Utils_eq(fns.index, selectedTag) ? fns.setAllIdle(state) : state,
+			A3(next, selectedTag, restFns, restStates));
+	});
+var $author$project$Control$selectedTagParser = F5(
+	function (next, result_, selectedTag, _v0, _v1) {
+		var fns = _v0.a;
+		var restFns = _v0.b;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		return A4(
+			next,
+			_Utils_eq(fns.index, selectedTag) ? fns.parse(state) : result_,
+			selectedTag,
+			restFns,
+			restStates);
+	});
+var $author$project$Control$selectedTagViewer = F7(
+	function (next, maybeView, flags, selectedTag, _v0, _v1, _v2) {
+		var fns = _v0.a;
+		var restFns = _v0.b;
+		var setter = _v1.a;
+		var restSetters = _v1.b;
+		var _v3 = _v2.a;
+		var internalState = _v3.a;
+		var state = _v3.b;
+		var restStates = _v2.b;
+		return A6(
+			next,
+			_Utils_eq(fns.index, selectedTag) ? $elm$core$Maybe$Just(
+				A2(
+					$elm$core$List$map,
+					$elm$html$Html$map(setter),
+					A2(
+						fns.view,
+						{after: fns.htmlAfter, before: fns.htmlBefore, _class: fns._class, id: fns.id, label: fns.label, name: fns.name},
+						{flags: flags, selected: internalState.selected, state: state, status: $author$project$Control$Intact}))) : maybeView,
+			flags,
+			selectedTag,
+			restFns,
+			restSetters,
+			restStates);
+	});
+var $author$project$Control$insertArgStateIntoTagState = F3(
+	function (stateInserter_, maybeArgStates, inits) {
+		return A6(
+			stateInserter_,
+			F5(
+				function (_v0, selectedTag, tagStates, _v1, _v2) {
+					return A2(
+						$author$project$Control$State,
+						{selected: selectedTag, status: $author$project$Control$Intact_},
+						tagStates($author$project$Control$End));
+				}),
+			0,
+			0,
+			$elm$core$Basics$identity,
+			maybeArgStates,
+			inits);
+	});
+var $author$project$Control$stateSetterMaker = F7(
+	function (next, argStateIntoTagStateInserter_, inits, _v0, _v1, _v2, _v3) {
+		var fns = _v0.a;
+		var restFns = _v0.b;
+		var toArgState = _v1.a;
+		var restToArgStates = _v1.b;
+		var before = _v2.a;
+		var befores = _v2.b;
+		var after = _v3.a;
+		var afters = _v3.b;
+		return _Utils_Tuple2(
+			toArgState(
+				function (argState) {
+					var initialState = fns.initWith(argState).a;
+					var maybes = before(
+						_Utils_Tuple2(
+							$elm$core$Maybe$Just(initialState),
+							after));
+					return A3($author$project$Control$insertArgStateIntoTagState, argStateIntoTagStateInserter_, maybes, inits);
+				}),
+			A6(next, argStateIntoTagStateInserter_, inits, restFns, restToArgStates, befores, afters));
+	});
+var $author$project$Control$stateSetterToInitialiserApplier = F3(
+	function (next, initialiser, _v0) {
+		var stateSetter = _v0.a;
+		var stateSetters = _v0.b;
+		return A2(
+			next,
+			initialiser(stateSetter),
+			stateSetters);
+	});
+var $author$project$Control$tagHelper = F4(
+	function (label_, _v0, toArgState, builder) {
+		var control = _v0.a;
+		if (builder.$ === 'Rec') {
+			var r = builder.a;
+			return $author$project$Control$Rec(r);
+		} else {
+			var rec = builder.a;
+			return $author$project$Control$Cus(
+				{
+					applyInputs: A2($elm$core$Basics$composeR, rec.applyInputs, $author$project$Control$stateSetterToInitialiserApplier),
+					debouncingReceiverCollector: A2($elm$core$Basics$composeR, rec.debouncingReceiverCollector, $author$project$Control$customTypeDebouncingReceiverCollector),
+					deltaAfter: _Utils_Tuple2($author$project$Control$Skip, rec.deltaAfter),
+					deltaAfters: _Utils_Tuple2(rec.deltaAfter, rec.deltaAfters),
+					deltaBefore: A2(
+						$elm$core$Basics$composeL,
+						rec.deltaBefore,
+						$elm$core$Tuple$pair($author$project$Control$Skip)),
+					deltaBefores: A2(
+						$elm$core$Basics$composeL,
+						rec.deltaBefores,
+						$elm$core$Tuple$pair(rec.deltaBefore)),
+					destructor: rec.destructor,
+					errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$customTypeErrorCollector),
+					flagEmitter: A2($elm$core$Basics$composeR, rec.flagEmitter, $author$project$Control$customTypeFlagEmitter),
+					fns: function (path) {
+						var control_ = control(
+							A2($author$project$Path$add, label_, path));
+						return A2(
+							$elm$core$Basics$composeL,
+							rec.fns(path),
+							$elm$core$Tuple$pair(
+								_Utils_update(
+									control_,
+									{index: rec.index})));
+					},
+					idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$selectedTagIdleSetter),
+					index: rec.index + 1,
+					initialDeltas: function (path) {
+						return A2(
+							$elm$core$Basics$composeL,
+							rec.initialDeltas(path),
+							$elm$core$Tuple$pair(
+								control(
+									A2($author$project$Path$add, label_, path)).init.b));
+					},
+					initialStates: function (path) {
+						return A2(
+							$elm$core$Basics$composeL,
+							rec.initialStates(path),
+							$elm$core$Tuple$pair(
+								control(
+									A2($author$project$Path$add, label_, path)).init.a));
+					},
+					initialiseDeltas: A2($elm$core$Basics$composeR, rec.initialiseDeltas, $author$project$Control$customTypeDeltaInitialiser),
+					labels: A2($elm$core$List$cons, label_, rec.labels),
+					makeDeltaSetters: A2($elm$core$Basics$composeR, rec.makeDeltaSetters, $author$project$Control$deltaSetterMaker),
+					makeStateSetters: A2($elm$core$Basics$composeR, rec.makeStateSetters, $author$project$Control$stateSetterMaker),
+					parser: A2($elm$core$Basics$composeR, rec.parser, $author$project$Control$selectedTagParser),
+					stateAfter: _Utils_Tuple2($elm$core$Maybe$Nothing, rec.stateAfter),
+					stateAfters: _Utils_Tuple2(rec.stateAfter, rec.stateAfters),
+					stateBefore: A2(
+						$elm$core$Basics$composeL,
+						rec.stateBefore,
+						$elm$core$Tuple$pair($elm$core$Maybe$Nothing)),
+					stateBefores: A2(
+						$elm$core$Basics$composeL,
+						rec.stateBefores,
+						$elm$core$Tuple$pair(rec.stateBefore)),
+					stateInserter: A2($elm$core$Basics$composeR, rec.stateInserter, $author$project$Control$argStateIntoTagStateInserter),
+					subscriptionCollector: A2($elm$core$Basics$composeR, rec.subscriptionCollector, $author$project$Control$customTypeSubscriptionCollector),
+					toArgStates: A2(
+						$elm$core$Basics$composeL,
+						rec.toArgStates,
+						$elm$core$Tuple$pair(toArgState)),
+					updater: A2($elm$core$Basics$composeR, rec.updater, $author$project$Control$customTypeStateUpdater),
+					viewer: A2($elm$core$Basics$composeR, rec.viewer, $author$project$Control$selectedTagViewer)
+				});
+		}
+	});
+var $author$project$Control$tag1 = F3(
+	function (label_, tag, control) {
+		return A3(
+			$author$project$Control$tagHelper,
+			label_,
+			$author$project$Control$end(
+				A3(
+					$author$project$Control$field,
+					$elm$core$Tuple$first,
+					control,
+					$author$project$Control$record(tag))),
+			F2(
+				function (insertArgStateIntoTagStates, arg1) {
+					return insertArgStateIntoTagStates(
+						_Utils_Tuple2(arg1, $author$project$Control$End));
+				}));
 	});
 var $author$project$Control$tag3 = F5(
 	function (label_, tag, control1, control2, control3) {
@@ -21118,6 +17591,9 @@ var $author$project$Control$ChangeItem = F2(
 	function (a, b) {
 		return {$: 'ChangeItem', a: a, b: b};
 	});
+var $author$project$Control$FlagLabel = function (a) {
+	return {$: 'FlagLabel', a: a};
+};
 var $elm_community$list_extra$List$Extra$indexedFoldr = F3(
 	function (func, acc, list) {
 		var step = F2(
@@ -21601,6 +18077,20 @@ var $author$project$Docs$listsDictsSetsAndArrays = A2(
 var $author$project$Docs$Id = function (a) {
 	return {$: 'Id', a: a};
 };
+var $author$project$Control$map = F2(
+	function (config, control) {
+		return $author$project$Control$Control(
+			function (path) {
+				var _v0 = $author$project$Control$end(
+					A3(
+						$author$project$Control$field,
+						config.revert,
+						control,
+						$author$project$Control$record(config.convert)));
+				var inner = _v0.a;
+				return inner(path);
+			});
+	});
 var $author$project$Docs$idControl = A2(
 	$author$project$Control$map,
 	{
@@ -21617,6 +18107,93 @@ var $author$project$Docs$mapping = A2(
 	$author$project$Docs$mdAfter,
 	$author$project$Docs$mappingOutro,
 	A2($author$project$Docs$mdBefore, $author$project$Docs$mappingIntro, $author$project$Docs$idControl));
+var $elm_community$list_extra$List$Extra$uniqueHelp = F4(
+	function (f, existing, remaining, accumulator) {
+		uniqueHelp:
+		while (true) {
+			if (!remaining.b) {
+				return $elm$core$List$reverse(accumulator);
+			} else {
+				var first = remaining.a;
+				var rest = remaining.b;
+				var computedFirst = f(first);
+				if (A2($elm$core$List$member, computedFirst, existing)) {
+					var $temp$f = f,
+						$temp$existing = existing,
+						$temp$remaining = rest,
+						$temp$accumulator = accumulator;
+					f = $temp$f;
+					existing = $temp$existing;
+					remaining = $temp$remaining;
+					accumulator = $temp$accumulator;
+					continue uniqueHelp;
+				} else {
+					var $temp$f = f,
+						$temp$existing = A2($elm$core$List$cons, computedFirst, existing),
+						$temp$remaining = rest,
+						$temp$accumulator = A2($elm$core$List$cons, first, accumulator);
+					f = $temp$f;
+					existing = $temp$existing;
+					remaining = $temp$remaining;
+					accumulator = $temp$accumulator;
+					continue uniqueHelp;
+				}
+			}
+		}
+	});
+var $elm_community$list_extra$List$Extra$unique = function (list) {
+	return A4($elm_community$list_extra$List$Extra$uniqueHelp, $elm$core$Basics$identity, _List_Nil, list, _List_Nil);
+};
+var $author$project$Control$flagReceiver = F4(
+	function (flag, fail, message, ctrl) {
+		return _Utils_update(
+			ctrl,
+			{
+				collectDebouncingReceivers: function (state) {
+					var internalState = state.a;
+					var _v0 = internalState.status;
+					if (_v0.$ === 'DebouncingSince') {
+						return A2(
+							$elm$core$List$cons,
+							flag,
+							ctrl.collectDebouncingReceivers(state));
+					} else {
+						return ctrl.collectDebouncingReceivers(state);
+					}
+				},
+				collectErrors: F2(
+					function (state, flags) {
+						var oldReceiver = A2(ctrl.collectErrors, state, flags);
+						var newReceiver = A2($elm$core$List$member, flag, flags) ? _List_fromArray(
+							[
+								{
+								fail: fail,
+								message: message,
+								path: $author$project$Path$toString(ctrl.path)
+							}
+							]) : _List_Nil;
+						return $elm_community$list_extra$List$Extra$unique(
+							_Utils_ap(oldReceiver, newReceiver));
+					}),
+				receiverCount: ctrl.receiverCount + 1
+			});
+	});
+var $author$project$Control$catch = F2(
+	function (_v0, _v1) {
+		var flag = _v0.flag;
+		var fail = _v0.fail;
+		var message = _v0.message;
+		var control = _v1.a;
+		return $author$project$Control$Control(
+			A2(
+				$elm$core$Basics$composeR,
+				control,
+				A3(
+					$author$project$Control$flagReceiver,
+					$author$project$Control$FlagLabel(flag),
+					fail,
+					message)));
+	});
 var $author$project$Docs$choosePasswordControl = A2(
 	$author$project$Control$catch,
 	{fail: true, flag: 'password', message: 'Passwords must match'},
@@ -21627,6 +18204,62 @@ var $author$project$Docs$confirmPasswordControl = A2(
 	A2($author$project$Control$label, 'Confirm password', $author$project$Control$string));
 var $author$project$Docs$multivalidationIntro = '\r\n## Multi-control validation\r\n\r\nSometimes you might need to validate the input of one control based on the input of another. The classic example is\r\nchecking that passwords match, so let\'s add some password fields to our `Customer` record:\r\n\r\n```\r\ntype alias Customer = \r\n    { name : String\r\n    , age : Int \r\n    , securityChallenge : SecurityChallenge\r\n    , id : Id\r\n    , choosePassword : String\r\n    , confirmPassword : String\r\n    }\r\n\r\ncustomerControl =\r\n    Control.record \r\n        (\\name age securityChallenge id choosePassword confirmPassword -> \r\n            { name = name\r\n            , age = age\r\n            , securityChallenge = securityChallenge \r\n            , id = id\r\n            , choosePassword = choosePassword\r\n            , confirmPassword = confirmPassword\r\n            }\r\n        )\r\n        |> Control.field .name nameControl\r\n        |> Control.field .age ageControl\r\n        |> Control.field .securityChallenge securityChallengeControl\r\n        |> Control.field .id idControl\r\n        |> Control.field .choosePassword choosePasswordControl\r\n        |> Control.field .confirmPassword confirmPasswordControl\r\n        |> Control.end\r\n\r\nchoosePasswordControl =\r\n    Control.string\r\n        |> Control.label "Choose password"\r\n\r\nconfirmPasswordControl =\r\n    Control.string\r\n        |> Control.label "Confirm password"\r\n```\r\nThe challenge here is that `confirmPasswordControl` has no way of knowing what\'s been entered in \r\n`choosePasswordControl`, so it can\'t tell whether the contents of the two controls match or not.\r\n\r\nWe can solve this problem by going up a level and checking the contents of both fields in `customerControl`. If they \r\ndon\'t match, we can use `Control.throw` to throw a "flag" - a message that other controls can listen out for and react \r\nto:\r\n\r\n```\r\ncustomerControl =\r\n    Control.record \r\n        ...\r\n        |> Control.field .choosePassword choosePasswordControl\r\n        |> Control.field .confirmPassword confirmPasswordControl\r\n        |> Control.end\r\n        |> Control.throw\r\n            { flag = "passwords-don\'t-match"\r\n            , when = \\{ choosePassword, confirmPassword } -> choosePassword /= confirmPassword\r\n            }\r\n```\r\n\r\nNow, we just need `confirmPasswordControl` to listen out for the `"passwords-don\'t-match"` flag, and respond by alerting\r\nthe user and causing the form to fail validation. We can do this using `Control.catch`:\r\n\r\n```\r\nconfirmPasswordControl =\r\n    Control.string\r\n        |> Control.catch \r\n            { flag = "passwords-don\'t-match"\r\n            , fail = True\r\n            , message = "Passwords must match"\r\n            }\r\n```\r\n';
 var $author$project$Docs$multivalidationOutro = '\r\n';
+var $author$project$Control$FlagPath = F2(
+	function (a, b) {
+		return {$: 'FlagPath', a: a, b: b};
+	});
+var $author$project$Control$flagEmitter = F3(
+	function (check, flag, ctrl) {
+		return _Utils_update(
+			ctrl,
+			{
+				emitFlags: function (state) {
+					var oldFlags = ctrl.emitFlags(state);
+					var newFlags = function () {
+						var _v0 = ctrl.parse(state);
+						if (_v0.$ === 'Ok') {
+							var output = _v0.a;
+							return check(output) ? _List_fromArray(
+								[flag]) : _List_Nil;
+						} else {
+							return _List_Nil;
+						}
+					}();
+					return $elm_community$list_extra$List$Extra$unique(
+						_Utils_ap(oldFlags, newFlags));
+				}
+			});
+	});
+var $author$project$Control$failIf = F3(
+	function (check, message, _v0) {
+		var c = _v0.a;
+		return $author$project$Control$Control(
+			function (path) {
+				var control = c(path);
+				var flag = A2($author$project$Control$FlagPath, path, control.receiverCount);
+				return A4(
+					$author$project$Control$flagReceiver,
+					flag,
+					true,
+					message,
+					A3($author$project$Control$flagEmitter, check, flag, control));
+			});
+	});
+var $author$project$Control$noteIf = F3(
+	function (check, message, _v0) {
+		var c = _v0.a;
+		return $author$project$Control$Control(
+			function (path) {
+				var control = c(path);
+				var flag = A2($author$project$Control$FlagPath, path, control.receiverCount);
+				return A4(
+					$author$project$Control$flagReceiver,
+					flag,
+					false,
+					message,
+					A3($author$project$Control$flagEmitter, check, flag, control));
+			});
+	});
 var $author$project$Docs$nameControl = A3(
 	$author$project$Control$noteIf,
 	function (name) {
@@ -21640,6 +18273,20 @@ var $author$project$Docs$nameControl = A3(
 		},
 		'Name cannot be blank',
 		A2($author$project$Control$label, 'Name', $author$project$Control$string)));
+var $author$project$Control$throw = F2(
+	function (_v0, _v1) {
+		var when = _v0.when;
+		var flag = _v0.flag;
+		var control = _v1.a;
+		return $author$project$Control$Control(
+			A2(
+				$elm$core$Basics$composeR,
+				control,
+				A2(
+					$author$project$Control$flagEmitter,
+					when,
+					$author$project$Control$FlagLabel(flag))));
+	});
 var $author$project$Docs$multivalidation = A2(
 	$author$project$Docs$mdAfter,
 	$author$project$Docs$multivalidationOutro,
@@ -22074,1472 +18721,5 @@ var $author$project$Docs$main = $elm$browser$Browser$document(
 			};
 		}
 	});
-var $author$project$AllControls$Blue = {$: 'Blue'};
-var $author$project$AllControls$Example = F8(
-	function (time, _int, _float, string, _char, bool, _enum, maybe) {
-		return {bool: bool, _char: _char, _enum: _enum, _float: _float, _int: _int, maybe: maybe, string: string, time: time};
-	});
-var $author$project$AllControls$Green = {$: 'Green'};
-var $author$project$AllControls$Red = {$: 'Red'};
-var $author$project$Control$enumView = F2(
-	function (tags, config) {
-		return $author$project$Control$radioView(
-			{
-				id: config.id,
-				label: config.label,
-				name: config.name,
-				options: A2(
-					$elm$core$List$map,
-					function (_v0) {
-						var a = _v0.a;
-						var b = _v0.b;
-						return _Utils_Tuple2(b, a);
-					},
-					tags),
-				selectedOption: config.state,
-				toMsg: $elm$core$Basics$identity
-			});
-	});
-var $author$project$Control$enum = F3(
-	function (first, second, rest) {
-		return $author$project$Control$create(
-			{
-				initEmpty: _Utils_Tuple2(first.b, $elm$core$Platform$Cmd$none),
-				initWith: function (e) {
-					return _Utils_Tuple2(e, $elm$core$Platform$Cmd$none);
-				},
-				label: 'Enum',
-				parse: $elm$core$Result$Ok,
-				subscriptions: function (state) {
-					return $elm$core$Platform$Sub$none;
-				},
-				update: F2(
-					function (delta, _v0) {
-						return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
-					}),
-				view: $author$project$Control$enumView(
-					A2(
-						$elm$core$List$cons,
-						first,
-						A2($elm$core$List$cons, second, rest)))
-			});
-	});
-var $author$project$AllControls$Example2 = function (time) {
-	return function (id) {
-		return function (tuple) {
-			return function (triple) {
-				return function (result) {
-					return function (list) {
-						return function (dict) {
-							return function (set) {
-								return function (array) {
-									return function (counter) {
-										return {array: array, counter: counter, dict: dict, id: id, list: list, result: result, set: set, time: time, triple: triple, tuple: tuple};
-									};
-								};
-							};
-						};
-					};
-				};
-			};
-		};
-	};
-};
-var $author$project$AllControls$Id = function (a) {
-	return {$: 'Id', a: a};
-};
-var $elm$core$Array$fromListHelp = F3(
-	function (list, nodeList, nodeListSize) {
-		fromListHelp:
-		while (true) {
-			var _v0 = A2($elm$core$Elm$JsArray$initializeFromList, $elm$core$Array$branchFactor, list);
-			var jsArray = _v0.a;
-			var remainingItems = _v0.b;
-			if (_Utils_cmp(
-				$elm$core$Elm$JsArray$length(jsArray),
-				$elm$core$Array$branchFactor) < 0) {
-				return A2(
-					$elm$core$Array$builderToArray,
-					true,
-					{nodeList: nodeList, nodeListSize: nodeListSize, tail: jsArray});
-			} else {
-				var $temp$list = remainingItems,
-					$temp$nodeList = A2(
-					$elm$core$List$cons,
-					$elm$core$Array$Leaf(jsArray),
-					nodeList),
-					$temp$nodeListSize = nodeListSize + 1;
-				list = $temp$list;
-				nodeList = $temp$nodeList;
-				nodeListSize = $temp$nodeListSize;
-				continue fromListHelp;
-			}
-		}
-	});
-var $elm$core$Array$fromList = function (list) {
-	if (!list.b) {
-		return $elm$core$Array$empty;
-	} else {
-		return A3($elm$core$Array$fromListHelp, list, _List_Nil, 0);
-	}
-};
-var $author$project$Control$array = function (itemControl) {
-	return A2(
-		$author$project$Control$map,
-		{convert: $elm$core$Array$fromList, revert: $elm$core$Array$toList},
-		A2(
-			$author$project$Control$label,
-			'Array',
-			$author$project$Control$list(itemControl)));
-};
-var $author$project$AllControls$Decrement = {$: 'Decrement'};
-var $author$project$AllControls$Increment = {$: 'Increment'};
-var $author$project$AllControls$counterControl = $author$project$Control$create(
-	{
-		initEmpty: _Utils_Tuple2(0, $elm$core$Platform$Cmd$none),
-		initWith: function (_int) {
-			return _Utils_Tuple2(_int, $elm$core$Platform$Cmd$none);
-		},
-		label: 'Counter',
-		parse: $elm$core$Result$Ok,
-		subscriptions: function (_v0) {
-			return $elm$core$Platform$Sub$none;
-		},
-		update: F2(
-			function (delta, state) {
-				return _Utils_Tuple2(
-					function () {
-						if (delta.$ === 'Increment') {
-							return state + 1;
-						} else {
-							return state - 1;
-						}
-					}(),
-					$elm$core$Platform$Cmd$none);
-			}),
-		view: function (_v2) {
-			var state = _v2.state;
-			var label = _v2.label;
-			var id = _v2.id;
-			var name = _v2.name;
-			return _List_fromArray(
-				[
-					A2(
-					$elm$html$Html$div,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$id(id),
-							$elm$html$Html$Attributes$name(name)
-						]),
-					_List_fromArray(
-						[
-							A2(
-							$elm$html$Html$label,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text(label)
-								])),
-							A2(
-							$elm$html$Html$button,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$type_('button'),
-									$elm$html$Html$Events$onClick($author$project$AllControls$Decrement)
-								]),
-							_List_fromArray(
-								[
-									$elm$html$Html$text('-1')
-								])),
-							$elm$html$Html$text(
-							$elm$core$String$fromInt(state)),
-							A2(
-							$elm$html$Html$button,
-							_List_fromArray(
-								[
-									$elm$html$Html$Attributes$type_('button'),
-									$elm$html$Html$Events$onClick($author$project$AllControls$Increment)
-								]),
-							_List_fromArray(
-								[
-									$elm$html$Html$text('+1')
-								]))
-						]))
-				]);
-		}
-	});
-var $elm_community$list_extra$List$Extra$groupWhile = F2(
-	function (isSameGroup, items) {
-		return A3(
-			$elm$core$List$foldr,
-			F2(
-				function (x, acc) {
-					if (!acc.b) {
-						return _List_fromArray(
-							[
-								_Utils_Tuple2(x, _List_Nil)
-							]);
-					} else {
-						var _v1 = acc.a;
-						var y = _v1.a;
-						var restOfGroup = _v1.b;
-						var groups = acc.b;
-						return A2(isSameGroup, x, y) ? A2(
-							$elm$core$List$cons,
-							_Utils_Tuple2(
-								x,
-								A2($elm$core$List$cons, y, restOfGroup)),
-							groups) : A2(
-							$elm$core$List$cons,
-							_Utils_Tuple2(x, _List_Nil),
-							acc);
-					}
-				}),
-			_List_Nil,
-			items);
-	});
-var $elm_community$list_extra$List$Extra$group = $elm_community$list_extra$List$Extra$groupWhile($elm$core$Basics$eq);
-var $elm$core$List$sort = function (xs) {
-	return A2($elm$core$List$sortBy, $elm$core$Basics$identity, xs);
-};
-var $elm_community$list_extra$List$Extra$frequencies = function (list) {
-	return A2(
-		$elm$core$List$map,
-		function (_v0) {
-			var x = _v0.a;
-			var y = _v0.b;
-			return _Utils_Tuple2(
-				x,
-				1 + $elm$core$List$length(y));
-		},
-		$elm_community$list_extra$List$Extra$group(
-			$elm$core$List$sort(list)));
-};
-var $author$project$Control$nonUniqueIndexes = function (listState) {
-	var duplicates = A2(
-		$elm$core$List$filterMap,
-		function (_v0) {
-			var item = _v0.a;
-			var count = _v0.b;
-			return (count > 1) ? $elm$core$Maybe$Just(item) : $elm$core$Maybe$Nothing;
-		},
-		$elm_community$list_extra$List$Extra$frequencies(listState));
-	return A2(
-		$elm$core$List$filterMap,
-		$elm$core$Basics$identity,
-		A2(
-			$elm$core$List$indexedMap,
-			F2(
-				function (idx, item) {
-					return A2($elm$core$List$member, item, duplicates) ? $elm$core$Maybe$Just(idx) : $elm$core$Maybe$Nothing;
-				}),
-			listState));
-};
-var $author$project$Control$FlagList = F3(
-	function (a, b, c) {
-		return {$: 'FlagList', a: a, b: b, c: c};
-	});
-var $author$project$Control$listFlagEmitter = F3(
-	function (check, flagLabel, ctrl) {
-		return _Utils_update(
-			ctrl,
-			{
-				emitFlags: function (state) {
-					var oldFlags = ctrl.emitFlags(state);
-					var newFlags = function () {
-						var _v0 = ctrl.parse(state);
-						if (_v0.$ === 'Ok') {
-							var output = _v0.a;
-							return _List_fromArray(
-								[
-									A3(
-									$author$project$Control$FlagList,
-									ctrl.path,
-									flagLabel,
-									check(output))
-								]);
-						} else {
-							return _List_Nil;
-						}
-					}();
-					return $elm_community$list_extra$List$Extra$unique(
-						_Utils_ap(oldFlags, newFlags));
-				}
-			});
-	});
-var $author$project$Control$throwAtIndexes = F2(
-	function (_v0, _v1) {
-		var toIndexes = _v0.toIndexes;
-		var flag = _v0.flag;
-		var control = _v1.a;
-		return $author$project$Control$Control(
-			A2(
-				$elm$core$Basics$composeR,
-				control,
-				A2($author$project$Control$listFlagEmitter, toIndexes, flag)));
-	});
-var $author$project$Control$dict = F2(
-	function (keyControl, valueControl) {
-		return A2(
-			$author$project$Control$map,
-			{convert: $elm$core$Dict$fromList, revert: $elm$core$Dict$toList},
-			A2(
-				$author$project$Control$label,
-				'Dict',
-				A2(
-					$author$project$Control$throwAtIndexes,
-					{
-						flag: '@@dict-unique-keys',
-						toIndexes: A2(
-							$elm$core$Basics$composeR,
-							$elm$core$List$map($elm$core$Tuple$first),
-							$author$project$Control$nonUniqueIndexes)
-					},
-					$author$project$Control$list(
-						A2(
-							$author$project$Control$layout,
-							F3(
-								function (kv, _v0, _v1) {
-									return kv;
-								}),
-							A2(
-								$author$project$Control$tuple,
-								A2(
-									$author$project$Control$catch,
-									{fail: true, flag: '@@dict-unique-keys', message: 'Keys must be unique'},
-									keyControl),
-								valueControl))))));
-	});
-var $author$project$Control$result = F2(
-	function (failureControl, successControl) {
-		return A2(
-			$author$project$Control$label,
-			'Result',
-			$author$project$Control$end(
-				A4(
-					$author$project$Control$tag1,
-					'Ok',
-					$elm$core$Result$Ok,
-					successControl,
-					A4(
-						$author$project$Control$tag1,
-						'Err',
-						$elm$core$Result$Err,
-						failureControl,
-						$author$project$Control$customType(
-							F3(
-								function (err, ok, tag) {
-									if (tag.$ === 'Err') {
-										var failure = tag.a;
-										return err(failure);
-									} else {
-										var success = tag.a;
-										return ok(success);
-									}
-								}))))));
-	});
-var $elm$core$Set$Set_elm_builtin = function (a) {
-	return {$: 'Set_elm_builtin', a: a};
-};
-var $elm$core$Set$empty = $elm$core$Set$Set_elm_builtin($elm$core$Dict$empty);
-var $elm$core$Set$insert = F2(
-	function (key, _v0) {
-		var dict = _v0.a;
-		return $elm$core$Set$Set_elm_builtin(
-			A3($elm$core$Dict$insert, key, _Utils_Tuple0, dict));
-	});
-var $elm$core$Set$fromList = function (list) {
-	return A3($elm$core$List$foldl, $elm$core$Set$insert, $elm$core$Set$empty, list);
-};
-var $author$project$Control$set = function (memberControl) {
-	return A2(
-		$author$project$Control$map,
-		{convert: $elm$core$Set$fromList, revert: $elm$core$Set$toList},
-		A2(
-			$author$project$Control$label,
-			'Set',
-			A2(
-				$author$project$Control$throwAtIndexes,
-				{flag: '@@set-unique-keys', toIndexes: $author$project$Control$nonUniqueIndexes},
-				$author$project$Control$list(
-					A2(
-						$author$project$Control$catch,
-						{fail: true, flag: '@@set-unique-keys', message: 'Set members must be unique'},
-						memberControl)))));
-};
-var $author$project$AllControls$ClockTicked = function (a) {
-	return {$: 'ClockTicked', a: a};
-};
-var $author$project$AllControls$InputUpdated = function (a) {
-	return {$: 'InputUpdated', a: a};
-};
-var $elm$time$Time$Every = F2(
-	function (a, b) {
-		return {$: 'Every', a: a, b: b};
-	});
-var $elm$time$Time$State = F2(
-	function (taggers, processes) {
-		return {processes: processes, taggers: taggers};
-	});
-var $elm$time$Time$init = $elm$core$Task$succeed(
-	A2($elm$time$Time$State, $elm$core$Dict$empty, $elm$core$Dict$empty));
-var $elm$time$Time$addMySub = F2(
-	function (_v0, state) {
-		var interval = _v0.a;
-		var tagger = _v0.b;
-		var _v1 = A2($elm$core$Dict$get, interval, state);
-		if (_v1.$ === 'Nothing') {
-			return A3(
-				$elm$core$Dict$insert,
-				interval,
-				_List_fromArray(
-					[tagger]),
-				state);
-		} else {
-			var taggers = _v1.a;
-			return A3(
-				$elm$core$Dict$insert,
-				interval,
-				A2($elm$core$List$cons, tagger, taggers),
-				state);
-		}
-	});
-var $elm$core$Process$kill = _Scheduler_kill;
-var $elm$core$Dict$merge = F6(
-	function (leftStep, bothStep, rightStep, leftDict, rightDict, initialResult) {
-		var stepState = F3(
-			function (rKey, rValue, _v0) {
-				stepState:
-				while (true) {
-					var list = _v0.a;
-					var result = _v0.b;
-					if (!list.b) {
-						return _Utils_Tuple2(
-							list,
-							A3(rightStep, rKey, rValue, result));
-					} else {
-						var _v2 = list.a;
-						var lKey = _v2.a;
-						var lValue = _v2.b;
-						var rest = list.b;
-						if (_Utils_cmp(lKey, rKey) < 0) {
-							var $temp$rKey = rKey,
-								$temp$rValue = rValue,
-								$temp$_v0 = _Utils_Tuple2(
-								rest,
-								A3(leftStep, lKey, lValue, result));
-							rKey = $temp$rKey;
-							rValue = $temp$rValue;
-							_v0 = $temp$_v0;
-							continue stepState;
-						} else {
-							if (_Utils_cmp(lKey, rKey) > 0) {
-								return _Utils_Tuple2(
-									list,
-									A3(rightStep, rKey, rValue, result));
-							} else {
-								return _Utils_Tuple2(
-									rest,
-									A4(bothStep, lKey, lValue, rValue, result));
-							}
-						}
-					}
-				}
-			});
-		var _v3 = A3(
-			$elm$core$Dict$foldl,
-			stepState,
-			_Utils_Tuple2(
-				$elm$core$Dict$toList(leftDict),
-				initialResult),
-			rightDict);
-		var leftovers = _v3.a;
-		var intermediateResult = _v3.b;
-		return A3(
-			$elm$core$List$foldl,
-			F2(
-				function (_v4, result) {
-					var k = _v4.a;
-					var v = _v4.b;
-					return A3(leftStep, k, v, result);
-				}),
-			intermediateResult,
-			leftovers);
-	});
-var $elm$core$Platform$sendToSelf = _Platform_sendToSelf;
-var $elm$time$Time$setInterval = _Time_setInterval;
-var $elm$core$Process$spawn = _Scheduler_spawn;
-var $elm$time$Time$spawnHelp = F3(
-	function (router, intervals, processes) {
-		if (!intervals.b) {
-			return $elm$core$Task$succeed(processes);
-		} else {
-			var interval = intervals.a;
-			var rest = intervals.b;
-			var spawnTimer = $elm$core$Process$spawn(
-				A2(
-					$elm$time$Time$setInterval,
-					interval,
-					A2($elm$core$Platform$sendToSelf, router, interval)));
-			var spawnRest = function (id) {
-				return A3(
-					$elm$time$Time$spawnHelp,
-					router,
-					rest,
-					A3($elm$core$Dict$insert, interval, id, processes));
-			};
-			return A2($elm$core$Task$andThen, spawnRest, spawnTimer);
-		}
-	});
-var $elm$time$Time$onEffects = F3(
-	function (router, subs, _v0) {
-		var processes = _v0.processes;
-		var rightStep = F3(
-			function (_v6, id, _v7) {
-				var spawns = _v7.a;
-				var existing = _v7.b;
-				var kills = _v7.c;
-				return _Utils_Tuple3(
-					spawns,
-					existing,
-					A2(
-						$elm$core$Task$andThen,
-						function (_v5) {
-							return kills;
-						},
-						$elm$core$Process$kill(id)));
-			});
-		var newTaggers = A3($elm$core$List$foldl, $elm$time$Time$addMySub, $elm$core$Dict$empty, subs);
-		var leftStep = F3(
-			function (interval, taggers, _v4) {
-				var spawns = _v4.a;
-				var existing = _v4.b;
-				var kills = _v4.c;
-				return _Utils_Tuple3(
-					A2($elm$core$List$cons, interval, spawns),
-					existing,
-					kills);
-			});
-		var bothStep = F4(
-			function (interval, taggers, id, _v3) {
-				var spawns = _v3.a;
-				var existing = _v3.b;
-				var kills = _v3.c;
-				return _Utils_Tuple3(
-					spawns,
-					A3($elm$core$Dict$insert, interval, id, existing),
-					kills);
-			});
-		var _v1 = A6(
-			$elm$core$Dict$merge,
-			leftStep,
-			bothStep,
-			rightStep,
-			newTaggers,
-			processes,
-			_Utils_Tuple3(
-				_List_Nil,
-				$elm$core$Dict$empty,
-				$elm$core$Task$succeed(_Utils_Tuple0)));
-		var spawnList = _v1.a;
-		var existingDict = _v1.b;
-		var killTask = _v1.c;
-		return A2(
-			$elm$core$Task$andThen,
-			function (newProcesses) {
-				return $elm$core$Task$succeed(
-					A2($elm$time$Time$State, newTaggers, newProcesses));
-			},
-			A2(
-				$elm$core$Task$andThen,
-				function (_v2) {
-					return A3($elm$time$Time$spawnHelp, router, spawnList, existingDict);
-				},
-				killTask));
-	});
-var $elm$time$Time$onSelfMsg = F3(
-	function (router, interval, state) {
-		var _v0 = A2($elm$core$Dict$get, interval, state.taggers);
-		if (_v0.$ === 'Nothing') {
-			return $elm$core$Task$succeed(state);
-		} else {
-			var taggers = _v0.a;
-			var tellTaggers = function (time) {
-				return $elm$core$Task$sequence(
-					A2(
-						$elm$core$List$map,
-						function (tagger) {
-							return A2(
-								$elm$core$Platform$sendToApp,
-								router,
-								tagger(time));
-						},
-						taggers));
-			};
-			return A2(
-				$elm$core$Task$andThen,
-				function (_v1) {
-					return $elm$core$Task$succeed(state);
-				},
-				A2($elm$core$Task$andThen, tellTaggers, $elm$time$Time$now));
-		}
-	});
-var $elm$time$Time$subMap = F2(
-	function (f, _v0) {
-		var interval = _v0.a;
-		var tagger = _v0.b;
-		return A2(
-			$elm$time$Time$Every,
-			interval,
-			A2($elm$core$Basics$composeL, f, tagger));
-	});
-_Platform_effectManagers['Time'] = _Platform_createManager($elm$time$Time$init, $elm$time$Time$onEffects, $elm$time$Time$onSelfMsg, 0, $elm$time$Time$subMap);
-var $elm$time$Time$subscription = _Platform_leaf('Time');
-var $elm$time$Time$every = F2(
-	function (interval, tagger) {
-		return $elm$time$Time$subscription(
-			A2($elm$time$Time$Every, interval, tagger));
-	});
-var $elm$core$String$padLeft = F3(
-	function (n, _char, string) {
-		return _Utils_ap(
-			A2(
-				$elm$core$String$repeat,
-				n - $elm$core$String$length(string),
-				$elm$core$String$fromChar(_char)),
-			string);
-	});
-var $elm$core$Basics$clamp = F3(
-	function (low, high, number) {
-		return (_Utils_cmp(number, low) < 0) ? low : ((_Utils_cmp(number, high) > 0) ? high : number);
-	});
-var $justinmimbs$date$Date$RD = function (a) {
-	return {$: 'RD', a: a};
-};
-var $justinmimbs$date$Date$isLeapYear = function (y) {
-	return ((!A2($elm$core$Basics$modBy, 4, y)) && (!(!A2($elm$core$Basics$modBy, 100, y)))) || (!A2($elm$core$Basics$modBy, 400, y));
-};
-var $justinmimbs$date$Date$daysBeforeMonth = F2(
-	function (y, m) {
-		var leapDays = $justinmimbs$date$Date$isLeapYear(y) ? 1 : 0;
-		switch (m.$) {
-			case 'Jan':
-				return 0;
-			case 'Feb':
-				return 31;
-			case 'Mar':
-				return 59 + leapDays;
-			case 'Apr':
-				return 90 + leapDays;
-			case 'May':
-				return 120 + leapDays;
-			case 'Jun':
-				return 151 + leapDays;
-			case 'Jul':
-				return 181 + leapDays;
-			case 'Aug':
-				return 212 + leapDays;
-			case 'Sep':
-				return 243 + leapDays;
-			case 'Oct':
-				return 273 + leapDays;
-			case 'Nov':
-				return 304 + leapDays;
-			default:
-				return 334 + leapDays;
-		}
-	});
-var $justinmimbs$date$Date$floorDiv = F2(
-	function (a, b) {
-		return $elm$core$Basics$floor(a / b);
-	});
-var $justinmimbs$date$Date$daysBeforeYear = function (y1) {
-	var y = y1 - 1;
-	var leapYears = (A2($justinmimbs$date$Date$floorDiv, y, 4) - A2($justinmimbs$date$Date$floorDiv, y, 100)) + A2($justinmimbs$date$Date$floorDiv, y, 400);
-	return (365 * y) + leapYears;
-};
-var $justinmimbs$date$Date$daysInMonth = F2(
-	function (y, m) {
-		switch (m.$) {
-			case 'Jan':
-				return 31;
-			case 'Feb':
-				return $justinmimbs$date$Date$isLeapYear(y) ? 29 : 28;
-			case 'Mar':
-				return 31;
-			case 'Apr':
-				return 30;
-			case 'May':
-				return 31;
-			case 'Jun':
-				return 30;
-			case 'Jul':
-				return 31;
-			case 'Aug':
-				return 31;
-			case 'Sep':
-				return 30;
-			case 'Oct':
-				return 31;
-			case 'Nov':
-				return 30;
-			default:
-				return 31;
-		}
-	});
-var $justinmimbs$date$Date$fromCalendarDate = F3(
-	function (y, m, d) {
-		return $justinmimbs$date$Date$RD(
-			($justinmimbs$date$Date$daysBeforeYear(y) + A2($justinmimbs$date$Date$daysBeforeMonth, y, m)) + A3(
-				$elm$core$Basics$clamp,
-				1,
-				A2($justinmimbs$date$Date$daysInMonth, y, m),
-				d));
-	});
-var $justinmimbs$date$Date$toRataDie = function (_v0) {
-	var rd = _v0.a;
-	return rd;
-};
-var $justinmimbs$time_extra$Time$Extra$dateToMillis = function (date) {
-	var daysSinceEpoch = $justinmimbs$date$Date$toRataDie(date) - 719163;
-	return daysSinceEpoch * 86400000;
-};
-var $elm$time$Time$flooredDiv = F2(
-	function (numerator, denominator) {
-		return $elm$core$Basics$floor(numerator / denominator);
-	});
-var $elm$time$Time$posixToMillis = function (_v0) {
-	var millis = _v0.a;
-	return millis;
-};
-var $elm$time$Time$toAdjustedMinutesHelp = F3(
-	function (defaultOffset, posixMinutes, eras) {
-		toAdjustedMinutesHelp:
-		while (true) {
-			if (!eras.b) {
-				return posixMinutes + defaultOffset;
-			} else {
-				var era = eras.a;
-				var olderEras = eras.b;
-				if (_Utils_cmp(era.start, posixMinutes) < 0) {
-					return posixMinutes + era.offset;
-				} else {
-					var $temp$defaultOffset = defaultOffset,
-						$temp$posixMinutes = posixMinutes,
-						$temp$eras = olderEras;
-					defaultOffset = $temp$defaultOffset;
-					posixMinutes = $temp$posixMinutes;
-					eras = $temp$eras;
-					continue toAdjustedMinutesHelp;
-				}
-			}
-		}
-	});
-var $elm$time$Time$toAdjustedMinutes = F2(
-	function (_v0, time) {
-		var defaultOffset = _v0.a;
-		var eras = _v0.b;
-		return A3(
-			$elm$time$Time$toAdjustedMinutesHelp,
-			defaultOffset,
-			A2(
-				$elm$time$Time$flooredDiv,
-				$elm$time$Time$posixToMillis(time),
-				60000),
-			eras);
-	});
-var $elm$time$Time$toCivil = function (minutes) {
-	var rawDay = A2($elm$time$Time$flooredDiv, minutes, 60 * 24) + 719468;
-	var era = (((rawDay >= 0) ? rawDay : (rawDay - 146096)) / 146097) | 0;
-	var dayOfEra = rawDay - (era * 146097);
-	var yearOfEra = ((((dayOfEra - ((dayOfEra / 1460) | 0)) + ((dayOfEra / 36524) | 0)) - ((dayOfEra / 146096) | 0)) / 365) | 0;
-	var dayOfYear = dayOfEra - (((365 * yearOfEra) + ((yearOfEra / 4) | 0)) - ((yearOfEra / 100) | 0));
-	var mp = (((5 * dayOfYear) + 2) / 153) | 0;
-	var month = mp + ((mp < 10) ? 3 : (-9));
-	var year = yearOfEra + (era * 400);
-	return {
-		day: (dayOfYear - ((((153 * mp) + 2) / 5) | 0)) + 1,
-		month: month,
-		year: year + ((month <= 2) ? 1 : 0)
-	};
-};
-var $elm$time$Time$toDay = F2(
-	function (zone, time) {
-		return $elm$time$Time$toCivil(
-			A2($elm$time$Time$toAdjustedMinutes, zone, time)).day;
-	});
-var $elm$time$Time$Apr = {$: 'Apr'};
-var $elm$time$Time$Aug = {$: 'Aug'};
-var $elm$time$Time$Dec = {$: 'Dec'};
-var $elm$time$Time$Feb = {$: 'Feb'};
-var $elm$time$Time$Jan = {$: 'Jan'};
-var $elm$time$Time$Jul = {$: 'Jul'};
-var $elm$time$Time$Jun = {$: 'Jun'};
-var $elm$time$Time$Mar = {$: 'Mar'};
-var $elm$time$Time$May = {$: 'May'};
-var $elm$time$Time$Nov = {$: 'Nov'};
-var $elm$time$Time$Oct = {$: 'Oct'};
-var $elm$time$Time$Sep = {$: 'Sep'};
-var $elm$time$Time$toMonth = F2(
-	function (zone, time) {
-		var _v0 = $elm$time$Time$toCivil(
-			A2($elm$time$Time$toAdjustedMinutes, zone, time)).month;
-		switch (_v0) {
-			case 1:
-				return $elm$time$Time$Jan;
-			case 2:
-				return $elm$time$Time$Feb;
-			case 3:
-				return $elm$time$Time$Mar;
-			case 4:
-				return $elm$time$Time$Apr;
-			case 5:
-				return $elm$time$Time$May;
-			case 6:
-				return $elm$time$Time$Jun;
-			case 7:
-				return $elm$time$Time$Jul;
-			case 8:
-				return $elm$time$Time$Aug;
-			case 9:
-				return $elm$time$Time$Sep;
-			case 10:
-				return $elm$time$Time$Oct;
-			case 11:
-				return $elm$time$Time$Nov;
-			default:
-				return $elm$time$Time$Dec;
-		}
-	});
-var $elm$time$Time$toYear = F2(
-	function (zone, time) {
-		return $elm$time$Time$toCivil(
-			A2($elm$time$Time$toAdjustedMinutes, zone, time)).year;
-	});
-var $justinmimbs$date$Date$fromPosix = F2(
-	function (zone, posix) {
-		return A3(
-			$justinmimbs$date$Date$fromCalendarDate,
-			A2($elm$time$Time$toYear, zone, posix),
-			A2($elm$time$Time$toMonth, zone, posix),
-			A2($elm$time$Time$toDay, zone, posix));
-	});
-var $justinmimbs$time_extra$Time$Extra$timeFromClock = F4(
-	function (hour, minute, second, millisecond) {
-		return (((hour * 3600000) + (minute * 60000)) + (second * 1000)) + millisecond;
-	});
-var $elm$time$Time$toHour = F2(
-	function (zone, time) {
-		return A2(
-			$elm$core$Basics$modBy,
-			24,
-			A2(
-				$elm$time$Time$flooredDiv,
-				A2($elm$time$Time$toAdjustedMinutes, zone, time),
-				60));
-	});
-var $elm$time$Time$toMillis = F2(
-	function (_v0, time) {
-		return A2(
-			$elm$core$Basics$modBy,
-			1000,
-			$elm$time$Time$posixToMillis(time));
-	});
-var $elm$time$Time$toMinute = F2(
-	function (zone, time) {
-		return A2(
-			$elm$core$Basics$modBy,
-			60,
-			A2($elm$time$Time$toAdjustedMinutes, zone, time));
-	});
-var $elm$time$Time$toSecond = F2(
-	function (_v0, time) {
-		return A2(
-			$elm$core$Basics$modBy,
-			60,
-			A2(
-				$elm$time$Time$flooredDiv,
-				$elm$time$Time$posixToMillis(time),
-				1000));
-	});
-var $justinmimbs$time_extra$Time$Extra$timeFromPosix = F2(
-	function (zone, posix) {
-		return A4(
-			$justinmimbs$time_extra$Time$Extra$timeFromClock,
-			A2($elm$time$Time$toHour, zone, posix),
-			A2($elm$time$Time$toMinute, zone, posix),
-			A2($elm$time$Time$toSecond, zone, posix),
-			A2($elm$time$Time$toMillis, zone, posix));
-	});
-var $justinmimbs$time_extra$Time$Extra$toOffset = F2(
-	function (zone, posix) {
-		var millis = $elm$time$Time$posixToMillis(posix);
-		var localMillis = $justinmimbs$time_extra$Time$Extra$dateToMillis(
-			A2($justinmimbs$date$Date$fromPosix, zone, posix)) + A2($justinmimbs$time_extra$Time$Extra$timeFromPosix, zone, posix);
-		return ((localMillis - millis) / 60000) | 0;
-	});
-var $justinmimbs$time_extra$Time$Extra$posixFromDateTime = F3(
-	function (zone, date, time) {
-		var millis = $justinmimbs$time_extra$Time$Extra$dateToMillis(date) + time;
-		var offset0 = A2(
-			$justinmimbs$time_extra$Time$Extra$toOffset,
-			zone,
-			$elm$time$Time$millisToPosix(millis));
-		var posix1 = $elm$time$Time$millisToPosix(millis - (offset0 * 60000));
-		var offset1 = A2($justinmimbs$time_extra$Time$Extra$toOffset, zone, posix1);
-		if (_Utils_eq(offset0, offset1)) {
-			return posix1;
-		} else {
-			var posix2 = $elm$time$Time$millisToPosix(millis - (offset1 * 60000));
-			var offset2 = A2($justinmimbs$time_extra$Time$Extra$toOffset, zone, posix2);
-			return _Utils_eq(offset1, offset2) ? posix2 : posix1;
-		}
-	});
-var $justinmimbs$time_extra$Time$Extra$partsToPosix = F2(
-	function (zone, _v0) {
-		var year = _v0.year;
-		var month = _v0.month;
-		var day = _v0.day;
-		var hour = _v0.hour;
-		var minute = _v0.minute;
-		var second = _v0.second;
-		var millisecond = _v0.millisecond;
-		return A3(
-			$justinmimbs$time_extra$Time$Extra$posixFromDateTime,
-			zone,
-			A3($justinmimbs$date$Date$fromCalendarDate, year, month, day),
-			A4(
-				$justinmimbs$time_extra$Time$Extra$timeFromClock,
-				A3($elm$core$Basics$clamp, 0, 23, hour),
-				A3($elm$core$Basics$clamp, 0, 59, minute),
-				A3($elm$core$Basics$clamp, 0, 59, second),
-				A3($elm$core$Basics$clamp, 0, 999, millisecond)));
-	});
-var $elm$html$Html$small = _VirtualDom_node('small');
-var $author$project$AllControls$timeControl = function (tz) {
-	return $author$project$Control$create(
-		{
-			initEmpty: _Utils_Tuple2(
-				{
-					input: '',
-					now: $elm$time$Time$millisToPosix(0)
-				},
-				A2($elm$core$Task$perform, $author$project$AllControls$ClockTicked, $elm$time$Time$now)),
-			initWith: function (posix) {
-				return _Utils_Tuple2(
-					{
-						input: $elm$core$String$fromInt(
-							A2($elm$time$Time$toHour, tz, posix)) + (':' + $elm$core$String$fromInt(
-							A2($elm$time$Time$toMinute, tz, posix))),
-						now: posix
-					},
-					A2($elm$core$Task$perform, $author$project$AllControls$ClockTicked, $elm$time$Time$now));
-			},
-			label: 'Time',
-			parse: function (_v0) {
-				var input = _v0.input;
-				var now = _v0.now;
-				var _v1 = A2($elm$core$String$split, ':', input);
-				if ((_v1.b && _v1.b.b) && (!_v1.b.b.b)) {
-					var h = _v1.a;
-					var _v2 = _v1.b;
-					var m = _v2.a;
-					var _v3 = $elm$core$String$toInt(h);
-					if (_v3.$ === 'Nothing') {
-						return $elm$core$Result$Err(
-							_List_fromArray(
-								['hours must be a number']));
-					} else {
-						var h_ = _v3.a;
-						if ((h_ < 0) || (h_ > 23)) {
-							return $elm$core$Result$Err(
-								_List_fromArray(
-									['hours must be between 0 and 23']));
-						} else {
-							var _v4 = $elm$core$String$toInt(m);
-							if (_v4.$ === 'Nothing') {
-								return $elm$core$Result$Err(
-									_List_fromArray(
-										['minutes must be a number']));
-							} else {
-								var m_ = _v4.a;
-								return ((m_ < 0) || (m_ > 59)) ? $elm$core$Result$Err(
-									_List_fromArray(
-										['minutes must be between 0 and 59'])) : $elm$core$Result$Ok(
-									A2(
-										$justinmimbs$time_extra$Time$Extra$partsToPosix,
-										tz,
-										{
-											day: A2($elm$time$Time$toDay, tz, now),
-											hour: h_,
-											millisecond: 0,
-											minute: m_,
-											month: A2($elm$time$Time$toMonth, tz, now),
-											second: 0,
-											year: A2($elm$time$Time$toYear, tz, now)
-										}));
-							}
-						}
-					}
-				} else {
-					return $elm$core$Result$Err(
-						_List_fromArray(
-							['format must be HH:MM']));
-				}
-			},
-			subscriptions: function (_v5) {
-				return A2($elm$time$Time$every, 1000, $author$project$AllControls$ClockTicked);
-			},
-			update: F2(
-				function (delta, state) {
-					if (delta.$ === 'ClockTicked') {
-						var posix = delta.a;
-						return _Utils_Tuple2(
-							_Utils_update(
-								state,
-								{now: posix}),
-							$elm$core$Platform$Cmd$none);
-					} else {
-						var str = delta.a;
-						return _Utils_Tuple2(
-							_Utils_update(
-								state,
-								{input: str}),
-							$elm$core$Platform$Cmd$none);
-					}
-				}),
-			view: function (_v7) {
-				var state = _v7.state;
-				var label = _v7.label;
-				var id = _v7.id;
-				var name = _v7.name;
-				var _class = _v7._class;
-				var showTime = function (toPart) {
-					return A3(
-						$elm$core$String$padLeft,
-						2,
-						_Utils_chr('0'),
-						$elm$core$String$fromInt(
-							A2(toPart, tz, state.now)));
-				};
-				return _List_fromArray(
-					[
-						A2(
-						$elm$html$Html$label,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$for(id)
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text(label)
-							])),
-						A2(
-						$elm$html$Html$input,
-						_List_fromArray(
-							[
-								$elm$html$Html$Attributes$id(id),
-								$elm$html$Html$Attributes$name(name),
-								$elm$html$Html$Attributes$class(_class),
-								$elm$html$Html$Events$onInput($author$project$AllControls$InputUpdated)
-							]),
-						_List_fromArray(
-							[
-								$elm$html$Html$text(state.input)
-							])),
-						A2(
-						$elm$html$Html$small,
-						_List_Nil,
-						_List_fromArray(
-							[
-								$elm$html$Html$text(
-								'(Current time is ' + (showTime($elm$time$Time$toHour) + (':' + (showTime($elm$time$Time$toMinute) + ')'))))
-							]))
-					]);
-			}
-		});
-};
-var $elm$time$Time$utc = A2($elm$time$Time$Zone, 0, _List_Nil);
-var $author$project$AllControls$example2Control = $author$project$Control$end(
-	A3(
-		$author$project$Control$field,
-		function ($) {
-			return $.counter;
-		},
-		$author$project$AllControls$counterControl,
-		A3(
-			$author$project$Control$field,
-			function ($) {
-				return $.array;
-			},
-			$author$project$Control$array($author$project$Control$int),
-			A3(
-				$author$project$Control$field,
-				function ($) {
-					return $.set;
-				},
-				$author$project$Control$set($author$project$Control$string),
-				A3(
-					$author$project$Control$field,
-					function ($) {
-						return $.dict;
-					},
-					A2($author$project$Control$dict, $author$project$Control$string, $author$project$Control$int),
-					A3(
-						$author$project$Control$field,
-						function ($) {
-							return $.list;
-						},
-						A2(
-							$author$project$Control$htmlAfter,
-							A2(
-								$elm$html$Html$p,
-								_List_Nil,
-								_List_fromArray(
-									[
-										$elm$html$Html$text('This is some text after a list')
-									])),
-							A2(
-								$author$project$Control$htmlBefore,
-								A2(
-									$elm$html$Html$h3,
-									_List_Nil,
-									_List_fromArray(
-										[
-											$elm$html$Html$text('This is a heading before a list')
-										])),
-								$author$project$Control$list(
-									$author$project$AllControls$timeControl($elm$time$Time$utc)))),
-						A3(
-							$author$project$Control$field,
-							function ($) {
-								return $.result;
-							},
-							A2($author$project$Control$result, $author$project$Control$int, $author$project$Control$string),
-							A3(
-								$author$project$Control$field,
-								function ($) {
-									return $.triple;
-								},
-								A3($author$project$Control$triple, $author$project$Control$int, $author$project$Control$string, $author$project$Control$float),
-								A3(
-									$author$project$Control$field,
-									function ($) {
-										return $.tuple;
-									},
-									A2($author$project$Control$tuple, $author$project$Control$int, $author$project$Control$string),
-									A3(
-										$author$project$Control$field,
-										function ($) {
-											return $.id;
-										},
-										A2(
-											$author$project$Control$map,
-											{
-												convert: $author$project$AllControls$Id,
-												revert: function (_v0) {
-													var x = _v0.a;
-													return x;
-												}
-											},
-											A2($author$project$Control$label, 'Id', $author$project$Control$int)),
-										A3(
-											$author$project$Control$field,
-											function ($) {
-												return $.time;
-											},
-											$author$project$AllControls$timeControl($elm$time$Time$utc),
-											$author$project$Control$record($author$project$AllControls$Example2))))))))))));
-var $author$project$Control$maybe = function (control) {
-	return A2(
-		$author$project$Control$label,
-		'Maybe',
-		$author$project$Control$end(
-			A4(
-				$author$project$Control$tag1,
-				'Just',
-				$elm$core$Maybe$Just,
-				control,
-				A3(
-					$author$project$Control$tag0,
-					'Nothing',
-					$elm$core$Maybe$Nothing,
-					$author$project$Control$customType(
-						F3(
-							function (nothing, just, tag) {
-								if (tag.$ === 'Nothing') {
-									return nothing;
-								} else {
-									var a = tag.a;
-									return just(a);
-								}
-							}))))));
-};
-var $author$project$AllControls$exampleControl = A2(
-	$author$project$Control$htmlAfter,
-	A2(
-		$elm$html$Html$p,
-		_List_Nil,
-		_List_fromArray(
-			[
-				$elm$html$Html$text('This is some text after a record')
-			])),
-	A2(
-		$author$project$Control$htmlBefore,
-		A2(
-			$elm$html$Html$h3,
-			_List_Nil,
-			_List_fromArray(
-				[
-					$elm$html$Html$text('This is a heading before a record')
-				])),
-		$author$project$Control$end(
-			A3(
-				$author$project$Control$field,
-				function ($) {
-					return $.maybe;
-				},
-				A2(
-					$author$project$Control$htmlAfter,
-					A2(
-						$elm$html$Html$p,
-						_List_Nil,
-						_List_fromArray(
-							[
-								$elm$html$Html$text('This is some text after a custom type')
-							])),
-					A2(
-						$author$project$Control$htmlBefore,
-						A2(
-							$elm$html$Html$h3,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('This is a heading before a custom type')
-								])),
-						$author$project$Control$maybe($author$project$AllControls$example2Control))),
-				A3(
-					$author$project$Control$field,
-					function ($) {
-						return $._enum;
-					},
-					A2(
-						$author$project$Control$htmlAfter,
-						A2(
-							$elm$html$Html$p,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('This is some text after a primitive control')
-								])),
-						A2(
-							$author$project$Control$htmlBefore,
-							A2(
-								$elm$html$Html$h3,
-								_List_Nil,
-								_List_fromArray(
-									[
-										$elm$html$Html$text('This is a heading before a control')
-									])),
-							A3(
-								$author$project$Control$enum,
-								_Utils_Tuple2('Red', $author$project$AllControls$Red),
-								_Utils_Tuple2('Green', $author$project$AllControls$Green),
-								_List_fromArray(
-									[
-										_Utils_Tuple2('Blue', $author$project$AllControls$Blue)
-									])))),
-					A3(
-						$author$project$Control$field,
-						function ($) {
-							return $.bool;
-						},
-						$author$project$Control$bool,
-						A3(
-							$author$project$Control$field,
-							function ($) {
-								return $._char;
-							},
-							$author$project$Control$char,
-							A3(
-								$author$project$Control$field,
-								function ($) {
-									return $.string;
-								},
-								A3(
-									$author$project$Control$noteIf,
-									A2($elm$core$Basics$composeL, $elm$core$Basics$not, $elm$core$String$isEmpty),
-									'Nice work!',
-									A3($author$project$Control$failIf, $elm$core$String$isEmpty, 'Mustn\'t be blank', $author$project$Control$string)),
-								A3(
-									$author$project$Control$field,
-									function ($) {
-										return $._float;
-									},
-									$author$project$Control$float,
-									A3(
-										$author$project$Control$field,
-										function ($) {
-											return $._int;
-										},
-										$author$project$Control$int,
-										A3(
-											$author$project$Control$field,
-											function ($) {
-												return $.time;
-											},
-											$author$project$AllControls$timeControl($elm$time$Time$utc),
-											$author$project$Control$record($author$project$AllControls$Example))))))))))));
-var $author$project$Control$sandbox = function (_v0) {
-	var outputToString = _v0.outputToString;
-	var control = _v0.control;
-	var _v1 = control;
-	var c = _v1.a;
-	var fns = c($author$project$Path$root);
-	return $elm$browser$Browser$element(
-		{
-			init: function (_v2) {
-				return fns.init;
-			},
-			subscriptions: fns.subscriptions,
-			update: F2(
-				function (msg, state) {
-					return A2(fns.update, msg, state);
-				}),
-			view: function (s) {
-				var internalState = s.a;
-				var state = s.b;
-				var validationErrors = A2(
-					$elm$core$List$filter,
-					function ($) {
-						return $.fail;
-					},
-					A2(
-						fns.collectErrors,
-						s,
-						fns.emitFlags(s)));
-				var parsingResult = fns.parse(s);
-				var failView = function (errs) {
-					return A2(
-						$elm$html$Html$div,
-						_List_Nil,
-						_List_fromArray(
-							[
-								A2(
-								$elm$html$Html$p,
-								_List_Nil,
-								_List_fromArray(
-									[
-										$elm$html$Html$text('Failure! Your form has errors on the following fields:')
-									])),
-								A2(
-								$elm$html$Html$ul,
-								_List_Nil,
-								A2(
-									$elm$core$List$map,
-									function (_v4) {
-										var path = _v4.path;
-										var message = _v4.message;
-										return A2(
-											$elm$html$Html$li,
-											_List_Nil,
-											_List_fromArray(
-												[
-													$elm$html$Html$text(path + (': ' + message))
-												]));
-									},
-									errs))
-							]));
-				};
-				var emittedFlags = fns.emitFlags(s);
-				var debouncingReceivers = fns.collectDebouncingReceivers(s);
-				var flags = A2(
-					$elm$core$List$filter,
-					function (f) {
-						return !A2($elm$core$List$member, f, debouncingReceivers);
-					},
-					emittedFlags);
-				return A2(
-					$elm$html$Html$div,
-					_List_Nil,
-					_List_fromArray(
-						[
-							A2(
-							$elm$html$Html$h1,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Form')
-								])),
-							A2(
-							$elm$html$Html$form,
-							_List_Nil,
-							A2(
-								fns.view,
-								{after: fns.htmlAfter, before: fns.htmlBefore, _class: fns._class, id: fns.id, label: fns.label, name: fns.name},
-								{
-									flags: flags,
-									selected: internalState.selected,
-									state: state,
-									status: A4(
-										$author$project$Control$getStatus,
-										fns.parse,
-										fns.collectErrors,
-										flags,
-										A2($author$project$Control$State, internalState, state))
-								})),
-							A2(
-							$elm$html$Html$h2,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Output')
-								])),
-							function () {
-							var _v3 = _Utils_Tuple2(parsingResult, validationErrors);
-							if (_v3.a.$ === 'Ok') {
-								if (!_v3.b.b) {
-									var output = _v3.a.a;
-									return A2(
-										$elm$html$Html$div,
-										_List_Nil,
-										_List_fromArray(
-											[
-												A2(
-												$elm$html$Html$p,
-												_List_Nil,
-												_List_fromArray(
-													[
-														$elm$html$Html$text('Success! Your form produced the following value:')
-													])),
-												A2(
-												$elm$html$Html$pre,
-												_List_Nil,
-												_List_fromArray(
-													[
-														$elm$html$Html$text(
-														outputToString(output))
-													]))
-											]));
-								} else {
-									var vErrs = _v3.b;
-									return failView(vErrs);
-								}
-							} else {
-								var errs = _v3.a.a;
-								var vErrs = _v3.b;
-								return failView(
-									_Utils_ap(errs, vErrs));
-							}
-						}()
-						]));
-			}
-		});
-};
-var $elm$core$Debug$toString = _Debug_toString;
-var $author$project$AllControls$main = $author$project$Control$sandbox(
-	{control: $author$project$AllControls$exampleControl, outputToString: $elm$core$Debug$toString});
-_Platform_export({'AllControls':{'init':$author$project$AllControls$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'User':{'init':$author$project$User$main(
-	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)},'Docs':{'init':$author$project$Docs$main(
+_Platform_export({'Docs':{'init':$author$project$Docs$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));

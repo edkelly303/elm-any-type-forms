@@ -8,6 +8,10 @@
                 "src/Docs.elm"
             ],
             "output": "main.js"
+        },
+        "docs": {
+            "inputs": ["src/Docs.elm"],
+            "output": "../docs/main.js"
         }
     },
     "serve": "."
