@@ -243,7 +243,8 @@ type Alert
 
 
 type alias Feedback =
-    { path : String
+    { path : Path
+    , label : String
     , message : String
     , fail : Bool
     }
@@ -543,7 +544,7 @@ sandbox { outputToString, control } =
                     failView errs =
                         H.div []
                             [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                            , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (path ++ ": " ++ message) ]) errs)
+                            , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (Path.toString path ++ ": " ++ message) ]) errs)
                             ]
                 in
                 H.div []
@@ -654,7 +655,16 @@ create config =
                 parse =
                     \(State _ state) ->
                         config.parse state
-                            |> Result.mapError (List.map (\message -> { message = message, path = Path.toString path, fail = True }))
+                            |> Result.mapError
+                                (List.map
+                                    (\message ->
+                                        { message = message
+                                        , label = config.label
+                                        , path = path
+                                        , fail = True
+                                        }
+                                    )
+                                )
             in
             { path = path
             , index = 0
@@ -840,7 +850,12 @@ alertReceiver alert fail message ctrl =
 
                     newReceiver =
                         if List.member alert alerts then
-                            [ { path = Path.toString ctrl.path, message = message, fail = fail } ]
+                            [ { path = ctrl.path
+                              , label = ctrl.label
+                              , message = message
+                              , fail = fail
+                              }
+                            ]
 
                         else
                             []
@@ -1737,7 +1752,7 @@ list (Control ctrl) =
                                             if thisIdx == idx then
                                                 let
                                                     itemControl =
-                                                        ctrl (Path.add (String.fromInt idx) path)
+                                                        ctrl (Path.add idx path)
 
                                                     ( newItem, newCmd ) =
                                                         itemControl.update itemDelta item
@@ -1762,11 +1777,8 @@ list (Control ctrl) =
                         List.foldr
                             (\( idx, item ) res ->
                                 let
-                                    identifyErrors e =
-                                        List.map (\{ message } -> "item #" ++ String.fromInt idx ++ ": " ++ message) e
-
                                     itemControl =
-                                        ctrl (Path.add (String.fromInt idx) path)
+                                        ctrl (Path.add idx path)
                                 in
                                 case res of
                                     Ok outputs ->
@@ -1775,7 +1787,7 @@ list (Control ctrl) =
                                                 Ok (output :: outputs)
 
                                             Err errs ->
-                                                Err (identifyErrors errs)
+                                                Err errs
 
                                     Err errs ->
                                         case itemControl.parse item of
@@ -1783,18 +1795,17 @@ list (Control ctrl) =
                                                 Err errs
 
                                             Err newErrs ->
-                                                Err (identifyErrors newErrs ++ errs)
+                                                Err (newErrs ++ errs)
                             )
                             (Ok [])
                             (List.indexedMap Tuple.pair state)
-                            |> Result.mapError (List.map (\feedback -> { path = Path.toString path, message = feedback, fail = True }))
 
                 collectDebouncingReceivers (State _ listState) =
                     List.indexedMap
                         (\idx itemState ->
                             let
                                 itemControl =
-                                    ctrl (Path.add (String.fromInt idx) path)
+                                    ctrl (Path.add idx path)
                             in
                             itemControl.collectDebouncingReceivers itemState
                         )
@@ -1811,7 +1822,7 @@ list (Control ctrl) =
                                 (\idx itemInput ( itemInputs, itemCmds ) ->
                                     let
                                         itemControl =
-                                            ctrl (Path.add (String.fromInt idx) path)
+                                            ctrl (Path.add idx path)
 
                                         ( itemState, itemCmd ) =
                                             itemControl.initWith itemInput
@@ -1849,7 +1860,7 @@ list (Control ctrl) =
                             (\idx item ->
                                 let
                                     itemControl =
-                                        ctrl (Path.add (String.fromInt idx) path)
+                                        ctrl (Path.add idx path)
                                 in
                                 itemControl.setAllIdle item
                             )
@@ -1861,7 +1872,7 @@ list (Control ctrl) =
                         (\idx item ->
                             let
                                 itemControl =
-                                    ctrl (Path.add (String.fromInt idx) path)
+                                    ctrl (Path.add idx path)
                             in
                             itemControl.emitAlerts item
                         )
@@ -1873,7 +1884,7 @@ list (Control ctrl) =
                         (\idx item ->
                             let
                                 itemControl =
-                                    ctrl (Path.add (String.fromInt idx) path)
+                                    ctrl (Path.add idx path)
 
                                 filteredAlerts =
                                     List.filterMap
@@ -1911,7 +1922,7 @@ list (Control ctrl) =
                         (\idx itemState ->
                             let
                                 itemControl =
-                                    ctrl (Path.add (String.fromInt idx) path)
+                                    ctrl (Path.add idx path)
                             in
                             itemControl.subscriptions itemState
                                 |> Sub.map (ChangeItem idx)
@@ -3006,7 +3017,7 @@ fieldHelper access fromInput (Control control) builder =
                     \path ->
                         let
                             newPath =
-                                Path.add (String.fromInt newIndex) path
+                                Path.add newIndex path
                         in
                         rec.fns path
                             << Tuple.pair
@@ -3018,7 +3029,7 @@ fieldHelper access fromInput (Control control) builder =
                     \path ->
                         let
                             newPath =
-                                Path.add (String.fromInt newIndex) path
+                                Path.add newIndex path
                         in
                         rec.initialStates path
                             << Tuple.pair
@@ -3030,7 +3041,7 @@ fieldHelper access fromInput (Control control) builder =
                     \path ->
                         let
                             newPath =
-                                Path.add (String.fromInt newIndex) path
+                                Path.add newIndex path
                         in
                         rec.initialDeltas path
                             << Tuple.pair
@@ -3703,14 +3714,18 @@ tagHelper label_ (Control control) toArgState builder =
             Rec r
 
         Cus rec ->
+            let
+                newIndex =
+                    rec.index + 1
+            in
             Cus
-                { index = rec.index + 1
+                { index = newIndex
                 , labels = label_ :: rec.labels
                 , fns =
                     \path ->
                         let
                             control_ =
-                                control (Path.add label_ path)
+                                control (Path.add newIndex path)
                         in
                         rec.fns path
                             << Tuple.pair
@@ -3719,7 +3734,7 @@ tagHelper label_ (Control control) toArgState builder =
                     \path ->
                         rec.initialStates path
                             << Tuple.pair
-                                (control (Path.add label_ path)
+                                (control (Path.add newIndex path)
                                     |> .init
                                     |> Tuple.first
                                 )
@@ -3727,7 +3742,7 @@ tagHelper label_ (Control control) toArgState builder =
                     \path ->
                         rec.initialDeltas path
                             << Tuple.pair
-                                (control (Path.add label_ path)
+                                (control (Path.add newIndex path)
                                     |> .init
                                     |> Tuple.second
                                 )
@@ -4479,18 +4494,18 @@ validateSelectedTagState :
      )
      -> Result (List Feedback) value
      -> Int
-     -> c
+     -> ( ControlFns x y z w, restFns )
      -> d
      -> e
     )
     -> Int
-    -> c
+    -> ( ControlFns x y z w, restFns )
     -> d
     -> e
 validateSelectedTagState parser selectedTag fns states =
     parser
         (\result_ _ End End -> result_)
-        (Err [ { path = "FATAL ERROR", message = "tag index " ++ String.fromInt selectedTag ++ " not found", fail = True } ])
+        (Err [ { path = Path.root, label = "FATAL ERROR", message = "tag index " ++ String.fromInt selectedTag ++ " not found", fail = True } ])
         selectedTag
         fns
         states
@@ -4720,7 +4735,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                             (\idx (State internalState state) ->
                                 let
                                     control =
-                                        ctrl (Path.add (String.fromInt idx) path)
+                                        ctrl (Path.add idx path)
 
                                     filteredAlerts1 =
                                         List.filterMap
@@ -4818,19 +4833,23 @@ radioView config =
     [ H.fieldset
         [ HA.id config.id ]
         (H.legend [] [ H.text config.label ]
-            :: List.map
-                (\( option, optionLabel ) ->
+            :: List.indexedMap
+                (\idx ( option, optionLabel ) ->
+                    let
+                        optionId =
+                            config.id ++ "-" ++ String.fromInt (idx + 1)
+                    in
                     H.div []
                         [ H.input
                             [ HA.type_ "radio"
                             , HA.name config.name
-                            , HA.id optionLabel
+                            , HA.id optionId
                             , HA.value optionLabel
                             , HA.checked (config.selectedOption == option)
                             , onChecked (config.toMsg option)
                             ]
                             []
-                        , H.label [ HA.for optionLabel ] [ H.text optionLabel ]
+                        , H.label [ HA.for optionId ] [ H.text optionLabel ]
                         ]
                 )
                 config.options
