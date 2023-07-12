@@ -51,11 +51,11 @@ ol {
 }
 
 .control-invalid {
-    background-color: rgba(255, 0, 0, 0.1);
+    background-color: rgba(255, 0, 0, 0.05);
 }
 
 .control-valid {
-    background-color: rgba(0, 255, 0, 0.1);
+    background-color: rgba(0, 255, 0, 0.05);
 }
 
 .control-feedback {
@@ -73,23 +73,35 @@ ol {
     content: "";
     display: inline-block;
     background-color: red;
+    -webkit-mask: url('prohibit.svg');
+    -webkit-mask-size: 20px;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
     mask: url('prohibit.svg');
     mask-size: 20px;
+    mask-position: center;
+    mask-repeat: no-repeat;
     width: 20px;
     height: 20px;
     margin-right: 5px;
 }
 
 .control-feedback-note {
-    color: green
+    color: darkgreen
 }
 
 .control-feedback-note::before {
     content: "";
     display: block;
-    background-color: green;
+    background-color: darkgreen;
+    -webkit-mask: url('question.svg');
+    -webkit-mask-size: 20px;
+    -webkit-mask-position: center;
+    -webkit-mask-repeat: no-repeat;
     mask: url('question.svg');
     mask-size: 20px;
+    mask-position: center;
+    mask-repeat: no-repeat;
     width: 20px;
     height: 20px;
     margin-right: 5px;
