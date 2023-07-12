@@ -1230,6 +1230,9 @@ md markdownInput =
                         ast
                 )
     of
+        Ok [ rendered ] ->
+            rendered
+
         Ok rendered ->
             H.div [] rendered
 
