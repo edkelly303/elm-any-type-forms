@@ -11,25 +11,65 @@ import Markdown.Renderer
 
 main =
     Browser.document
-        { init = \() -> form.init
+        { init =
+            \() ->
+                let
+                    ( initialForm, cmd ) =
+                        form.init
+                in
+                ( { form = initialForm
+                  , output = Nothing
+                  }
+                , cmd
+                )
         , update =
             \msg model ->
                 case msg of
                     Nothing ->
                         let
-                            ( newModel, result ) =
-                                form.submit model
+                            ( newForm, result ) =
+                                form.submit model.form
                         in
-                        ( newModel, Cmd.none )
+                        ( { model
+                            | form = newForm
+                            , output = Just result
+                          }
+                        , Cmd.none
+                        )
 
                     Just delta ->
-                        form.update delta model
+                        let
+                            ( newForm, cmd ) =
+                                form.update delta model.form
+                        in
+                        ( { model | form = newForm }
+                        , cmd
+                        )
         , view =
             \model ->
-                { title = "Docs"
-                , body = [ form.view model ]
+                { title = "elm-any-type-forms tutorial"
+                , body =
+                    [ H.div []
+                        [ form.view model.form
+                        , case model.output of
+                            Nothing ->
+                                H.text ""
+
+                            Just (Ok val) ->
+                                H.div []
+                                    [ H.text "Success!"
+                                    , H.pre [] [ H.text (Debug.toString val) ]
+                                    ]
+
+                            Just (Err errors) ->
+                                H.div []
+                                    [ H.text "Failure!"
+                                    , H.ul [] (List.map (\{ label, message } -> H.li [] [ H.text (label ++ ": " ++ message) ]) errors)
+                                    ]
+                        ]
+                    ]
                 }
-        , subscriptions = form.subscriptions
+        , subscriptions = \model -> form.subscriptions model.form
         }
 
 
@@ -100,7 +140,7 @@ lessons =
         |> Control.tag1 "10: Creating your own controls" CreateYourOwn createYourOwn
         |> Control.end
         |> Control.label "Lessons"
-        |> Control.id "lessons"
+        |> mdBefore "# An introduction to `elm-any-type-forms`"
 
 
 basicControls =
@@ -991,9 +1031,6 @@ dateControl =
                     Err error ->
                         Err [ error ]
         }
-
-
-
 
 
 createYourOwnIntro =
