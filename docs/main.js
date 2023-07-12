@@ -4781,6 +4781,11 @@ var $elm$core$Set$toList = function (_v0) {
 var $elm$core$Basics$EQ = {$: 'EQ'};
 var $elm$core$Basics$GT = {$: 'GT'};
 var $elm$core$Basics$LT = {$: 'LT'};
+var $elm$core$Maybe$Just = function (a) {
+	return {$: 'Just', a: a};
+};
+var $elm$core$Maybe$Nothing = {$: 'Nothing'};
+var $elm$core$Basics$append = _Utils_append;
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -4804,13 +4809,8 @@ var $elm$json$Json$Decode$OneOf = function (a) {
 };
 var $elm$core$Basics$False = {$: 'False'};
 var $elm$core$Basics$add = _Basics_add;
-var $elm$core$Maybe$Just = function (a) {
-	return {$: 'Just', a: a};
-};
-var $elm$core$Maybe$Nothing = {$: 'Nothing'};
 var $elm$core$String$all = _String_all;
 var $elm$core$Basics$and = _Basics_and;
-var $elm$core$Basics$append = _Utils_append;
 var $elm$json$Json$Encode$encode = _Json_encode;
 var $elm$core$String$fromInt = _String_fromNumber;
 var $elm$core$String$join = F2(
@@ -5191,6 +5191,7 @@ var $elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
+var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
 };
@@ -5667,7 +5668,9 @@ var $elm$html$Html$Events$onSubmit = function (msg) {
 var $author$project$Path$Path = function (a) {
 	return {$: 'Path', a: a};
 };
-var $author$project$Path$root = $author$project$Path$Path(_List_Nil);
+var $author$project$Path$root = $author$project$Path$Path(
+	_List_fromArray(
+		[1]));
 var $author$project$Control$form = function (_v0) {
 	var onUpdate = _v0.onUpdate;
 	var onSubmit = _v0.onSubmit;
@@ -5866,7 +5869,10 @@ var $author$project$Path$toString = function (_v0) {
 		A2(
 			$elm$core$String$join,
 			'-',
-			$elm$core$List$reverse(path)));
+			A2(
+				$elm$core$List$map,
+				$elm$core$String$fromInt,
+				$elm$core$List$reverse(path))));
 };
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
@@ -5991,7 +5997,6 @@ var $author$project$Control$wrapUpdate = F4(
 					$elm$core$Platform$Cmd$none);
 		}
 	});
-var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$p = _VirtualDom_node('p');
 var $author$project$Control$wrappedView = F2(
 	function (status, innerView) {
@@ -6071,11 +6076,7 @@ var $author$project$Control$create = function (config) {
 					$elm$core$Result$mapError,
 					$elm$core$List$map(
 						function (message) {
-							return {
-								fail: true,
-								message: message,
-								path: $author$project$Path$toString(path)
-							};
+							return {fail: true, label: config.label, message: message, path: path};
 						}),
 					config.parse(state));
 			};
@@ -6453,41 +6454,43 @@ var $author$project$Control$radioView = function (config) {
 							$elm$html$Html$text(config.label)
 						])),
 				A2(
-					$elm$core$List$map,
-					function (_v0) {
-						var option = _v0.a;
-						var optionLabel = _v0.b;
-						return A2(
-							$elm$html$Html$div,
-							_List_Nil,
-							_List_fromArray(
-								[
-									A2(
-									$elm$html$Html$input,
-									_List_fromArray(
-										[
-											$elm$html$Html$Attributes$type_('radio'),
-											$elm$html$Html$Attributes$name(config.name),
-											$elm$html$Html$Attributes$id(optionLabel),
-											$elm$html$Html$Attributes$value(optionLabel),
-											$elm$html$Html$Attributes$checked(
-											_Utils_eq(config.selectedOption, option)),
-											$author$project$Control$onChecked(
-											config.toMsg(option))
-										]),
-									_List_Nil),
-									A2(
-									$elm$html$Html$label,
-									_List_fromArray(
-										[
-											$elm$html$Html$Attributes$for(optionLabel)
-										]),
-									_List_fromArray(
-										[
-											$elm$html$Html$text(optionLabel)
-										]))
-								]));
-					},
+					$elm$core$List$indexedMap,
+					F2(
+						function (idx, _v0) {
+							var option = _v0.a;
+							var optionLabel = _v0.b;
+							var optionId = config.id + ('-' + $elm$core$String$fromInt(idx + 1));
+							return A2(
+								$elm$html$Html$div,
+								_List_Nil,
+								_List_fromArray(
+									[
+										A2(
+										$elm$html$Html$input,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$type_('radio'),
+												$elm$html$Html$Attributes$name(config.name),
+												$elm$html$Html$Attributes$id(optionId),
+												$elm$html$Html$Attributes$value(optionLabel),
+												$elm$html$Html$Attributes$checked(
+												_Utils_eq(config.selectedOption, option)),
+												$author$project$Control$onChecked(
+												config.toMsg(option))
+											]),
+										_List_Nil),
+										A2(
+										$elm$html$Html$label,
+										_List_fromArray(
+											[
+												$elm$html$Html$Attributes$for(optionId)
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text(optionLabel)
+											]))
+									]));
+						}),
 					config.options)))
 		]);
 };
@@ -6632,8 +6635,9 @@ var $author$project$Control$validateSelectedTagState = F4(
 					[
 						{
 						fail: true,
+						label: 'FATAL ERROR',
 						message: 'tag index ' + ($elm$core$String$fromInt(selectedTag) + ' not found'),
-						path: 'FATAL ERROR'
+						path: $author$project$Path$root
 					}
 					])),
 			selectedTag,
@@ -7377,10 +7381,7 @@ var $author$project$Control$fieldHelper = F4(
 					deltaInitialiser: A2($elm$core$Basics$composeR, rec.deltaInitialiser, $author$project$Control$recordDeltaInitialiser),
 					errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$recordErrorCollector),
 					fns: function (path) {
-						var newPath = A2(
-							$author$project$Path$add,
-							$elm$core$String$fromInt(newIndex),
-							path);
+						var newPath = A2($author$project$Path$add, newIndex, path);
 						return A2(
 							$elm$core$Basics$composeL,
 							rec.fns(path),
@@ -7394,10 +7395,7 @@ var $author$project$Control$fieldHelper = F4(
 					idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$recordStateIdleSetter),
 					index: newIndex,
 					initialDeltas: function (path) {
-						var newPath = A2(
-							$author$project$Path$add,
-							$elm$core$String$fromInt(newIndex),
-							path);
+						var newPath = A2($author$project$Path$add, newIndex, path);
 						return A2(
 							$elm$core$Basics$composeL,
 							rec.initialDeltas(path),
@@ -7405,10 +7403,7 @@ var $author$project$Control$fieldHelper = F4(
 								control(newPath).init.b));
 					},
 					initialStates: function (path) {
-						var newPath = A2(
-							$author$project$Path$add,
-							$elm$core$String$fromInt(newIndex),
-							path);
+						var newPath = A2($author$project$Path$add, newIndex, path);
 						return A2(
 							$elm$core$Basics$composeL,
 							rec.initialStates(path),
@@ -18447,11 +18442,7 @@ var $author$project$Control$alertReceiver = F4(
 						var oldReceiver = A2(ctrl.collectErrors, state, alerts);
 						var newReceiver = A2($elm$core$List$member, alert, alerts) ? _List_fromArray(
 							[
-								{
-								fail: fail,
-								message: message,
-								path: $author$project$Path$toString(ctrl.path)
-							}
+								{fail: fail, label: ctrl.label, message: message, path: ctrl.path}
 							]) : _List_Nil;
 						return $elm_community$list_extra$List$Extra$unique(
 							_Utils_ap(oldReceiver, newReceiver));
@@ -18664,10 +18655,7 @@ var $author$project$Control$listView = F5(
 										},
 										filteredAlerts1);
 									var control = ctrl(
-										A2(
-											$author$project$Path$add,
-											$elm$core$String$fromInt(idx),
-											path));
+										A2($author$project$Path$add, idx, path));
 									return A2(
 										$elm$html$Html$li,
 										_List_Nil,
@@ -18743,64 +18731,39 @@ var $author$project$Control$list = function (_v0) {
 		function (path) {
 			var parse = function (_v17) {
 				var state = _v17.b;
-				return A2(
-					$elm$core$Result$mapError,
-					$elm$core$List$map(
-						function (feedback) {
-							return {
-								fail: true,
-								message: feedback,
-								path: $author$project$Path$toString(path)
-							};
-						}),
-					A3(
-						$elm$core$List$foldr,
-						F2(
-							function (_v18, res) {
-								var idx = _v18.a;
-								var item = _v18.b;
-								var itemControl = ctrl(
-									A2(
-										$author$project$Path$add,
-										$elm$core$String$fromInt(idx),
-										path));
-								var identifyErrors = function (e) {
-									return A2(
-										$elm$core$List$map,
-										function (_v22) {
-											var message = _v22.message;
-											return 'item #' + ($elm$core$String$fromInt(idx) + (': ' + message));
-										},
-										e);
-								};
-								if (res.$ === 'Ok') {
-									var outputs = res.a;
-									var _v20 = itemControl.parse(item);
-									if (_v20.$ === 'Ok') {
-										var output = _v20.a;
-										return $elm$core$Result$Ok(
-											A2($elm$core$List$cons, output, outputs));
-									} else {
-										var errs = _v20.a;
-										return $elm$core$Result$Err(
-											identifyErrors(errs));
-									}
+				return A3(
+					$elm$core$List$foldr,
+					F2(
+						function (_v18, res) {
+							var idx = _v18.a;
+							var item = _v18.b;
+							var itemControl = ctrl(
+								A2($author$project$Path$add, idx, path));
+							if (res.$ === 'Ok') {
+								var outputs = res.a;
+								var _v20 = itemControl.parse(item);
+								if (_v20.$ === 'Ok') {
+									var output = _v20.a;
+									return $elm$core$Result$Ok(
+										A2($elm$core$List$cons, output, outputs));
 								} else {
-									var errs = res.a;
-									var _v21 = itemControl.parse(item);
-									if (_v21.$ === 'Ok') {
-										return $elm$core$Result$Err(errs);
-									} else {
-										var newErrs = _v21.a;
-										return $elm$core$Result$Err(
-											_Utils_ap(
-												identifyErrors(newErrs),
-												errs));
-									}
+									var errs = _v20.a;
+									return $elm$core$Result$Err(errs);
 								}
-							}),
-						$elm$core$Result$Ok(_List_Nil),
-						A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, state)));
+							} else {
+								var errs = res.a;
+								var _v21 = itemControl.parse(item);
+								if (_v21.$ === 'Ok') {
+									return $elm$core$Result$Err(errs);
+								} else {
+									var newErrs = _v21.a;
+									return $elm$core$Result$Err(
+										_Utils_ap(newErrs, errs));
+								}
+							}
+						}),
+					$elm$core$Result$Ok(_List_Nil),
+					A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, state));
 			};
 			var listUpdate = F2(
 				function (delta, state) {
@@ -18831,10 +18794,7 @@ var $author$project$Control$list = function (_v0) {
 										var prevCmd = _v15.b;
 										if (_Utils_eq(thisIdx, idx)) {
 											var itemControl = ctrl(
-												A2(
-													$author$project$Path$add,
-													$elm$core$String$fromInt(idx),
-													path));
+												A2($author$project$Path$add, idx, path));
 											var _v16 = A2(itemControl.update, itemDelta, item);
 											var newItem = _v16.a;
 											var newCmd = _v16.b;
@@ -18873,10 +18833,7 @@ var $author$project$Control$list = function (_v0) {
 						F2(
 							function (idx, itemState) {
 								var itemControl = ctrl(
-									A2(
-										$author$project$Path$add,
-										$elm$core$String$fromInt(idx),
-										path));
+									A2($author$project$Path$add, idx, path));
 								return itemControl.collectDebouncingReceivers(itemState);
 							}),
 						listState));
@@ -18898,10 +18855,7 @@ var $author$project$Control$list = function (_v0) {
 								F2(
 									function (idx, item) {
 										var itemControl = ctrl(
-											A2(
-												$author$project$Path$add,
-												$elm$core$String$fromInt(idx),
-												path));
+											A2($author$project$Path$add, idx, path));
 										var filteredAlerts = A2(
 											$elm$core$List$filterMap,
 											function (alert) {
@@ -18928,10 +18882,7 @@ var $author$project$Control$list = function (_v0) {
 							F2(
 								function (idx, item) {
 									var itemControl = ctrl(
-										A2(
-											$author$project$Path$add,
-											$elm$core$String$fromInt(idx),
-											path));
+										A2($author$project$Path$add, idx, path));
 									return itemControl.emitAlerts(item);
 								}),
 							s));
@@ -18954,10 +18905,7 @@ var $author$project$Control$list = function (_v0) {
 								var itemInputs = _v7.a;
 								var itemCmds = _v7.b;
 								var itemControl = ctrl(
-									A2(
-										$author$project$Path$add,
-										$elm$core$String$fromInt(idx),
-										path));
+									A2($author$project$Path$add, idx, path));
 								var _v8 = itemControl.initWith(itemInput);
 								var itemState = _v8.a;
 								var itemCmd = _v8.b;
@@ -19003,10 +18951,7 @@ var $author$project$Control$list = function (_v0) {
 							F2(
 								function (idx, item) {
 									var itemControl = ctrl(
-										A2(
-											$author$project$Path$add,
-											$elm$core$String$fromInt(idx),
-											path));
+										A2($author$project$Path$add, idx, path));
 									return itemControl.setAllIdle(item);
 								}),
 							s));
@@ -19022,10 +18967,7 @@ var $author$project$Control$list = function (_v0) {
 								F2(
 									function (idx, itemState) {
 										var itemControl = ctrl(
-											A2(
-												$author$project$Path$add,
-												$elm$core$String$fromInt(idx),
-												path));
+											A2($author$project$Path$add, idx, path));
 										return A2(
 											$elm$core$Platform$Sub$map,
 											$author$project$Control$ChangeItem(idx),
@@ -19342,6 +19284,7 @@ var $author$project$Control$tagHelper = F4(
 			return $author$project$Control$Rec(r);
 		} else {
 			var rec = builder.a;
+			var newIndex = rec.index + 1;
 			return $author$project$Control$Cus(
 				{
 					alertEmitter: A2($elm$core$Basics$composeR, rec.alertEmitter, $author$project$Control$customTypeAlertEmitter),
@@ -19361,7 +19304,7 @@ var $author$project$Control$tagHelper = F4(
 					errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$customTypeErrorCollector),
 					fns: function (path) {
 						var control_ = control(
-							A2($author$project$Path$add, label_, path));
+							A2($author$project$Path$add, newIndex, path));
 						return A2(
 							$elm$core$Basics$composeL,
 							rec.fns(path),
@@ -19371,14 +19314,14 @@ var $author$project$Control$tagHelper = F4(
 									{index: rec.index})));
 					},
 					idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$selectedTagIdleSetter),
-					index: rec.index + 1,
+					index: newIndex,
 					initialDeltas: function (path) {
 						return A2(
 							$elm$core$Basics$composeL,
 							rec.initialDeltas(path),
 							$elm$core$Tuple$pair(
 								control(
-									A2($author$project$Path$add, label_, path)).init.b));
+									A2($author$project$Path$add, newIndex, path)).init.b));
 					},
 					initialStates: function (path) {
 						return A2(
@@ -19386,7 +19329,7 @@ var $author$project$Control$tagHelper = F4(
 							rec.initialStates(path),
 							$elm$core$Tuple$pair(
 								control(
-									A2($author$project$Path$add, label_, path)).init.a));
+									A2($author$project$Path$add, newIndex, path)).init.a));
 					},
 					initialiseDeltas: A2($elm$core$Basics$composeR, rec.initialiseDeltas, $author$project$Control$customTypeDeltaInitialiser),
 					labels: A2($elm$core$List$cons, label_, rec.labels),
@@ -19602,19 +19545,6 @@ var $author$project$Docs$customTypes = A2(
 	$author$project$Docs$mdAfter,
 	$author$project$Docs$customTypesOutro,
 	A2($author$project$Docs$mdBefore, $author$project$Docs$customTypesIntro, $author$project$Docs$customTypesCustomerControl));
-var $author$project$Control$id = F2(
-	function (id_, _v0) {
-		var control = _v0.a;
-		var identifier = function (i) {
-			return _Utils_update(
-				i,
-				{
-					id: $elm$core$Maybe$Just(id_)
-				});
-		};
-		return $author$project$Control$Control(
-			A2($elm$core$Basics$composeR, control, identifier));
-	});
 var $author$project$Docs$listsIntro = '\n## Lists, Dicts, Sets and Arrays\n\nHang on a minute - if each Shapes.com customer can only purchase a single product, the company is probably not going to\nbe very successful! \n\nWhat we really want our system to do is keep track of _all_ the products that each customer buys. Perhaps we could use \nsome nifty data structure like a `List`?\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    , products : List Product\n    , id : Id\n    }\n```\n\nFortunately, it\'s easy to turn any control into a list of controls by passing it to `Control.list`:\n\n```\nproductListControl = \n    Control.list productControl\n```\n\nThis will give you a form that produces a list of products:\n';
 var $author$project$Docs$listsOutro = '\n### Wiring it up \n\nNow you can add your new `productListControl` to your `customerControl` as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age products -> \n            { name = name\n            , age = age\n            , products = products\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .products productListControl\n        |> Control.end\n```\n\n### Other list-like things\n\nThe package includes built-in combinators for three other list-like data structures from Elm\'s standard library: \n`Array`, `Set` and `Dict`.\n\n`Control.array` and `Control.set` have exactly the same API as `Control.list` - just pass them a control of any type and \nyou\'ll get a control that produces an `Array` or `Set` of that type. \n\n`Control.dict` is similar, except that it takes _two_ controls as arguments. It uses the first as the key and the second \nas the value for the `Dict` it produces.\n';
 var $author$project$Docs$listsDictsSetsAndArrays = A2(
@@ -19909,8 +19839,8 @@ var $author$project$Docs$yourFirstForm = A2(
 	'\n(Although the styling will be different, because `elm reactor` doesn\'t include any CSS.)\n\nTry swapping `Control.bool` for `Control.string` or `Control.int` to see different types of controls in action.\n\nHowever, most useful forms contain more than one control. How can we _combine_ controls to make something a bit more \ninteresting?\n',
 	A2($author$project$Docs$mdBefore, '\n## Your first form\nLet\'s get up and running by building the simplest possible thing: a form that consists of just a single `Bool` input.\n\nCreate a new project folder, open your terminal, run `elm init` and then `elm install edkelly303/elm-any-type-forms`.\n\nNext, create a file called \'Main.elm\' in the `/src` subfolder. Open `Main.elm` in your code editor and paste in the \nfollowing:\n\n```\nmodule Main exposing (main)\n\nimport Control\n\nmain =\n    Control.sandbox\n        { control = Control.bool\n        , outputToString = Debug.toString\n        }\n```\n\nIf you now run `elm reactor` from the root of your project folder and visit \n[http://localhost:8000/src/Main.elm](http://localhost:8000/src/Main.elm), you should see a webpage with a control \nsomething like this:\n', $author$project$Control$bool));
 var $author$project$Docs$lessons = A2(
-	$author$project$Control$id,
-	'lessons',
+	$author$project$Docs$mdBefore,
+	'# An introduction to `elm-any-type-forms`',
 	A2(
 		$author$project$Control$label,
 		'Lessons',
@@ -20022,31 +19952,110 @@ var $author$project$Docs$lessons = A2(
 														}))))))))))))));
 var $author$project$Docs$form = $author$project$Control$form(
 	{control: $author$project$Docs$lessons, onSubmit: $elm$core$Maybe$Nothing, onUpdate: $elm$core$Maybe$Just});
+var $elm$core$Debug$toString = _Debug_toString;
 var $author$project$Docs$main = $elm$browser$Browser$document(
 	{
 		init: function (_v0) {
-			return $author$project$Docs$form.init;
+			var _v1 = $author$project$Docs$form.init;
+			var initialForm = _v1.a;
+			var cmd = _v1.b;
+			return _Utils_Tuple2(
+				{form: initialForm, output: $elm$core$Maybe$Nothing},
+				cmd);
 		},
-		subscriptions: $author$project$Docs$form.subscriptions,
+		subscriptions: function (model) {
+			return $author$project$Docs$form.subscriptions(model.form);
+		},
 		update: F2(
 			function (msg, model) {
 				if (msg.$ === 'Nothing') {
-					var _v2 = $author$project$Docs$form.submit(model);
-					var newModel = _v2.a;
-					var result = _v2.b;
-					return _Utils_Tuple2(newModel, $elm$core$Platform$Cmd$none);
+					var _v3 = $author$project$Docs$form.submit(model.form);
+					var newForm = _v3.a;
+					var result = _v3.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{
+								form: newForm,
+								output: $elm$core$Maybe$Just(result)
+							}),
+						$elm$core$Platform$Cmd$none);
 				} else {
 					var delta = msg.a;
-					return A2($author$project$Docs$form.update, delta, model);
+					var _v4 = A2($author$project$Docs$form.update, delta, model.form);
+					var newForm = _v4.a;
+					var cmd = _v4.b;
+					return _Utils_Tuple2(
+						_Utils_update(
+							model,
+							{form: newForm}),
+						cmd);
 				}
 			}),
 		view: function (model) {
 			return {
 				body: _List_fromArray(
 					[
-						$author$project$Docs$form.view(model)
+						A2(
+						$elm$html$Html$div,
+						_List_Nil,
+						_List_fromArray(
+							[
+								$author$project$Docs$form.view(model.form),
+								function () {
+								var _v5 = model.output;
+								if (_v5.$ === 'Nothing') {
+									return $elm$html$Html$text('');
+								} else {
+									if (_v5.a.$ === 'Ok') {
+										var val = _v5.a.a;
+										return A2(
+											$elm$html$Html$div,
+											_List_Nil,
+											_List_fromArray(
+												[
+													$elm$html$Html$text('Success!'),
+													A2(
+													$elm$html$Html$pre,
+													_List_Nil,
+													_List_fromArray(
+														[
+															$elm$html$Html$text(
+															$elm$core$Debug$toString(val))
+														]))
+												]));
+									} else {
+										var errors = _v5.a.a;
+										return A2(
+											$elm$html$Html$div,
+											_List_Nil,
+											_List_fromArray(
+												[
+													$elm$html$Html$text('Failure!'),
+													A2(
+													$elm$html$Html$ul,
+													_List_Nil,
+													A2(
+														$elm$core$List$map,
+														function (_v6) {
+															var label = _v6.label;
+															var message = _v6.message;
+															return A2(
+																$elm$html$Html$li,
+																_List_Nil,
+																_List_fromArray(
+																	[
+																		$elm$html$Html$text(label + (': ' + message))
+																	]));
+														},
+														errors))
+												]));
+									}
+								}
+							}()
+							]))
 					]),
-				title: 'Docs'
+				title: 'elm-any-type-forms tutorial'
 			};
 		}
 	});
