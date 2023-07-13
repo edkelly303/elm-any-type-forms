@@ -1,5 +1,69 @@
 body {
     font-family: Arial, Helvetica, sans-serif;
+    background-color: lightblue;
+    padding: 0px;
+    margin: 0px;
+}
+
+body>div {
+    background-color: white;
+    position: fixed;
+    padding: 0px;
+    top: 40px;
+    left: 40px;
+    width: calc(100vw - 160px);
+    height: calc(100vh - 80px);
+    overflow-y: scroll;
+    overflow-x: hidden;
+    padding-left: 40px;
+    padding-right: 40px;
+}
+
+h1 {
+    background-color: white;
+    position: fixed;
+    top: 40px;
+    width: calc(100vw - 160px);
+    margin: 0px;
+    padding-top: 40px;
+    height: 80px;
+}
+
+#lessons {
+    position: fixed;
+    top: 140px;
+    background-color: white;
+    margin-left: 0px;
+    width: calc(100vw - 160px);
+    height: 70px;
+    display: flex;
+    flex-direction: row;
+    border: none;
+    padding: 0px;
+    overflow-x: scroll;
+}
+
+#lessons legend {
+    display: none;
+}
+
+#lessons label {
+    cursor: pointer;
+    border: 1px solid lightpink;
+    border-radius: 3px;
+    width: 100px;
+    height: 40px;
+    text-align: center;
+    display:block;
+    padding: 5px;
+}
+
+#lessons input[type="radio"] {
+    display: none;
+}
+
+#lessons+div {
+    margin-top: 180px;
 }
 
 p {
@@ -124,4 +188,8 @@ code {
     border-radius: 3px;
     padding: 2px;
     background-color: aliceblue;
+}
+
+button[type="button"] {
+    display: none;
 }

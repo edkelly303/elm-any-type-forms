@@ -128,18 +128,20 @@ lessons =
                 CreateYourOwn data ->
                     l10 data
         )
-        |> Control.tag1 "1: Basic controls" BasicControls basicControls
-        |> Control.tag1 "2: Your first form" YourFirstForm yourFirstForm
-        |> Control.tag1 "3: Tuples and triples" TuplesAndTriples tuplesAndTriples
-        |> Control.tag1 "4: Records and labels" Records records
-        |> Control.tag1 "5: Custom types" CustomTypes customTypes
-        |> Control.tag1 "6: Lists, Dicts, Sets, and Arrays" ListsDictsSetsAndArrays listsDictsSetsAndArrays
-        |> Control.tag1 "7: Converting control types" Mapping mapping
-        |> Control.tag1 "8: Validating controls" Validation validation
-        |> Control.tag1 "9: Multi-control validation" MultiValidation multivalidation
-        |> Control.tag1 "10: Creating your own controls" CreateYourOwn createYourOwn
+        |> Control.tag1 "Basic controls" BasicControls basicControls
+        |> Control.tag1 "Your first form" YourFirstForm yourFirstForm
+        |> Control.tag1 "Tuples and triples" TuplesAndTriples tuplesAndTriples
+        |> Control.tag1 "Records and labels" Records records
+        |> Control.tag1 "Custom types" CustomTypes customTypes
+        |> Control.tag1 "Lists, Dicts, Sets & Arrays" ListsDictsSetsAndArrays listsDictsSetsAndArrays
+        |> Control.tag1 "Converting controls" Mapping mapping
+        |> Control.tag1 "Validating controls" Validation validation
+        |> Control.tag1 "Multi-control validation" MultiValidation multivalidation
+        |> Control.tag1 "Creating your own controls" CreateYourOwn createYourOwn
         |> Control.end
         |> Control.label "Lessons"
+        |> Control.id "lessons"
+        |> Control.wrap (\v -> [ H.div [HA.class "wooo"] v ])
         |> mdBefore "# An introduction to `elm-any-type-forms`"
 
 
