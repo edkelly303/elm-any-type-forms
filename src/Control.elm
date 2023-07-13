@@ -11,6 +11,7 @@ module Control exposing
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, Builder, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+    , wrapView
     )
 
 {-|
@@ -1243,6 +1244,22 @@ layout v (Control control) =
     let
         viewer i =
             { i | view = \staticConfig dynamicConfig -> v (i.childViews staticConfig dynamicConfig) staticConfig dynamicConfig }
+    in
+    Control (control >> viewer)
+
+
+wrapView wrapper (Control control) =
+    let
+        viewer i =
+            { i
+                | view =
+                    \staticConfig dynamicConfig ->
+                        List.concat
+                            [ [ Maybe.withDefault (H.text "") staticConfig.before ]
+                            , wrapper (i.view { staticConfig | before = Nothing, after = Nothing } dynamicConfig)
+                            , [ Maybe.withDefault (H.text "") staticConfig.after ]
+                            ]
+            }
     in
     Control (control >> viewer)
 
