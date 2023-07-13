@@ -54,7 +54,7 @@ h1 {
     width: 100px;
     height: 40px;
     text-align: center;
-    display:block;
+    display: block;
     padding: 5px;
 }
 
@@ -190,6 +190,6 @@ code {
     background-color: aliceblue;
 }
 
-button[type="button"] {
+input[type="submit"] {
     display: none;
 }

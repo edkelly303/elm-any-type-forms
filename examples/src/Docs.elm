@@ -51,27 +51,29 @@ main =
                 , body =
                     [ H.div []
                         [ form.view model.form
-                        , case model.output of
-                            Nothing ->
-                                H.text ""
-
-                            Just (Ok val) ->
-                                H.div []
-                                    [ H.text "Success!"
-                                    , H.pre [] [ H.text (Debug.toString val) ]
-                                    ]
-
-                            Just (Err errors) ->
-                                H.div []
-                                    [ H.text "Failure!"
-                                    , H.ul [] (List.map (\{ label, message } -> H.li [] [ H.text (label ++ ": " ++ message) ]) errors)
-                                    ]
+                        --, viewOutput model.output
                         ]
                     ]
                 }
         , subscriptions = \model -> form.subscriptions model.form
         }
 
+viewOutput output = 
+    case output of
+        Nothing ->
+            H.text ""
+
+        Just (Ok val) ->
+            H.div []
+                [ H.text "Success!"
+                , H.pre [] [ H.text (Debug.toString val) ]
+                ]
+
+        Just (Err errors) ->
+            H.div []
+                [ H.text "Failure!"
+                , H.ul [] (List.map (\{ label, message } -> H.li [] [ H.text (label ++ ": " ++ message) ]) errors)
+                ]
 
 form =
     Control.form

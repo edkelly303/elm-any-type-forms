@@ -4785,7 +4785,6 @@ var $elm$core$Maybe$Just = function (a) {
 	return {$: 'Just', a: a};
 };
 var $elm$core$Maybe$Nothing = {$: 'Nothing'};
-var $elm$core$Basics$append = _Utils_append;
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -4811,6 +4810,7 @@ var $elm$core$Basics$False = {$: 'False'};
 var $elm$core$Basics$add = _Basics_add;
 var $elm$core$String$all = _String_all;
 var $elm$core$Basics$and = _Basics_and;
+var $elm$core$Basics$append = _Utils_append;
 var $elm$json$Json$Encode$encode = _Json_encode;
 var $elm$core$String$fromInt = _String_fromNumber;
 var $elm$core$String$join = F2(
@@ -5495,49 +5495,6 @@ var $author$project$Control$State = F2(
 	function (a, b) {
 		return {$: 'State', a: a, b: b};
 	});
-var $elm$html$Html$button = _VirtualDom_node('button');
-var $elm$virtual_dom$VirtualDom$Normal = function (a) {
-	return {$: 'Normal', a: a};
-};
-var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
-var $elm$html$Html$Events$on = F2(
-	function (event, decoder) {
-		return A2(
-			$elm$virtual_dom$VirtualDom$on,
-			event,
-			$elm$virtual_dom$VirtualDom$Normal(decoder));
-	});
-var $elm$html$Html$Events$onClick = function (msg) {
-	return A2(
-		$elm$html$Html$Events$on,
-		'click',
-		$elm$json$Json$Decode$succeed(msg));
-};
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
-var $elm$json$Json$Encode$string = _Json_wrap;
-var $elm$html$Html$Attributes$stringProperty = F2(
-	function (key, string) {
-		return A2(
-			_VirtualDom_property,
-			key,
-			$elm$json$Json$Encode$string(string));
-	});
-var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
-var $author$project$Control$button = F2(
-	function (msg, text) {
-		return A2(
-			$elm$html$Html$button,
-			_List_fromArray(
-				[
-					$elm$html$Html$Attributes$type_('button'),
-					$elm$html$Html$Events$onClick(msg)
-				]),
-			_List_fromArray(
-				[
-					$elm$html$Html$text(text)
-				]));
-	});
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
 		return A3(
@@ -5600,6 +5557,7 @@ var $author$project$Control$initWith = F2(
 		return $author$project$Control$Control(
 			A2($elm$core$Basics$composeR, control, initialiser));
 	});
+var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
 var $elm$html$Html$map = $elm$virtual_dom$VirtualDom$map;
 var $elm$core$Platform$Cmd$map = _Platform_map;
@@ -5643,6 +5601,23 @@ var $elm$core$List$member = F2(
 			xs);
 	});
 var $elm$core$Basics$not = _Basics_not;
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
 var $elm$html$Html$Events$alwaysPreventDefault = function (msg) {
 	return _Utils_Tuple2(msg, true);
 };
@@ -5671,6 +5646,17 @@ var $author$project$Path$Path = function (a) {
 var $author$project$Path$root = $author$project$Path$Path(
 	_List_fromArray(
 		[1]));
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $elm$json$Json$Encode$string = _Json_wrap;
+var $elm$html$Html$Attributes$stringProperty = F2(
+	function (key, string) {
+		return A2(
+			_VirtualDom_property,
+			key,
+			$elm$json$Json$Encode$string(string));
+	});
+var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
 var $author$project$Control$form = function (_v0) {
 	var onUpdate = _v0.onUpdate;
 	var onSubmit = _v0.onSubmit;
@@ -5772,7 +5758,17 @@ var $author$project$Control$form = function (_v0) {
 							})),
 					_List_fromArray(
 						[
-							A2($author$project$Control$button, onSubmit, 'Submit')
+							A2(
+							$elm$html$Html$input,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$type_('submit'),
+									$elm$html$Html$Events$onClick(onSubmit)
+								]),
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Submit')
+								]))
 						])));
 		}
 	};
@@ -6179,7 +6175,6 @@ var $author$project$Control$create = function (config) {
 };
 var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
 var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
-var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$html$Html$label = _VirtualDom_node('label');
 var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -18599,6 +18594,21 @@ var $author$project$Control$DeleteItem = function (a) {
 var $author$project$Control$InsertItem = function (a) {
 	return {$: 'InsertItem', a: a};
 };
+var $elm$html$Html$button = _VirtualDom_node('button');
+var $author$project$Control$button = F2(
+	function (msg, text) {
+		return A2(
+			$elm$html$Html$button,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$type_('button'),
+					$elm$html$Html$Events$onClick(msg)
+				]),
+			_List_fromArray(
+				[
+					$elm$html$Html$text(text)
+				]));
+	});
 var $author$project$Control$listView = F5(
 	function (path, staticConfig, dynamicConfig, debouncingReceivers, ctrl) {
 		var id_ = A2(
@@ -19974,7 +19984,6 @@ var $author$project$Docs$lessons = A2(
 															})))))))))))))));
 var $author$project$Docs$form = $author$project$Control$form(
 	{control: $author$project$Docs$lessons, onSubmit: $elm$core$Maybe$Nothing, onUpdate: $elm$core$Maybe$Just});
-var $elm$core$Debug$toString = _Debug_toString;
 var $author$project$Docs$main = $elm$browser$Browser$document(
 	{
 		init: function (_v0) {
@@ -20023,58 +20032,7 @@ var $author$project$Docs$main = $elm$browser$Browser$document(
 						_List_Nil,
 						_List_fromArray(
 							[
-								$author$project$Docs$form.view(model.form),
-								function () {
-								var _v5 = model.output;
-								if (_v5.$ === 'Nothing') {
-									return $elm$html$Html$text('');
-								} else {
-									if (_v5.a.$ === 'Ok') {
-										var val = _v5.a.a;
-										return A2(
-											$elm$html$Html$div,
-											_List_Nil,
-											_List_fromArray(
-												[
-													$elm$html$Html$text('Success!'),
-													A2(
-													$elm$html$Html$pre,
-													_List_Nil,
-													_List_fromArray(
-														[
-															$elm$html$Html$text(
-															$elm$core$Debug$toString(val))
-														]))
-												]));
-									} else {
-										var errors = _v5.a.a;
-										return A2(
-											$elm$html$Html$div,
-											_List_Nil,
-											_List_fromArray(
-												[
-													$elm$html$Html$text('Failure!'),
-													A2(
-													$elm$html$Html$ul,
-													_List_Nil,
-													A2(
-														$elm$core$List$map,
-														function (_v6) {
-															var label = _v6.label;
-															var message = _v6.message;
-															return A2(
-																$elm$html$Html$li,
-																_List_Nil,
-																_List_fromArray(
-																	[
-																		$elm$html$Html$text(label + (': ' + message))
-																	]));
-														},
-														errors))
-												]));
-									}
-								}
-							}()
+								$author$project$Docs$form.view(model.form)
 							]))
 					]),
 				title: 'elm-any-type-forms tutorial'
