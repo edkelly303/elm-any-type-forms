@@ -141,7 +141,6 @@ lessons =
         |> Control.end
         |> Control.label "Lessons"
         |> Control.id "lessons"
-        |> Control.wrap (\v -> [ H.div [HA.class "wooo"] v ])
         |> mdBefore "# An introduction to `elm-any-type-forms`"
 
 
