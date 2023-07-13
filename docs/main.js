@@ -16967,8 +16967,14 @@ var $author$project$Docs$md = function (markdownInput) {
 			$author$project$Docs$deadEndsToString,
 			$dillonkearns$elm_markdown$Markdown$Parser$parse(markdownInput)));
 	if (_v0.$ === 'Ok') {
-		var rendered = _v0.a;
-		return A2($elm$html$Html$div, _List_Nil, rendered);
+		if (_v0.a.b && (!_v0.a.b.b)) {
+			var _v1 = _v0.a;
+			var rendered = _v1.a;
+			return rendered;
+		} else {
+			var rendered = _v0.a;
+			return A2($elm$html$Html$div, _List_Nil, rendered);
+		}
 	} else {
 		var errors = _v0.a;
 		return $elm$html$Html$text(errors);
@@ -19545,6 +19551,19 @@ var $author$project$Docs$customTypes = A2(
 	$author$project$Docs$mdAfter,
 	$author$project$Docs$customTypesOutro,
 	A2($author$project$Docs$mdBefore, $author$project$Docs$customTypesIntro, $author$project$Docs$customTypesCustomerControl));
+var $author$project$Control$id = F2(
+	function (id_, _v0) {
+		var control = _v0.a;
+		var identifier = function (i) {
+			return _Utils_update(
+				i,
+				{
+					id: $elm$core$Maybe$Just(id_)
+				});
+		};
+		return $author$project$Control$Control(
+			A2($elm$core$Basics$composeR, control, identifier));
+	});
 var $author$project$Docs$listsIntro = '\n## Lists, Dicts, Sets and Arrays\n\nHang on a minute - if each Shapes.com customer can only purchase a single product, the company is probably not going to\nbe very successful! \n\nWhat we really want our system to do is keep track of _all_ the products that each customer buys. Perhaps we could use \nsome nifty data structure like a `List`?\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    , products : List Product\n    , id : Id\n    }\n```\n\nFortunately, it\'s easy to turn any control into a list of controls by passing it to `Control.list`:\n\n```\nproductListControl = \n    Control.list productControl\n```\n\nThis will give you a form that produces a list of products:\n';
 var $author$project$Docs$listsOutro = '\n### Wiring it up \n\nNow you can add your new `productListControl` to your `customerControl` as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age products -> \n            { name = name\n            , age = age\n            , products = products\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .products productListControl\n        |> Control.end\n```\n\n### Other list-like things\n\nThe package includes built-in combinators for three other list-like data structures from Elm\'s standard library: \n`Array`, `Set` and `Dict`.\n\n`Control.array` and `Control.set` have exactly the same API as `Control.list` - just pass them a control of any type and \nyou\'ll get a control that produces an `Array` or `Set` of that type. \n\n`Control.dict` is similar, except that it takes _two_ controls as arguments. It uses the first as the key and the second \nas the value for the `Dict` it produces.\n';
 var $author$project$Docs$listsDictsSetsAndArrays = A2(
@@ -19842,103 +19861,107 @@ var $author$project$Docs$lessons = A2(
 	$author$project$Docs$mdBefore,
 	'# An introduction to `elm-any-type-forms`',
 	A2(
-		$author$project$Control$label,
-		'Lessons',
-		$author$project$Control$end(
-			A4(
-				$author$project$Control$tag1,
-				'10: Creating your own controls',
-				$author$project$Docs$CreateYourOwn,
-				$author$project$Docs$createYourOwn,
+		$author$project$Control$id,
+		'lessons',
+		A2(
+			$author$project$Control$label,
+			'Lessons',
+			$author$project$Control$end(
 				A4(
 					$author$project$Control$tag1,
-					'9: Multi-control validation',
-					$author$project$Docs$MultiValidation,
-					$author$project$Docs$multivalidation,
+					'Creating your own controls',
+					$author$project$Docs$CreateYourOwn,
+					$author$project$Docs$createYourOwn,
 					A4(
 						$author$project$Control$tag1,
-						'8: Validating controls',
-						$author$project$Docs$Validation,
-						$author$project$Docs$validation,
+						'Multi-control validation',
+						$author$project$Docs$MultiValidation,
+						$author$project$Docs$multivalidation,
 						A4(
 							$author$project$Control$tag1,
-							'7: Converting control types',
-							$author$project$Docs$Mapping,
-							$author$project$Docs$mapping,
+							'Validating controls',
+							$author$project$Docs$Validation,
+							$author$project$Docs$validation,
 							A4(
 								$author$project$Control$tag1,
-								'6: Lists, Dicts, Sets, and Arrays',
-								$author$project$Docs$ListsDictsSetsAndArrays,
-								$author$project$Docs$listsDictsSetsAndArrays,
+								'Converting controls',
+								$author$project$Docs$Mapping,
+								$author$project$Docs$mapping,
 								A4(
 									$author$project$Control$tag1,
-									'5: Custom types',
-									$author$project$Docs$CustomTypes,
-									$author$project$Docs$customTypes,
+									'Lists, Dicts, Sets & Arrays',
+									$author$project$Docs$ListsDictsSetsAndArrays,
+									$author$project$Docs$listsDictsSetsAndArrays,
 									A4(
 										$author$project$Control$tag1,
-										'4: Records and labels',
-										$author$project$Docs$Records,
-										$author$project$Docs$records,
+										'Custom types',
+										$author$project$Docs$CustomTypes,
+										$author$project$Docs$customTypes,
 										A4(
 											$author$project$Control$tag1,
-											'3: Tuples and triples',
-											$author$project$Docs$TuplesAndTriples,
-											$author$project$Docs$tuplesAndTriples,
+											'Records and labels',
+											$author$project$Docs$Records,
+											$author$project$Docs$records,
 											A4(
 												$author$project$Control$tag1,
-												'2: Your first form',
-												$author$project$Docs$YourFirstForm,
-												$author$project$Docs$yourFirstForm,
+												'Tuples and triples',
+												$author$project$Docs$TuplesAndTriples,
+												$author$project$Docs$tuplesAndTriples,
 												A4(
 													$author$project$Control$tag1,
-													'1: Basic controls',
-													$author$project$Docs$BasicControls,
-													$author$project$Docs$basicControls,
-													$author$project$Control$customType(
-														function (l01) {
-															return function (l02) {
-																return function (l03) {
-																	return function (l04) {
-																		return function (l05) {
-																			return function (l06) {
-																				return function (l07) {
-																					return function (l08) {
-																						return function (l09) {
-																							return function (l10) {
-																								return function (tag) {
-																									switch (tag.$) {
-																										case 'BasicControls':
-																											var data = tag.a;
-																											return l01(data);
-																										case 'YourFirstForm':
-																											var data = tag.a;
-																											return l02(data);
-																										case 'TuplesAndTriples':
-																											var data = tag.a;
-																											return l03(data);
-																										case 'Records':
-																											var data = tag.a;
-																											return l04(data);
-																										case 'CustomTypes':
-																											var data = tag.a;
-																											return l05(data);
-																										case 'ListsDictsSetsAndArrays':
-																											var data = tag.a;
-																											return l06(data);
-																										case 'Mapping':
-																											var data = tag.a;
-																											return l07(data);
-																										case 'Validation':
-																											var data = tag.a;
-																											return l08(data);
-																										case 'MultiValidation':
-																											var data = tag.a;
-																											return l09(data);
-																										default:
-																											var data = tag.a;
-																											return l10(data);
-																									}
+													'Your first form',
+													$author$project$Docs$YourFirstForm,
+													$author$project$Docs$yourFirstForm,
+													A4(
+														$author$project$Control$tag1,
+														'Basic controls',
+														$author$project$Docs$BasicControls,
+														$author$project$Docs$basicControls,
+														$author$project$Control$customType(
+															function (l01) {
+																return function (l02) {
+																	return function (l03) {
+																		return function (l04) {
+																			return function (l05) {
+																				return function (l06) {
+																					return function (l07) {
+																						return function (l08) {
+																							return function (l09) {
+																								return function (l10) {
+																									return function (tag) {
+																										switch (tag.$) {
+																											case 'BasicControls':
+																												var data = tag.a;
+																												return l01(data);
+																											case 'YourFirstForm':
+																												var data = tag.a;
+																												return l02(data);
+																											case 'TuplesAndTriples':
+																												var data = tag.a;
+																												return l03(data);
+																											case 'Records':
+																												var data = tag.a;
+																												return l04(data);
+																											case 'CustomTypes':
+																												var data = tag.a;
+																												return l05(data);
+																											case 'ListsDictsSetsAndArrays':
+																												var data = tag.a;
+																												return l06(data);
+																											case 'Mapping':
+																												var data = tag.a;
+																												return l07(data);
+																											case 'Validation':
+																												var data = tag.a;
+																												return l08(data);
+																											case 'MultiValidation':
+																												var data = tag.a;
+																												return l09(data);
+																											default:
+																												var data = tag.a;
+																												return l10(data);
+																										}
+																									};
 																								};
 																							};
 																						};
@@ -19948,8 +19971,7 @@ var $author$project$Docs$lessons = A2(
 																		};
 																	};
 																};
-															};
-														}))))))))))))));
+															})))))))))))))));
 var $author$project$Docs$form = $author$project$Control$form(
 	{control: $author$project$Docs$lessons, onSubmit: $elm$core$Maybe$Nothing, onUpdate: $elm$core$Maybe$Just});
 var $elm$core$Debug$toString = _Debug_toString;
