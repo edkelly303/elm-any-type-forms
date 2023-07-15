@@ -1190,6 +1190,21 @@ layout v (Control control) =
     Control (control >> viewer)
 
 
+
+{- WRAPVIEW -}
+
+
+{-| Transform the HTML output of a `Control`'s view function.
+
+    wrappedInt =
+        Control.int
+            |> Control.wrapView (\\view -> Html.div [] view)
+
+-}
+wrapView :
+    (List (Html (Delta delta)) -> List (Html (Delta delta)))
+    -> Control state delta output
+    -> Control state delta output
 wrapView wrapper (Control control) =
     let
         viewer i =
