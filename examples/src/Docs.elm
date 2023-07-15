@@ -140,7 +140,7 @@ lessons =
         |> Control.tag1 "Validating controls" Validation validation
         |> Control.tag1 "Multi-control validation" MultiValidation multivalidation
         |> Control.tag1 "Creating your own controls" CreateYourOwn createYourOwn
-        |> Control.end
+        |> Control.endCustomType
         |> Control.label "Lessons"
         |> Control.id "lessons"
         |> mdBefore "# An introduction to `elm-any-type-forms`"
@@ -164,7 +164,7 @@ character.""")
 `Control.int` and `Control.float` are both rendered as `<input type="number">`. Both provide built-in validation to 
 ensure that the user enters the right type of number.""")
         |> Control.field .float Control.float
-        |> Control.end
+        |> Control.endRecord
         |> mdBefore """
 ## Basic controls
 Let's start by looking at simple controls for Elm's primitive types: `Bool`, 
@@ -219,7 +219,7 @@ tuplesAndTriples =
     Control.record (\_ _ -> ())
         |> Control.field (\() -> ( 1, "hello" )) (Control.tuple Control.int Control.string)
         |> Control.field (\() -> ( 1, "hello", 1.0 )) (Control.triple Control.int Control.string Control.float |> mdBefore tripleIntro)
-        |> Control.end
+        |> Control.endRecord
         |> mdBefore tuplesAndTriplesIntro
         |> mdAfter tupleAndTripleOutro
 
@@ -279,13 +279,13 @@ records =
         (Control.record (\name age -> { name = name, age = age })
             |> Control.field .name Control.string
             |> Control.field .age Control.int
-            |> Control.end
+            |> Control.endRecord
             |> mdAfter recordMiddle
         )
         (Control.record (\name age -> { name = name, age = age })
             |> Control.field .name (Control.string |> Control.label "Name")
             |> Control.field .age (Control.int |> Control.label "Age")
-            |> Control.end
+            |> Control.endRecord
         )
         |> Control.layout
             (\kids static _ ->
@@ -427,7 +427,7 @@ customTypesCustomerControl =
         |> Control.field .name (Control.string |> Control.label "Name")
         |> Control.field .age (Control.int |> Control.label "Age")
         |> Control.field .product productControl
-        |> Control.end
+        |> Control.endRecord
 
 
 productControl =
@@ -455,7 +455,7 @@ productControl =
             Rectangle
             (Control.int |> Control.label "Width")
             (Control.int |> Control.label "Height")
-        |> Control.end
+        |> Control.endCustomType
         |> Control.label "Product"
 
 
@@ -820,7 +820,7 @@ multivalidation =
         |> Control.field .products productListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
-        |> Control.end
+        |> Control.endRecord
         |> mdBefore multivalidationIntro
         |> mdAfter multivalidationOutro
 
@@ -829,7 +829,7 @@ passwordControl =
     Control.record (\choose confirm -> { choose = choose, confirm = confirm })
         |> Control.field .choose choosePasswordControl
         |> Control.field .confirm confirmPasswordControl
-        |> Control.end
+        |> Control.endRecord
         |> Control.alertIf
             (\{ choose, confirm } -> choose /= confirm)
             "password-mismatch"
@@ -1001,7 +1001,7 @@ createYourOwn =
         |> Control.field .products productListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
-        |> Control.end
+        |> Control.endRecord
         |> mdBefore createYourOwnIntro
         |> mdAfter createYourOwnOutro
 

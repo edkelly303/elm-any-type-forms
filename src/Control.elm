@@ -7,10 +7,10 @@ module Control exposing
     , alertIf, respond
     , alertAtIndexes
     , initWith, debounce, id, name, label, class, classList, wrapView
-    , record, field, hiddenField, readOnlyField, end, layout
-    , customType, tag0, tag1, tag2, tag3, tag4, tag5
+    , record, field, hiddenField, readOnlyField, endRecord, layout
+    , customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
-    , Access, AdvancedControl, Builder, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+    , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
     )
 
 {-|
@@ -95,12 +95,12 @@ as follows:
 
 # Building record combinators
 
-@docs record, field, hiddenField, readOnlyField, end, layout
+@docs record, field, hiddenField, readOnlyField, endRecord, layout
 
 
 # Building custom type combinators
 
-@docs customType, tag0, tag1, tag2, tag3, tag4, tag5
+@docs customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
 
 
 # Form internals
@@ -115,7 +115,7 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs Access, AdvancedControl, Builder, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+@docs Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
 
 -}
 
@@ -1509,7 +1509,7 @@ map config control =
                 (Control inner) =
                     record config.convert
                         |> field config.revert control
-                        |> end
+                        |> endRecord
             in
             inner path
         )
@@ -1551,7 +1551,7 @@ maybe control =
         )
         |> tag0 "Nothing" Nothing
         |> tag1 "Just" Just control
-        |> end
+        |> endCustomType
         |> label "Maybe"
 
 
@@ -1593,7 +1593,7 @@ result failureControl successControl =
         )
         |> tag1 "Err" Err failureControl
         |> tag1 "Ok" Ok successControl
-        |> end
+        |> endCustomType
         |> label "Result"
 
 
@@ -1622,7 +1622,7 @@ tuple first second =
     record Tuple.pair
         |> field Tuple.first first
         |> field Tuple.second second
-        |> end
+        |> endRecord
         |> label "Tuple"
         |> layout
             (\fields staticConfig _ ->
@@ -1661,7 +1661,7 @@ triple first second third =
         |> field (\( a, _, _ ) -> a) first
         |> field (\( _, b, _ ) -> b) second
         |> field (\( _, _, c ) -> c) third
-        |> end
+        |> endRecord
         |> label "Triple"
         |> layout
             (\fields staticConfig _ ->
@@ -2044,33 +2044,6 @@ array itemControl =
 -}
 
 
-{-| Finalise the construction of a `record` or `customType` combinator.
-
-    type alias Hello =
-        { hello : String }
-
-    helloControl =
-        record Hello
-            |> field "Hello" string
-            |> end
-
--}
-end builder =
-    case builder of
-        Rec r ->
-            endRecord r
-
-        Cus c ->
-            endCustomType c
-
-
-{-| An internal type used to differentiate between builders for record and custom type combinators
--}
-type Builder r c
-    = Rec r
-    | Cus c
-
-
 {-| A combinator that produces a record type, or any 'product' type that needs to
 be constructed from multiple controls. (For example, the `tuple` combinator in
 this library is built using the `record` combinator).
@@ -2095,54 +2068,51 @@ this library is built using the `record` combinator).
 record :
     b
     ->
-        Builder
-            { after : End
-            , afters : End
-            , before : a12 -> a12
-            , befores : a11 -> a11
-            , debouncingReceiverCollector : a10 -> a10
-            , deltaInitialiser : a9 -> a9
-            , errorCollector : a8 -> a8
-            , alertEmitter : a7 -> a7
-            , fns : d -> e -> e
-            , idleSetter : a6 -> a6
-            , index : Int
-            , initialDeltas : f -> g -> g
-            , initialStates : h -> i -> i
-            , initialiser : a5 -> a5
-            , labels : List j
-            , makeSetters : a4 -> a4
-            , parser : a3 -> a3
-            , subscriptionCollector : a2 -> a2
-            , toOutput : b
-            , updater : a1 -> a1
-            , viewer : a -> a
-            }
-            c
-record toOutput =
-    Rec
-        { index = 0
-        , labels = []
-        , toOutput = toOutput
-        , fns = \_ x -> x
-        , initialStates = \_ x -> x
-        , initialDeltas = \_ x -> x
-        , updater = identity
-        , viewer = identity
-        , parser = identity
-        , idleSetter = identity
-        , initialiser = identity
-        , deltaInitialiser = identity
-        , before = identity
-        , befores = identity
-        , after = End
-        , afters = End
-        , makeSetters = identity
-        , alertEmitter = identity
-        , errorCollector = identity
-        , debouncingReceiverCollector = identity
-        , subscriptionCollector = identity
+        { after : End
+        , afters : End
+        , before : a12 -> a12
+        , befores : a11 -> a11
+        , debouncingReceiverCollector : a10 -> a10
+        , deltaInitialiser : a9 -> a9
+        , errorCollector : a8 -> a8
+        , alertEmitter : a7 -> a7
+        , fns : d -> e -> e
+        , idleSetter : a6 -> a6
+        , index : Int
+        , initialDeltas : f -> g -> g
+        , initialStates : h -> i -> i
+        , initialiser : a5 -> a5
+        , labels : List j
+        , makeSetters : a4 -> a4
+        , parser : a3 -> a3
+        , subscriptionCollector : a2 -> a2
+        , toOutput : b
+        , updater : a1 -> a1
+        , viewer : a -> a
         }
+record toOutput =
+    { index = 0
+    , labels = []
+    , toOutput = toOutput
+    , fns = \_ x -> x
+    , initialStates = \_ x -> x
+    , initialDeltas = \_ x -> x
+    , updater = identity
+    , viewer = identity
+    , parser = identity
+    , idleSetter = identity
+    , initialiser = identity
+    , deltaInitialiser = identity
+    , before = identity
+    , befores = identity
+    , after = End
+    , afters = End
+    , makeSetters = identity
+    , alertEmitter = identity
+    , errorCollector = identity
+    , debouncingReceiverCollector = identity
+    , subscriptionCollector = identity
+    }
 
 
 {-| Add a field to a `record` combinator.
@@ -2198,80 +2168,85 @@ type Access
     | Hidden
 
 
-fieldHelper access fromInput (Control control) builder =
-    case builder of
-        Cus c ->
-            Cus c
-
-        Rec rec ->
+fieldHelper access fromInput (Control control) rec =
+    let
+        newIndex =
+            rec.index + 1
+    in
+    { index = newIndex
+    , labels = rec.labels
+    , toOutput = rec.toOutput
+    , fns =
+        \path ->
             let
-                newIndex =
-                    rec.index + 1
+                newPath =
+                    Path.add newIndex path
             in
-            Rec
-                { index = newIndex
-                , labels = rec.labels
-                , toOutput = rec.toOutput
-                , fns =
-                    \path ->
-                        let
-                            newPath =
-                                Path.add newIndex path
-                        in
-                        rec.fns path
-                            << Tuple.pair
-                                (RecordFns
-                                    { field = control newPath
-                                    , fromInput = fromInput
-                                    , access = access
-                                    }
-                                )
-                , initialStates =
-                    \path ->
-                        let
-                            newPath =
-                                Path.add newIndex path
+            rec.fns path
+                << Tuple.pair
+                    (RecordFns
+                        { field = control newPath
+                        , fromInput = fromInput
+                        , access = access
+                        }
+                    )
+    , initialStates =
+        \path ->
+            let
+                newPath =
+                    Path.add newIndex path
 
-                            (ControlFns fns) =
-                                control newPath
-                        in
-                        rec.initialStates path
-                            << Tuple.pair
-                                (fns.init
-                                    |> Tuple.first
-                                )
-                , initialDeltas =
-                    \path ->
-                        let
-                            newPath =
-                                Path.add newIndex path
+                (ControlFns fns) =
+                    control newPath
+            in
+            rec.initialStates path
+                << Tuple.pair
+                    (fns.init
+                        |> Tuple.first
+                    )
+    , initialDeltas =
+        \path ->
+            let
+                newPath =
+                    Path.add newIndex path
 
-                            (ControlFns fns) =
-                                control newPath
-                        in
-                        rec.initialDeltas path
-                            << Tuple.pair
-                                (fns.init
-                                    |> Tuple.second
-                                )
-                , updater = rec.updater >> recordStateUpdater
-                , viewer = rec.viewer >> recordStateViewer
-                , parser = rec.parser >> recordStateValidator
-                , idleSetter = rec.idleSetter >> recordStateIdleSetter
-                , initialiser = rec.initialiser >> recordStateInitialiser
-                , deltaInitialiser = rec.deltaInitialiser >> recordDeltaInitialiser
-                , before = rec.before << Tuple.pair Skip
-                , befores = rec.befores << Tuple.pair rec.before
-                , after = ( Skip, rec.after )
-                , afters = ( rec.after, rec.afters )
-                , makeSetters = rec.makeSetters >> deltaSetterMaker
-                , alertEmitter = rec.alertEmitter >> recordAlertEmitter
-                , errorCollector = rec.errorCollector >> recordErrorCollector
-                , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
-                , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
-                }
+                (ControlFns fns) =
+                    control newPath
+            in
+            rec.initialDeltas path
+                << Tuple.pair
+                    (fns.init
+                        |> Tuple.second
+                    )
+    , updater = rec.updater >> recordStateUpdater
+    , viewer = rec.viewer >> recordStateViewer
+    , parser = rec.parser >> recordStateValidator
+    , idleSetter = rec.idleSetter >> recordStateIdleSetter
+    , initialiser = rec.initialiser >> recordStateInitialiser
+    , deltaInitialiser = rec.deltaInitialiser >> recordDeltaInitialiser
+    , before = rec.before << Tuple.pair Skip
+    , befores = rec.befores << Tuple.pair rec.before
+    , after = ( Skip, rec.after )
+    , afters = ( rec.after, rec.afters )
+    , makeSetters = rec.makeSetters >> deltaSetterMaker
+    , alertEmitter = rec.alertEmitter >> recordAlertEmitter
+    , errorCollector = rec.errorCollector >> recordErrorCollector
+    , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
+    , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
+    }
 
 
+{-| Finalise the construction of a `record` combinator.
+
+    type alias Hello =
+        { hello : String }
+
+    helloControl =
+        record Hello
+            |> field "Hello" string
+            |> end
+
+-}
 endRecord rec =
     Control
         (\path ->
@@ -2873,140 +2848,150 @@ recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( delt
 customType :
     b
     ->
-        Builder
-            r
-            { applyInputs : a17 -> a17
-            , debouncingReceiverCollector : a16 -> a16
-            , deltaAfter : End
-            , deltaAfters : End
-            , deltaBefore : a15 -> a15
-            , deltaBefores : a14 -> a14
-            , destructor : b
-            , errorCollector : a13 -> a13
-            , alertEmitter : a12 -> a12
-            , fns : c -> d -> d
-            , idleSetter : a11 -> a11
-            , index : Int
-            , initialDeltas : e -> f -> f
-            , initialStates : g -> h -> h
-            , initialiseDeltas : a10 -> a10
-            , labels : List i
-            , makeDeltaSetters : a9 -> a9
-            , makeStateSetters : a8 -> a8
-            , parser : a7 -> a7
-            , stateAfter : End
-            , stateAfters : End
-            , stateBefore : a6 -> a6
-            , stateBefores : a5 -> a5
-            , stateInserter : a4 -> a4
-            , subscriptionCollector : a3 -> a3
-            , toArgStates : a2 -> a2
-            , updater : a1 -> a1
-            , viewer : a -> a
-            }
-customType destructor =
-    Cus
-        { index = 0
-        , labels = []
-        , fns = \_ x -> x
-        , initialStates = \_ x -> x
-        , initialDeltas = \_ x -> x
-        , updater = identity
-        , viewer = identity
-        , parser = identity
-        , idleSetter = identity
-        , deltaBefore = identity
-        , deltaBefores = identity
-        , deltaAfter = End
-        , deltaAfters = End
-        , makeDeltaSetters = identity
-        , initialiseDeltas = identity
-        , stateBefore = identity
-        , stateBefores = identity
-        , toArgStates = identity
-        , stateAfter = End
-        , stateAfters = End
-        , makeStateSetters = identity
-        , stateInserter = identity
-        , applyInputs = identity
-        , alertEmitter = identity
-        , errorCollector = identity
-        , debouncingReceiverCollector = identity
-        , subscriptionCollector = identity
-        , destructor = destructor
+        { applyInputs : a17 -> a17
+        , debouncingReceiverCollector : a16 -> a16
+        , deltaAfter : End
+        , deltaAfters : End
+        , deltaBefore : a15 -> a15
+        , deltaBefores : a14 -> a14
+        , destructor : b
+        , errorCollector : a13 -> a13
+        , alertEmitter : a12 -> a12
+        , fns : c -> d -> d
+        , idleSetter : a11 -> a11
+        , index : Int
+        , initialDeltas : e -> f -> f
+        , initialStates : g -> h -> h
+        , initialiseDeltas : a10 -> a10
+        , labels : List i
+        , makeDeltaSetters : a9 -> a9
+        , makeStateSetters : a8 -> a8
+        , parser : a7 -> a7
+        , stateAfter : End
+        , stateAfters : End
+        , stateBefore : a6 -> a6
+        , stateBefores : a5 -> a5
+        , stateInserter : a4 -> a4
+        , subscriptionCollector : a3 -> a3
+        , toArgStates : a2 -> a2
+        , updater : a1 -> a1
+        , viewer : a -> a
         }
+customType destructor =
+    { index = 0
+    , labels = []
+    , fns = \_ x -> x
+    , initialStates = \_ x -> x
+    , initialDeltas = \_ x -> x
+    , updater = identity
+    , viewer = identity
+    , parser = identity
+    , idleSetter = identity
+    , deltaBefore = identity
+    , deltaBefores = identity
+    , deltaAfter = End
+    , deltaAfters = End
+    , makeDeltaSetters = identity
+    , initialiseDeltas = identity
+    , stateBefore = identity
+    , stateBefores = identity
+    , toArgStates = identity
+    , stateAfter = End
+    , stateAfters = End
+    , makeStateSetters = identity
+    , stateInserter = identity
+    , applyInputs = identity
+    , alertEmitter = identity
+    , errorCollector = identity
+    , debouncingReceiverCollector = identity
+    , subscriptionCollector = identity
+    , destructor = destructor
+    }
 
 
-tagHelper label_ (Control control) toArgState builder =
-    case builder of
-        Rec r ->
-            Rec r
-
-        Cus rec ->
+tagHelper label_ (Control control) toArgState rec =
+    let
+        newIndex =
+            rec.index + 1
+    in
+    { index = newIndex
+    , labels = label_ :: rec.labels
+    , fns =
+        \path ->
             let
-                newIndex =
-                    rec.index + 1
+                (ControlFns control_) =
+                    control (Path.add newIndex path)
             in
-            Cus
-                { index = newIndex
-                , labels = label_ :: rec.labels
-                , fns =
-                    \path ->
-                        let
-                            (ControlFns control_) =
-                                control (Path.add newIndex path)
-                        in
-                        rec.fns path
-                            << Tuple.pair
-                                (ControlFns { control_ | index = rec.index })
-                , initialStates =
-                    \path ->
-                        let
-                            (ControlFns controlFns) =
-                                control (Path.add newIndex path)
-                        in
-                        rec.initialStates path
-                            << Tuple.pair
-                                (controlFns.init
-                                    |> Tuple.first
-                                )
-                , initialDeltas =
-                    \path ->
-                        let
-                            (ControlFns controlFns) =
-                                control (Path.add newIndex path)
-                        in
-                        rec.initialDeltas path
-                            << Tuple.pair
-                                (controlFns.init
-                                    |> Tuple.second
-                                )
-                , updater = rec.updater >> customTypeStateUpdater
-                , viewer = rec.viewer >> selectedTagViewer
-                , parser = rec.parser >> selectedTagParser
-                , idleSetter = rec.idleSetter >> selectedTagIdleSetter
-                , deltaBefore = rec.deltaBefore << Tuple.pair Skip
-                , deltaBefores = rec.deltaBefores << Tuple.pair rec.deltaBefore
-                , deltaAfter = ( Skip, rec.deltaAfter )
-                , deltaAfters = ( rec.deltaAfter, rec.deltaAfters )
-                , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
-                , initialiseDeltas = rec.initialiseDeltas >> customTypeDeltaInitialiser
-                , stateBefore = rec.stateBefore << Tuple.pair Nothing
-                , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
-                , toArgStates = rec.toArgStates << Tuple.pair toArgState
-                , stateAfter = ( Nothing, rec.stateAfter )
-                , stateAfters = ( rec.stateAfter, rec.stateAfters )
-                , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
-                , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
-                , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
-                , alertEmitter = rec.alertEmitter >> customTypeAlertEmitter
-                , errorCollector = rec.errorCollector >> customTypeErrorCollector
-                , debouncingReceiverCollector = rec.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
-                , subscriptionCollector = rec.subscriptionCollector >> customTypeSubscriptionCollector
-                , destructor = rec.destructor
-                }
+            rec.fns path
+                << Tuple.pair
+                    (ControlFns { control_ | index = rec.index })
+    , initialStates =
+        \path ->
+            let
+                (ControlFns controlFns) =
+                    control (Path.add newIndex path)
+            in
+            rec.initialStates path
+                << Tuple.pair
+                    (controlFns.init
+                        |> Tuple.first
+                    )
+    , initialDeltas =
+        \path ->
+            let
+                (ControlFns controlFns) =
+                    control (Path.add newIndex path)
+            in
+            rec.initialDeltas path
+                << Tuple.pair
+                    (controlFns.init
+                        |> Tuple.second
+                    )
+    , updater = rec.updater >> customTypeStateUpdater
+    , viewer = rec.viewer >> selectedTagViewer
+    , parser = rec.parser >> selectedTagParser
+    , idleSetter = rec.idleSetter >> selectedTagIdleSetter
+    , deltaBefore = rec.deltaBefore << Tuple.pair Skip
+    , deltaBefores = rec.deltaBefores << Tuple.pair rec.deltaBefore
+    , deltaAfter = ( Skip, rec.deltaAfter )
+    , deltaAfters = ( rec.deltaAfter, rec.deltaAfters )
+    , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
+    , initialiseDeltas = rec.initialiseDeltas >> customTypeDeltaInitialiser
+    , stateBefore = rec.stateBefore << Tuple.pair Nothing
+    , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
+    , toArgStates = rec.toArgStates << Tuple.pair toArgState
+    , stateAfter = ( Nothing, rec.stateAfter )
+    , stateAfters = ( rec.stateAfter, rec.stateAfters )
+    , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
+    , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
+    , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
+    , alertEmitter = rec.alertEmitter >> customTypeAlertEmitter
+    , errorCollector = rec.errorCollector >> customTypeErrorCollector
+    , debouncingReceiverCollector = rec.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
+    , subscriptionCollector = rec.subscriptionCollector >> customTypeSubscriptionCollector
+    , destructor = rec.destructor
+    }
 
 
+{-| Finalise the construction of a `customType` combinator.
+
+    type alias Foo
+        = Bar
+        | Baz
+
+
+    helloControl =
+        customType
+            (\bar baz tag ->
+                case tag of
+                    Bar -> bar
+                    Baz -> baz
+            )
+            |> tag0 "Bar" Bar
+            |> tag0 "Baz" Baz
+            |> endCustomType
+
+-}
 endCustomType rec =
     Control
         (\path ->
@@ -3186,7 +3171,7 @@ tag1 label_ tag control =
         label_
         (record tag
             |> field Tuple.first control
-            |> end
+            |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 ->
             insertArgStateIntoTagStates ( arg1, End )
@@ -3214,7 +3199,7 @@ tag2 label_ tag control1 control2 =
         (record tag
             |> field Tuple.first control1
             |> field (Tuple.second >> Tuple.first) control2
-            |> end
+            |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, End ) )
@@ -3243,7 +3228,7 @@ tag3 label_ tag control1 control2 control3 =
             |> field Tuple.first control1
             |> field (Tuple.second >> Tuple.first) control2
             |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> end
+            |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, End ) ) )
@@ -3260,7 +3245,7 @@ tag4 label_ tag control1 control2 control3 control4 =
             |> field (Tuple.second >> Tuple.first) control2
             |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
             |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
-            |> end
+            |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, End ) ) ) )
@@ -3278,7 +3263,7 @@ tag5 label_ tag control1 control2 control3 control4 control5 =
             |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
             |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
             |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
-            |> end
+            |> endRecord
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 arg5 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, ( arg5, End ) ) ) ) )
