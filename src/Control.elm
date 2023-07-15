@@ -6,12 +6,11 @@ module Control exposing
     , failIf, noteIf
     , alertIf, respond
     , alertAtIndexes
-    , initWith, debounce, id, name, label, class, classList, htmlBefore, htmlAfter
+    , initWith, debounce, id, name, label, class, classList, wrapView
     , record, field, hiddenField, readOnlyField, end, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, Builder, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
-    , wrapView
     )
 
 {-|
@@ -91,7 +90,7 @@ as follows:
 
 # Configuring controls
 
-@docs initWith, debounce, id, name, label, class, classList, htmlBefore, htmlAfter
+@docs initWith, debounce, id, name, label, class, classList, wrapView
 
 
 # Building record combinators
@@ -216,8 +215,8 @@ type alias ControlFns input state delta output =
     , initWith : input -> ( State state, Cmd (Delta delta) )
     , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
     , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
-    , view : ViewConfigStatic (Delta delta) -> ViewConfigDynamic state -> List (Html (Delta delta))
-    , childViews : ViewConfigStatic (Delta delta) -> ViewConfigDynamic state -> List (Html (Delta delta))
+    , view : ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta))
+    , childViews : ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta))
     , parse : State state -> Result (List Feedback) output
     , path : Path
     , emitAlerts : State state -> List Alert
@@ -230,8 +229,6 @@ type alias ControlFns input state delta output =
     , name : Maybe String
     , class : List String
     , subscriptions : State state -> Sub (Delta delta)
-    , htmlBefore : Maybe (Html (Delta delta))
-    , htmlAfter : Maybe (Html (Delta delta))
     }
 
 
@@ -263,13 +260,11 @@ type alias ViewConfigDynamic state =
 
 {-| Some internal stuff needed to view controls
 -}
-type alias ViewConfigStatic delta =
+type alias ViewConfigStatic =
     { name : Maybe String
     , id : Maybe String
     , label : String
     , class : List String
-    , before : Maybe (Html delta)
-    , after : Maybe (Html delta)
     }
 
 
@@ -448,8 +443,6 @@ form { onUpdate, onSubmit, control } =
                     , name = fns.name
                     , label = fns.label
                     , class = fns.class
-                    , before = fns.htmlBefore
-                    , after = fns.htmlAfter
                     }
                     { state = state
                     , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
@@ -556,8 +549,6 @@ sandbox { outputToString, control } =
                             , name = fns.name
                             , label = fns.label
                             , class = fns.class
-                            , before = fns.htmlBefore
-                            , after = fns.htmlAfter
                             }
                             { state = state
                             , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
@@ -683,20 +674,16 @@ create config =
             , childViews = \_ _ -> []
             , view =
                 \staticConfig dynamicConfig ->
-                    List.filterMap identity
-                        [ staticConfig.before
-                        , config.view
-                            { state = dynamicConfig.state
-                            , label = staticConfig.label
-                            , id = Maybe.withDefault (Path.toString path) staticConfig.id
-                            , name = Maybe.withDefault (Path.toString path) staticConfig.name
-                            , class = String.join " " staticConfig.class
-                            }
-                            |> wrappedView dynamicConfig.status
-                            |> H.map ChangeStateOnInput
-                            |> Just
-                        , staticConfig.after
-                        ]
+                    [ config.view
+                        { state = dynamicConfig.state
+                        , label = staticConfig.label
+                        , id = Maybe.withDefault (Path.toString path) staticConfig.id
+                        , name = Maybe.withDefault (Path.toString path) staticConfig.name
+                        , class = String.join " " staticConfig.class
+                        }
+                        |> wrappedView dynamicConfig.status
+                        |> H.map ChangeStateOnInput
+                    ]
             , parse = parse
             , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
             , emitAlerts = \_ -> []
@@ -711,8 +698,6 @@ create config =
                 \(State _ s) ->
                     config.subscriptions s
                         |> Sub.map ChangeStateInternally
-            , htmlBefore = Nothing
-            , htmlAfter = Nothing
             }
         )
 
@@ -1164,49 +1149,6 @@ classList classList_ (Control control) =
 
 
 {-
-   db   db d888888b .88b  d88. db      d8888b. d88888b d88888b  .d88b.  d8888b. d88888b
-   88   88 `~~88~~' 88'YbdP`88 88      88  `8D 88'     88'     .8P  Y8. 88  `8D 88'
-   88ooo88    88    88  88  88 88      88oooY' 88ooooo 88ooo   88    88 88oobY' 88ooooo
-   88~~~88    88    88  88  88 88      88~~~b. 88~~~~~ 88~~~   88    88 88`8b   88~~~~~
-   88   88    88    88  88  88 88booo. 88   8D 88.     88      `8b  d8' 88 `88. 88.
-   YP   YP    YP    YP  YP  YP Y88888P Y8888P' Y88888P YP       `Y88P'  88   YD Y88888P
--}
-
-
-{-| Add an HTML element that will appear immediately before the control in the view.
-
-    intWithHeadingBefore =
-        int
-            |> htmlBefore (Html.h1 [] [ Html.text "I'm a heading" ])
-
--}
-htmlBefore : Html Never -> Control state delta output -> Control state delta output
-htmlBefore html (Control control) =
-    let
-        htmlAdder i =
-            { i | htmlBefore = Just (H.map (always Skip) html) }
-    in
-    Control (control >> htmlAdder)
-
-
-{-| Add an HTML element that will appear immediately after the control in the view.
-
-    intWithTextAfter =
-        int
-            |> htmlAfter (Html.p [] [ Html.text "I'm an explanatory note" ])
-
--}
-htmlAfter : Html Never -> Control state delta output -> Control state delta output
-htmlAfter html (Control control) =
-    let
-        htmlAdder i =
-            { i | htmlAfter = Just (H.map (always Skip) html) }
-    in
-    Control (control >> htmlAdder)
-
-
-
-{-
    db       .d8b.  db    db  .d88b.  db    db d888888b
    88      d8' `8b `8b  d8' .8P  Y8. 88    88 `~~88~~'
    88      88ooo88  `8bd8'  88    88 88    88    88
@@ -1237,7 +1179,7 @@ htmlAfter html (Control control) =
 
 -}
 layout :
-    (List (Html (Delta delta)) -> ViewConfigStatic (Delta delta) -> ViewConfigDynamic state -> List (Html (Delta delta)))
+    (List (Html (Delta delta)) -> ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta)))
     -> Control state delta output
     -> Control state delta output
 layout v (Control control) =
@@ -1254,11 +1196,7 @@ wrapView wrapper (Control control) =
             { i
                 | view =
                     \staticConfig dynamicConfig ->
-                        List.concat
-                            [ [ Maybe.withDefault (H.text "") staticConfig.before ]
-                            , wrapper (i.view { staticConfig | before = Nothing, after = Nothing } dynamicConfig)
-                            , [ Maybe.withDefault (H.text "") staticConfig.after ]
-                            ]
+                        wrapper (i.view staticConfig dynamicConfig)
             }
     in
     Control (control >> viewer)
@@ -1663,12 +1601,7 @@ tuple first second =
         |> label "Tuple"
         |> layout
             (\fields staticConfig _ ->
-                [ staticConfig.before |> Maybe.map List.singleton
-                , Just [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
-                , staticConfig.after |> Maybe.map List.singleton
-                ]
-                    |> List.filterMap identity
-                    |> List.concat
+                [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
             )
 
 
@@ -1707,12 +1640,7 @@ triple first second third =
         |> label "Triple"
         |> layout
             (\fields staticConfig _ ->
-                [ staticConfig.before |> Maybe.map List.singleton
-                , Just [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
-                , staticConfig.after |> Maybe.map List.singleton
-                ]
-                    |> List.filterMap identity
-                    |> List.concat
+                [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
             )
 
 
@@ -1947,8 +1875,6 @@ list (Control ctrl) =
                         listState
                         |> Sub.batch
                         |> Sub.map ChangeStateInternally
-            , htmlBefore = Nothing
-            , htmlAfter = Nothing
             }
         )
 
@@ -3130,13 +3056,7 @@ endRecord rec =
                     viewRecordStates rec.viewer dynamicConfig.alerts fns deltaSetters dynamicConfig.state
 
                 view staticConfig dynamicConfig =
-                    List.filterMap identity
-                        [ staticConfig.before |> Maybe.map List.singleton
-                        , viewRecordStates rec.viewer dynamicConfig.alerts fns deltaSetters dynamicConfig.state
-                            |> Just
-                        , staticConfig.after |> Maybe.map List.singleton
-                        ]
-                        |> List.concat
+                    viewRecordStates rec.viewer dynamicConfig.alerts fns deltaSetters dynamicConfig.state
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
@@ -3173,8 +3093,6 @@ endRecord rec =
             , name = Nothing
             , class = []
             , subscriptions = \(State _ states) -> collectRecordSubscriptions rec.subscriptionCollector deltaSetters fns states
-            , htmlBefore = Nothing
-            , htmlAfter = Nothing
             }
         )
 
@@ -3495,8 +3413,6 @@ recordStateViewer next views alerts ( fns, restFns ) ( setter, restSetters ) ( S
                 , name = fns.field.name
                 , label = fns.field.label
                 , class = fns.field.class
-                , before = fns.field.htmlBefore
-                , after = fns.field.htmlAfter
                 }
                 { state = state
                 , status = getStatus fns.field.parse fns.field.collectErrors alerts (State internalState state)
@@ -3849,13 +3765,7 @@ endCustomType rec =
                         options =
                             List.indexedMap Tuple.pair labels
                     in
-                    [ staticConfig.before |> Maybe.map List.singleton
-                    , customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
-                        |> Just
-                    , staticConfig.after |> Maybe.map List.singleton
-                    ]
-                        |> List.filterMap identity
-                        |> List.concat
+                    customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
 
                 parse =
                     \(State internalState state) -> validateSelectedTagState rec.parser internalState.selected fns state
@@ -3895,8 +3805,6 @@ endCustomType rec =
             , name = Nothing
             , class = []
             , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions rec.subscriptionCollector deltaSetters fns states
-            , htmlBefore = Nothing
-            , htmlAfter = Nothing
             }
         )
 
@@ -4607,8 +4515,6 @@ selectedTagViewer next maybeView alerts selectedTag ( fns, restFns ) ( setter, r
                     , label = fns.label
                     , name = fns.name
                     , class = fns.class
-                    , before = fns.htmlBefore
-                    , after = fns.htmlAfter
                     }
                     { state = state
                     , status = Intact
@@ -4693,7 +4599,7 @@ wrappedView status innerView =
 
 customTypeView :
     Path
-    -> ViewConfigStatic (Delta delta)
+    -> ViewConfigStatic
     -> List ( Int, String )
     -> Int
     -> List (Html (Delta variants))
@@ -4725,7 +4631,7 @@ button msg text =
 
 listView :
     Path
-    -> ViewConfigStatic (Delta (ListDelta delta))
+    -> ViewConfigStatic
     -> ViewConfigDynamic (List (State state))
     -> List Alert
     -> (Path -> ControlFns input state delta output)
@@ -4784,8 +4690,6 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                             , name = control.name
                                             , label = control.label
                                             , class = control.class
-                                            , before = control.htmlBefore
-                                            , after = control.htmlAfter
                                             }
                                             { state = state
                                             , status = getStatus control.parse control.collectErrors filteredAlerts2 (State internalState state)
@@ -4803,11 +4707,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                         |> H.map ChangeStateOnInput
                 ]
     in
-    List.filterMap identity
-        [ staticConfig.before
-        , Just view_
-        , staticConfig.after
-        ]
+    [ view_ ]
 
 
 textControlView : String -> { state : String, id : String, label : String, name : String, class : String } -> List (Html String)

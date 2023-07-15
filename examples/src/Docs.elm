@@ -289,9 +289,9 @@ records =
         )
         |> Control.layout
             (\kids static _ ->
-                Maybe.withDefault [] (Maybe.map List.singleton static.before)
-                    ++ kids
-                    ++ Maybe.withDefault [] (Maybe.map List.singleton static.after)
+                
+                    kids
+                    
             )
         |> mdBefore recordIntro
         |> mdAfter recordOutro
@@ -1213,11 +1213,11 @@ beyond the scope of this introduction. For a deeper dive, check out the docs at
 
 
 mdBefore str =
-    Control.htmlBefore (md str)
+    Control.wrapView (\v -> md str :: v)
 
 
 mdAfter str =
-    Control.htmlAfter (md str)
+    Control.wrapView (\v -> v ++ [md str])
 
 
 md : String -> H.Html msg
