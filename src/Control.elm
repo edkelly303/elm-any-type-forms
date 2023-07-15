@@ -2115,6 +2115,114 @@ record toOutput =
     }
 
 
+type RecordBuilder a a1 a10 a11 a12 a13 a14 a15 a16 a2 a3 a4 a5 a6 a7 a8 a9 after afters b befores c c1 c2 c3 c4 d delta delta1 e f g h input msg msg1 next output output1_1 output2_1 recordDelta recordInput recordOutput recordState recordState0 restDeltaSetters restDeltas restDeltas1 restFns restStates state toOutput value
+    = RB
+        { after : ( Delta delta, b )
+        , afters : ( b, d )
+        , alertEmitter :
+            a16
+            -> List Alert
+            -> ( RecordFns input state delta output recordOutput, restFns )
+            -> ( State state, restStates )
+            -> List Alert
+        , before : a15 -> c4
+        , befores : a14 -> c3
+        , debouncingReceiverCollector :
+            a13
+            -> List Alert
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> List Alert
+        , deltaInitialiser :
+            a12
+            -> List (Cmd msg1)
+            -> ( a11 -> msg1, e )
+            -> ( Cmd a11, f )
+            -> g
+        , errorCollector :
+            a10
+            -> List Alert
+            -> List Feedback
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> List Feedback
+        , fns : Path.Path -> a9 -> c2
+        , idleSetter :
+            a8
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> ( State state, restStates )
+        , index : Int
+        , initialDeltas : Path.Path -> a7 -> c1
+        , initialStates : Path.Path -> a6 -> c
+        , initialiser :
+            a5
+            -> recordInput
+            ->
+                ( RecordFns output state delta output recordInput
+                , restFns
+                )
+            -> ( State state, restStates )
+        , labels : h
+        , makeSetters :
+            a4
+            -> ( ( value, after ) -> delta1, befores )
+            -> ( after, afters )
+            -> ( value -> delta1, next )
+        , parser :
+            a3
+            -> Result (List Feedback) (output -> output1_1)
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> Result (List Feedback) output2_1
+        , subscriptionCollector :
+            a2
+            -> List (Sub msg)
+            -> ( Delta delta -> msg, restDeltas1 )
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> List (Sub msg)
+        , toOutput : toOutput
+        , updater :
+            a1
+            ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state, restStates ) -> recordState0
+                }
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( Delta delta -> recordDelta, restDeltaSetters )
+            -> ( Delta delta, restDeltas )
+            -> ( State state, restStates )
+            -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+        , viewer :
+            a
+            -> List (Html (Delta recordDelta))
+            -> List Alert
+            -> ( RecordFns input state delta output recordOutput, restFns )
+            -> ( Delta delta -> recordDelta, restDeltaSetters )
+            -> ( State state, restStates )
+            -> List (Html (Delta recordDelta))
+        }
+
+
 {-| Add a field to a `record` combinator.
 
     type alias Hello =
@@ -2126,6 +2234,187 @@ record toOutput =
             |> end
 
 -}
+field :
+    (recordOutput -> output1)
+    -> AdvancedControl input1 state1 delta2 output1
+    ->
+        { after : b
+        , afters : d
+        , alertEmitter :
+            a16
+            -> List Alert
+            -> restFns
+            -> restStates
+            -> List Alert
+        , before : ( Delta delta2, a15 ) -> c4
+        , befores : ( ( Delta delta2, a15 ) -> c4, a14 ) -> c3
+        , debouncingReceiverCollector :
+            a13
+            -> List Alert
+            -> restFns
+            -> restStates
+            -> List Alert
+        , deltaInitialiser : a12 -> List (Cmd msg1) -> e -> f -> g
+        , errorCollector :
+            a10
+            -> List Alert
+            -> List Feedback
+            -> restFns
+            -> restStates
+            -> List Feedback
+        , fns :
+            Path.Path
+            ->
+                ( RecordFns input1 state1 delta2 output1 recordOutput
+                , a9
+                )
+            -> c2
+        , idleSetter : a8 -> restFns -> restStates -> restStates
+        , index : Int
+        , initialDeltas : Path.Path -> ( Cmd (Delta delta2), a7 ) -> c1
+        , initialStates : Path.Path -> ( State state1, a6 ) -> c
+        , initialiser : a5 -> recordInput -> restFns -> restStates
+        , labels : h
+        , makeSetters : a4 -> befores -> afters -> next
+        , parser :
+            a3
+            -> Result (List Feedback) output1_1
+            -> restFns
+            -> restStates
+            -> Result (List Feedback) output2_1
+        , subscriptionCollector :
+            a2
+            -> List (Sub msg)
+            -> restDeltas1
+            -> restFns
+            -> restStates
+            -> List (Sub msg)
+        , toOutput : toOutput
+        , updater :
+            a1
+            ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : restStates -> recordState0
+                }
+            -> restFns
+            -> restDeltaSetters
+            -> restDeltas
+            -> restStates
+            -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+        , viewer :
+            a
+            -> List (Html (Delta recordDelta))
+            -> List Alert
+            -> restFns
+            -> restDeltaSetters
+            -> restStates
+            -> List (Html (Delta recordDelta))
+        }
+    ->
+        { after : ( Delta delta, b )
+        , afters : ( b, d )
+        , alertEmitter :
+            a16
+            -> List Alert
+            -> ( RecordFns input state delta output recordOutput, restFns )
+            -> ( State state, restStates )
+            -> List Alert
+        , before : a15 -> c4
+        , befores : a14 -> c3
+        , debouncingReceiverCollector :
+            a13
+            -> List Alert
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> List Alert
+        , deltaInitialiser :
+            a12
+            -> List (Cmd msg1)
+            -> ( a11 -> msg1, e )
+            -> ( Cmd a11, f )
+            -> g
+        , errorCollector :
+            a10
+            -> List Alert
+            -> List Feedback
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> List Feedback
+        , fns : Path.Path -> a9 -> c2
+        , idleSetter :
+            a8
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> ( State state, restStates )
+        , index : Int
+        , initialDeltas : Path.Path -> a7 -> c1
+        , initialStates : Path.Path -> a6 -> c
+        , initialiser :
+            a5
+            -> recordInput
+            ->
+                ( RecordFns output state delta output recordInput
+                , restFns
+                )
+            -> ( State state, restStates )
+        , labels : h
+        , makeSetters :
+            a4
+            -> ( ( value, after ) -> delta1, befores )
+            -> ( after, afters )
+            -> ( value -> delta1, next )
+        , parser :
+            a3
+            -> Result (List Feedback) (output -> output1_1)
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> Result (List Feedback) output2_1
+        , subscriptionCollector :
+            a2
+            -> List (Sub msg)
+            -> ( Delta delta -> msg, restDeltas1 )
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( State state, restStates )
+            -> List (Sub msg)
+        , toOutput : toOutput
+        , updater :
+            a1
+            ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state, restStates ) -> recordState0
+                }
+            ->
+                ( RecordFns input state delta output recordOutput
+                , restFns
+                )
+            -> ( Delta delta -> recordDelta, restDeltaSetters )
+            -> ( Delta delta, restDeltas )
+            -> ( State state, restStates )
+            -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+        , viewer :
+            a
+            -> List (Html (Delta recordDelta))
+            -> List Alert
+            -> ( RecordFns input state delta output recordOutput, restFns )
+            -> ( Delta delta -> recordDelta, restDeltaSetters )
+            -> ( State state, restStates )
+            -> List (Html (Delta recordDelta))
+        }
 field =
     fieldHelper Open
 
@@ -2346,12 +2635,41 @@ endRecord rec =
 -}
 
 
+collectRecordSubscriptions :
+    ((List (Sub msg)
+      -> End
+      -> End
+      -> End
+      -> List (Sub msg)
+     )
+     -> List (Sub msg)
+     -> ( setter, restSetters )
+     -> ( RecordFns input state delta output recordInput, restFns )
+     -> ( State state, restStates )
+     -> List (Sub msg)
+    )
+    -> ( setter, restSetters )
+    -> ( RecordFns input state delta output recordInput, restFns )
+    -> ( State state, restStates )
+    -> Sub (Delta msg)
 collectRecordSubscriptions collector setters fns states =
     collector (\listSubs End End End -> listSubs) [] setters fns states
         |> Sub.batch
         |> Sub.map ChangeStateInternally
 
 
+recordSubscriptionCollector :
+    (List (Sub msg)
+     -> restDeltas
+     -> restFns
+     -> restStates
+     -> List (Sub msg)
+    )
+    -> List (Sub msg)
+    -> ( Delta delta -> msg, restDeltas )
+    -> ( RecordFns input state delta output recordOutput, restFns )
+    -> ( State state, restStates )
+    -> List (Sub msg)
 recordSubscriptionCollector next listSubs ( setter, restSetters ) ( RecordFns fns, restFns ) ( state, restStates ) =
     let
         (ControlFns controlFns) =
@@ -2504,14 +2822,14 @@ deltaSetterMaker next ( before, befores ) ( after, afters ) =
 
 
 initialiseRecordStates :
-    ((input -> End -> End)
-     -> input
-     -> fns
-     -> state
+    ((recordInput -> End -> End)
+     -> recordInput
+     -> ( RecordFns output state delta output recordInput, restFns )
+     -> fieldStates
     )
-    -> input
-    -> fns
-    -> State state
+    -> recordInput
+    -> ( RecordFns output state delta output recordInput, restFns )
+    -> State fieldStates
 initialiseRecordStates initialiser input fns =
     initialiser (\_ End -> End) input fns
         |> State { status = Intact_, selected = 0 }
@@ -2778,14 +3096,14 @@ recordStateUpdater :
      -> restDeltaSetters
      -> restDeltas
      -> restStates
-     -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+     -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
     )
     -> { newStates : ( State state, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) }
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( Delta delta, restDeltas )
     -> ( State state, restStates )
-    -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+    -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
 recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( deltaSetter, restDeltaSetters ) ( delta, restDeltas ) ( state, restStates ) =
     let
         (ControlFns controlFns) =
@@ -3363,14 +3681,14 @@ customTypeStateUpdater :
      -> restDeltaSetters
      -> restDeltas
      -> restStates
-     -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+     -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
     )
     -> { newStates : ( State state, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) }
     -> ( ControlFns input state delta output, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( Delta delta, restDeltas )
     -> ( State state, restStates )
-    -> { newStates : recordState1, newCmds : List (Cmd recordDelta) }
+    -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
 customTypeStateUpdater next { newStates, newCmds } ( ControlFns fns, restFns ) ( deltaSetter, restDeltaSetters ) ( delta, restDeltas ) ( state, restStates ) =
     let
         ( newState, newCmd ) =
