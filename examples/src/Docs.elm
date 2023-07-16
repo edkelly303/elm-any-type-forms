@@ -288,10 +288,8 @@ records =
             |> Control.endRecord
         )
         |> Control.layout
-            (\kids static _ ->
-                
-                    kids
-                    
+            (\kids config ->
+                kids
             )
         |> mdBefore recordIntro
         |> mdAfter recordOutro

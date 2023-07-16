@@ -10,7 +10,8 @@ module Control exposing
     , record, field, hiddenField, readOnlyField, endRecord, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
-    , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+    , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, Path, Feedback
+    , ViewConfig
     )
 
 {-|
@@ -217,8 +218,8 @@ type ControlFns input state delta output
         , initWith : input -> ( State state, Cmd (Delta delta) )
         , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
         , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
-        , view : ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta))
-        , childViews : ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta))
+        , view : ViewConfig state -> List (Html (Delta delta))
+        , subControlViews : ViewConfig state -> List (Html (Delta delta))
         , parse : State state -> Result (List Feedback) output
         , path : Path
         , emitAlerts : State state -> List Alert
@@ -252,18 +253,12 @@ type alias Feedback =
 
 {-| Some internal stuff needed to view controls
 -}
-type alias ViewConfigDynamic state =
+type alias ViewConfig state =
     { state : state
     , status : Status
     , alerts : List Alert
     , selected : Int
-    }
-
-
-{-| Some internal stuff needed to view controls
--}
-type alias ViewConfigStatic =
-    { name : Maybe String
+    , name : Maybe String
     , id : Maybe String
     , label : String
     , class : List String
@@ -447,8 +442,7 @@ form { onUpdate, onSubmit, control } =
                     , name = fns.name
                     , label = fns.label
                     , class = fns.class
-                    }
-                    { state = state
+                    , state = state
                     , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
                     , alerts = alerts
                     , selected = internalState.selected
@@ -553,8 +547,7 @@ sandbox { outputToString, control } =
                             , name = fns.name
                             , label = fns.label
                             , class = fns.class
-                            }
-                            { state = state
+                            , state = state
                             , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
                             , alerts = alerts
                             , selected = internalState.selected
@@ -641,21 +634,21 @@ Here's how we could create a control like the famous
 
 -}
 create : ControlConfig state delta output -> Control state delta output
-create config =
+create controlConfig =
     Control
         (\path ->
             let
                 preUpdate =
-                    wrapUpdate config.update
+                    wrapUpdate controlConfig.update
 
                 parse =
                     \(State _ state) ->
-                        config.parse state
+                        controlConfig.parse state
                             |> Result.mapError
                                 (List.map
                                     (\message ->
                                         { message = message
-                                        , label = config.label
+                                        , label = controlConfig.label
                                         , path = path
                                         , fail = True
                                         }
@@ -666,27 +659,27 @@ create config =
                 { path = path
                 , index = 0
                 , init =
-                    config.initEmpty
+                    controlConfig.initEmpty
                         |> Tuple.mapFirst (State { status = Intact_, selected = 0 })
                         |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , initWith =
                     \input ->
-                        config.initWith input
+                        controlConfig.initWith input
                             |> Tuple.mapFirst (State { status = Intact_, selected = 0 })
                             |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , baseUpdate = preUpdate
                 , update = preUpdate 0
-                , childViews = \_ _ -> []
+                , subControlViews = \_ -> []
                 , view =
-                    \staticConfig dynamicConfig ->
-                        [ config.view
-                            { state = dynamicConfig.state
-                            , label = staticConfig.label
-                            , id = Maybe.withDefault (Path.toString path) staticConfig.id
-                            , name = Maybe.withDefault (Path.toString path) staticConfig.name
-                            , class = String.join " " staticConfig.class
+                    \viewConfig ->
+                        [ controlConfig.view
+                            { state = viewConfig.state
+                            , label = viewConfig.label
+                            , id = Maybe.withDefault (Path.toString path) viewConfig.id
+                            , name = Maybe.withDefault (Path.toString path) viewConfig.name
+                            , class = String.join " " viewConfig.class
                             }
-                            |> wrappedView dynamicConfig.status
+                            |> wrappedView viewConfig.status
                             |> H.map ChangeStateOnInput
                         ]
                 , parse = parse
@@ -695,13 +688,13 @@ create config =
                 , collectDebouncingReceivers = \_ -> []
                 , collectErrors = \_ _ -> []
                 , receiverCount = 0
-                , label = config.label
+                , label = controlConfig.label
                 , id = Nothing
                 , name = Nothing
                 , class = []
                 , subscriptions =
                     \(State _ s) ->
-                        config.subscriptions s
+                        controlConfig.subscriptions s
                             |> Sub.map ChangeStateInternally
                 }
         )
@@ -1188,13 +1181,13 @@ classList classList_ (Control control) =
 
 -}
 layout :
-    (List (Html (Delta delta)) -> ViewConfigStatic -> ViewConfigDynamic state -> List (Html (Delta delta)))
+    (List (Html (Delta delta)) -> ViewConfig state -> List (Html (Delta delta)))
     -> Control state delta output
     -> Control state delta output
 layout v (Control control) =
     let
         viewer (ControlFns i) =
-            ControlFns { i | view = \staticConfig dynamicConfig -> v (i.childViews staticConfig dynamicConfig) staticConfig dynamicConfig }
+            ControlFns { i | view = \config -> v (i.subControlViews config) config }
     in
     Control (control >> viewer)
 
@@ -1220,8 +1213,8 @@ wrapView wrapper (Control control) =
             ControlFns
                 { i
                     | view =
-                        \staticConfig dynamicConfig ->
-                            wrapper (i.view staticConfig dynamicConfig)
+                        \config ->
+                            wrapper (i.view config)
                 }
     in
     Control (control >> viewer)
@@ -1625,8 +1618,8 @@ tuple first second =
         |> endRecord
         |> label "Tuple"
         |> layout
-            (\fields staticConfig _ ->
-                [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
+            (\fields config ->
+                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: fields) ]
             )
 
 
@@ -1664,8 +1657,8 @@ triple first second third =
         |> endRecord
         |> label "Triple"
         |> layout
-            (\fields staticConfig _ ->
-                [ H.fieldset [] (H.legend [] [ H.text staticConfig.label ] :: fields) ]
+            (\fields config ->
+                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: fields) ]
             )
 
 
@@ -1816,15 +1809,15 @@ list (Control ctrl) =
                     )
                 , baseUpdate = update
                 , update = update 0
-                , childViews = \_ _ -> []
+                , subControlViews = \_ -> []
                 , view =
-                    \staticConfig dynamicConfig ->
+                    \config ->
                         let
                             debouncingReceivers =
                                 -- this is a total hack!
-                                collectDebouncingReceivers (State { status = Intact_, selected = dynamicConfig.selected } dynamicConfig.state)
+                                collectDebouncingReceivers (State { status = Intact_, selected = config.selected } config.state)
                         in
-                        listView path staticConfig dynamicConfig debouncingReceivers ctrl
+                        listView path config debouncingReceivers ctrl
                 , parse = parse
                 , setAllIdle =
                     \(State i s) ->
@@ -1938,7 +1931,7 @@ dict keyControl valueControl =
         (tuple
             (keyControl |> respond { alert = "@@dict-unique-keys", fail = True, message = "Keys must be unique" })
             valueControl
-            |> layout (\kv _ _ -> kv)
+            |> layout (\kv _ -> kv)
         )
         |> alertAtIndexes
             (List.map Tuple.first >> nonUniqueIndexes)
@@ -2578,11 +2571,11 @@ endRecord rec =
                         _ ->
                             ( State s state, Cmd.none )
 
-                childViews _ dynamicConfig =
-                    viewRecordStates rec.viewer dynamicConfig.alerts fns deltaSetters dynamicConfig.state
+                subcontrolViews config =
+                    viewRecordStates rec.viewer config.alerts fns deltaSetters config.state
 
-                view staticConfig dynamicConfig =
-                    viewRecordStates rec.viewer dynamicConfig.alerts fns deltaSetters dynamicConfig.state
+                view config =
+                    viewRecordStates rec.viewer config.alerts fns deltaSetters config.state
 
                 parse (State _ state) =
                     validateRecordStates rec.parser rec.toOutput fns state
@@ -2607,8 +2600,8 @@ endRecord rec =
                         )
                 , baseUpdate = \_ -> update
                 , update = update
-                , childViews = \staticConfig dynamicConfig -> childViews staticConfig dynamicConfig
-                , view = \staticConfig dynamicConfig -> view staticConfig dynamicConfig
+                , subControlViews = subcontrolViews
+                , view = view
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
@@ -2999,8 +2992,7 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
                 , name = controlFns.name
                 , label = controlFns.label
                 , class = controlFns.class
-                }
-                { state = state
+                , state = state
                 , status = getStatus controlFns.parse controlFns.collectErrors alerts (State internalState state)
                 , alerts = alerts
                 , selected = internalState.selected
@@ -3362,15 +3354,15 @@ endCustomType rec =
                             _ ->
                                 ( State internalState state, Cmd.none )
 
-                childView _ dynamicConfig =
-                    viewSelectedTagState rec.viewer dynamicConfig.alerts dynamicConfig.selected fns deltaSetters dynamicConfig.state
+                subcontrolView config =
+                    viewSelectedTagState rec.viewer config.alerts config.selected fns deltaSetters config.state
 
-                view staticConfig dynamicConfig =
+                view config =
                     let
                         options =
                             List.indexedMap Tuple.pair labels
                     in
-                    customTypeView path staticConfig options dynamicConfig.selected (childView staticConfig dynamicConfig)
+                    customTypeView path config options config.selected (subcontrolView config)
 
                 parse =
                     \(State internalState state) -> validateSelectedTagState rec.parser internalState.selected fns state
@@ -3394,12 +3386,12 @@ endCustomType rec =
                 , initWith =
                     \tag ->
                         ( applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters tag
-                        , Cmd.none |> fixme "initWith for custom types doesn't run Cmds of child controls"
+                        , Cmd.none |> fixme "initWith for custom types doesn't run Cmds of subcontrols"
                         )
                 , baseUpdate = \_ -> update
                 , update = update
-                , childViews = \staticConfig dynamicConfig -> childView staticConfig dynamicConfig
-                , view = \staticConfig dynamicConfig -> view staticConfig dynamicConfig
+                , subControlViews = subcontrolView
+                , view = view
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
@@ -4121,8 +4113,7 @@ selectedTagViewer next maybeView alerts selectedTag ( ControlFns fns, restFns ) 
                     , label = fns.label
                     , name = fns.name
                     , class = fns.class
-                    }
-                    { state = state
+                    , state = state
                     , status = Intact
                     , alerts = alerts
                     , selected = internalState.selected
@@ -4205,7 +4196,7 @@ wrappedView status innerView =
 
 customTypeView :
     Path
-    -> ViewConfigStatic
+    -> ViewConfig state
     -> List ( Int, String )
     -> Int
     -> List (Html (Delta variants))
@@ -4237,15 +4228,14 @@ button msg text =
 
 listView :
     Path
-    -> ViewConfigStatic
-    -> ViewConfigDynamic (List (State state))
+    -> ViewConfig (List (State state))
     -> List Alert
     -> (Path -> ControlFns input state delta output)
     -> List (Html (Delta (ListDelta delta)))
-listView path staticConfig dynamicConfig debouncingReceivers ctrl =
+listView path config debouncingReceivers ctrl =
     let
         id_ =
-            Maybe.withDefault (Path.toString path) staticConfig.id
+            Maybe.withDefault (Path.toString path) config.id
 
         view_ =
             H.div
@@ -4254,8 +4244,8 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                 ]
                 [ H.label
                     [ HA.for id_ ]
-                    [ H.text staticConfig.label ]
-                , if List.isEmpty dynamicConfig.state then
+                    [ H.text config.label ]
+                , if List.isEmpty config.state then
                     button (ChangeStateOnInput (InsertItem 0)) "Add item"
 
                   else
@@ -4284,7 +4274,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                                     _ ->
                                                         Just alert
                                             )
-                                            dynamicConfig.alerts
+                                            config.alerts
 
                                     filteredAlerts2 =
                                         List.filter (\f -> not <| List.member f debouncingReceivers) filteredAlerts1
@@ -4296,8 +4286,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                             , name = control.name
                                             , label = control.label
                                             , class = control.class
-                                            }
-                                            { state = state
+                                            , state = state
                                             , status = getStatus control.parse control.collectErrors filteredAlerts2 (State internalState state)
                                             , alerts = filteredAlerts2
                                             , selected = internalState.selected
@@ -4308,7 +4297,7 @@ listView path staticConfig dynamicConfig debouncingReceivers ctrl =
                                     , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
                                     ]
                             )
-                            dynamicConfig.state
+                            config.state
                         )
                         |> H.map ChangeStateOnInput
                 ]
