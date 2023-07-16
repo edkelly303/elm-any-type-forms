@@ -261,8 +261,8 @@ type alias ViewConfig state =
     , status : Status
     , alerts : List Alert
     , selected : Int
-    , name : Maybe String
-    , id : Maybe String
+    , name : String
+    , id : String
     , label : String
     , class : List String
     }
@@ -405,11 +405,14 @@ submission of the form.
 form : { control : Control state delta output, onUpdate : Delta delta -> msg, onSubmit : msg } -> Form state delta output msg
 form { onUpdate, onSubmit, control } =
     let
+        path =
+            Path.root
+
         (Control c) =
             control
 
         (ControlFns fns) =
-            c Path.root
+            c path
     in
     { init = fns.init |> Tuple.mapSecond (Cmd.map onUpdate)
     , initWith =
@@ -441,8 +444,8 @@ form { onUpdate, onSubmit, control } =
             in
             H.form [ HE.onSubmit onSubmit ]
                 ((fns.view
-                    { id = fns.id
-                    , name = fns.name
+                    { id = Maybe.withDefault (Path.toString path) fns.id
+                    , name = Maybe.withDefault (Path.toString path) fns.name
                     , label = fns.label
                     , class = fns.class
                     , state = state
@@ -503,11 +506,14 @@ main `Model`and `Msg` types wherever appropriate.
 sandbox : { outputToString : output -> String, control : Control state delta output } -> Program () (State state) (Delta delta)
 sandbox { outputToString, control } =
     let
+        path =
+            Path.root
+
         (Control c) =
             control
 
         (ControlFns fns) =
-            c Path.root
+            c path
     in
     Browser.element
         { init =
@@ -539,15 +545,15 @@ sandbox { outputToString, control } =
                     failView errs =
                         H.div []
                             [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                            , H.ul [] (List.map (\{ path, message } -> H.li [] [ H.text (Path.toString path ++ ": " ++ message) ]) errs)
+                            , H.ul [] (List.map (\feedback -> H.li [] [ H.text (Path.toString feedback.path ++ ": " ++ feedback.message) ]) errs)
                             ]
                 in
                 H.div []
                     [ H.h1 [] [ H.text "Form" ]
                     , H.form []
                         (fns.view
-                            { id = fns.id
-                            , name = fns.name
+                            { id = Maybe.withDefault (Path.toString path) fns.id
+                            , name = Maybe.withDefault (Path.toString path) fns.name
                             , label = fns.label
                             , class = fns.class
                             , state = state
@@ -678,8 +684,8 @@ create controlConfig =
                         [ controlConfig.view
                             { state = viewConfig.state
                             , label = viewConfig.label
-                            , id = Maybe.withDefault (Path.toString path) viewConfig.id
-                            , name = Maybe.withDefault (Path.toString path) viewConfig.name
+                            , id = viewConfig.id
+                            , name = viewConfig.name
                             , class = String.join " " viewConfig.class
                             }
                             |> wrappedView viewConfig.status
@@ -1622,7 +1628,7 @@ tuple first second =
         |> label "Tuple"
         |> layout
             (\config subcontrols ->
-                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
+                [ H.fieldset [ HA.id config.id ] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
             )
 
 
@@ -1661,7 +1667,7 @@ triple first second third =
         |> label "Triple"
         |> layout
             (\config subcontrols ->
-                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
+                [ H.fieldset [ HA.id config.id ] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
             )
 
 
@@ -2997,8 +3003,8 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
 
         view =
             controlFns.view
-                { id = controlFns.id
-                , name = controlFns.name
+                { id = Maybe.withDefault (Path.toString controlFns.path) controlFns.id
+                , name = Maybe.withDefault (Path.toString controlFns.path) controlFns.name
                 , label = controlFns.label
                 , class = controlFns.class
                 , state = state
@@ -4117,9 +4123,9 @@ selectedTagViewer next maybeView alerts selectedTag ( ControlFns fns, restFns ) 
         (if fns.index == selectedTag then
             Just
                 (fns.view
-                    { id = fns.id
+                    { id = Maybe.withDefault (Path.toString fns.path) fns.id
                     , label = fns.label
-                    , name = fns.name
+                    , name = Maybe.withDefault (Path.toString fns.path) fns.name
                     , class = fns.class
                     , state = state
                     , status = Intact
@@ -4215,8 +4221,8 @@ customTypeView path config options selectedTag selectedTagView =
             { options = options
             , selectedOption = selectedTag
             , toMsg = TagSelected
-            , id = Maybe.withDefault (Path.toString path) config.id
-            , name = Maybe.withDefault (Path.toString path) config.name
+            , id = config.id
+            , name = config.name
             , label = config.label
             }
             ++ selectedTagView
@@ -4240,18 +4246,15 @@ listView :
     -> List Alert
     -> (Path -> ControlFns input state delta output)
     -> List (Html (Delta (ListDelta delta)))
-listView path config debouncingReceivers ctrl =
+listView path config debouncingReceivers subcontrol =
     let
-        id_ =
-            Maybe.withDefault (Path.toString path) config.id
-
         view_ =
             H.div
-                [ HA.id id_
+                [ HA.id config.id
                 , HA.class "control-container"
                 ]
                 [ H.label
-                    [ HA.for id_ ]
+                    [ HA.for config.id ]
                     [ H.text config.label ]
                 , if List.isEmpty config.state then
                     button (ChangeStateOnInput (InsertItem 0)) "Add item"
@@ -4261,8 +4264,11 @@ listView path config debouncingReceivers ctrl =
                         (List.indexedMap
                             (\idx (State internalState state) ->
                                 let
-                                    (ControlFns control) =
-                                        ctrl (Path.add idx path)
+                                    itemPath =
+                                        Path.add idx path
+
+                                    (ControlFns itemFns) =
+                                        subcontrol itemPath
 
                                     filteredAlerts1 =
                                         List.filterMap
@@ -4289,13 +4295,13 @@ listView path config debouncingReceivers ctrl =
                                 in
                                 H.li []
                                     [ H.div []
-                                        (control.view
-                                            { id = control.id
-                                            , name = control.name
-                                            , label = control.label
-                                            , class = control.class
+                                        (itemFns.view
+                                            { id = Maybe.withDefault (Path.toString itemPath) itemFns.id
+                                            , name = Maybe.withDefault (Path.toString itemPath) itemFns.name
+                                            , label = itemFns.label
+                                            , class = itemFns.class
                                             , state = state
-                                            , status = getStatus control.parse control.collectErrors filteredAlerts2 (State internalState state)
+                                            , status = getStatus itemFns.parse itemFns.collectErrors filteredAlerts2 (State internalState state)
                                             , alerts = filteredAlerts2
                                             , selected = internalState.selected
                                             }
