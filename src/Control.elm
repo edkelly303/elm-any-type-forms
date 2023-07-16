@@ -116,7 +116,7 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfigStatic, ViewConfigDynamic, Path, Feedback
+@docs Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfig, Path, Feedback
 
 -}
 
@@ -1177,7 +1177,7 @@ classList classList_ (Control control) =
             |> field "Name" string
             |> field "Age" int
             |> end
-            |> layout (\fieldViews staticConfig dynamicConfig -> Html.div [] fieldViews)
+            |> layout (\fieldViews config -> Html.div [] fieldViews)
 
 -}
 layout :
@@ -4201,15 +4201,15 @@ customTypeView :
     -> Int
     -> List (Html (Delta variants))
     -> List (Html (Delta variants))
-customTypeView path staticConfig options selectedTag selectedTagView =
+customTypeView path config options selectedTag selectedTagView =
     if List.length options > 1 then
         radioView
             { options = options
             , selectedOption = selectedTag
             , toMsg = TagSelected
-            , id = Maybe.withDefault (Path.toString path) staticConfig.id
-            , name = Maybe.withDefault (Path.toString path) staticConfig.name
-            , label = staticConfig.label
+            , id = Maybe.withDefault (Path.toString path) config.id
+            , name = Maybe.withDefault (Path.toString path) config.name
+            , label = config.label
             }
             ++ selectedTagView
 
