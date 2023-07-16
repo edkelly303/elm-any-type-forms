@@ -290,7 +290,7 @@ records =
             |> Control.field .age (Control.int |> Control.label "Age")
             |> Control.endRecord
         )
-        |> Control.layout (\subcontrols config -> List.concatMap .html subcontrols)
+        |> Control.layout (\config subcontrols -> List.concatMap .html subcontrols)
         |> mdBefore recordIntro
         |> mdAfter recordOutro
 

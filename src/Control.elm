@@ -1184,13 +1184,13 @@ classList classList_ (Control control) =
 
 -}
 layout :
-    (List (Subcontrol delta) -> ViewConfig state -> List (Html (Delta delta)))
+    (ViewConfig state -> List (Subcontrol delta) -> List (Html (Delta delta)))
     -> Control state delta output
     -> Control state delta output
 layout v (Control control) =
     let
         viewer (ControlFns i) =
-            ControlFns { i | view = \config -> v (i.subControlViews config) config }
+            ControlFns { i | view = \config -> v config (i.subControlViews config) }
     in
     Control (control >> viewer)
 
@@ -1621,8 +1621,8 @@ tuple first second =
         |> endRecord
         |> label "Tuple"
         |> layout
-            (\fields config ->
-                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: List.concatMap .html fields) ]
+            (\config subcontrols ->
+                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
             )
 
 
@@ -1660,8 +1660,8 @@ triple first second third =
         |> endRecord
         |> label "Triple"
         |> layout
-            (\fields config ->
-                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: List.concatMap .html fields) ]
+            (\config subcontrols ->
+                [ H.fieldset [] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
             )
 
 
@@ -1934,7 +1934,7 @@ dict keyControl valueControl =
         (tuple
             (keyControl |> respond { alert = "@@dict-unique-keys", fail = True, message = "Keys must be unique" })
             valueControl
-            |> layout (\kv _ -> List.concatMap .html kv)
+            |> layout (\config subcontrols -> List.concatMap .html subcontrols)
         )
         |> alertAtIndexes
             (List.map Tuple.first >> nonUniqueIndexes)
