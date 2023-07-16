@@ -235,7 +235,10 @@ type ControlFns input state delta output
 
 
 type alias Subcontrol delta =
-    { html : List (Html (Delta delta)) }
+    { html : List (Html (Delta delta))
+    , label : String
+    , index : Int
+    }
 
 
 {-| Some internal stuff needed to handle validations
@@ -2586,10 +2589,11 @@ endRecord rec =
                             ( State s state, Cmd.none )
 
                 subcontrolViews config =
-                    viewRecordStates rec.viewer config.alerts fns deltaSetters config.state
+                    viewRecordStates rec.viewer fns deltaSetters config
 
                 view config =
-                    viewRecordStates rec.viewer config.alerts fns deltaSetters config.state
+                    viewRecordStates rec.viewer fns deltaSetters config
+                        |> List.map .html
                         |> List.concat
 
                 parse (State _ state) =
@@ -2615,7 +2619,7 @@ endRecord rec =
                         )
                 , baseUpdate = \_ -> update
                 , update = update
-                , subControlViews = \config -> List.map (\html -> { html = html }) (subcontrolViews config)
+                , subControlViews = \config -> subcontrolViews config
                 , view = view
                 , parse = parse
                 , setAllIdle = setAllIdle
@@ -2959,43 +2963,42 @@ recordStateIdleSetter next ( RecordFns fns, restFns ) ( state, restStates ) =
 
 
 viewRecordStates :
-    ((List (List (Html msg))
+    ((List (Subcontrol msg)
       -> List Alert
       -> End
       -> End
       -> End
-      -> List (List (Html msg))
+      -> List (Subcontrol msg)
      )
-     -> List (List (Html msg))
+     -> List (Subcontrol msg)
      -> List Alert
      -> ( RecordFns input state delta output recordOutput, restFns )
      -> ( Delta delta -> recordDelta, restDeltaSetters )
      -> ( State state, restStates )
-     -> List (List (Html msg))
+     -> List (Subcontrol msg)
     )
-    -> List Alert
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> ( State state, restStates )
-    -> List (List (Html msg))
-viewRecordStates viewer alerts fns setters states =
-    viewer (\views _ End End End -> views) [] alerts fns setters states
+    -> ViewConfig ( State state, restStates )
+    -> List (Subcontrol msg)
+viewRecordStates viewer fns setters config =
+    viewer (\views _ End End End -> views) [] config.alerts fns setters config.state
 
 
 recordStateViewer :
-    (List (List (Html (Delta recordDelta)))
+    (List (Subcontrol recordDelta)
      -> List Alert
      -> restFns
      -> restDeltaSetters
      -> restStates
-     -> List (List (Html (Delta recordDelta)))
+     -> List (Subcontrol recordDelta)
     )
-    -> List (List (Html (Delta recordDelta)))
+    -> List (Subcontrol recordDelta)
     -> List Alert
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
     -> ( State state, restStates )
-    -> List (List (Html (Delta recordDelta)))
+    -> List (Subcontrol recordDelta)
 recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     let
         (ControlFns controlFns) =
@@ -3016,15 +3019,19 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
     in
     next
         (views
-            ++ [ case fns.access of
-                    Open ->
-                        view
+            ++ [ { html =
+                    case fns.access of
+                        Open ->
+                            view
 
-                    Hidden ->
-                        []
+                        Hidden ->
+                            []
 
-                    ReadOnly ->
-                        [ H.div [ HA.disabled True ] view ]
+                        ReadOnly ->
+                            [ H.div [ HA.disabled True ] view ]
+                 , label = controlFns.label
+                 , index = controlFns.index
+                 }
                ]
         )
         alerts
@@ -3377,7 +3384,7 @@ endCustomType rec =
                         options =
                             List.indexedMap Tuple.pair labels
                     in
-                    customTypeView path config options config.selected (subcontrolView config)
+                    customTypeView path config options config.selected (subcontrolView config).html
 
                 parse =
                     \(State internalState state) -> validateSelectedTagState rec.parser internalState.selected fns state
@@ -3405,7 +3412,7 @@ endCustomType rec =
                         )
                 , baseUpdate = \_ -> update
                 , update = update
-                , subControlViews = \config -> [ { html = subcontrolView config } ]
+                , subControlViews = \config -> [ subcontrolView config ]
                 , view = view
                 , parse = parse
                 , setAllIdle = setAllIdle
@@ -4074,66 +4081,75 @@ selectedTagParser next result_ selectedTag ( ControlFns fns, restFns ) ( state, 
         restStates
 
 
-viewSelectedTagState :
-    ((Maybe (List (Html (Delta delta1)))
-      -> List Alert
-      -> Int
-      -> End
-      -> End
-      -> End
-      -> Maybe (List (Html (Delta delta1)))
-     )
-     -> Maybe (List (Html (Delta delta1)))
-     -> List Alert
-     -> Int
-     -> ( ControlFns input state delta0 output, restFns )
-     -> ( Delta delta0 -> delta1, restSetters )
-     -> ( State state, restStates )
-     -> Maybe (List (Html (Delta delta1)))
-    )
-    -> List Alert
-    -> Int
-    -> ( ControlFns input state delta0 output, restFns )
-    -> ( Delta delta0 -> delta1, restSetters )
-    -> ( State state, restStates )
-    -> List (Html (Delta delta1))
+
+-- viewSelectedTagState :
+--     ((Maybe (List (Html (Delta delta1)))
+--       -> List Alert
+--       -> Int
+--       -> End
+--       -> End
+--       -> End
+--       -> Maybe (List (Html (Delta delta1)))
+--      )
+--      -> Maybe (List (Html (Delta delta1)))
+--      -> List Alert
+--      -> Int
+--      -> ( ControlFns input state delta0 output, restFns )
+--      -> ( Delta delta0 -> delta1, restSetters )
+--      -> ( State state, restStates )
+--      -> Maybe (List (Html (Delta delta1)))
+--     )
+--     -> List Alert
+--     -> Int
+--     -> ( ControlFns input state delta0 output, restFns )
+--     -> ( Delta delta0 -> delta1, restSetters )
+--     -> ( State state, restStates )
+--     -> List (Html (Delta delta1))
+
+
 viewSelectedTagState viewer alerts selectedTag fns setters states =
     viewer (\maybeView _ _ End End End -> maybeView) Nothing alerts selectedTag fns setters states
-        |> Maybe.withDefault [ H.text "ERROR!" ]
+        |> Maybe.withDefault { label = "ERROR!", html = [ H.text "ERROR!" ], index = -1 }
 
 
-selectedTagViewer :
-    (Maybe (List (Html (Delta delta1)))
-     -> List Alert
-     -> Int
-     -> restFns
-     -> restSetters
-     -> restStates
-     -> Maybe (List (Html (Delta delta1)))
-    )
-    -> Maybe (List (Html (Delta delta1)))
-    -> List Alert
-    -> Int
-    -> ( ControlFns input state delta0 output, restFns )
-    -> ( Delta delta0 -> delta1, restSetters )
-    -> ( State state, restStates )
-    -> Maybe (List (Html (Delta delta1)))
+
+-- selectedTagViewer :
+--     (Maybe (List (Html (Delta delta1)))
+--      -> List Alert
+--      -> Int
+--      -> restFns
+--      -> restSetters
+--      -> restStates
+--      -> Maybe (List (Html (Delta delta1)))
+--     )
+--     -> Maybe (List (Html (Delta delta1)))
+--     -> List Alert
+--     -> Int
+--     -> ( ControlFns input state delta0 output, restFns )
+--     -> ( Delta delta0 -> delta1, restSetters )
+--     -> ( State state, restStates )
+--     -> Maybe (List (Html (Delta delta1)))
+
+
 selectedTagViewer next maybeView alerts selectedTag ( ControlFns fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
         (if fns.index == selectedTag then
             Just
-                (fns.view
-                    { id = Maybe.withDefault (Path.toString fns.path) fns.id
-                    , label = fns.label
-                    , name = Maybe.withDefault (Path.toString fns.path) fns.name
-                    , class = fns.class
-                    , state = state
-                    , status = Intact
-                    , alerts = alerts
-                    , selected = internalState.selected
-                    }
-                    |> List.map (H.map (setter >> ChangeStateOnInput))
-                )
+                { html =
+                    fns.view
+                        { id = Maybe.withDefault (Path.toString fns.path) fns.id
+                        , label = fns.label
+                        , name = Maybe.withDefault (Path.toString fns.path) fns.name
+                        , class = fns.class
+                        , state = state
+                        , status = Intact
+                        , alerts = alerts
+                        , selected = internalState.selected
+                        }
+                        |> List.map (H.map (setter >> ChangeStateOnInput))
+                , label = fns.label
+                , index = fns.index
+                }
 
          else
             maybeView
