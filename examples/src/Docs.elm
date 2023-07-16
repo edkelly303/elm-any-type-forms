@@ -51,6 +51,7 @@ main =
                 , body =
                     [ H.div []
                         [ form.view model.form
+
                         --, viewOutput model.output
                         ]
                     ]
@@ -58,7 +59,8 @@ main =
         , subscriptions = \model -> form.subscriptions model.form
         }
 
-viewOutput output = 
+
+viewOutput output =
     case output of
         Nothing ->
             H.text ""
@@ -74,6 +76,7 @@ viewOutput output =
                 [ H.text "Failure!"
                 , H.ul [] (List.map (\{ label, message } -> H.li [] [ H.text (label ++ ": " ++ message) ]) errors)
                 ]
+
 
 form =
     Control.form
@@ -287,10 +290,7 @@ records =
             |> Control.field .age (Control.int |> Control.label "Age")
             |> Control.endRecord
         )
-        |> Control.layout
-            (\kids config ->
-                kids
-            )
+        |> Control.layout (\subcontrols config -> List.concatMap .html subcontrols)
         |> mdBefore recordIntro
         |> mdAfter recordOutro
 
@@ -1215,7 +1215,7 @@ mdBefore str =
 
 
 mdAfter str =
-    Control.wrapView (\v -> v ++ [md str])
+    Control.wrapView (\v -> v ++ [ md str ])
 
 
 md : String -> H.Html msg
