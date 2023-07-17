@@ -5,6 +5,7 @@ import Control
 import Date
 import Html as H
 import Html.Attributes as HA
+import Html.Events as HE
 import Markdown.Parser as Markdown
 import Markdown.Renderer
 
@@ -144,6 +145,33 @@ lessons =
         |> Control.tag1 "Multi-control validation" MultiValidation multivalidation
         |> Control.tag1 "Creating your own controls" CreateYourOwn createYourOwn
         |> Control.endCustomType
+        |> Control.layout
+            (\config subcontrols ->
+                H.div [ HA.id config.id ]
+                    (List.map
+                        (\sc ->
+                            H.button
+                                [ HE.onClick (Control.TagSelected sc.index)
+                                , HA.style "height" "40px"
+                                , HA.style "text-overflow" "ellipsis"
+                                , HA.style "overflow" "hidden"
+                                , HA.style "white-space" "break-spaces"
+                                ]
+                                [ H.text sc.label
+                                ]
+                        )
+                        subcontrols
+                    )
+                    :: List.concatMap
+                        (\sc ->
+                            if sc.index == config.selected then
+                                sc.html
+
+                            else
+                                []
+                        )
+                        subcontrols
+            )
         |> Control.label "Lessons"
         |> Control.id "lessons"
         |> mdBefore "# An introduction to `elm-any-type-forms`"

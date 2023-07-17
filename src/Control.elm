@@ -9,7 +9,7 @@ module Control exposing
     , initWith, debounce, id, name, label, class, classList, wrapView
     , record, field, hiddenField, readOnlyField, endRecord, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
-    , State, Delta, ListDelta, End
+    , State, Delta(..), ListDelta, End
     , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfig, Path, Feedback
     )
 
