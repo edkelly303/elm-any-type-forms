@@ -3251,12 +3251,12 @@ tagHelper label_ (Control control) toArgState rec =
     , fns =
         \path ->
             let
-                (ControlFns control_) =
+                (ControlFns controlFns) =
                     control (Path.add newIndex path)
             in
             rec.fns path
                 << Tuple.pair
-                    (ControlFns { control_ | index = rec.index })
+                    (ControlFns { controlFns | index = rec.index })
     , initialStates =
         \path ->
             let
@@ -3377,14 +3377,10 @@ endCustomType rec =
                                 ( State internalState state, Cmd.none )
 
                 subcontrolView config =
-                    viewSelectedTagState rec.viewer config.alerts config.selected fns deltaSetters config.state
+                    viewSelectedTagState rec.viewer fns deltaSetters config
 
                 view config =
-                    let
-                        options =
-                            List.indexedMap Tuple.pair labels
-                    in
-                    customTypeView path config options config.selected (subcontrolView config).html
+                    customTypeView path config subcontrolView
 
                 parse =
                     \(State internalState state) -> validateSelectedTagState rec.parser internalState.selected fns state
@@ -3412,7 +3408,7 @@ endCustomType rec =
                         )
                 , baseUpdate = \_ -> update
                 , update = update
-                , subControlViews = \config -> [ subcontrolView config ]
+                , subControlViews = subcontrolView
                 , view = view
                 , parse = parse
                 , setAllIdle = setAllIdle
@@ -4107,12 +4103,12 @@ selectedTagParser next result_ selectedTag ( ControlFns fns, restFns ) ( state, 
 --     -> List (Html (Delta delta1))
 
 
-viewSelectedTagState viewer alerts selectedTag fns setters states =
-    viewer (\maybeView _ _ End End End -> maybeView) Nothing alerts selectedTag fns setters states
-        |> Maybe.withDefault { label = "ERROR!", html = [ H.text "ERROR!" ], index = -1 }
+viewSelectedTagState viewer fns setters config =
+    viewer (\listSubcontrol _ End End End -> listSubcontrol) [] config.alerts fns setters config.state
 
 
 
+-- |> Maybe.withDefault { label = "ERROR!", html = [ H.text "ERROR!" ], index = -1 }
 -- selectedTagViewer :
 --     (Maybe (List (Html (Delta delta1)))
 --      -> List Alert
@@ -4131,11 +4127,10 @@ viewSelectedTagState viewer alerts selectedTag fns setters states =
 --     -> Maybe (List (Html (Delta delta1)))
 
 
-selectedTagViewer next maybeView alerts selectedTag ( ControlFns fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
+selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( setter, restSetters ) ( State internalState state, restStates ) =
     next
-        (if fns.index == selectedTag then
-            Just
-                { html =
+        (listSubcontrol
+            ++ [ { html =
                     fns.view
                         { id = Maybe.withDefault (Path.toString fns.path) fns.id
                         , label = fns.label
@@ -4147,15 +4142,12 @@ selectedTagViewer next maybeView alerts selectedTag ( ControlFns fns, restFns ) 
                         , selected = internalState.selected
                         }
                         |> List.map (H.map (setter >> ChangeStateOnInput))
-                , label = fns.label
-                , index = fns.index
-                }
-
-         else
-            maybeView
+                 , label = fns.label
+                 , index = fns.index
+                 }
+               ]
         )
         alerts
-        selectedTag
         restFns
         restSetters
         restStates
@@ -4224,27 +4216,46 @@ wrappedView status innerView =
         )
 
 
-customTypeView :
-    Path
-    -> ViewConfig state
-    -> List ( Int, String )
-    -> Int
-    -> List (Html (Delta variants))
-    -> List (Html (Delta variants))
-customTypeView path config options selectedTag selectedTagView =
-    if List.length options > 1 then
+
+-- customTypeView :
+--     Path
+--     -> ViewConfig state
+--     -> List ( Int, String )
+--     -> Int
+--     -> List (Html (Delta variants))
+--     -> List (Html (Delta variants))
+
+
+customTypeView path config toSubcontrols =
+    let
+        subcontrols =
+            toSubcontrols config
+
+        subcontrolView =
+            List.filterMap
+                (\sc ->
+                    if sc.index == config.selected then
+                        Just sc.html
+
+                    else
+                        Nothing
+                )
+                subcontrols
+                |> List.concat
+    in
+    if List.length subcontrols > 1 then
         radioView
-            { options = options
-            , selectedOption = selectedTag
+            { options = List.map (\sc -> ( sc.index, sc.label )) subcontrols
+            , selectedOption = config.selected
             , toMsg = TagSelected
             , id = config.id
             , name = config.name
             , label = config.label
             }
-            ++ selectedTagView
+            ++ subcontrolView
 
     else
-        selectedTagView
+        subcontrolView
 
 
 button : msg -> String -> Html msg
