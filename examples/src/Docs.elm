@@ -1179,7 +1179,7 @@ don't need to send any `Cmd`s.
 This defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial 
 `Cmd` if needed. In this case, we're teaching it how to turn a `Date` into a `String` and there's no `Cmd` to send.
 
-#### update `delta -> state -> ( state, Cmd delta )`
+#### update : `delta -> state -> ( state, Cmd delta )`
 This is exactly like a normal Elm app's `update` function - for 
 `delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all 
 we need to do in our update function is replace the existing `state` with the new `delta`.
