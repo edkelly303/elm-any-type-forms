@@ -106,7 +106,7 @@ lessons =
             case tag of
                 YourFirstForm data ->
                     l01 data
-                
+
                 BasicControls data ->
                     l02 data
 
@@ -147,32 +147,68 @@ lessons =
         |> Control.endCustomType
         |> Control.layout
             (\config subcontrols ->
-                H.div [ HA.id config.id ]
-                    (List.map
-                        (\sc ->
-                            H.button
-                                [ HE.onClick (Control.TagSelected sc.index)
-                                , HA.type_ "button"
-                                , HA.class (if sc.index == config.selected then "lesson-selected" else "lesson-not-selected")
-                                ]
-                                [ H.text sc.label
-                                ]
-                        )
-                        subcontrols
-                    )
-                    :: List.concatMap
-                        (\sc ->
-                            if sc.index == config.selected then
-                                sc.html
+                let
+                    navBar =
+                        H.div [ HA.id config.id ]
+                            (List.map
+                                (\sc ->
+                                    H.button
+                                        [ HE.onClick (Control.TagSelected sc.index)
+                                        , HA.type_ "button"
+                                        , HA.class
+                                            (if sc.index == config.selected then
+                                                "lesson-selected"
 
-                            else
-                                []
-                        )
-                        subcontrols
+                                             else
+                                                "lesson-not-selected"
+                                            )
+                                        ]
+                                        [ H.text sc.label
+                                        ]
+                                )
+                                subcontrols
+                            )
+
+                    subcontrolViews =
+                        List.concatMap
+                            (\sc ->
+                                if sc.index == config.selected then
+                                    sc.html
+
+                                else
+                                    []
+                            )
+                            subcontrols
+
+                    backNext =
+                        H.div [ HA.id "back-next-container" ]
+                            [ if config.selected == 0 then
+                                H.text ""
+
+                              else
+                                H.button
+                                    [ HE.onClick (Control.TagSelected (config.selected - 1))
+                                    , HA.type_ "button"
+                                    ]
+                                    [ H.text "Back" ]
+                            , if config.selected == (List.length subcontrols - 1) then
+                                H.text ""
+
+                              else
+                                H.button
+                                    [ HE.onClick (Control.TagSelected (config.selected + 1))
+                                    , HA.type_ "button"
+                                    ]
+                                    [ H.text "Next" ]
+                            ]
+                in
+                navBar :: subcontrolViews ++ [ backNext ]
             )
         |> Control.label "Lessons"
         |> Control.id "lessons"
         |> mdBefore "# An introduction to `elm-any-type-forms`"
+
+
 yourFirstForm =
     Control.bool
         |> mdBefore """
@@ -205,6 +241,7 @@ something like this:
 
 Next up, let's take a look at some of the other basic controls included in this package.
 """
+
 
 basicControls =
     Control.record (\bool string char int float -> { bool = bool, string = string, char = char, int = int, float = float })
@@ -245,9 +282,6 @@ main =
 ```
 However, most useful forms contain more than one control. How can we _combine_ controls to make something a bit more 
 interesting?"""
-
-
-
 
 
 tuplesAndTriples =

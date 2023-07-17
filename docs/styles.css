@@ -63,6 +63,27 @@ h1 {
     background-color: rgb(255, 243, 245);
 }
 
+#back-next-container {
+    width: calc(100vw - 160px);
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    margin-bottom: 40px;
+}
+
+#back-next-container button {
+    border: 1px solid lightpink;
+    border-radius: 3px;
+    background-color: aliceblue;
+    width: 100px;
+    height: 60px;
+    padding: 5px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: break-spaces;
+    cursor: pointer;
+}
+
 #lessons+div {
     margin-top: 180px;
 }

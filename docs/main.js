@@ -19887,39 +19887,79 @@ var $author$project$Docs$lessons = A2(
 				$author$project$Control$layout,
 				F2(
 					function (config, subcontrols) {
-						return A2(
-							$elm$core$List$cons,
+						var subcontrolViews = A2(
+							$elm$core$List$concatMap,
+							function (sc) {
+								return _Utils_eq(sc.index, config.selected) ? sc.html : _List_Nil;
+							},
+							subcontrols);
+						var navBar = A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$id(config.id)
+								]),
 							A2(
-								$elm$html$Html$div,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$id(config.id)
-									]),
-								A2(
-									$elm$core$List$map,
-									function (sc) {
-										return A2(
-											$elm$html$Html$button,
-											_List_fromArray(
-												[
-													$elm$html$Html$Events$onClick(
-													$author$project$Control$TagSelected(sc.index)),
-													$elm$html$Html$Attributes$type_('button'),
-													$elm$html$Html$Attributes$class(
-													_Utils_eq(sc.index, config.selected) ? 'lesson-selected' : 'lesson-not-selected')
-												]),
-											_List_fromArray(
-												[
-													$elm$html$Html$text(sc.label)
-												]));
-									},
-									subcontrols)),
-							A2(
-								$elm$core$List$concatMap,
+								$elm$core$List$map,
 								function (sc) {
-									return _Utils_eq(sc.index, config.selected) ? sc.html : _List_Nil;
+									return A2(
+										$elm$html$Html$button,
+										_List_fromArray(
+											[
+												$elm$html$Html$Events$onClick(
+												$author$project$Control$TagSelected(sc.index)),
+												$elm$html$Html$Attributes$type_('button'),
+												$elm$html$Html$Attributes$class(
+												_Utils_eq(sc.index, config.selected) ? 'lesson-selected' : 'lesson-not-selected')
+											]),
+										_List_fromArray(
+											[
+												$elm$html$Html$text(sc.label)
+											]));
 								},
 								subcontrols));
+						var backNext = A2(
+							$elm$html$Html$div,
+							_List_fromArray(
+								[
+									$elm$html$Html$Attributes$id('back-next-container')
+								]),
+							_List_fromArray(
+								[
+									(!config.selected) ? $elm$html$Html$text('') : A2(
+									$elm$html$Html$button,
+									_List_fromArray(
+										[
+											$elm$html$Html$Events$onClick(
+											$author$project$Control$TagSelected(config.selected - 1)),
+											$elm$html$Html$Attributes$type_('button')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Back')
+										])),
+									_Utils_eq(
+									config.selected,
+									$elm$core$List$length(subcontrols) - 1) ? $elm$html$Html$text('') : A2(
+									$elm$html$Html$button,
+									_List_fromArray(
+										[
+											$elm$html$Html$Events$onClick(
+											$author$project$Control$TagSelected(config.selected + 1)),
+											$elm$html$Html$Attributes$type_('button')
+										]),
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Next')
+										]))
+								]));
+						return A2(
+							$elm$core$List$cons,
+							navBar,
+							_Utils_ap(
+								subcontrolViews,
+								_List_fromArray(
+									[backNext])));
 					}),
 				$author$project$Control$endCustomType(
 					A4(
