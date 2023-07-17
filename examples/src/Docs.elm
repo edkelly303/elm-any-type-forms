@@ -1166,28 +1166,34 @@ dateControl =
 
 This looks like a lot to digest, but we can take it one field at a time.
 
-`label : String` - this is the default label that will be displayed on the control.
+#### label : `String`
+This is the default label that will be displayed on the control.
 
-`initEmpty : ( state, Cmd delta )` - this specifies the default internal `state` of the control when it's initialised, 
-together with a `Cmd` to send during initialisation (if necessary). In our case, the `state` is just a `String`, and we 
+#### initEmpty : `( state, Cmd delta )`
+This specifies the default internal `state` of the control when it's initialised, 
+together with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we 
 don't need to send any `Cmd`s.
 
-`initWith : output -> ( state, Cmd delta )` - this defines how to initialise the `state` of the control from a value of 
-its `output` type. In this case, we're teaching it how to turn a `Date` into a `String`.
+#### initWith : `output -> ( state, Cmd delta )`
+This defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial 
+`Cmd` if needed. In this case, we're teaching it how to turn a `Date` into a `String` and there's no `Cmd` to send.
 
-`update : delta -> state -> ( state, Cmd delta )` - this is exactly like a normal Elm app's `update` function - for 
+#### update `delta -> state -> ( state, Cmd delta )`
+This is exactly like a normal Elm app's `update` function - for 
 `delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all 
 we need to do in our update function is replace the existing `state` with the new `delta`.
 
-`view : { state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` - this is 
-very similar to a normal Elm app's `view` function, but with two differences. First, in addition to the `state`, it also 
-gives us access to some other stuff that we can include in our view's HTML attributes. Second, it produces a list of 
-HTML elements, rather than a single element.
+#### view : `{ state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` 
+This is very similar to a normal Elm app's `view` function, but with two differences. First, in addition to the `state`, 
+it also gives us access to some other stuff that we can include in our view's HTML attributes. Second, it produces a 
+list of HTML elements, rather than a single element.
 
-`subscriptions: state -> Sub delta` - this is exactly like a normal Elm app's `subscriptions` function. Here, we don't 
+#### subscriptions : `state -> Sub delta`
+This is exactly like a normal Elm app's `subscriptions` function. Here, we don't 
 need to manage any subscriptions, so we can just return `Sub.none`.
 
-`parse: state -> Result (List String) output` - this attempts to turn the control's `state` into a value of the 
+#### parse : `state -> Result (List String) output`
+This attempts to turn the control's `state` into a value of the 
 control's `output` type, returning a list of errors if it fails. In this case, it's trying to parse a `String` into a 
 `Date`.
 
