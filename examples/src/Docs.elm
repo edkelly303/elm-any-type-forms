@@ -152,6 +152,7 @@ lessons =
                         (\sc ->
                             H.button
                                 [ HE.onClick (Control.TagSelected sc.index)
+                                , HA.type_ "button"
                                 , HA.style "height" "40px"
                                 , HA.style "text-overflow" "ellipsis"
                                 , HA.style "overflow" "hidden"

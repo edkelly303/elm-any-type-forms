@@ -19906,6 +19906,7 @@ var $author$project$Docs$lessons = A2(
 												[
 													$elm$html$Html$Events$onClick(
 													$author$project$Control$TagSelected(sc.index)),
+													$elm$html$Html$Attributes$type_('button'),
 													A2($elm$html$Html$Attributes$style, 'height', '40px'),
 													A2($elm$html$Html$Attributes$style, 'text-overflow', 'ellipsis'),
 													A2($elm$html$Html$Attributes$style, 'overflow', 'hidden'),
