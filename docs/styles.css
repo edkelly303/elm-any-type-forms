@@ -38,9 +38,9 @@ h1 {
     background-color: white;
     margin-left: 0px;
     width: calc(100vw - 160px);
-    height: 70px;
     display: flex;
     flex-direction: row;
+    align-items: center;
     border: none;
     padding: 0px;
     gap: 5px;
@@ -56,6 +56,11 @@ h1 {
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: break-spaces;
+    cursor: pointer;
+}
+
+#lessons button.lesson-selected {
+    background-color: rgb(255, 243, 245);
 }
 
 #lessons+div {
@@ -168,7 +173,7 @@ ol {
 }
 
 pre {
-    border: 1px gray solid;
+    border: 1px lightblue solid;
     border-radius: 5px;
     padding: 10px;
     background-color: aliceblue;
@@ -180,7 +185,7 @@ pre code {
 }
 
 code {
-    border: 1px gray solid;
+    border: 1px lightblue solid;
     border-radius: 3px;
     padding: 2px;
     background-color: aliceblue;

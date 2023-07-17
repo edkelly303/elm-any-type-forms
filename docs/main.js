@@ -19904,7 +19904,9 @@ var $author$project$Docs$lessons = A2(
 												[
 													$elm$html$Html$Events$onClick(
 													$author$project$Control$TagSelected(sc.index)),
-													$elm$html$Html$Attributes$type_('button')
+													$elm$html$Html$Attributes$type_('button'),
+													$elm$html$Html$Attributes$class(
+													_Utils_eq(sc.index, config.selected) ? 'lesson-selected' : 'lesson-not-selected')
 												]),
 											_List_fromArray(
 												[

@@ -153,6 +153,7 @@ lessons =
                             H.button
                                 [ HE.onClick (Control.TagSelected sc.index)
                                 , HA.type_ "button"
+                                , HA.class (if sc.index == config.selected then "lesson-selected" else "lesson-not-selected")
                                 ]
                                 [ H.text sc.label
                                 ]
