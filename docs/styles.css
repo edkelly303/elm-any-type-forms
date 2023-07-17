@@ -27,6 +27,9 @@ h1 {
     margin: 0px;
     padding-top: 40px;
     height: 80px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
 }
 
 #lessons {
@@ -40,26 +43,19 @@ h1 {
     flex-direction: row;
     border: none;
     padding: 0px;
-    overflow-x: scroll;
+    gap: 5px;
 }
 
-#lessons legend {
-    display: none;
-}
-
-#lessons label {
-    cursor: pointer;
+#lessons button {
     border: 1px solid lightpink;
     border-radius: 3px;
+    background-color: aliceblue;
     width: 100px;
-    height: 40px;
-    text-align: center;
-    display: block;
+    height: 60px;
     padding: 5px;
-}
-
-#lessons input[type="radio"] {
-    display: none;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: break-spaces;
 }
 
 #lessons+div {

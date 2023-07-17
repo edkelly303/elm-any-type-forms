@@ -104,10 +104,10 @@ lessons =
     Control.customType
         (\l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 tag ->
             case tag of
-                BasicControls data ->
-                    l01 data
-
                 YourFirstForm data ->
+                    l01 data
+                
+                BasicControls data ->
                     l02 data
 
                 TuplesAndTriples data ->
@@ -134,8 +134,8 @@ lessons =
                 CreateYourOwn data ->
                     l10 data
         )
-        |> Control.tag1 "Basic controls" BasicControls basicControls
         |> Control.tag1 "Your first form" YourFirstForm yourFirstForm
+        |> Control.tag1 "Basic controls" BasicControls basicControls
         |> Control.tag1 "Tuples and triples" TuplesAndTriples tuplesAndTriples
         |> Control.tag1 "Records and labels" Records records
         |> Control.tag1 "Custom types" CustomTypes customTypes
@@ -153,10 +153,6 @@ lessons =
                             H.button
                                 [ HE.onClick (Control.TagSelected sc.index)
                                 , HA.type_ "button"
-                                , HA.style "height" "40px"
-                                , HA.style "text-overflow" "ellipsis"
-                                , HA.style "overflow" "hidden"
-                                , HA.style "white-space" "break-spaces"
                                 ]
                                 [ H.text sc.label
                                 ]
@@ -176,45 +172,11 @@ lessons =
         |> Control.label "Lessons"
         |> Control.id "lessons"
         |> mdBefore "# An introduction to `elm-any-type-forms`"
-
-
-basicControls =
-    Control.record (\bool string char int float -> { bool = bool, string = string, char = char, int = int, float = float })
-        |> Control.field .bool
-            (Control.bool |> mdBefore """
-The most basic control is probably `Control.bool`, which we render using a standard HTML `<input type="checkbox">` 
-element.""")
-        |> Control.field .string
-            (Control.string |> mdBefore """
-`Control.string` is rendered as `<input type="text">`.""")
-        |> Control.field .char
-            (Control.char |> mdBefore """
-`Control.char` is very similar, except that it provides built-in validation to ensure that the user enters exactly one 
-character.""")
-        |> Control.field .int
-            (Control.int |> mdBefore """
-`Control.int` and `Control.float` are both rendered as `<input type="number">`. Both provide built-in validation to 
-ensure that the user enters the right type of number.""")
-        |> Control.field .float Control.float
-        |> Control.endRecord
-        |> mdBefore """
-## Basic controls
-Let's start by looking at simple controls for Elm's primitive types: `Bool`, 
-`String`, `Char`, `Int` and `Float`.
-"""
-        |> mdAfter """
-All controls are displayed with `<label>` elements to help with accessibility. Each control is wrapped in a 
-`<div class="control-container">`, which contains the label, the input, and potentially also a 
-`<div class="control-feedback-container">` that contains a list of feedback from validation.
-
-But how do we actually use a control? First, we need to convert it into a form..."""
-
-
 yourFirstForm =
     Control.bool
         |> mdBefore """
 ## Your first form
-Let's get up and running by building the simplest possible thing: a form that consists of just a single `Bool` input.
+Let's get up and running by building the simplest possible thing: a form that consists of just a single `Bool` control.
 
 Create a new project folder, open your terminal, run `elm init` and then `elm install edkelly303/elm-any-type-forms`.
 
@@ -240,11 +202,51 @@ something like this:
         |> mdAfter """
 (Although the styling will be different, because `elm reactor` doesn't include any CSS.)
 
-Try swapping `Control.bool` for `Control.string` or `Control.int` to see different types of controls in action.
-
-However, most useful forms contain more than one control. How can we _combine_ controls to make something a bit more 
-interesting?
+Next up, let's take a look at some of the other basic controls included in this package.
 """
+
+basicControls =
+    Control.record (\bool string char int float -> { bool = bool, string = string, char = char, int = int, float = float })
+        |> Control.field .bool
+            (Control.bool |> mdBefore """
+As we've already seen, there's `Control.bool`, which we render using a standard HTML `<input type="checkbox">` 
+element.""")
+        |> Control.field .string
+            (Control.string |> mdBefore """
+`Control.string` is rendered as `<input type="text">`.""")
+        |> Control.field .char
+            (Control.char |> mdBefore """
+`Control.char` is very similar, except that it provides built-in validation to ensure that the user enters exactly one 
+character.""")
+        |> Control.field .int
+            (Control.int |> mdBefore """
+`Control.int` and `Control.float` are both rendered as `<input type="number">`. Both provide built-in validation to 
+ensure that the user enters the right type of number.""")
+        |> Control.field .float Control.float
+        |> Control.endRecord
+        |> mdBefore """
+## Basic controls
+The package includes simple controls for all of Elm's primitive types: `Bool`, 
+`String`, `Char`, `Int` and `Float`.
+"""
+        |> mdAfter """
+All controls are displayed with `<label>` elements to help with accessibility. Each control is wrapped in a 
+`<div class="control-container">`, which contains the label, the input, and potentially also a 
+`<div class="control-feedback-container">` that contains a list of feedback from validation.
+
+You can try out any of these controls by simply swapping the relevant function into your `main` definition - for example, here's `Control.string`:
+```
+main =
+    Control.sandbox
+        { control = Control.string
+        , outputToString = Debug.toString
+        }
+```
+However, most useful forms contain more than one control. How can we _combine_ controls to make something a bit more 
+interesting?"""
+
+
+
 
 
 tuplesAndTriples =
@@ -329,7 +331,7 @@ recordIntro =
 ## Records and labels
 
 Imagine we are building a customer relationship management system for a company called Shapes.com. The company sells 
-a comprehensive range of circles, triangles and rectangles to happy customers worldwide.
+a variety of two-dimensional geometric shapes to happy customers worldwide.
 
 To represent our customers, let's use a record type:
 

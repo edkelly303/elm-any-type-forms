@@ -16639,10 +16639,10 @@ var $author$project$Control$string = A2(
 		}));
 var $author$project$Docs$basicControls = A2(
 	$author$project$Docs$mdAfter,
-	'\r\nAll controls are displayed with `<label>` elements to help with accessibility. Each control is wrapped in a \r\n`<div class="control-container">`, which contains the label, the input, and potentially also a \r\n`<div class="control-feedback-container">` that contains a list of feedback from validation.\r\n\r\nBut how do we actually use a control? First, we need to convert it into a form...',
+	'\r\nAll controls are displayed with `<label>` elements to help with accessibility. Each control is wrapped in a \r\n`<div class="control-container">`, which contains the label, the input, and potentially also a \r\n`<div class="control-feedback-container">` that contains a list of feedback from validation.\r\n\r\nYou can try out any of these controls by simply swapping the relevant function into your `main` definition - for example, here\'s `Control.string`:\r\n```\r\nmain =\r\n    Control.sandbox\r\n        { control = Control.string\r\n        , outputToString = Debug.toString\r\n        }\r\n```\r\nHowever, most useful forms contain more than one control. How can we _combine_ controls to make something a bit more \r\ninteresting?',
 	A2(
 		$author$project$Docs$mdBefore,
-		'\r\n## Basic controls\r\nLet\'s start by looking at simple controls for Elm\'s primitive types: `Bool`, \r\n`String`, `Char`, `Int` and `Float`.\r\n',
+		'\r\n## Basic controls\r\nThe package includes simple controls for all of Elm\'s primitive types: `Bool`, \r\n`String`, `Char`, `Int` and `Float`.\r\n',
 		$author$project$Control$endRecord(
 			A3(
 				$author$project$Control$field,
@@ -16673,7 +16673,7 @@ var $author$project$Docs$basicControls = A2(
 								function ($) {
 									return $.bool;
 								},
-								A2($author$project$Docs$mdBefore, '\r\nThe most basic control is probably `Control.bool`, which we render using a standard HTML `<input type="checkbox">` \r\nelement.', $author$project$Control$bool),
+								A2($author$project$Docs$mdBefore, '\r\nAs we\'ve already seen, there\'s `Control.bool`, which we render using a standard HTML `<input type="checkbox">` \r\nelement.', $author$project$Control$bool),
 								$author$project$Control$record(
 									F5(
 										function (bool, string, _char, _int, _float) {
@@ -19666,7 +19666,7 @@ var $author$project$Docs$multivalidation = A2(
 										function (name, age, products, id, password) {
 											return {age: age, id: id, name: name, password: password, products: products};
 										}))))))))));
-var $author$project$Docs$recordIntro = '\r\n## Records and labels\r\n\r\nImagine we are building a customer relationship management system for a company called Shapes.com. The company sells \r\na comprehensive range of circles, triangles and rectangles to happy customers worldwide.\r\n\r\nTo represent our customers, let\'s use a record type:\r\n\r\n```\r\ntype alias Customer = \r\n    { name : String\r\n    , age : Int \r\n    }\r\n```\r\n\r\nWe can build a control that produces these `Customer` records with the `Control.record` combinator:\r\n\r\n```    \r\ncustomerControl =\r\n    Control.record (\\name age -> { name = name, age = age })\r\n        |> Control.field .name Control.string\r\n        |> Control.field .age Control.int\r\n        |> Control.end\r\n```\r\n\r\nOr if you prefer brevity to explicitness, you could even use the `Customer` constructor directly:\r\n\r\n```\r\ncustomerControl =\r\n    Control.record Customer\r\n        |> Control.field .name Control.string\r\n        |> Control.field .age Control.int\r\n        |> Control.end\r\n```\r\n\r\n### Wiring it up\r\n\r\nLet\'s take a look at this `customerControl` in our sandbox:\r\n\r\n```\r\nmain =\r\n    Control.sandbox\r\n        { control = customerControl\r\n        , outputToString = Debug.toString\r\n        }\r\n```\r\n\r\nAnd you should see a form that looks like this:\r\n';
+var $author$project$Docs$recordIntro = '\r\n## Records and labels\r\n\r\nImagine we are building a customer relationship management system for a company called Shapes.com. The company sells \r\na variety of two-dimensional geometric shapes to happy customers worldwide.\r\n\r\nTo represent our customers, let\'s use a record type:\r\n\r\n```\r\ntype alias Customer = \r\n    { name : String\r\n    , age : Int \r\n    }\r\n```\r\n\r\nWe can build a control that produces these `Customer` records with the `Control.record` combinator:\r\n\r\n```    \r\ncustomerControl =\r\n    Control.record (\\name age -> { name = name, age = age })\r\n        |> Control.field .name Control.string\r\n        |> Control.field .age Control.int\r\n        |> Control.end\r\n```\r\n\r\nOr if you prefer brevity to explicitness, you could even use the `Customer` constructor directly:\r\n\r\n```\r\ncustomerControl =\r\n    Control.record Customer\r\n        |> Control.field .name Control.string\r\n        |> Control.field .age Control.int\r\n        |> Control.end\r\n```\r\n\r\n### Wiring it up\r\n\r\nLet\'s take a look at this `customerControl` in our sandbox:\r\n\r\n```\r\nmain =\r\n    Control.sandbox\r\n        { control = customerControl\r\n        , outputToString = Debug.toString\r\n        }\r\n```\r\n\r\nAnd you should see a form that looks like this:\r\n';
 var $author$project$Docs$recordMiddle = '\r\n### Labelling controls\r\nThat\'s ok...ish. But one of the nice things about records is that their fields are _named_. So really, we want the \r\ncontrols to be labelled with the names of the fields. \r\n\r\nThat\'s where `Control.label` comes in. Change your code to:\r\n\r\n```    \r\ncustomerControl =\r\n    Control.record (\\name age -> { name = name, age = age })\r\n        |> Control.field .name (Control.string |> Control.label "Name")\r\n        |> Control.field .age (Control.int |> Control.label "Age")\r\n        |> Control.end\r\n```\r\n\r\nAnd you should now see something like this:\r\n';
 var $author$project$Docs$recordOutro = '\r\n**Note:** We\'re going to see other functions that work like `Control.label` later - this is a common pattern for \r\nconfiguring controls. \r\n\r\n### A bit of refactoring\r\n\r\nTo keep things tidy, it\'s often better to pull out each control into a separate function, where \r\nyou can apply as many configuration functions as you like without making your `Control.record` definitions too complex. \r\n\r\nWith that in mind, let\'s refactor our code to this:\r\n\r\n```    \r\ncustomerControl =\r\n    Control.record (\\name age -> { name = name, age = age })\r\n        |> Control.field .name nameControl\r\n        |> Control.field .age ageControl\r\n        |> Control.end\r\n\r\nnameControl = \r\n    Control.string \r\n        |> Control.label "Name"\r\n\r\nageControl = \r\n    Control.int \r\n        |> Control.label "Age"\r\n```\r\n\r\nNow, with tuples, triples and records, we have multiple options for controls that produce types that contain multiple \r\nvalues. \r\n\r\nBut Elm also has another kind of complex type: the custom type. How do we model those?\r\n';
 var $author$project$Control$tuple = F2(
@@ -19772,8 +19772,6 @@ var $author$project$Docs$records = A2(
 									function (name, age) {
 										return {age: age, name: name};
 									})))))))));
-var $elm$virtual_dom$VirtualDom$style = _VirtualDom_style;
-var $elm$html$Html$Attributes$style = $elm$virtual_dom$VirtualDom$style;
 var $author$project$Control$triple = F3(
 	function (first, second, third) {
 		return A2(
@@ -19874,8 +19872,8 @@ var $author$project$Docs$validation = A2(
 	A2($author$project$Docs$mdBefore, $author$project$Docs$validationIntro, $author$project$Docs$nameControl));
 var $author$project$Docs$yourFirstForm = A2(
 	$author$project$Docs$mdAfter,
-	'\r\n(Although the styling will be different, because `elm reactor` doesn\'t include any CSS.)\r\n\r\nTry swapping `Control.bool` for `Control.string` or `Control.int` to see different types of controls in action.\r\n\r\nHowever, most useful forms contain more than one control. How can we _combine_ controls to make something a bit more \r\ninteresting?\r\n',
-	A2($author$project$Docs$mdBefore, '\r\n## Your first form\r\nLet\'s get up and running by building the simplest possible thing: a form that consists of just a single `Bool` input.\r\n\r\nCreate a new project folder, open your terminal, run `elm init` and then `elm install edkelly303/elm-any-type-forms`.\r\n\r\nNext, create a file called \'Main.elm\' in the `/src` subfolder. Open `Main.elm` in your code editor and paste in the \r\nfollowing:\r\n\r\n```\r\nmodule Main exposing (main)\r\n\r\nimport Control\r\n\r\nmain =\r\n    Control.sandbox\r\n        { control = Control.bool\r\n        , outputToString = Debug.toString\r\n        }\r\n```\r\n\r\nIf you now run `elm reactor` from the root of your project folder and visit \r\n[http://localhost:8000/src/Main.elm](http://localhost:8000/src/Main.elm), you should see a webpage with a control \r\nsomething like this:\r\n', $author$project$Control$bool));
+	'\r\n(Although the styling will be different, because `elm reactor` doesn\'t include any CSS.)\r\n\r\nNext up, let\'s take a look at some of the other basic controls included in this package.\r\n',
+	A2($author$project$Docs$mdBefore, '\r\n## Your first form\r\nLet\'s get up and running by building the simplest possible thing: a form that consists of just a single `Bool` control.\r\n\r\nCreate a new project folder, open your terminal, run `elm init` and then `elm install edkelly303/elm-any-type-forms`.\r\n\r\nNext, create a file called \'Main.elm\' in the `/src` subfolder. Open `Main.elm` in your code editor and paste in the \r\nfollowing:\r\n\r\n```\r\nmodule Main exposing (main)\r\n\r\nimport Control\r\n\r\nmain =\r\n    Control.sandbox\r\n        { control = Control.bool\r\n        , outputToString = Debug.toString\r\n        }\r\n```\r\n\r\nIf you now run `elm reactor` from the root of your project folder and visit \r\n[http://localhost:8000/src/Main.elm](http://localhost:8000/src/Main.elm), you should see a webpage with a control \r\nsomething like this:\r\n', $author$project$Control$bool));
 var $author$project$Docs$lessons = A2(
 	$author$project$Docs$mdBefore,
 	'# An introduction to `elm-any-type-forms`',
@@ -19906,11 +19904,7 @@ var $author$project$Docs$lessons = A2(
 												[
 													$elm$html$Html$Events$onClick(
 													$author$project$Control$TagSelected(sc.index)),
-													$elm$html$Html$Attributes$type_('button'),
-													A2($elm$html$Html$Attributes$style, 'height', '40px'),
-													A2($elm$html$Html$Attributes$style, 'text-overflow', 'ellipsis'),
-													A2($elm$html$Html$Attributes$style, 'overflow', 'hidden'),
-													A2($elm$html$Html$Attributes$style, 'white-space', 'break-spaces')
+													$elm$html$Html$Attributes$type_('button')
 												]),
 											_List_fromArray(
 												[
@@ -19968,14 +19962,14 @@ var $author$project$Docs$lessons = A2(
 													$author$project$Docs$tuplesAndTriples,
 													A4(
 														$author$project$Control$tag1,
-														'Your first form',
-														$author$project$Docs$YourFirstForm,
-														$author$project$Docs$yourFirstForm,
+														'Basic controls',
+														$author$project$Docs$BasicControls,
+														$author$project$Docs$basicControls,
 														A4(
 															$author$project$Control$tag1,
-															'Basic controls',
-															$author$project$Docs$BasicControls,
-															$author$project$Docs$basicControls,
+															'Your first form',
+															$author$project$Docs$YourFirstForm,
+															$author$project$Docs$yourFirstForm,
 															$author$project$Control$customType(
 																function (l01) {
 																	return function (l02) {
@@ -19989,10 +19983,10 @@ var $author$project$Docs$lessons = A2(
 																									return function (l10) {
 																										return function (tag) {
 																											switch (tag.$) {
-																												case 'BasicControls':
+																												case 'YourFirstForm':
 																													var data = tag.a;
 																													return l01(data);
-																												case 'YourFirstForm':
+																												case 'BasicControls':
 																													var data = tag.a;
 																													return l02(data);
 																												case 'TuplesAndTriples':
