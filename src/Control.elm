@@ -1089,7 +1089,7 @@ name name_ (Control control) =
             |> label "Enter your name"
 
 -}
-label : String -> Control state delta output -> Control state delta output
+label : String -> AdvancedControl input state delta output -> AdvancedControl input state delta output
 label label_ (Control control) =
     let
         labeller (ControlFns i) =
@@ -3241,8 +3241,12 @@ customType destructor =
     }
 
 
-tagHelper label_ (Control control) toArgState rec =
+tagHelper label_ internalRecord toArgState rec =
     let
+        (Control control) =
+            internalRecord
+                |> label label_
+
         newIndex =
             rec.index + 1
     in
