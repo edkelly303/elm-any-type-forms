@@ -492,8 +492,8 @@ customTypesIntro =
     """
 ## Custom types
 
-As we mentioned in the last lesson, Shapes.com sells circles, triangles and rectangles to its customers. The company's
-unique selling point is that it can custom-engineer these shapes in any size the customer desires! 
+Shapes.com sells circles, triangles and rectangles to its customers. The company's unique selling point is that it 
+can custom-engineer these shapes in any size the customer desires! 
 
 We need to capture the required dimensions of each shape in our system, to be sure that we're giving the customer 
 exactly what they want. So we'll specify circles by their radius (a single `Int`), triangles by the lengths of their 
