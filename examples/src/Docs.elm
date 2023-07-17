@@ -350,7 +350,7 @@ customerControl =
     Control.record (\\name age -> { name = name, age = age })
         |> Control.field .name Control.string
         |> Control.field .age Control.int
-        |> Control.end
+        |> Control.endRecord
 ```
 
 Or if you prefer brevity to explicitness, you could even use the `Customer` constructor directly:
@@ -360,7 +360,7 @@ customerControl =
     Control.record Customer
         |> Control.field .name Control.string
         |> Control.field .age Control.int
-        |> Control.end
+        |> Control.endRecord
 ```
 
 ### Wiring it up
@@ -392,7 +392,7 @@ customerControl =
     Control.record (\\name age -> { name = name, age = age })
         |> Control.field .name (Control.string |> Control.label "Name")
         |> Control.field .age (Control.int |> Control.label "Age")
-        |> Control.end
+        |> Control.endRecord
 ```
 
 And you should now see something like this:
@@ -416,7 +416,7 @@ customerControl =
     Control.record (\\name age -> { name = name, age = age })
         |> Control.field .name nameControl
         |> Control.field .age ageControl
-        |> Control.end
+        |> Control.endRecord
 
 nameControl = 
     Control.string 
@@ -553,11 +553,11 @@ productControl =
             (Control.int |> Control.label "Width")
             (Control.int |> Control.label "Height")
 
-        -- Now just call `Control.end` to declare that we've finished adding 
+        -- Now just call `Control.endCustomType` to declare that we've finished adding 
         -- tags, and then `Control.label` to give the control an appropriate 
         -- label.
         
-        |> Control.end
+        |> Control.endCustomType
         |> Control.label "Product"
 ```
 
@@ -577,7 +577,7 @@ customerControl =
         |> Control.field .name nameControl
         |> Control.field .age ageControl
         |> Control.field .product productControl
-        |> Control.end
+        |> Control.endRecord
 ```
 
 And you'll see something like this:
@@ -655,7 +655,7 @@ customerControl =
         |> Control.field .name nameControl
         |> Control.field .age ageControl
         |> Control.field .products productListControl
-        |> Control.end
+        |> Control.endRecord
 ```
 
 ### Other list-like things
@@ -749,7 +749,7 @@ customerControl =
         |> Control.field .age ageControl
         |> Control.field .products productListControl
         |> Control.field .id idControl
-        |> Control.end
+        |> Control.endRecord
 ```        
 """
 
@@ -901,7 +901,7 @@ passwordControl =
     Control.record (\\choose confirm -> { choose = choose, confirm = confirm })
         |> Control.field .choose choosePasswordControl
         |> Control.field .confirm confirmPasswordControl
-        |> Control.end
+        |> Control.endRecord
 
 choosePasswordControl =
     Control.string
@@ -926,7 +926,7 @@ passwordControl =
     Control.record (\\choose confirm -> { choose = choose, confirm = confirm })
         |> Control.field .choose choosePasswordControl
         |> Control.field .confirm confirmPasswordControl
-        |> Control.end
+        |> Control.endRecord
         |> Control.alertIf
             (\\{ choose, confirm } -> choose /= confirm)
             "password-mismatch"
@@ -972,7 +972,7 @@ passwordControl =
     Control.record (\\choose confirm -> { choose = choose, confirm = confirm })
         |> Control.field .choose choosePasswordControl
         |> Control.field .confirm confirmPasswordControl
-        |> Control.end
+        |> Control.endRecord
         |> Control.alertIf
             (\\{ choose, confirm } -> choose /= confirm)
             "password-mismatch"
@@ -1002,7 +1002,7 @@ customerControl =
         |> Control.field .products productListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
-        |> Control.end
+        |> Control.endRecord
 ```
 
 And you should see something a little like this:
@@ -1120,7 +1120,7 @@ boringDateControl =
             (Control.int
                 |> Control.label "Day"
             )
-        |> Control.end
+        |> Control.endRecord
 ```
 
 (Notice that although we're using `Control.record`, we're not actually creating a record here! We're passing the values 
@@ -1218,7 +1218,7 @@ customerControl =
         |> Control.field .products productListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
-        |> Control.end
+        |> Control.endRecord
         |> mdBefore createYourOwnIntro
         |> mdAfter createYourOwnOutro
 ```
