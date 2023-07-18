@@ -3195,7 +3195,6 @@ customType :
         , initialDeltas : e -> f -> f
         , initialStates : g -> h -> h
         , initialiseDeltas : a10 -> a10
-        , labels : List i
         , makeDeltaSetters : a9 -> a9
         , makeStateSetters : a8 -> a8
         , parser : a7 -> a7
@@ -3211,7 +3210,6 @@ customType :
         }
 customType destructor =
     { index = 0
-    , labels = []
     , fns = \_ x -> x
     , initialStates = \_ x -> x
     , initialDeltas = \_ x -> x
@@ -3251,7 +3249,6 @@ tagHelper label_ internalRecord toArgState rec =
             rec.index + 1
     in
     { index = newIndex
-    , labels = label_ :: rec.labels
     , fns =
         \path ->
             let
@@ -3346,9 +3343,6 @@ endCustomType rec =
 
                 stateSetters =
                     makeStateSetters rec.makeStateSetters rec.stateInserter initialStates fns rec.toArgStates rec.stateBefores rec.stateAfters
-
-                labels =
-                    List.reverse rec.labels
 
                 update =
                     \delta (State internalState state) ->
