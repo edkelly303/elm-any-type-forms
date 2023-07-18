@@ -1,43 +1,37 @@
-body {
-    font-family: Arial, Helvetica, sans-serif;
-    background-color: lightblue;
-    padding: 0px;
-    margin: 0px;
+:root {
+    --container-borders: 40px;
+    --container-padding: 20px;
+    --container-spacing: calc(var(--container-borders) + var(--container-padding));
+    --container-height: calc(100vh - (2 * var(--container-spacing)));
+    --container-width: calc(100vw - (2 * var(--container-spacing)));
+    --h1-height: 60px;
+    --lessons-height: 70px;
+    --lesson-page-height: calc(var(--container-height) - (var(--h1-height) + var(--lessons-height)))
 }
 
-body>div {
+body {
+    font-family: Helvetica, sans-serif;
     background-color: white;
-    position: fixed;
-    padding: 0px;
-    top: 40px;
-    left: 40px;
-    width: calc(100vw - 160px);
-    height: calc(100vh - 80px);
-    overflow-y: scroll;
-    overflow-x: hidden;
-    padding-left: 40px;
-    padding-right: 40px;
+    border-width: var(--container-borders);
+    border-color: lightblue;
+    border-style: solid;
+    margin: 0px;
+    padding: var(--container-padding);
+    width: var(--container-width);
+    height: var(--container-height);
 }
 
 h1 {
-    background-color: white;
-    position: fixed;
-    top: 40px;
-    width: calc(100vw - 160px);
     margin: 0px;
-    padding-top: 40px;
-    height: 80px;
+    height: var(--h1-height);
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
 }
 
 #lessons {
-    position: fixed;
-    top: 140px;
-    background-color: white;
     margin-left: 0px;
-    width: calc(100vw - 160px);
+    height: var(--lessons-height);
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -51,7 +45,7 @@ h1 {
     border-radius: 3px;
     background-color: aliceblue;
     width: 100px;
-    height: 60px;
+    height: 70px;
     padding: 5px;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -63,15 +57,12 @@ h1 {
     background-color: rgb(255, 243, 245);
 }
 
-#back-next-container {
-    width: calc(100vw - 160px);
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    margin-bottom: 40px;
+#lesson-page {
+    overflow-y: scroll;
+    height: var(--lesson-page-height);
 }
 
-#back-next-container button {
+#next-button {
     border: 1px solid lightpink;
     border-radius: 3px;
     background-color: aliceblue;
@@ -84,9 +75,7 @@ h1 {
     cursor: pointer;
 }
 
-#lessons+div {
-    margin-top: 180px;
-}
+
 
 p {
     line-height: 22px;

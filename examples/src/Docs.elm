@@ -50,33 +50,11 @@ main =
             \model ->
                 { title = "elm-any-type-forms tutorial"
                 , body =
-                    [ H.div []
-                        [ form.view model.form
-
-                        --, viewOutput model.output
-                        ]
+                    [ H.div [] [ form.view model.form ]
                     ]
                 }
         , subscriptions = \model -> form.subscriptions model.form
         }
-
-
-viewOutput output =
-    case output of
-        Nothing ->
-            H.text ""
-
-        Just (Ok val) ->
-            H.div []
-                [ H.text "Success!"
-                , H.pre [] [ H.text (Debug.toString val) ]
-                ]
-
-        Just (Err errors) ->
-            H.div []
-                [ H.text "Failure!"
-                , H.ul [] (List.map (\{ label, message } -> H.li [] [ H.text (label ++ ": " ++ message) ]) errors)
-                ]
 
 
 form =
@@ -153,7 +131,7 @@ lessons =
                             (List.map
                                 (\sc ->
                                     H.button
-                                        [ HE.onClick (Control.TagSelected sc.index)
+                                        [ HE.onClick (config.selectMsg sc.index)
                                         , HA.type_ "button"
                                         , HA.class
                                             (if sc.index == config.selected then
@@ -179,30 +157,23 @@ lessons =
                                     []
                             )
                             subcontrols
+                             
 
                     backNext =
-                        H.div [ HA.id "back-next-container" ]
-                            [ if config.selected == 0 then
+                        
+                            [ if config.selected == (List.length subcontrols - 1) then
                                 H.text ""
 
                               else
                                 H.button
-                                    [ HE.onClick (Control.TagSelected (config.selected - 1))
+                                    [ HA.id "next-button"
                                     , HA.type_ "button"
-                                    ]
-                                    [ H.text "Back" ]
-                            , if config.selected == (List.length subcontrols - 1) then
-                                H.text ""
-
-                              else
-                                H.button
-                                    [ HE.onClick (Control.TagSelected (config.selected + 1))
-                                    , HA.type_ "button"
+                                    , HE.onClick (config.selectMsg (config.selected + 1))
                                     ]
                                     [ H.text "Next" ]
                             ]
                 in
-                navBar :: subcontrolViews ++ [ backNext ]
+                [ navBar, H.div [ HA.id "lesson-page" ] (subcontrolViews ++ backNext) ]
             )
         |> Control.label "Lessons"
         |> Control.id "lessons"
