@@ -7,10 +7,10 @@ module Control exposing
     , alertIf, respond
     , alertAtIndexes
     , initWith, debounce, id, name, label, class, classList, wrapView
-    , record, field, hiddenField, readOnlyField, endRecord, layout
+    , record, field, hiddenField, readOnlyField, endRecord, layout, LayoutConfig
     , customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
-    , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfig, Path, Feedback
+    , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
     )
 
 {-|
@@ -95,7 +95,7 @@ as follows:
 
 # Building record combinators
 
-@docs record, field, hiddenField, readOnlyField, endRecord, layout
+@docs record, field, hiddenField, readOnlyField, endRecord, layout, LayoutConfig
 
 
 # Building custom type combinators
@@ -115,7 +115,7 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfig, Path, Feedback
+@docs Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
 
 -}
 
@@ -217,8 +217,8 @@ type ControlFns input state delta output
         , initWith : input -> ( State state, Cmd (Delta delta) )
         , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
         , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
-        , view : ViewConfig state delta -> List (Html (Delta delta))
-        , subControlViews : ViewConfig state delta -> List (Subcontrol delta)
+        , view : InternalViewConfig state -> List (Html (Delta delta))
+        , subControlViews : InternalViewConfig state -> List (Subcontrol delta)
         , parse : State state -> Result (List Feedback) output
         , path : Path
         , emitAlerts : State state -> List Alert
@@ -259,16 +259,26 @@ type alias Feedback =
 
 {-| Some internal stuff needed to view controls
 -}
-type alias ViewConfig state delta =
+type alias InternalViewConfig state =
     { state : state
     , status : Status
     , alerts : List Alert
     , selected : Int
-    , selectMsg : Int -> Delta delta
     , name : String
     , id : String
     , label : String
     , class : List String
+    }
+
+
+{-| Configuration for the `layout` function
+-}
+type alias LayoutConfig delta =
+    { selected : Int
+    , selectMsg : Int -> Delta delta
+    , id : String
+    , label : String
+    , class : String
     }
 
 
@@ -456,7 +466,6 @@ form { onUpdate, onSubmit, control } =
                     , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
                     , alerts = alerts
                     , selected = internalState.selected
-                    , selectMsg = TagSelected
                     }
                     |> List.map (H.map onUpdate)
                  )
@@ -565,7 +574,6 @@ sandbox { outputToString, control } =
                             , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
                             , alerts = alerts
                             , selected = internalState.selected
-                            , selectMsg = TagSelected
                             }
                         )
                     , H.h2 [] [ H.text "Output" ]
@@ -1175,7 +1183,14 @@ classList classList_ (Control control) =
 -}
 
 
-{-| Change the layout of the fields of a `record` control.
+{-| Define the HTML output for a combinator.
+
+This is useful if you want to alter the way that the combinator's subcontrols
+are laid out on the screen.
+
+For example, you could use it to present a record control as a wizard, rather
+than a list. The wizard example below is very naive, but hopefully gives you the
+idea.
 
     type alias MyRecord =
         { name : String
@@ -1192,23 +1207,93 @@ classList classList_ (Control control) =
             |> field "Name" string
             |> field "Age" int
             |> end
-            |> layout (\fieldViews config -> Html.div [] fieldViews)
+            |> layout wizard
+
+    wizard config subcontrols =
+        let
+            currentPage =
+                config.selected
+
+            totalPages =
+                List.length subcontrols
+
+            currentPageView =
+                subcontrols
+                    |> List.filter (\{ index } -> index == currentPage)
+                    |> List.map .html
+                    |> List.concat
+
+            nextClicked =
+                config.selectMsg (currentPage + 1)
+
+            backClicked =
+                config.selectMsg (currentPage - 1)
+
+            navigationButton txt msg =
+                Html.button
+                    [ Html.Attributes.type_ "button"
+                    , Html.Events.onClick msg
+                    ]
+                    [ Html.text txt ]
+        in
+        Html.div
+            [ Html.Attributes.id config.id
+            , Html.Attributes.class config.class
+            ]
+            ([ Html.h1 [] [ Html.text "Wizard!" ]
+             , navigationButton "Back" backClicked
+             , Html.text
+                (String.join " "
+                    [ "page"
+                    , String.fromInt currentPage
+                    , "of"
+                    , String.fromInt totalPages
+                    ]
+                )
+             , navigationButton "Next" nextClicked
+             ]
+                ++ currentPageView
+            )
 
 -}
 layout :
-    (ViewConfig state delta -> List (Subcontrol delta) -> List (Html (Delta delta)))
+    (LayoutConfig delta -> List (Subcontrol delta) -> List (Html (Delta delta)))
     -> Control state delta output
     -> Control state delta output
-layout v (Control control) =
+layout view (Control control) =
     let
-        viewer (ControlFns i) =
-            ControlFns { i | view = \config -> v config (i.subControlViews config) }
+        viewer (ControlFns fns) =
+            ControlFns
+                { fns
+                    | view =
+                        \internalViewConfig ->
+                            let
+                                layoutConfig =
+                                    { class = String.join " " internalViewConfig.class
+                                    , id = internalViewConfig.id
+                                    , label = internalViewConfig.label
+                                    , selected = internalViewConfig.selected
+                                    , selectMsg = TagSelected
+                                    }
+
+                                subcontrols =
+                                    fns.subControlViews internalViewConfig
+                            in
+                            view layoutConfig subcontrols
+                }
     in
     Control (control >> viewer)
 
 
 
-{- WRAPVIEW -}
+{-
+   db   d8b   db d8888b.  .d8b.  d8888b. db    db d888888b d88888b db   d8b   db
+   88   I8I   88 88  `8D d8' `8b 88  `8D 88    88   `88'   88'     88   I8I   88
+   88   I8I   88 88oobY' 88ooo88 88oodD' Y8    8P    88    88ooooo 88   I8I   88
+   Y8   I8I   88 88`8b   88~~~88 88~~~   `8b  d8'    88    88~~~~~ Y8   I8I   88
+   `8b d8'8b d8' 88 `88. 88   88 88       `8bd8'    .88.   88.     `8b d8'8b d8'
+    `8b8' `8d8'  88   YD YP   YP 88         YP    Y888888P Y88888P  `8b8' `8d8'
+-}
 
 
 {-| Transform the HTML output of a `Control`'s view function.
@@ -2483,11 +2568,14 @@ fieldHelper access fromInput (Control control) rec =
             let
                 newPath =
                     Path.add newIndex path
+
+                (ControlFns fns) =
+                    control newPath
             in
             rec.fns path
                 << Tuple.pair
                     (RecordFns
-                        { field = control newPath
+                        { field = ControlFns { fns | index = newIndex }
                         , fromInput = fromInput
                         , access = access
                         }
@@ -2588,6 +2676,11 @@ endRecord rec =
                             , Cmd.map ChangeStateInternally cmd
                             )
 
+                        TagSelected index ->
+                            ( State { s | selected = index } state
+                            , Cmd.none
+                            )
+
                         _ ->
                             ( State s state, Cmd.none )
 
@@ -2612,7 +2705,7 @@ endRecord rec =
                 { path = path
                 , index = 0
                 , init =
-                    ( State { status = Intact_, selected = 0 } initialStates
+                    ( State { status = Intact_, selected = 1 } initialStates
                     , initialiseRecordDeltas rec.deltaInitialiser deltaSetters initialDeltas
                     )
                 , initWith =
@@ -2982,7 +3075,7 @@ viewRecordStates :
     )
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> ViewConfig ( State state, restStates ) ( Delta delta, restDeltas )
+    -> InternalViewConfig ( State state, restStates )
     -> List (Subcontrol msg)
 viewRecordStates viewer fns setters config =
     viewer (\views _ End End End -> views) [] config.alerts fns setters config.state
@@ -3017,7 +3110,6 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
                 , status = getStatus controlFns.parse controlFns.collectErrors alerts (State internalState state)
                 , alerts = alerts
                 , selected = internalState.selected
-                , selectMsg = TagSelected
                 }
                 |> List.map (H.map (\delta -> ChangeStateOnInput (setter delta)))
     in
@@ -4142,7 +4234,6 @@ selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( sette
                         , status = Intact
                         , alerts = alerts
                         , selected = internalState.selected
-                        , selectMsg = TagSelected
                         }
                         |> List.map (H.map (setter >> ChangeStateOnInput))
                  , label = fns.label
@@ -4272,7 +4363,7 @@ button msg text =
 
 listView :
     Path
-    -> ViewConfig (List (State state)) (ListDelta delta)
+    -> InternalViewConfig (List (State state))
     -> List Alert
     -> (Path -> ControlFns input state delta output)
     -> List (Html (Delta (ListDelta delta)))
@@ -4334,7 +4425,6 @@ listView path config debouncingReceivers subcontrol =
                                             , status = getStatus itemFns.parse itemFns.collectErrors filteredAlerts2 (State internalState state)
                                             , alerts = filteredAlerts2
                                             , selected = internalState.selected
-                                            , selectMsg = TagSelected
                                             }
                                         )
                                         |> H.map (ChangeItem idx)

@@ -157,21 +157,19 @@ lessons =
                                     []
                             )
                             subcontrols
-                             
 
                     backNext =
-                        
-                            [ if config.selected == (List.length subcontrols - 1) then
-                                H.text ""
+                        [ if config.selected == (List.length subcontrols - 1) then
+                            H.text ""
 
-                              else
-                                H.button
-                                    [ HA.id "next-button"
-                                    , HA.type_ "button"
-                                    , HE.onClick (config.selectMsg (config.selected + 1))
-                                    ]
-                                    [ H.text "Next" ]
-                            ]
+                          else
+                            H.button
+                                [ HA.id "next-button"
+                                , HA.type_ "button"
+                                , HE.onClick (config.selectMsg (config.selected + 1))
+                                ]
+                                [ H.text "Next" ]
+                        ]
                 in
                 [ navBar, H.div [ HA.id "lesson-page" ] (subcontrolViews ++ backNext) ]
             )
@@ -1069,6 +1067,9 @@ dateControl =
                     Err error ->
                         Err [ error ]
         }
+        
+
+
 
 
 createYourOwnIntro =
