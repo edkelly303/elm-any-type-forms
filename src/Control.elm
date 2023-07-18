@@ -683,12 +683,12 @@ create controlConfig =
                 , index = 0
                 , init =
                     controlConfig.initEmpty
-                        |> Tuple.mapFirst (State { status = Intact_, selected = 0 })
+                        |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                         |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , initWith =
                     \input ->
                         controlConfig.initWith input
-                            |> Tuple.mapFirst (State { status = Intact_, selected = 0 })
+                            |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                             |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , baseUpdate = preUpdate
                 , update = preUpdate 0
@@ -1900,11 +1900,11 @@ list (Control ctrl) =
                                     ( [], [] )
                                     input
                         in
-                        ( State { status = Intact_, selected = 0 } initialState
+                        ( State { status = Intact_, selected = 1 } initialState
                         , Cmd.map ChangeStateInternally (Cmd.batch initialCmds)
                         )
                 , init =
-                    ( State { status = Intact_, selected = 0 } []
+                    ( State { status = Intact_, selected = 1 } []
                     , Cmd.none
                     )
                 , baseUpdate = update
@@ -2940,7 +2940,7 @@ initialiseRecordStates :
     -> State fieldStates
 initialiseRecordStates initialiser input fns =
     initialiser (\_ End -> End) input fns
-        |> State { status = Intact_, selected = 0 }
+        |> State { status = Intact_, selected = 1 }
 
 
 recordStateInitialiser :
@@ -3353,7 +3353,7 @@ tagHelper label_ internalRecord toArgState rec =
             in
             rec.fns path
                 << Tuple.pair
-                    (ControlFns { controlFns | index = rec.index })
+                    (ControlFns { controlFns | index = newIndex })
     , initialStates =
         \path ->
             let
@@ -3492,7 +3492,7 @@ endCustomType rec =
                 { path = path
                 , index = 0
                 , init =
-                    ( State { status = Intact_, selected = 0 } initialStates
+                    ( State { status = Intact_, selected = 1 } initialStates
                     , initialiseCustomTypeDeltas rec.initialiseDeltas deltaSetters initialDeltas
                     )
                 , initWith =

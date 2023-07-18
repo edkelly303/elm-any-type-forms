@@ -159,7 +159,7 @@ lessons =
                             subcontrols
 
                     backNext =
-                        [ if config.selected == (List.length subcontrols - 1) then
+                        [ if config.selected == (List.length subcontrols) then
                             H.text ""
 
                           else
