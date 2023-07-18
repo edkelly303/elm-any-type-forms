@@ -5495,9 +5495,6 @@ var $author$project$Control$State = F2(
 	function (a, b) {
 		return {$: 'State', a: a, b: b};
 	});
-var $author$project$Control$TagSelected = function (a) {
-	return {$: 'TagSelected', a: a};
-};
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
 		return A3(
@@ -5788,7 +5785,6 @@ var $author$project$Control$form = function (_v0) {
 									$elm$core$Maybe$withDefault,
 									$author$project$Path$toString(path),
 									fns.name),
-								selectMsg: $author$project$Control$TagSelected,
 								selected: internalState.selected,
 								state: state,
 								status: A4(
@@ -6101,7 +6097,7 @@ var $author$project$Control$create = function (controlConfig) {
 						A2(
 							$elm$core$Tuple$mapFirst,
 							$author$project$Control$State(
-								{selected: 0, status: $author$project$Control$Intact_}),
+								{selected: 1, status: $author$project$Control$Intact_}),
 							controlConfig.initEmpty)),
 					initWith: function (input) {
 						return A2(
@@ -6110,7 +6106,7 @@ var $author$project$Control$create = function (controlConfig) {
 							A2(
 								$elm$core$Tuple$mapFirst,
 								$author$project$Control$State(
-									{selected: 0, status: $author$project$Control$Intact_}),
+									{selected: 1, status: $author$project$Control$Intact_}),
 								controlConfig.initWith(input)));
 					},
 					label: controlConfig.label,
@@ -6420,7 +6416,7 @@ var $author$project$Control$initialiseRecordStates = F3(
 	function (initialiser, input, fns) {
 		return A2(
 			$author$project$Control$State,
-			{selected: 0, status: $author$project$Control$Intact_},
+			{selected: 1, status: $author$project$Control$Intact_},
 			A3(
 				initialiser,
 				F2(
@@ -6550,6 +6546,16 @@ var $author$project$Control$endRecord = function (rec) {
 							return _Utils_Tuple2(
 								A2($author$project$Control$State, s, newState),
 								A2($elm$core$Platform$Cmd$map, $author$project$Control$ChangeStateInternally, cmd));
+						case 'TagSelected':
+							var index = delta.a;
+							return _Utils_Tuple2(
+								A2(
+									$author$project$Control$State,
+									_Utils_update(
+										s,
+										{selected: index}),
+									state),
+								$elm$core$Platform$Cmd$none);
 						default:
 							return _Utils_Tuple2(
 								A2($author$project$Control$State, s, state),
@@ -6586,7 +6592,7 @@ var $author$project$Control$endRecord = function (rec) {
 					init: _Utils_Tuple2(
 						A2(
 							$author$project$Control$State,
-							{selected: 0, status: $author$project$Control$Intact_},
+							{selected: 1, status: $author$project$Control$Intact_},
 							initialStates),
 						A3($author$project$Control$initialiseRecordDeltas, rec.deltaInitialiser, deltaSetters, initialDeltas)),
 					initWith: function (output) {
@@ -6838,7 +6844,6 @@ var $author$project$Control$recordStateViewer = F6(
 						$elm$core$Maybe$withDefault,
 						$author$project$Path$toString(controlFns.path),
 						controlFns.name),
-					selectMsg: $author$project$Control$TagSelected,
 					selected: internalState.selected,
 					state: state,
 					status: A4(
@@ -6932,6 +6937,8 @@ var $author$project$Control$fieldHelper = F4(
 			errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$recordErrorCollector),
 			fns: function (path) {
 				var newPath = A2($author$project$Path$add, newIndex, path);
+				var _v1 = control(newPath);
+				var fns = _v1.a;
 				return A2(
 					$elm$core$Basics$composeL,
 					rec.fns(path),
@@ -6939,7 +6946,10 @@ var $author$project$Control$fieldHelper = F4(
 						$author$project$Control$RecordFns(
 							{
 								access: access,
-								field: control(newPath),
+								field: $author$project$Control$ControlFns(
+									_Utils_update(
+										fns,
+										{index: newIndex})),
 								fromInput: fromInput
 							})));
 			},
@@ -6947,8 +6957,8 @@ var $author$project$Control$fieldHelper = F4(
 			index: newIndex,
 			initialDeltas: function (path) {
 				var newPath = A2($author$project$Path$add, newIndex, path);
-				var _v1 = control(newPath);
-				var fns = _v1.a;
+				var _v2 = control(newPath);
+				var fns = _v2.a;
 				return A2(
 					$elm$core$Basics$composeL,
 					rec.initialDeltas(path),
@@ -6956,8 +6966,8 @@ var $author$project$Control$fieldHelper = F4(
 			},
 			initialStates: function (path) {
 				var newPath = A2($author$project$Path$add, newIndex, path);
-				var _v2 = control(newPath);
-				var fns = _v2.a;
+				var _v3 = control(newPath);
+				var fns = _v3.a;
 				return A2(
 					$elm$core$Basics$composeL,
 					rec.initialStates(path),
@@ -18293,7 +18303,6 @@ var $author$project$Control$listView = F4(
 																$elm$core$Maybe$withDefault,
 																$author$project$Path$toString(itemPath),
 																itemFns.name),
-															selectMsg: $author$project$Control$TagSelected,
 															selected: internalState.selected,
 															state: state,
 															status: A4(
@@ -18511,7 +18520,7 @@ var $author$project$Control$list = function (_v0) {
 					init: _Utils_Tuple2(
 						A2(
 							$author$project$Control$State,
-							{selected: 0, status: $author$project$Control$Intact_},
+							{selected: 1, status: $author$project$Control$Intact_},
 							_List_Nil),
 						$elm$core$Platform$Cmd$none),
 					initWith: function (input) {
@@ -18544,7 +18553,7 @@ var $author$project$Control$list = function (_v0) {
 						return _Utils_Tuple2(
 							A2(
 								$author$project$Control$State,
-								{selected: 0, status: $author$project$Control$Intact_},
+								{selected: 1, status: $author$project$Control$Intact_},
 								initialState),
 							A2(
 								$elm$core$Platform$Cmd$map,
@@ -18715,6 +18724,9 @@ var $author$project$Control$collectErrorsForCustomType = F4(
 			fns,
 			states);
 	});
+var $author$project$Control$TagSelected = function (a) {
+	return {$: 'TagSelected', a: a};
+};
 var $elm$html$Html$fieldset = _VirtualDom_node('fieldset');
 var $elm$html$Html$legend = _VirtualDom_node('legend');
 var $elm$json$Json$Decode$andThen = _Json_andThen;
@@ -19029,7 +19041,7 @@ var $author$project$Control$endCustomType = function (rec) {
 					init: _Utils_Tuple2(
 						A2(
 							$author$project$Control$State,
-							{selected: 0, status: $author$project$Control$Intact_},
+							{selected: 1, status: $author$project$Control$Intact_},
 							initialStates),
 						A3($author$project$Control$initialiseCustomTypeDeltas, rec.initialiseDeltas, deltaSetters, initialDeltas)),
 					initWith: function (tag) {
@@ -19248,7 +19260,6 @@ var $author$project$Control$selectedTagViewer = F6(
 										$elm$core$Maybe$withDefault,
 										$author$project$Path$toString(fns.path),
 										fns.name),
-									selectMsg: $author$project$Control$TagSelected,
 									selected: internalState.selected,
 									state: state,
 									status: $author$project$Control$Intact
@@ -19342,7 +19353,7 @@ var $author$project$Control$tagHelper = F4(
 						$author$project$Control$ControlFns(
 							_Utils_update(
 								controlFns,
-								{index: rec.index}))));
+								{index: newIndex}))));
 			},
 			idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$selectedTagIdleSetter),
 			index: newIndex,
@@ -19592,19 +19603,24 @@ var $author$project$Control$id = F2(
 			A2($elm$core$Basics$composeR, control, identifier));
 	});
 var $author$project$Control$layout = F2(
-	function (v, _v0) {
+	function (view, _v0) {
 		var control = _v0.a;
 		var viewer = function (_v1) {
-			var i = _v1.a;
+			var fns = _v1.a;
 			return $author$project$Control$ControlFns(
 				_Utils_update(
-					i,
+					fns,
 					{
-						view: function (config) {
-							return A2(
-								v,
-								config,
-								i.subControlViews(config));
+						view: function (internalViewConfig) {
+							var subcontrols = fns.subControlViews(internalViewConfig);
+							var layoutConfig = {
+								_class: A2($elm$core$String$join, ' ', internalViewConfig._class),
+								id: internalViewConfig.id,
+								label: internalViewConfig.label,
+								selectMsg: $author$project$Control$TagSelected,
+								selected: internalViewConfig.selected
+							};
+							return A2(view, layoutConfig, subcontrols);
 						}
 					}));
 		};
@@ -19923,7 +19939,7 @@ var $author$project$Docs$lessons = A2(
 							[
 								_Utils_eq(
 								config.selected,
-								$elm$core$List$length(subcontrols) - 1) ? $elm$html$Html$text('') : A2(
+								$elm$core$List$length(subcontrols)) ? $elm$html$Html$text('') : A2(
 								$elm$html$Html$button,
 								_List_fromArray(
 									[
