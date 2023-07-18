@@ -9,7 +9,7 @@ module Control exposing
     , initWith, debounce, id, name, label, class, classList, wrapView
     , record, field, hiddenField, readOnlyField, endRecord, layout
     , customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
-    , State, Delta(..), ListDelta, End
+    , State, Delta, ListDelta, End
     , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, ViewConfig, Path, Feedback
     )
 
@@ -217,8 +217,8 @@ type ControlFns input state delta output
         , initWith : input -> ( State state, Cmd (Delta delta) )
         , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
         , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
-        , view : ViewConfig state -> List (Html (Delta delta))
-        , subControlViews : ViewConfig state -> List (Subcontrol delta)
+        , view : ViewConfig state delta -> List (Html (Delta delta))
+        , subControlViews : ViewConfig state delta -> List (Subcontrol delta)
         , parse : State state -> Result (List Feedback) output
         , path : Path
         , emitAlerts : State state -> List Alert
@@ -259,11 +259,12 @@ type alias Feedback =
 
 {-| Some internal stuff needed to view controls
 -}
-type alias ViewConfig state =
+type alias ViewConfig state delta =
     { state : state
     , status : Status
     , alerts : List Alert
     , selected : Int
+    , selectMsg : Int -> Delta delta
     , name : String
     , id : String
     , label : String
@@ -455,6 +456,7 @@ form { onUpdate, onSubmit, control } =
                     , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
                     , alerts = alerts
                     , selected = internalState.selected
+                    , selectMsg = TagSelected
                     }
                     |> List.map (H.map onUpdate)
                  )
@@ -563,6 +565,7 @@ sandbox { outputToString, control } =
                             , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
                             , alerts = alerts
                             , selected = internalState.selected
+                            , selectMsg = TagSelected
                             }
                         )
                     , H.h2 [] [ H.text "Output" ]
@@ -1193,7 +1196,7 @@ classList classList_ (Control control) =
 
 -}
 layout :
-    (ViewConfig state -> List (Subcontrol delta) -> List (Html (Delta delta)))
+    (ViewConfig state delta -> List (Subcontrol delta) -> List (Html (Delta delta)))
     -> Control state delta output
     -> Control state delta output
 layout v (Control control) =
@@ -2979,7 +2982,7 @@ viewRecordStates :
     )
     -> ( RecordFns input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> ViewConfig ( State state, restStates )
+    -> ViewConfig ( State state, restStates ) ( Delta delta, restDeltas )
     -> List (Subcontrol msg)
 viewRecordStates viewer fns setters config =
     viewer (\views _ End End End -> views) [] config.alerts fns setters config.state
@@ -3014,6 +3017,7 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
                 , status = getStatus controlFns.parse controlFns.collectErrors alerts (State internalState state)
                 , alerts = alerts
                 , selected = internalState.selected
+                , selectMsg = TagSelected
                 }
                 |> List.map (H.map (\delta -> ChangeStateOnInput (setter delta)))
     in
@@ -4138,6 +4142,7 @@ selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( sette
                         , status = Intact
                         , alerts = alerts
                         , selected = internalState.selected
+                        , selectMsg = TagSelected
                         }
                         |> List.map (H.map (setter >> ChangeStateOnInput))
                  , label = fns.label
@@ -4267,7 +4272,7 @@ button msg text =
 
 listView :
     Path
-    -> ViewConfig (List (State state))
+    -> ViewConfig (List (State state)) (ListDelta delta)
     -> List Alert
     -> (Path -> ControlFns input state delta output)
     -> List (Html (Delta (ListDelta delta)))
@@ -4329,6 +4334,7 @@ listView path config debouncingReceivers subcontrol =
                                             , status = getStatus itemFns.parse itemFns.collectErrors filteredAlerts2 (State internalState state)
                                             , alerts = filteredAlerts2
                                             , selected = internalState.selected
+                                            , selectMsg = TagSelected
                                             }
                                         )
                                         |> H.map (ChangeItem idx)
