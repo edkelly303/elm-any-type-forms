@@ -2137,6 +2137,32 @@ array itemControl =
 -}
 
 
+type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter index initialDeltas initialStates initialiser labels makeSetters parser subscriptionCollector toOutput updater viewer
+    = RecordBuilder
+        { after : after
+        , afters : afters
+        , before : before
+        , befores : befores
+        , debouncingReceiverCollector : debouncingReceiverCollector
+        , deltaInitialiser : deltaInitialiser
+        , errorCollector : errorCollector
+        , alertEmitter : alertEmitter
+        , fns : fns
+        , idleSetter : idleSetter
+        , index : index
+        , initialDeltas : initialDeltas
+        , initialStates : initialStates
+        , initialiser : initialiser
+        , labels : labels
+        , makeSetters : makeSetters
+        , parser : parser
+        , subscriptionCollector : subscriptionCollector
+        , toOutput : toOutput
+        , updater : updater
+        , viewer : viewer
+        }
+
+
 {-| A combinator that produces a record type, or any 'product' type that needs to
 be constructed from multiple controls. (For example, the `tuple` combinator in
 this library is built using the `record` combinator).
@@ -2158,161 +2184,29 @@ this library is built using the `record` combinator).
             |> end
 
 -}
-record :
-    b
-    ->
-        { after : End
-        , afters : End
-        , before : a12 -> a12
-        , befores : a11 -> a11
-        , debouncingReceiverCollector : a10 -> a10
-        , deltaInitialiser : a9 -> a9
-        , errorCollector : a8 -> a8
-        , alertEmitter : a7 -> a7
-        , fns : d -> e -> e
-        , idleSetter : a6 -> a6
-        , index : Int
-        , initialDeltas : f -> g -> g
-        , initialStates : h -> i -> i
-        , initialiser : a5 -> a5
-        , labels : List j
-        , makeSetters : a4 -> a4
-        , parser : a3 -> a3
-        , subscriptionCollector : a2 -> a2
-        , toOutput : b
-        , updater : a1 -> a1
-        , viewer : a -> a
-        }
 record toOutput =
-    { index = 0
-    , labels = []
-    , toOutput = toOutput
-    , fns = \_ x -> x
-    , initialStates = \_ x -> x
-    , initialDeltas = \_ x -> x
-    , updater = identity
-    , viewer = identity
-    , parser = identity
-    , idleSetter = identity
-    , initialiser = identity
-    , deltaInitialiser = identity
-    , before = identity
-    , befores = identity
-    , after = End
-    , afters = End
-    , makeSetters = identity
-    , alertEmitter = identity
-    , errorCollector = identity
-    , debouncingReceiverCollector = identity
-    , subscriptionCollector = identity
-    }
-
-
-type RecordBuilder a a1 a10 a11 a12 a13 a14 a15 a16 a2 a3 a4 a5 a6 a7 a8 a9 after afters b befores c c1 c2 c3 c4 d delta delta1 e f g h input msg msg1 next output output1_1 output2_1 recordDelta recordInput recordOutput recordState recordState0 restDeltaSetters restDeltas restDeltas1 restFns restStates state toOutput value
-    = RB
-        { after : ( Delta delta, b )
-        , afters : ( b, d )
-        , alertEmitter :
-            a16
-            -> List Alert
-            -> ( RecordFns input state delta output recordOutput, restFns )
-            -> ( State state, restStates )
-            -> List Alert
-        , before : a15 -> c4
-        , befores : a14 -> c3
-        , debouncingReceiverCollector :
-            a13
-            -> List Alert
-            ->
-                ( RecordFns input state delta output recordOutput
-                , restFns
-                )
-            -> ( State state, restStates )
-            -> List Alert
-        , deltaInitialiser :
-            a12
-            -> List (Cmd msg1)
-            -> ( a11 -> msg1, e )
-            -> ( Cmd a11, f )
-            -> g
-        , errorCollector :
-            a10
-            -> List Alert
-            -> List Feedback
-            ->
-                ( RecordFns input state delta output recordOutput
-                , restFns
-                )
-            -> ( State state, restStates )
-            -> List Feedback
-        , fns : Path.Path -> a9 -> c2
-        , idleSetter :
-            a8
-            ->
-                ( RecordFns input state delta output recordOutput
-                , restFns
-                )
-            -> ( State state, restStates )
-            -> ( State state, restStates )
-        , index : Int
-        , initialDeltas : Path.Path -> a7 -> c1
-        , initialStates : Path.Path -> a6 -> c
-        , initialiser :
-            a5
-            -> recordInput
-            ->
-                ( RecordFns output state delta output recordInput
-                , restFns
-                )
-            -> ( State state, restStates )
-        , labels : h
-        , makeSetters :
-            a4
-            -> ( ( value, after ) -> delta1, befores )
-            -> ( after, afters )
-            -> ( value -> delta1, next )
-        , parser :
-            a3
-            -> Result (List Feedback) (output -> output1_1)
-            ->
-                ( RecordFns input state delta output recordOutput
-                , restFns
-                )
-            -> ( State state, restStates )
-            -> Result (List Feedback) output2_1
-        , subscriptionCollector :
-            a2
-            -> List (Sub msg)
-            -> ( Delta delta -> msg, restDeltas1 )
-            ->
-                ( RecordFns input state delta output recordOutput
-                , restFns
-                )
-            -> ( State state, restStates )
-            -> List (Sub msg)
-        , toOutput : toOutput
-        , updater :
-            a1
-            ->
-                { newCmds : List (Cmd recordDelta)
-                , newStates : ( State state, restStates ) -> recordState0
-                }
-            ->
-                ( RecordFns input state delta output recordOutput
-                , restFns
-                )
-            -> ( Delta delta -> recordDelta, restDeltaSetters )
-            -> ( Delta delta, restDeltas )
-            -> ( State state, restStates )
-            -> { newCmds : List (Cmd recordDelta), newStates : recordState }
-        , viewer :
-            a
-            -> List (Html (Delta recordDelta))
-            -> List Alert
-            -> ( RecordFns input state delta output recordOutput, restFns )
-            -> ( Delta delta -> recordDelta, restDeltaSetters )
-            -> ( State state, restStates )
-            -> List (Html (Delta recordDelta))
+    RecordBuilder
+        { index = 0
+        , labels = []
+        , toOutput = toOutput
+        , fns = \_ x -> x
+        , initialStates = \_ x -> x
+        , initialDeltas = \_ x -> x
+        , updater = identity
+        , viewer = identity
+        , parser = identity
+        , idleSetter = identity
+        , initialiser = identity
+        , deltaInitialiser = identity
+        , before = identity
+        , befores = identity
+        , after = End
+        , afters = End
+        , makeSetters = identity
+        , alertEmitter = identity
+        , errorCollector = identity
+        , debouncingReceiverCollector = identity
+        , subscriptionCollector = identity
         }
 
 
@@ -2327,192 +2221,187 @@ type RecordBuilder a a1 a10 a11 a12 a13 a14 a15 a16 a2 a3 a4 a5 a6 a7 a8 a9 afte
             |> end
 
 -}
-
-
-
--- field :
---     (recordOutput -> output1)
---     -> AdvancedControl input1 state1 delta2 output1
---     ->
---         { after : b
---         , afters : d
---         , alertEmitter :
---             a16
---             -> List Alert
---             -> restFns
---             -> restStates
---             -> List Alert
---         , before : ( Delta delta2, a15 ) -> c4
---         , befores : ( ( Delta delta2, a15 ) -> c4, a14 ) -> c3
---         , debouncingReceiverCollector :
---             a13
---             -> List Alert
---             -> restFns
---             -> restStates
---             -> List Alert
---         , deltaInitialiser : a12 -> List (Cmd msg1) -> e -> f -> g
---         , errorCollector :
---             a10
---             -> List Alert
---             -> List Feedback
---             -> restFns
---             -> restStates
---             -> List Feedback
---         , fns :
---             Path.Path
---             ->
---                 ( RecordFns input1 state1 delta2 output1 recordOutput
---                 , a9
---                 )
---             -> c2
---         , idleSetter : a8 -> restFns -> restStates -> restStates
---         , index : Int
---         , initialDeltas : Path.Path -> ( Cmd (Delta delta2), a7 ) -> c1
---         , initialStates : Path.Path -> ( State state1, a6 ) -> c
---         , initialiser : a5 -> recordInput -> restFns -> restStates
---         , labels : h
---         , makeSetters : a4 -> befores -> afters -> next
---         , parser :
---             a3
---             -> Result (List Feedback) output1_1
---             -> restFns
---             -> restStates
---             -> Result (List Feedback) output2_1
---         , subscriptionCollector :
---             a2
---             -> List (Sub msg)
---             -> restDeltas1
---             -> restFns
---             -> restStates
---             -> List (Sub msg)
---         , toOutput : toOutput
---         , updater :
---             a1
---             ->
---                 { newCmds : List (Cmd recordDelta)
---                 , newStates : restStates -> recordState0
---                 }
---             -> restFns
---             -> restDeltaSetters
---             -> restDeltas
---             -> restStates
---             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
---         , viewer :
---             a
---             -> List (Html (Delta recordDelta))
---             -> List Alert
---             -> restFns
---             -> restDeltaSetters
---             -> restStates
---             -> List (Html (Delta recordDelta))
---         }
---     ->
---         { after : ( Delta delta, b )
---         , afters : ( b, d )
---         , alertEmitter :
---             a16
---             -> List Alert
---             -> ( RecordFns input state delta output recordOutput, restFns )
---             -> ( State state, restStates )
---             -> List Alert
---         , before : a15 -> c4
---         , befores : a14 -> c3
---         , debouncingReceiverCollector :
---             a13
---             -> List Alert
---             ->
---                 ( RecordFns input state delta output recordOutput
---                 , restFns
---                 )
---             -> ( State state, restStates )
---             -> List Alert
---         , deltaInitialiser :
---             a12
---             -> List (Cmd msg1)
---             -> ( a11 -> msg1, e )
---             -> ( Cmd a11, f )
---             -> g
---         , errorCollector :
---             a10
---             -> List Alert
---             -> List Feedback
---             ->
---                 ( RecordFns input state delta output recordOutput
---                 , restFns
---                 )
---             -> ( State state, restStates )
---             -> List Feedback
---         , fns : Path.Path -> a9 -> c2
---         , idleSetter :
---             a8
---             ->
---                 ( RecordFns input state delta output recordOutput
---                 , restFns
---                 )
---             -> ( State state, restStates )
---             -> ( State state, restStates )
---         , index : Int
---         , initialDeltas : Path.Path -> a7 -> c1
---         , initialStates : Path.Path -> a6 -> c
---         , initialiser :
---             a5
---             -> recordInput
---             ->
---                 ( RecordFns output state delta output recordInput
---                 , restFns
---                 )
---             -> ( State state, restStates )
---         , labels : h
---         , makeSetters :
---             a4
---             -> ( ( value, after ) -> delta1, befores )
---             -> ( after, afters )
---             -> ( value -> delta1, next )
---         , parser :
---             a3
---             -> Result (List Feedback) (output -> output1_1)
---             ->
---                 ( RecordFns input state delta output recordOutput
---                 , restFns
---                 )
---             -> ( State state, restStates )
---             -> Result (List Feedback) output2_1
---         , subscriptionCollector :
---             a2
---             -> List (Sub msg)
---             -> ( Delta delta -> msg, restDeltas1 )
---             ->
---                 ( RecordFns input state delta output recordOutput
---                 , restFns
---                 )
---             -> ( State state, restStates )
---             -> List (Sub msg)
---         , toOutput : toOutput
---         , updater :
---             a1
---             ->
---                 { newCmds : List (Cmd recordDelta)
---                 , newStates : ( State state, restStates ) -> recordState0
---                 }
---             ->
---                 ( RecordFns input state delta output recordOutput
---                 , restFns
---                 )
---             -> ( Delta delta -> recordDelta, restDeltaSetters )
---             -> ( Delta delta, restDeltas )
---             -> ( State state, restStates )
---             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
---         , viewer :
---             a
---             -> List (Html (Delta recordDelta))
---             -> List Alert
---             -> ( RecordFns input state delta output recordOutput, restFns )
---             -> ( Delta delta -> recordDelta, restDeltaSetters )
---             -> ( State state, restStates )
---             -> List (Html (Delta recordDelta))
---         }
-
-
+field : (recordOutput8 -> output8)
+      -> AdvancedControl input8 state9 delta11 output8
+      -> RecordBuilder
+             after1
+             afters1
+             (( Delta delta12, a16 ) -> c4)
+             (( ( Delta delta12, a16 ) -> c4, a15 ) -> c3)
+             (
+             a14
+             -> List Alert
+             -> restFns8
+             -> restStates8
+             -> List Alert
+             )
+             (a13 -> List (Cmd msg1) -> b -> d -> e)
+             (
+             a11
+             -> List Alert
+             -> List Feedback
+             -> restFns7
+             -> restStates7
+             -> List Feedback
+             )
+             (
+             a10
+             -> List Alert
+             -> restFns6
+             -> restStates6
+             -> List Alert
+             )
+             (
+             Path.Path
+             -> ( RecordFns input8 state9 delta11 output8 recordOutput8, a9 )
+             -> c2
+             )
+             (a8 -> restFns5 -> restStates5 -> restStates5)
+             Int
+             (Path.Path -> ( Cmd (Delta delta11), a7 ) -> c1)
+             (Path.Path -> ( State state9, a6 ) -> c)
+             (a5 -> recordInput -> restFns4 -> restStates4)
+             labels
+             (a4 -> befores -> afters -> next)
+             (
+             a3
+             -> Result (List Feedback) output1_1
+             -> restFns3
+             -> restStates3
+             -> Result (List Feedback) output2_1
+             )
+             (
+             a2
+             -> List (Sub msg)
+             -> restDeltas1
+             -> restFns2
+             -> restStates2
+             -> List (Sub msg)
+             )
+             toOutput
+             (
+             a1
+             -> { newCmds : List (Cmd recordDelta1)
+                , newStates : restStates1 -> recordState0
+                }
+             -> restFns1
+             -> restDeltaSetters1
+             -> restDeltas
+             -> restStates1
+             -> { newCmds : List (Cmd recordDelta1), newStates : recordState }
+             )
+             (
+             a
+             -> List (Subcontrol recordDelta)
+             -> List Alert
+             -> restFns
+             -> restDeltaSetters
+             -> restStates
+             -> List (Subcontrol recordDelta)
+             )
+      -> RecordBuilder
+             ( Delta delta10, after1 )
+             ( after1, afters1 )
+             (a16 -> c4)
+             (a15 -> c3)
+             (
+             a14
+             -> List Alert
+             -> ( RecordFns input7 state8 delta9 output7 recordOutput7
+                , restFns8
+                )
+             -> ( State state8, restStates8 )
+             -> List Alert
+             )
+             (a13 -> List (Cmd msg1) -> ( a12 -> msg1, b ) -> ( Cmd a12, d ) -> e)
+             (
+             a11
+             -> List Alert
+             -> List Feedback
+             -> ( RecordFns input6 state7 delta8 output6 recordOutput6
+                , restFns7
+                )
+             -> ( State state7, restStates7 )
+             -> List Feedback
+             )
+             (
+             a10
+             -> List Alert
+             -> ( RecordFns input5 state6 delta7 output5 recordOutput5
+                , restFns6
+                )
+             -> ( State state6, restStates6 )
+             -> List Alert
+             )
+             (Path.Path -> a9 -> c2)
+             (
+             a8
+             -> ( RecordFns input4 state5 delta6 output4 recordOutput4
+                , restFns5
+                )
+             -> ( State state5, restStates5 )
+             -> ( State state5, restStates5 )
+             )
+             Int
+             (Path.Path -> a7 -> c1)
+             (Path.Path -> a6 -> c)
+             (
+             a5
+             -> recordInput
+             -> ( RecordFns output3 state4 delta5 output3 recordInput
+                , restFns4
+                )
+             -> ( State state4, restStates4 )
+             )
+             labels
+             (
+             a4
+             -> ( ( value, after ) -> delta4, befores )
+             -> ( after, afters )
+             -> ( value -> delta4, next )
+             )
+             (
+             a3
+             -> Result (List Feedback) (output0 -> output1_1)
+             -> ( RecordFns input3 state3 delta3 output0 recordOutput3
+                , restFns3
+                )
+             -> ( State state3, restStates3 )
+             -> Result (List Feedback) output2_1
+             )
+             (
+             a2
+             -> List (Sub msg)
+             -> ( Delta delta2 -> msg, restDeltas1 )
+             -> ( RecordFns input2 state2 delta2 output2 recordOutput2
+                , restFns2
+                )
+             -> ( State state2, restStates2 )
+             -> List (Sub msg)
+             )
+             toOutput
+             (
+             a1
+             -> { newCmds : List (Cmd recordDelta1)
+                , newStates : ( State state1, restStates1 ) -> recordState0
+                }
+             -> ( RecordFns input1 state1 delta1 output1 recordOutput1
+                , restFns1
+                )
+             -> ( Delta delta1 -> recordDelta1, restDeltaSetters1 )
+             -> ( Delta delta1, restDeltas )
+             -> ( State state1, restStates1 )
+             -> { newCmds : List (Cmd recordDelta1), newStates : recordState }
+             )
+             (
+             a
+             -> List (Subcontrol recordDelta)
+             -> List Alert
+             -> ( RecordFns input state delta output recordOutput, restFns )
+             -> ( Delta delta -> recordDelta, restDeltaSetters )
+             -> ( State state, restStates )
+             -> List (Subcontrol recordDelta)
+             )
 field =
     fieldHelper Open
 
@@ -2555,75 +2444,76 @@ type Access
     | Hidden
 
 
-fieldHelper access fromInput (Control control) rec =
+fieldHelper access fromInput (Control control) (RecordBuilder rec) =
     let
         newIndex =
             rec.index + 1
     in
-    { index = newIndex
-    , labels = rec.labels
-    , toOutput = rec.toOutput
-    , fns =
-        \path ->
-            let
-                newPath =
-                    Path.add newIndex path
+    RecordBuilder
+        { index = newIndex
+        , labels = rec.labels
+        , toOutput = rec.toOutput
+        , fns =
+            \path ->
+                let
+                    newPath =
+                        Path.add newIndex path
 
-                (ControlFns fns) =
-                    control newPath
-            in
-            rec.fns path
-                << Tuple.pair
-                    (RecordFns
-                        { field = ControlFns { fns | index = newIndex }
-                        , fromInput = fromInput
-                        , access = access
-                        }
-                    )
-    , initialStates =
-        \path ->
-            let
-                newPath =
-                    Path.add newIndex path
+                    (ControlFns fns) =
+                        control newPath
+                in
+                rec.fns path
+                    << Tuple.pair
+                        (RecordFns
+                            { field = ControlFns { fns | index = newIndex }
+                            , fromInput = fromInput
+                            , access = access
+                            }
+                        )
+        , initialStates =
+            \path ->
+                let
+                    newPath =
+                        Path.add newIndex path
 
-                (ControlFns fns) =
-                    control newPath
-            in
-            rec.initialStates path
-                << Tuple.pair
-                    (fns.init
-                        |> Tuple.first
-                    )
-    , initialDeltas =
-        \path ->
-            let
-                newPath =
-                    Path.add newIndex path
+                    (ControlFns fns) =
+                        control newPath
+                in
+                rec.initialStates path
+                    << Tuple.pair
+                        (fns.init
+                            |> Tuple.first
+                        )
+        , initialDeltas =
+            \path ->
+                let
+                    newPath =
+                        Path.add newIndex path
 
-                (ControlFns fns) =
-                    control newPath
-            in
-            rec.initialDeltas path
-                << Tuple.pair
-                    (fns.init
-                        |> Tuple.second
-                    )
-    , updater = rec.updater >> recordStateUpdater
-    , viewer = rec.viewer >> recordStateViewer
-    , parser = rec.parser >> recordStateValidator
-    , idleSetter = rec.idleSetter >> recordStateIdleSetter
-    , initialiser = rec.initialiser >> recordStateInitialiser
-    , deltaInitialiser = rec.deltaInitialiser >> recordDeltaInitialiser
-    , before = rec.before << Tuple.pair Skip
-    , befores = rec.befores << Tuple.pair rec.before
-    , after = ( Skip, rec.after )
-    , afters = ( rec.after, rec.afters )
-    , makeSetters = rec.makeSetters >> deltaSetterMaker
-    , alertEmitter = rec.alertEmitter >> recordAlertEmitter
-    , errorCollector = rec.errorCollector >> recordErrorCollector
-    , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
-    , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
-    }
+                    (ControlFns fns) =
+                        control newPath
+                in
+                rec.initialDeltas path
+                    << Tuple.pair
+                        (fns.init
+                            |> Tuple.second
+                        )
+        , updater = rec.updater >> recordStateUpdater
+        , viewer = rec.viewer >> recordStateViewer
+        , parser = rec.parser >> recordStateValidator
+        , idleSetter = rec.idleSetter >> recordStateIdleSetter
+        , initialiser = rec.initialiser >> recordStateInitialiser
+        , deltaInitialiser = rec.deltaInitialiser >> recordDeltaInitialiser
+        , before = rec.before << Tuple.pair Skip
+        , befores = rec.befores << Tuple.pair rec.before
+        , after = ( Skip, rec.after )
+        , afters = ( rec.after, rec.afters )
+        , makeSetters = rec.makeSetters >> deltaSetterMaker
+        , alertEmitter = rec.alertEmitter >> recordAlertEmitter
+        , errorCollector = rec.errorCollector >> recordErrorCollector
+        , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
+        , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
+        }
 
 
 {-| Finalise the construction of a `record` combinator.
@@ -2637,7 +2527,7 @@ fieldHelper access fromInput (Control control) rec =
             |> end
 
 -}
-endRecord rec =
+endRecord (RecordBuilder rec) =
     Control
         (\path ->
             let
@@ -3247,6 +3137,38 @@ recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( delt
 -}
 
 
+type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter index initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer
+    = CustomTypeBuilder
+        { applyInputs : applyInputs
+        , debouncingReceiverCollector : debouncingReceiverCollector
+        , deltaAfter : deltaAfter
+        , deltaAfters : deltaAfters
+        , deltaBefore : deltaBefore
+        , deltaBefores : deltaBefores
+        , destructor : destructor
+        , errorCollector : errorCollector
+        , alertEmitter : alertEmitter
+        , fns : fns
+        , idleSetter : idleSetter
+        , index : index
+        , initialDeltas : initialDeltas
+        , initialStates : initialStates
+        , initialiseDeltas : initialiseDeltas
+        , makeDeltaSetters : makeDeltaSetters
+        , makeStateSetters : makeStateSetters
+        , parser : parser
+        , stateAfter : stateAfter
+        , stateAfters : stateAfters
+        , stateBefore : stateBefore
+        , stateBefores : stateBefores
+        , stateInserter : stateInserter
+        , subscriptionCollector : subscriptionCollector
+        , toArgStates : toArgStates
+        , updater : updater
+        , viewer : viewer
+        }
+
+
 {-| A combinator that produces a custom type.
 
     type MyCustomType
@@ -3273,133 +3195,104 @@ recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( delt
             |> end
 
 -}
-customType :
-    b
-    ->
-        { applyInputs : a17 -> a17
-        , debouncingReceiverCollector : a16 -> a16
-        , deltaAfter : End
-        , deltaAfters : End
-        , deltaBefore : a15 -> a15
-        , deltaBefores : a14 -> a14
-        , destructor : b
-        , errorCollector : a13 -> a13
-        , alertEmitter : a12 -> a12
-        , fns : c -> d -> d
-        , idleSetter : a11 -> a11
-        , index : Int
-        , initialDeltas : e -> f -> f
-        , initialStates : g -> h -> h
-        , initialiseDeltas : a10 -> a10
-        , makeDeltaSetters : a9 -> a9
-        , makeStateSetters : a8 -> a8
-        , parser : a7 -> a7
-        , stateAfter : End
-        , stateAfters : End
-        , stateBefore : a6 -> a6
-        , stateBefores : a5 -> a5
-        , stateInserter : a4 -> a4
-        , subscriptionCollector : a3 -> a3
-        , toArgStates : a2 -> a2
-        , updater : a1 -> a1
-        , viewer : a -> a
-        }
 customType destructor =
-    { index = 0
-    , fns = \_ x -> x
-    , initialStates = \_ x -> x
-    , initialDeltas = \_ x -> x
-    , updater = identity
-    , viewer = identity
-    , parser = identity
-    , idleSetter = identity
-    , deltaBefore = identity
-    , deltaBefores = identity
-    , deltaAfter = End
-    , deltaAfters = End
-    , makeDeltaSetters = identity
-    , initialiseDeltas = identity
-    , stateBefore = identity
-    , stateBefores = identity
-    , toArgStates = identity
-    , stateAfter = End
-    , stateAfters = End
-    , makeStateSetters = identity
-    , stateInserter = identity
-    , applyInputs = identity
-    , alertEmitter = identity
-    , errorCollector = identity
-    , debouncingReceiverCollector = identity
-    , subscriptionCollector = identity
-    , destructor = destructor
-    }
+    CustomTypeBuilder
+        { index = 0
+        , fns = \_ x -> x
+        , initialStates = \_ x -> x
+        , initialDeltas = \_ x -> x
+        , updater = identity
+        , viewer = identity
+        , parser = identity
+        , idleSetter = identity
+        , deltaBefore = identity
+        , deltaBefores = identity
+        , deltaAfter = End
+        , deltaAfters = End
+        , makeDeltaSetters = identity
+        , initialiseDeltas = identity
+        , stateBefore = identity
+        , stateBefores = identity
+        , toArgStates = identity
+        , stateAfter = End
+        , stateAfters = End
+        , makeStateSetters = identity
+        , stateInserter = identity
+        , applyInputs = identity
+        , alertEmitter = identity
+        , errorCollector = identity
+        , debouncingReceiverCollector = identity
+        , subscriptionCollector = identity
+        , destructor = destructor
+        }
 
 
-tagHelper label_ internalRecord toArgState rec =
+tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
     let
         (Control control) =
             internalRecord
                 |> label label_
 
         newIndex =
-            rec.index + 1
+            builder.index + 1
     in
-    { index = newIndex
-    , fns =
-        \path ->
-            let
-                (ControlFns controlFns) =
-                    control (Path.add newIndex path)
-            in
-            rec.fns path
-                << Tuple.pair
-                    (ControlFns { controlFns | index = newIndex })
-    , initialStates =
-        \path ->
-            let
-                (ControlFns controlFns) =
-                    control (Path.add newIndex path)
-            in
-            rec.initialStates path
-                << Tuple.pair
-                    (controlFns.init
-                        |> Tuple.first
-                    )
-    , initialDeltas =
-        \path ->
-            let
-                (ControlFns controlFns) =
-                    control (Path.add newIndex path)
-            in
-            rec.initialDeltas path
-                << Tuple.pair
-                    (controlFns.init
-                        |> Tuple.second
-                    )
-    , updater = rec.updater >> customTypeStateUpdater
-    , viewer = rec.viewer >> selectedTagViewer
-    , parser = rec.parser >> selectedTagParser
-    , idleSetter = rec.idleSetter >> selectedTagIdleSetter
-    , deltaBefore = rec.deltaBefore << Tuple.pair Skip
-    , deltaBefores = rec.deltaBefores << Tuple.pair rec.deltaBefore
-    , deltaAfter = ( Skip, rec.deltaAfter )
-    , deltaAfters = ( rec.deltaAfter, rec.deltaAfters )
-    , makeDeltaSetters = rec.makeDeltaSetters >> deltaSetterMaker
-    , initialiseDeltas = rec.initialiseDeltas >> customTypeDeltaInitialiser
-    , stateBefore = rec.stateBefore << Tuple.pair Nothing
-    , stateBefores = rec.stateBefores << Tuple.pair rec.stateBefore
-    , toArgStates = rec.toArgStates << Tuple.pair toArgState
-    , stateAfter = ( Nothing, rec.stateAfter )
-    , stateAfters = ( rec.stateAfter, rec.stateAfters )
-    , makeStateSetters = rec.makeStateSetters >> stateSetterMaker
-    , stateInserter = rec.stateInserter >> argStateIntoTagStateInserter
-    , applyInputs = rec.applyInputs >> stateSetterToInitialiserApplier
-    , alertEmitter = rec.alertEmitter >> customTypeAlertEmitter
-    , errorCollector = rec.errorCollector >> customTypeErrorCollector
-    , debouncingReceiverCollector = rec.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
-    , subscriptionCollector = rec.subscriptionCollector >> customTypeSubscriptionCollector
-    , destructor = rec.destructor
-    }
+    CustomTypeBuilder
+        { index = newIndex
+        , fns =
+            \path ->
+                let
+                    (ControlFns controlFns) =
+                        control (Path.add newIndex path)
+                in
+                builder.fns path
+                    << Tuple.pair
+                        (ControlFns { controlFns | index = newIndex })
+        , initialStates =
+            \path ->
+                let
+                    (ControlFns controlFns) =
+                        control (Path.add newIndex path)
+                in
+                builder.initialStates path
+                    << Tuple.pair
+                        (controlFns.init
+                            |> Tuple.first
+                        )
+        , initialDeltas =
+            \path ->
+                let
+                    (ControlFns controlFns) =
+                        control (Path.add newIndex path)
+                in
+                builder.initialDeltas path
+                    << Tuple.pair
+                        (controlFns.init
+                            |> Tuple.second
+                        )
+        , updater = builder.updater >> customTypeStateUpdater
+        , viewer = builder.viewer >> selectedTagViewer
+        , parser = builder.parser >> selectedTagParser
+        , idleSetter = builder.idleSetter >> selectedTagIdleSetter
+        , deltaBefore = builder.deltaBefore << Tuple.pair Skip
+        , deltaBefores = builder.deltaBefores << Tuple.pair builder.deltaBefore
+        , deltaAfter = ( Skip, builder.deltaAfter )
+        , deltaAfters = ( builder.deltaAfter, builder.deltaAfters )
+        , makeDeltaSetters = builder.makeDeltaSetters >> deltaSetterMaker
+        , initialiseDeltas = builder.initialiseDeltas >> customTypeDeltaInitialiser
+        , stateBefore = builder.stateBefore << Tuple.pair Nothing
+        , stateBefores = builder.stateBefores << Tuple.pair builder.stateBefore
+        , toArgStates = builder.toArgStates << Tuple.pair toArgState
+        , stateAfter = ( Nothing, builder.stateAfter )
+        , stateAfters = ( builder.stateAfter, builder.stateAfters )
+        , makeStateSetters = builder.makeStateSetters >> stateSetterMaker
+        , stateInserter = builder.stateInserter >> argStateIntoTagStateInserter
+        , applyInputs = builder.applyInputs >> stateSetterToInitialiserApplier
+        , alertEmitter = builder.alertEmitter >> customTypeAlertEmitter
+        , errorCollector = builder.errorCollector >> customTypeErrorCollector
+        , debouncingReceiverCollector = builder.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
+        , subscriptionCollector = builder.subscriptionCollector >> customTypeSubscriptionCollector
+        , destructor = builder.destructor
+        }
 
 
 {-| Finalise the construction of a `customType` combinator.
@@ -3421,24 +3314,24 @@ tagHelper label_ internalRecord toArgState rec =
             |> endCustomType
 
 -}
-endCustomType rec =
+endCustomType (CustomTypeBuilder builder) =
     Control
         (\path ->
             let
                 fns =
-                    rec.fns path End
+                    builder.fns path End
 
                 initialStates =
-                    rec.initialStates path End
+                    builder.initialStates path End
 
                 initialDeltas =
-                    rec.initialDeltas path End
+                    builder.initialDeltas path End
 
                 deltaSetters =
-                    makeDeltaSetters rec.makeDeltaSetters rec.deltaBefores rec.deltaAfters
+                    makeDeltaSetters builder.makeDeltaSetters builder.deltaBefores builder.deltaAfters
 
                 stateSetters =
-                    makeStateSetters rec.makeStateSetters rec.stateInserter initialStates fns rec.toArgStates rec.stateBefores rec.stateAfters
+                    makeStateSetters builder.makeStateSetters builder.stateInserter initialStates fns builder.toArgStates builder.stateBefores builder.stateAfters
 
                 update =
                     \delta (State internalState state) ->
@@ -3452,7 +3345,7 @@ endCustomType rec =
                             ChangeStateOnInput tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateCustomTypeStates rec.updater fns deltaSetters tagDelta state
+                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta state
                                 in
                                 ( State internalState newTagStates
                                 , Cmd.map ChangeStateOnInput cmd
@@ -3461,7 +3354,7 @@ endCustomType rec =
                             ChangeStateInternally tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateCustomTypeStates rec.updater fns deltaSetters tagDelta state
+                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta state
                                 in
                                 ( State internalState newTagStates
                                 , Cmd.map ChangeStateInternally cmd
@@ -3471,33 +3364,33 @@ endCustomType rec =
                                 ( State internalState state, Cmd.none )
 
                 subcontrolView config =
-                    viewSelectedTagState rec.viewer fns deltaSetters config
+                    viewSelectedTagState builder.viewer fns deltaSetters config
 
                 view config =
                     customTypeView path config subcontrolView
 
                 parse =
-                    \(State internalState state) -> validateSelectedTagState rec.parser internalState.selected fns state
+                    \(State internalState state) -> validateSelectedTagState builder.parser internalState.selected fns state
 
                 setAllIdle =
                     \(State internalState state) ->
                         State
                             { internalState | status = Idle_ }
-                            (setSelectedTagStateIdle rec.idleSetter internalState.selected fns state)
+                            (setSelectedTagStateIdle builder.idleSetter internalState.selected fns state)
 
                 emitAlerts (State internalState state) =
-                    emitAlertsForCustomType rec.alertEmitter internalState.selected fns state
+                    emitAlertsForCustomType builder.alertEmitter internalState.selected fns state
             in
             ControlFns
                 { path = path
                 , index = 0
                 , init =
                     ( State { status = Intact_, selected = 1 } initialStates
-                    , initialiseCustomTypeDeltas rec.initialiseDeltas deltaSetters initialDeltas
+                    , initialiseCustomTypeDeltas builder.initialiseDeltas deltaSetters initialDeltas
                     )
                 , initWith =
                     \tag ->
-                        ( applyStateSettersToInitialiser rec.applyInputs rec.destructor stateSetters tag
+                        ( applyStateSettersToInitialiser builder.applyInputs builder.destructor stateSetters tag
                         , Cmd.none |> fixme "initWith for custom types doesn't run Cmds of subcontrols"
                         )
                 , baseUpdate = \_ -> update
@@ -3507,14 +3400,14 @@ endCustomType rec =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectErrors = \(State _ states) alerts -> collectErrorsForCustomType rec.errorCollector alerts fns states
+                , collectErrors = \(State _ states) alerts -> collectErrorsForCustomType builder.errorCollector alerts fns states
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType rec.debouncingReceiverCollector fns states
+                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns states
                 , label = "Custom Type"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions rec.subscriptionCollector deltaSetters fns states
+                , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns states
                 }
         )
 
