@@ -65,7 +65,7 @@ form =
         }
 
 
-type Lessons l01 l02 l03 l04 l05 l06 l07 l08 l09 l10
+type Lessons l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11
     = BasicControls l01 --BasicControls
     | YourFirstForm l02 --TuplesAndTriples
     | TuplesAndTriples l03 --TuplesAndTriples
@@ -76,11 +76,12 @@ type Lessons l01 l02 l03 l04 l05 l06 l07 l08 l09 l10
     | Validation l08 --Validation
     | MultiValidation l09 --MultiValidation
     | CreateYourOwn l10 --CreateYourOwn
+    | LeavingTheSandbox l11
 
 
 lessons =
     Control.customType
-        (\l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 tag ->
+        (\l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11 tag ->
             case tag of
                 YourFirstForm data ->
                     l01 data
@@ -111,6 +112,9 @@ lessons =
 
                 CreateYourOwn data ->
                     l10 data
+
+                LeavingTheSandbox data ->
+                    l11 data
         )
         |> Control.tag1 "Your first form" YourFirstForm yourFirstForm
         |> Control.tag1 "Basic controls" BasicControls basicControls
@@ -122,6 +126,7 @@ lessons =
         |> Control.tag1 "Validating controls" Validation validation
         |> Control.tag1 "Multi-control validation" MultiValidation multivalidation
         |> Control.tag1 "Creating your own controls" CreateYourOwn createYourOwn
+        |> Control.tag1 "Leaving the sandbox" LeavingTheSandbox leavingTheSandbox
         |> Control.endCustomType
         |> Control.layout
             (\config subcontrols ->
@@ -159,7 +164,7 @@ lessons =
                             subcontrols
 
                     backNext =
-                        [ if config.selected == (List.length subcontrols) then
+                        [ if config.selected == List.length subcontrols then
                             H.text ""
 
                           else
@@ -1020,6 +1025,11 @@ want to create a completely new type of control from scratch.
 
 
 createYourOwn =
+    customerControl 
+        |> mdBefore createYourOwnIntro
+
+
+customerControl =
     Control.record
         (\name dateOfBirth products id password ->
             { name = name
@@ -1035,8 +1045,6 @@ createYourOwn =
         |> Control.field .id idControl
         |> Control.field .password passwordControl
         |> Control.endRecord
-        |> mdBefore createYourOwnIntro
-        |> mdAfter createYourOwnOutro
 
 
 dateControl =
@@ -1067,9 +1075,6 @@ dateControl =
                     Err error ->
                         Err [ error ]
         }
-        
-
-
 
 
 createYourOwnIntro =
@@ -1233,7 +1238,393 @@ And the final result should look like this:
 """
 
 
-createYourOwnOutro =
+leavingTheSandbox =
+    customerControl
+        |> mdBefore leavingTheSandboxIntro
+        |> mdAfter leavingTheSandboxOutro
+
+
+leavingTheSandboxIntro =
+    """
+## Leaving the sandbox
+
+So, we've designed our `customerControl`, and tested it out in `Control.sandbox`... but where do we go from 
+there?
+
+Well, in practice, we probably want to integrate it into a larger Elm application - in this case, the customer 
+relationship management (CRM) system we're building for Shapes.com.
+
+### Initial setup
+
+Let's rename our `Main.elm` file to `Customer.elm`, and rename `customerControl` to just `control`. Then we'll make a few 
+changes to the exports:
+
+```
+module Customer exposing (Customer, Id, Product, control, main)
+```
+
+And we'll implement a very rubbish CRM application in a file called `Crm.elm`:
+
+```
+module Crm exposing (main)
+
+import Browser
+import Control
+import Customer
+
+type alias Model = 
+    { customers : List Customer.Customer }
+
+type Msg 
+    = SoldProductToCustomer Customer.Id Customer.Product
+
+main = 
+    Browser.document 
+        { init = init 
+        , view = view
+        , update = update
+        , subscriptions = subscriptions
+        }
+
+init flags = 
+    ( { customers = [] }
+    , Cmd.none
+    )
+
+view model =
+    { title = "Shapes.com CRM"
+    , body = 
+        [ Html.div [] (List.map .name model.customers) ] 
+    }
+
+update msg model =
+    case msg of
+        SoldProductToCustomer customerId product ->
+            ( { customers = 
+                List.map 
+                    (\\customer -> 
+                        if customer.id == customerId then 
+                            { customer | products = product :: customer.products } 
+                        else customer
+                    ) 
+                    model.customers 
+              }
+            , Cmd.none
+            )
+
+subscriptions model = 
+    Sub.none
+```
+
+So, how do we add our form to this app? 
+
+### Working out the types
+
+First, we need to know what the types should be for the `state` of our form (which 
+is this package's equivalent of a `Model` type), and its `delta` (equivalent to a `Msg` type).
+
+These types will be quite complicated, and it would be painful to work them out by hand. Fortunately, we don't have to, 
+because we can ask the Elm compiler to do it for us.
+
+Open your terminal in the project root folder and type `elm repl`. Then, at the REPL prompt, type:
+
+```
+> import Customer
+> Customer.main
+```
+
+This should print out the type signature for our sandbox program, which should look something like this:
+```
+<function>
+    : Program
+          ()
+          (
+          Control.State
+              ( Control.State String
+              , ( Control.State String
+                , ( Control.State
+                        (
+                        List
+                            (
+                            Control.State
+                                ( Control.State ( Control.State String, Control.End )
+                                , ( Control.State
+                                        ( Control.State String
+                                        , ( Control.State String
+                                          , ( Control.State String, Control.End )
+                                          )
+                                        )
+                                  , ( Control.State
+                                          ( Control.State String
+                                          , ( Control.State String, Control.End )
+                                          )
+                                    , Control.End
+                                    )
+                                  )
+                                )
+                            )
+                        )
+                  , ( Control.State ( Control.State String, Control.End )
+                    , ( Control.State
+                            ( Control.State
+                                  ( Control.State String
+                                  , ( Control.State String, Control.End )
+                                  )
+                            , Control.End
+                            )
+                      , Control.End
+                      )
+                    )
+                  )
+                )
+              )
+          )
+          (
+          Control.Delta
+              ( Control.Delta String
+              , ( Control.Delta String
+                , ( Control.Delta
+                        (
+                        Control.ListDelta
+                            ( Control.Delta ( Control.Delta String, Control.End )
+                            , ( Control.Delta
+                                    ( Control.Delta String
+                                    , ( Control.Delta String
+                                      , ( Control.Delta String, Control.End )
+                                      )
+                                    )
+                              , ( Control.Delta
+                                      ( Control.Delta String
+                                      , ( Control.Delta String, Control.End )
+                                      )
+                                , Control.End
+                                )
+                              )
+                            )
+                        )
+                  , ( Control.Delta ( Control.Delta String, Control.End )
+                    , ( Control.Delta
+                            ( Control.Delta
+                                  ( Control.Delta String
+                                  , ( Control.Delta String, Control.End )
+                                  )
+                            , Control.End
+                            )
+                      , Control.End
+                      )
+                    )
+                  )
+                )
+              )
+          )
+```
+
+The `state` for our form will be the whole section containing `Control.State` types, and the `delta` will be the 
+section containing `Control.Delta` types.
+
+Let's copy-paste those relevant bits into a couple of type aliases in `Crm.elm`:
+
+```
+type alias CustomerFormState =
+    Control.State
+        ( Control.State String
+        , ( Control.State String
+          , ( Control.State
+                (List
+                    (Control.State
+                        ( Control.State ( Control.State String, Control.End )
+                        , ( Control.State
+                                ( Control.State String
+                                , ( Control.State String
+                                  , ( Control.State String, Control.End )
+                                  )
+                                )
+                          , ( Control.State
+                                ( Control.State String
+                                , ( Control.State String, Control.End )
+                                )
+                            , Control.End
+                            )
+                          )
+                        )
+                    )
+                )
+            , ( Control.State ( Control.State String, Control.End )
+              , ( Control.State
+                    ( Control.State
+                        ( Control.State String
+                        , ( Control.State String, Control.End )
+                        )
+                    , Control.End
+                    )
+                , Control.End
+                )
+              )
+            )
+          )
+        )
+```
+
+And:
+
+```
+type alias CustomerFormDelta =
+    Control.Delta
+        ( Control.Delta String
+        , ( Control.Delta String
+          , ( Control.Delta
+                (Control.ListDelta
+                    ( Control.Delta ( Control.Delta String, Control.End )
+                    , ( Control.Delta
+                            ( Control.Delta String
+                            , ( Control.Delta String
+                              , ( Control.Delta String, Control.End )
+                              )
+                            )
+                      , ( Control.Delta
+                            ( Control.Delta String
+                            , ( Control.Delta String, Control.End )
+                            )
+                        , Control.End
+                        )
+                      )
+                    )
+                )
+            , ( Control.Delta ( Control.Delta String, Control.End )
+              , ( Control.Delta
+                    ( Control.Delta
+                        ( Control.Delta String
+                        , ( Control.Delta String, Control.End )
+                        )
+                    , Control.End
+                    )
+                , Control.End
+                )
+              )
+            )
+          )
+        )
+```
+### Extending the `Model` and `Msg` types
+
+Now, in `Crm.elm`, we'll add a field to the `Model` to hold the form's state:
+
+```
+type alias Model = 
+    { customers : List Customer.Customer 
+    , customerFormState : CustomerFormState
+    }
+
+```
+
+Next, we'll add two new variants to the `Msg` type - one for updating the form's state, and one for submitting it:
+
+```
+type Msg 
+    = SoldProductToCustomer Customer.Id Customer.Product
+    | UpdatedCustomerForm CustomerFormDelta
+    | SubmittedCustomerForm
+```
+
+### Instantiating our form
+
+Now, in `Crm.elm`, let's use `Control.form` to turn our `control` into a form:
+
+```
+customerForm = 
+    Control.form 
+        { control = Customer.control
+        , onUpdate = UpdatedCustomerForm
+        , onSubmit = SubmttedCustomerForm
+        }
+```
+
+We'll use this form in all the other functions that we pass to `Browser.document` in our `Crm.elm`'s `main` function. 
+
+### Wiring it up
+
+Let's start with the `init` function:
+
+```
+init flags = 
+    let
+        ( formState, cmd ) = 
+            customerForm.init
+    in
+    ( { customers = [] 
+      , customerFormState = formState
+      }
+    , cmd
+    )
+```
+
+Now `view`:
+
+```
+view model =
+    { title = "Shapes.com CRM"
+    , body = 
+        [ Html.div [] (List.map .name model.customers) 
+        , customerForm.view model.customerFormState
+        ] 
+    }
+```
+
+And `update`:
+
+```
+update msg model =
+    case msg of
+        SoldProductToCustomer customerId product ->
+            ...
+
+        UpdatedCustomerForm delta ->
+            let
+                ( newFormState, cmd ) =
+                    customerForm.update delta model.customerFormState
+            in
+            ( { model | customerFormState = newFormState }
+            , cmd
+            )
+
+        SubmittedCustomerForm ->
+            let
+                ( newFormState, result ) =
+                    customerForm.submit model.customerFormState
+            in
+            case result of
+                Ok customer ->
+                    ( { model 
+                        | customers = customer :: model.customers 
+                        , customerFormState = newFormState
+                      }
+                    , Cmd.none
+                    )
+                Err errors ->
+                    -- in a real app you'd probably do something 
+                    -- with the errors, but I'll leave that as an
+                    -- exercise for the reader; here, we'll just
+                    -- update the form's state.
+                    ( { model 
+                        | customerFormState = newFormState
+                      }
+                    , Cmd.none
+                    )
+```
+
+And finally, `subscriptions`:
+
+```
+subscriptions model = 
+    customerForm.subscriptions model.customerFormState
+```
+
+Voila! Job done! If you open `Crm.elm` in `elm reactor`, you should now see a list of customer names, followed by 
+something like this:
+"""
+
+
+leavingTheSandboxOutro =
     """
 Congratulations! You made it through the tutorial. There's quite a lot more to learn about this package, but that's 
 beyond the scope of this introduction. For a deeper dive, check out the docs at 
