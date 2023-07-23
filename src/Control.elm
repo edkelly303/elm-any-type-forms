@@ -2137,7 +2137,7 @@ array itemControl =
 -}
 
 
-type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter index initialDeltas initialStates initialiser labels makeSetters parser subscriptionCollector toOutput updater viewer
+type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter index initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer
     = RecordBuilder
         { after : after
         , afters : afters
@@ -2153,7 +2153,6 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         , initialDeltas : initialDeltas
         , initialStates : initialStates
         , initialiser : initialiser
-        , labels : labels
         , makeSetters : makeSetters
         , parser : parser
         , subscriptionCollector : subscriptionCollector
@@ -2187,7 +2186,6 @@ this library is built using the `record` combinator).
 record toOutput =
     RecordBuilder
         { index = 0
-        , labels = []
         , toOutput = toOutput
         , fns = \_ x -> x
         , initialStates = \_ x -> x
@@ -2221,67 +2219,62 @@ record toOutput =
             |> end
 
 -}
-field : (recordOutput8 -> output8)
-      -> AdvancedControl input8 state9 delta11 output8
-      -> RecordBuilder
-             after1
-             afters1
-             (( Delta delta12, a16 ) -> c4)
-             (( ( Delta delta12, a16 ) -> c4, a15 ) -> c3)
-             (
-             a14
+field :
+    (recordOutput8 -> output8)
+    -> AdvancedControl input8 state9 delta11 output8
+    ->
+        RecordBuilder
+            after1
+            afters1
+            (( Delta delta12, a16 ) -> c4)
+            (( ( Delta delta12, a16 ) -> c4, a15 ) -> c3)
+            (a14
              -> List Alert
              -> restFns8
              -> restStates8
              -> List Alert
-             )
-             (a13 -> List (Cmd msg1) -> b -> d -> e)
-             (
-             a11
+            )
+            (a13 -> List (Cmd msg1) -> b -> d -> e)
+            (a11
              -> List Alert
              -> List Feedback
              -> restFns7
              -> restStates7
              -> List Feedback
-             )
-             (
-             a10
+            )
+            (a10
              -> List Alert
              -> restFns6
              -> restStates6
              -> List Alert
-             )
-             (
-             Path.Path
+            )
+            (Path.Path
              -> ( RecordFns input8 state9 delta11 output8 recordOutput8, a9 )
              -> c2
-             )
-             (a8 -> restFns5 -> restStates5 -> restStates5)
-             Int
-             (Path.Path -> ( Cmd (Delta delta11), a7 ) -> c1)
-             (Path.Path -> ( State state9, a6 ) -> c)
-             (a5 -> recordInput -> restFns4 -> restStates4)
-             labels
-             (a4 -> befores -> afters -> next)
-             (
-             a3
+            )
+            (a8 -> restFns5 -> restStates5 -> restStates5)
+            Int
+            (Path.Path -> ( Cmd (Delta delta11), a7 ) -> c1)
+            (Path.Path -> ( State state9, a6 ) -> c)
+            (a5 -> recordInput -> restFns4 -> restStates4)
+            (a4 -> befores -> afters -> next)
+            (a3
              -> Result (List Feedback) output1_1
              -> restFns3
              -> restStates3
              -> Result (List Feedback) output2_1
-             )
-             (
-             a2
+            )
+            (a2
              -> List (Sub msg)
              -> restDeltas1
              -> restFns2
              -> restStates2
              -> List (Sub msg)
-             )
-             toOutput
-             (
-             a1
-             -> { newCmds : List (Cmd recordDelta1)
+            )
+            toOutput
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta1)
                 , newStates : restStates1 -> recordState0
                 }
              -> restFns1
@@ -2289,119 +2282,117 @@ field : (recordOutput8 -> output8)
              -> restDeltas
              -> restStates1
              -> { newCmds : List (Cmd recordDelta1), newStates : recordState }
-             )
-             (
-             a
+            )
+            (a
              -> List (Subcontrol recordDelta)
              -> List Alert
              -> restFns
              -> restDeltaSetters
              -> restStates
              -> List (Subcontrol recordDelta)
-             )
-      -> RecordBuilder
-             ( Delta delta10, after1 )
-             ( after1, afters1 )
-             (a16 -> c4)
-             (a15 -> c3)
-             (
-             a14
+            )
+    ->
+        RecordBuilder
+            ( Delta delta10, after1 )
+            ( after1, afters1 )
+            (a16 -> c4)
+            (a15 -> c3)
+            (a14
              -> List Alert
-             -> ( RecordFns input7 state8 delta9 output7 recordOutput7
+             ->
+                ( RecordFns input7 state8 delta9 output7 recordOutput7
                 , restFns8
                 )
              -> ( State state8, restStates8 )
              -> List Alert
-             )
-             (a13 -> List (Cmd msg1) -> ( a12 -> msg1, b ) -> ( Cmd a12, d ) -> e)
-             (
-             a11
+            )
+            (a13 -> List (Cmd msg1) -> ( a12 -> msg1, b ) -> ( Cmd a12, d ) -> e)
+            (a11
              -> List Alert
              -> List Feedback
-             -> ( RecordFns input6 state7 delta8 output6 recordOutput6
+             ->
+                ( RecordFns input6 state7 delta8 output6 recordOutput6
                 , restFns7
                 )
              -> ( State state7, restStates7 )
              -> List Feedback
-             )
-             (
-             a10
+            )
+            (a10
              -> List Alert
-             -> ( RecordFns input5 state6 delta7 output5 recordOutput5
+             ->
+                ( RecordFns input5 state6 delta7 output5 recordOutput5
                 , restFns6
                 )
              -> ( State state6, restStates6 )
              -> List Alert
-             )
-             (Path.Path -> a9 -> c2)
-             (
-             a8
-             -> ( RecordFns input4 state5 delta6 output4 recordOutput4
+            )
+            (Path.Path -> a9 -> c2)
+            (a8
+             ->
+                ( RecordFns input4 state5 delta6 output4 recordOutput4
                 , restFns5
                 )
              -> ( State state5, restStates5 )
              -> ( State state5, restStates5 )
-             )
-             Int
-             (Path.Path -> a7 -> c1)
-             (Path.Path -> a6 -> c)
-             (
-             a5
+            )
+            Int
+            (Path.Path -> a7 -> c1)
+            (Path.Path -> a6 -> c)
+            (a5
              -> recordInput
-             -> ( RecordFns output3 state4 delta5 output3 recordInput
+             ->
+                ( RecordFns output3 state4 delta5 output3 recordInput
                 , restFns4
                 )
              -> ( State state4, restStates4 )
-             )
-             labels
-             (
-             a4
+            )
+            (a4
              -> ( ( value, after ) -> delta4, befores )
              -> ( after, afters )
              -> ( value -> delta4, next )
-             )
-             (
-             a3
+            )
+            (a3
              -> Result (List Feedback) (output0 -> output1_1)
-             -> ( RecordFns input3 state3 delta3 output0 recordOutput3
+             ->
+                ( RecordFns input3 state3 delta3 output0 recordOutput3
                 , restFns3
                 )
              -> ( State state3, restStates3 )
              -> Result (List Feedback) output2_1
-             )
-             (
-             a2
+            )
+            (a2
              -> List (Sub msg)
              -> ( Delta delta2 -> msg, restDeltas1 )
-             -> ( RecordFns input2 state2 delta2 output2 recordOutput2
+             ->
+                ( RecordFns input2 state2 delta2 output2 recordOutput2
                 , restFns2
                 )
              -> ( State state2, restStates2 )
              -> List (Sub msg)
-             )
-             toOutput
-             (
-             a1
-             -> { newCmds : List (Cmd recordDelta1)
+            )
+            toOutput
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta1)
                 , newStates : ( State state1, restStates1 ) -> recordState0
                 }
-             -> ( RecordFns input1 state1 delta1 output1 recordOutput1
+             ->
+                ( RecordFns input1 state1 delta1 output1 recordOutput1
                 , restFns1
                 )
              -> ( Delta delta1 -> recordDelta1, restDeltaSetters1 )
              -> ( Delta delta1, restDeltas )
              -> ( State state1, restStates1 )
              -> { newCmds : List (Cmd recordDelta1), newStates : recordState }
-             )
-             (
-             a
+            )
+            (a
              -> List (Subcontrol recordDelta)
              -> List Alert
              -> ( RecordFns input state delta output recordOutput, restFns )
              -> ( Delta delta -> recordDelta, restDeltaSetters )
              -> ( State state, restStates )
              -> List (Subcontrol recordDelta)
-             )
+            )
 field =
     fieldHelper Open
 
@@ -2451,7 +2442,6 @@ fieldHelper access fromInput (Control control) (RecordBuilder rec) =
     in
     RecordBuilder
         { index = newIndex
-        , labels = rec.labels
         , toOutput = rec.toOutput
         , fns =
             \path ->
