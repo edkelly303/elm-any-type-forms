@@ -5820,6 +5820,9 @@ var $author$project$Docs$CreateYourOwn = function (a) {
 var $author$project$Docs$CustomTypes = function (a) {
 	return {$: 'CustomTypes', a: a};
 };
+var $author$project$Docs$LeavingTheSandbox = function (a) {
+	return {$: 'LeavingTheSandbox', a: a};
+};
 var $author$project$Docs$ListsDictsSetsAndArrays = function (a) {
 	return {$: 'ListsDictsSetsAndArrays', a: a};
 };
@@ -6493,19 +6496,20 @@ var $author$project$Control$viewRecordStates = F4(
 			setters,
 			config.state);
 	});
-var $author$project$Control$endRecord = function (rec) {
+var $author$project$Control$endRecord = function (_v0) {
+	var rec = _v0.a;
 	return $author$project$Control$Control(
 		function (path) {
 			var initialStates = A2(rec.initialStates, path, $author$project$Control$End);
 			var initialDeltas = A2(rec.initialDeltas, path, $author$project$Control$End);
 			var fns = A2(rec.fns, path, $author$project$Control$End);
-			var parse = function (_v10) {
-				var state = _v10.b;
+			var parse = function (_v11) {
+				var state = _v11.b;
 				return A4($author$project$Control$validateRecordStates, rec.parser, rec.toOutput, fns, state);
 			};
-			var setAllIdle = function (_v9) {
-				var i = _v9.a;
-				var state = _v9.b;
+			var setAllIdle = function (_v10) {
+				var i = _v10.a;
+				var state = _v10.b;
 				return A2(
 					$author$project$Control$State,
 					_Utils_update(
@@ -6513,8 +6517,8 @@ var $author$project$Control$endRecord = function (rec) {
 						{status: $author$project$Control$Idle_}),
 					A3($author$project$Control$setAllRecordStatesToIdle, rec.idleSetter, fns, state));
 			};
-			var emitAlerts = function (_v8) {
-				var state = _v8.b;
+			var emitAlerts = function (_v9) {
+				var state = _v9.b;
 				return A3($author$project$Control$emitAlertsForRecord, rec.alertEmitter, fns, state);
 			};
 			var deltaSetters = A3($author$project$Control$makeDeltaSetters, rec.makeSetters, rec.befores, rec.afters);
@@ -6522,9 +6526,9 @@ var $author$project$Control$endRecord = function (rec) {
 				return A4($author$project$Control$viewRecordStates, rec.viewer, fns, deltaSetters, config);
 			};
 			var update = F2(
-				function (delta, _v7) {
-					var s = _v7.a;
-					var state = _v7.b;
+				function (delta, _v8) {
+					var s = _v8.a;
+					var state = _v8.b;
 					switch (delta.$) {
 						case 'Skip':
 							return _Utils_Tuple2(
@@ -6532,17 +6536,17 @@ var $author$project$Control$endRecord = function (rec) {
 								$elm$core$Platform$Cmd$none);
 						case 'ChangeStateOnInput':
 							var deltas = delta.a;
-							var _v5 = A5($author$project$Control$updateRecordStates, rec.updater, fns, deltaSetters, deltas, state);
-							var newState = _v5.a;
-							var cmd = _v5.b;
+							var _v6 = A5($author$project$Control$updateRecordStates, rec.updater, fns, deltaSetters, deltas, state);
+							var newState = _v6.a;
+							var cmd = _v6.b;
 							return _Utils_Tuple2(
 								A2($author$project$Control$State, s, newState),
 								A2($elm$core$Platform$Cmd$map, $author$project$Control$ChangeStateOnInput, cmd));
 						case 'ChangeStateInternally':
 							var deltas = delta.a;
-							var _v6 = A5($author$project$Control$updateRecordStates, rec.updater, fns, deltaSetters, deltas, state);
-							var newState = _v6.a;
-							var cmd = _v6.b;
+							var _v7 = A5($author$project$Control$updateRecordStates, rec.updater, fns, deltaSetters, deltas, state);
+							var newState = _v7.a;
+							var cmd = _v7.b;
 							return _Utils_Tuple2(
 								A2($author$project$Control$State, s, newState),
 								A2($elm$core$Platform$Cmd$map, $author$project$Control$ChangeStateInternally, cmd));
@@ -6573,17 +6577,17 @@ var $author$project$Control$endRecord = function (rec) {
 			};
 			return $author$project$Control$ControlFns(
 				{
-					baseUpdate: function (_v0) {
+					baseUpdate: function (_v1) {
 						return update;
 					},
 					_class: _List_Nil,
-					collectDebouncingReceivers: function (_v1) {
-						var states = _v1.b;
+					collectDebouncingReceivers: function (_v2) {
+						var states = _v2.b;
 						return A3($author$project$Control$collectDebouncingReceiversForRecord, rec.debouncingReceiverCollector, fns, states);
 					},
 					collectErrors: F2(
-						function (_v2, alerts) {
-							var states = _v2.b;
+						function (_v3, alerts) {
+							var states = _v3.b;
 							return A4($author$project$Control$collectErrorsForRecord, rec.errorCollector, alerts, fns, states);
 						}),
 					emitAlerts: emitAlerts,
@@ -6609,8 +6613,8 @@ var $author$project$Control$endRecord = function (rec) {
 					subControlViews: function (config) {
 						return subcontrolViews(config);
 					},
-					subscriptions: function (_v3) {
-						var states = _v3.b;
+					subscriptions: function (_v4) {
+						var states = _v4.b;
 						return A4($author$project$Control$collectRecordSubscriptions, rec.subscriptionCollector, deltaSetters, fns, states);
 					},
 					update: update,
@@ -6619,6 +6623,9 @@ var $author$project$Control$endRecord = function (rec) {
 		});
 };
 var $author$project$Control$Open = {$: 'Open'};
+var $author$project$Control$RecordBuilder = function (a) {
+	return {$: 'RecordBuilder', a: a};
+};
 var $author$project$Control$RecordFns = function (a) {
 	return {$: 'RecordFns', a: a};
 };
@@ -6917,71 +6924,72 @@ var $elm$core$Tuple$second = function (_v0) {
 	return y;
 };
 var $author$project$Control$fieldHelper = F4(
-	function (access, fromInput, _v0, rec) {
+	function (access, fromInput, _v0, _v1) {
 		var control = _v0.a;
+		var rec = _v1.a;
 		var newIndex = rec.index + 1;
-		return {
-			after: _Utils_Tuple2($author$project$Control$Skip, rec.after),
-			afters: _Utils_Tuple2(rec.after, rec.afters),
-			alertEmitter: A2($elm$core$Basics$composeR, rec.alertEmitter, $author$project$Control$recordAlertEmitter),
-			before: A2(
-				$elm$core$Basics$composeL,
-				rec.before,
-				$elm$core$Tuple$pair($author$project$Control$Skip)),
-			befores: A2(
-				$elm$core$Basics$composeL,
-				rec.befores,
-				$elm$core$Tuple$pair(rec.before)),
-			debouncingReceiverCollector: A2($elm$core$Basics$composeR, rec.debouncingReceiverCollector, $author$project$Control$recordDebouncingReceiverCollector),
-			deltaInitialiser: A2($elm$core$Basics$composeR, rec.deltaInitialiser, $author$project$Control$recordDeltaInitialiser),
-			errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$recordErrorCollector),
-			fns: function (path) {
-				var newPath = A2($author$project$Path$add, newIndex, path);
-				var _v1 = control(newPath);
-				var fns = _v1.a;
-				return A2(
+		return $author$project$Control$RecordBuilder(
+			{
+				after: _Utils_Tuple2($author$project$Control$Skip, rec.after),
+				afters: _Utils_Tuple2(rec.after, rec.afters),
+				alertEmitter: A2($elm$core$Basics$composeR, rec.alertEmitter, $author$project$Control$recordAlertEmitter),
+				before: A2(
 					$elm$core$Basics$composeL,
-					rec.fns(path),
-					$elm$core$Tuple$pair(
-						$author$project$Control$RecordFns(
-							{
-								access: access,
-								field: $author$project$Control$ControlFns(
-									_Utils_update(
-										fns,
-										{index: newIndex})),
-								fromInput: fromInput
-							})));
-			},
-			idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$recordStateIdleSetter),
-			index: newIndex,
-			initialDeltas: function (path) {
-				var newPath = A2($author$project$Path$add, newIndex, path);
-				var _v2 = control(newPath);
-				var fns = _v2.a;
-				return A2(
+					rec.before,
+					$elm$core$Tuple$pair($author$project$Control$Skip)),
+				befores: A2(
 					$elm$core$Basics$composeL,
-					rec.initialDeltas(path),
-					$elm$core$Tuple$pair(fns.init.b));
-			},
-			initialStates: function (path) {
-				var newPath = A2($author$project$Path$add, newIndex, path);
-				var _v3 = control(newPath);
-				var fns = _v3.a;
-				return A2(
-					$elm$core$Basics$composeL,
-					rec.initialStates(path),
-					$elm$core$Tuple$pair(fns.init.a));
-			},
-			initialiser: A2($elm$core$Basics$composeR, rec.initialiser, $author$project$Control$recordStateInitialiser),
-			labels: rec.labels,
-			makeSetters: A2($elm$core$Basics$composeR, rec.makeSetters, $author$project$Control$deltaSetterMaker),
-			parser: A2($elm$core$Basics$composeR, rec.parser, $author$project$Control$recordStateValidator),
-			subscriptionCollector: A2($elm$core$Basics$composeR, rec.subscriptionCollector, $author$project$Control$recordSubscriptionCollector),
-			toOutput: rec.toOutput,
-			updater: A2($elm$core$Basics$composeR, rec.updater, $author$project$Control$recordStateUpdater),
-			viewer: A2($elm$core$Basics$composeR, rec.viewer, $author$project$Control$recordStateViewer)
-		};
+					rec.befores,
+					$elm$core$Tuple$pair(rec.before)),
+				debouncingReceiverCollector: A2($elm$core$Basics$composeR, rec.debouncingReceiverCollector, $author$project$Control$recordDebouncingReceiverCollector),
+				deltaInitialiser: A2($elm$core$Basics$composeR, rec.deltaInitialiser, $author$project$Control$recordDeltaInitialiser),
+				errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$recordErrorCollector),
+				fns: function (path) {
+					var newPath = A2($author$project$Path$add, newIndex, path);
+					var _v2 = control(newPath);
+					var fns = _v2.a;
+					return A2(
+						$elm$core$Basics$composeL,
+						rec.fns(path),
+						$elm$core$Tuple$pair(
+							$author$project$Control$RecordFns(
+								{
+									access: access,
+									field: $author$project$Control$ControlFns(
+										_Utils_update(
+											fns,
+											{index: newIndex})),
+									fromInput: fromInput
+								})));
+				},
+				idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$recordStateIdleSetter),
+				index: newIndex,
+				initialDeltas: function (path) {
+					var newPath = A2($author$project$Path$add, newIndex, path);
+					var _v3 = control(newPath);
+					var fns = _v3.a;
+					return A2(
+						$elm$core$Basics$composeL,
+						rec.initialDeltas(path),
+						$elm$core$Tuple$pair(fns.init.b));
+				},
+				initialStates: function (path) {
+					var newPath = A2($author$project$Path$add, newIndex, path);
+					var _v4 = control(newPath);
+					var fns = _v4.a;
+					return A2(
+						$elm$core$Basics$composeL,
+						rec.initialStates(path),
+						$elm$core$Tuple$pair(fns.init.a));
+				},
+				initialiser: A2($elm$core$Basics$composeR, rec.initialiser, $author$project$Control$recordStateInitialiser),
+				makeSetters: A2($elm$core$Basics$composeR, rec.makeSetters, $author$project$Control$deltaSetterMaker),
+				parser: A2($elm$core$Basics$composeR, rec.parser, $author$project$Control$recordStateValidator),
+				subscriptionCollector: A2($elm$core$Basics$composeR, rec.subscriptionCollector, $author$project$Control$recordSubscriptionCollector),
+				toOutput: rec.toOutput,
+				updater: A2($elm$core$Basics$composeR, rec.updater, $author$project$Control$recordStateUpdater),
+				viewer: A2($elm$core$Basics$composeR, rec.viewer, $author$project$Control$recordStateViewer)
+			});
 	});
 var $author$project$Control$field = $author$project$Control$fieldHelper($author$project$Control$Open);
 var $elm$core$String$fromFloat = _String_fromNumber;
@@ -16596,38 +16604,38 @@ var $author$project$Docs$mdBefore = function (str) {
 		});
 };
 var $author$project$Control$record = function (toOutput) {
-	return {
-		after: $author$project$Control$End,
-		afters: $author$project$Control$End,
-		alertEmitter: $elm$core$Basics$identity,
-		before: $elm$core$Basics$identity,
-		befores: $elm$core$Basics$identity,
-		debouncingReceiverCollector: $elm$core$Basics$identity,
-		deltaInitialiser: $elm$core$Basics$identity,
-		errorCollector: $elm$core$Basics$identity,
-		fns: F2(
-			function (_v0, x) {
-				return x;
-			}),
-		idleSetter: $elm$core$Basics$identity,
-		index: 0,
-		initialDeltas: F2(
-			function (_v1, x) {
-				return x;
-			}),
-		initialStates: F2(
-			function (_v2, x) {
-				return x;
-			}),
-		initialiser: $elm$core$Basics$identity,
-		labels: _List_Nil,
-		makeSetters: $elm$core$Basics$identity,
-		parser: $elm$core$Basics$identity,
-		subscriptionCollector: $elm$core$Basics$identity,
-		toOutput: toOutput,
-		updater: $elm$core$Basics$identity,
-		viewer: $elm$core$Basics$identity
-	};
+	return $author$project$Control$RecordBuilder(
+		{
+			after: $author$project$Control$End,
+			afters: $author$project$Control$End,
+			alertEmitter: $elm$core$Basics$identity,
+			before: $elm$core$Basics$identity,
+			befores: $elm$core$Basics$identity,
+			debouncingReceiverCollector: $elm$core$Basics$identity,
+			deltaInitialiser: $elm$core$Basics$identity,
+			errorCollector: $elm$core$Basics$identity,
+			fns: F2(
+				function (_v0, x) {
+					return x;
+				}),
+			idleSetter: $elm$core$Basics$identity,
+			index: 0,
+			initialDeltas: F2(
+				function (_v1, x) {
+					return x;
+				}),
+			initialStates: F2(
+				function (_v2, x) {
+					return x;
+				}),
+			initialiser: $elm$core$Basics$identity,
+			makeSetters: $elm$core$Basics$identity,
+			parser: $elm$core$Basics$identity,
+			subscriptionCollector: $elm$core$Basics$identity,
+			toOutput: toOutput,
+			updater: $elm$core$Basics$identity,
+			viewer: $elm$core$Basics$identity
+		});
 };
 var $author$project$Control$string = A2(
 	$author$project$Control$debounce,
@@ -16693,7 +16701,6 @@ var $author$project$Docs$basicControls = A2(
 										}))))))))));
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $author$project$Docs$createYourOwnIntro = '\n## Creating your own controls\n\nOne final issue with our `customerControl`: why the heck are we including the customer\'s current age? In a year\'s time, \nthat data is going to be completely stale and useless. Instead, it would be much better to capture their date of birth. \n\n### Playing the dating game\n\nThe first thing we\'ll need is a `Date` type. There isn\'t one in `elm/core`, so let\'s go to the terminal and do \n`elm install justinmimbs/date`. \n\nOnce the package has been installed, add a few imports to the top of the `Main.elm` module:\n```\nimport Date\nimport Html\nimport Html.Attributes\n```\n\nNow, change our `Customer` type as follows:\n\n```\ntype alias Customer = \n    { name : String\n    , dateOfBirth : Date.Date\n    , products : List Product\n    , id : Id\n    , password : String\n    }\n```\n\n### Building a Date control\n\nWe _could_ pull together a date control using the combinators we\'ve already learned - something like this:\n\n```\nboringDateControl =\n    Control.record Date.fromCalendarDate\n        |> Control.field Date.year\n            (Control.int\n                |> Control.label "Year"\n            )\n        |> Control.field Date.month\n            (Control.int\n                |> Control.label "Month"\n                |> Control.map\n                    { convert = Date.numberToMonth\n                    , revert = Date.monthToNumber\n                    }\n            )\n        |> Control.field Date.day\n            (Control.int\n                |> Control.label "Day"\n            )\n        |> Control.endRecord\n```\n\n(Notice that although we\'re using `Control.record`, we\'re not actually creating a record here! We\'re passing the values \nproduced by the three fields to the `Date.fromCalendarDate` function.)\n\n### Building a Date control _from scratch_\n\nBut let\'s not use `Control.record` - let\'s say we want to use HTML\'s built-in `<input type="date">` element to render \nour `Date` control. \n\nWe can do this with `Control.create`, which gives us the flexibility to build completely bespoke controls for any Elm \ntype.\n\n```\ndateControl =\n    Control.create\n        { label = "Date of birth"\n        , initEmpty = ( "1970-01-01", Cmd.none )\n        , initWith = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )\n        , update = \\delta state -> ( delta, Cmd.none )\n        , view =\n            \\{ state, id, label, name, class } ->\n                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]\n                , Html.input\n                    [ Html.Attributes.type_ "date"\n                    , Html.Attributes.value state\n                    , Html.Attributes.id id\n                    , Html.Attributes.class class\n                    , Html.Attributes.name name\n                    ]\n                    []\n                ]\n        , subscriptions = \\state -> Sub.none\n        , parse =\n            \\state ->\n                case Date.fromIsoString state of\n                    Ok date ->\n                        Ok date\n\n                    Err error ->\n                        Err [ error ]\n        }\n```\n\nThis looks like a lot to digest, but we can take it one field at a time.\n\n#### label : `String`\nThis is the default label that will be displayed on the control.\n\n#### initEmpty : `( state, Cmd delta )`\nThis specifies the default internal `state` of the control when it\'s initialised, \ntogether with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we \ndon\'t need to send any `Cmd`s.\n\n#### initWith : `output -> ( state, Cmd delta )`\nThis defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial \n`Cmd` if needed. In this case, we\'re teaching it how to turn a `Date` into a `String` and there\'s no `Cmd` to send.\n\n#### update : `delta -> state -> ( state, Cmd delta )`\nThis is exactly like a normal Elm app\'s `update` function - for \n`delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all \nwe need to do in our update function is replace the existing `state` with the new `delta`.\n\n#### view : `{ state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` \nThis is very similar to a normal Elm app\'s `view` function, but with two differences. First, in addition to the `state`, \nit also gives us access to some other stuff that we can include in our view\'s HTML attributes. Second, it produces a \nlist of HTML elements, rather than a single element.\n\n#### subscriptions : `state -> Sub delta`\nThis is exactly like a normal Elm app\'s `subscriptions` function. Here, we don\'t \nneed to manage any subscriptions, so we can just return `Sub.none`.\n\n#### parse : `state -> Result (List String) output`\nThis attempts to turn the control\'s `state` into a value of the \ncontrol\'s `output` type, returning a list of errors if it fails. In this case, it\'s trying to parse a `String` into a \n`Date`.\n\n### Wiring it up\n\nFinally, let\'s update `customerControl` to replace the `age` field with our new `dateOfBirth` field:\n\n```\ncustomerControl = \n    Control.record\n        (\\name dateOfBirth products id password ->\n            { name = name\n            , dateOfBirth = dateOfBirth\n            , products = products\n            , id = id\n            , password = password\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .dateOfBirth dateControl\n        |> Control.field .products productListControl\n        |> Control.field .id idControl\n        |> Control.field .password passwordControl\n        |> Control.endRecord\n        |> mdBefore createYourOwnIntro\n        |> mdAfter createYourOwnOutro\n```\n\nAnd the final result should look like this:\n';
-var $author$project$Docs$createYourOwnOutro = '\nCongratulations! You made it through the tutorial. There\'s quite a lot more to learn about this package, but that\'s \nbeyond the scope of this introduction. For a deeper dive, check out the docs at \n[package.elm-lang.org](https://package.elm-lang.org/packages/edkelly303/elm-any-type-forms/latest).\n';
 var $elm$time$Time$Jan = {$: 'Jan'};
 var $justinmimbs$date$Date$RD = function (a) {
 	return {$: 'RD', a: a};
@@ -18630,45 +18637,49 @@ var $author$project$Docs$Triangle = F3(
 	function (a, b, c) {
 		return {$: 'Triangle', a: a, b: b, c: c};
 	});
+var $author$project$Control$CustomTypeBuilder = function (a) {
+	return {$: 'CustomTypeBuilder', a: a};
+};
 var $author$project$Control$customType = function (destructor) {
-	return {
-		alertEmitter: $elm$core$Basics$identity,
-		applyInputs: $elm$core$Basics$identity,
-		debouncingReceiverCollector: $elm$core$Basics$identity,
-		deltaAfter: $author$project$Control$End,
-		deltaAfters: $author$project$Control$End,
-		deltaBefore: $elm$core$Basics$identity,
-		deltaBefores: $elm$core$Basics$identity,
-		destructor: destructor,
-		errorCollector: $elm$core$Basics$identity,
-		fns: F2(
-			function (_v0, x) {
-				return x;
-			}),
-		idleSetter: $elm$core$Basics$identity,
-		index: 0,
-		initialDeltas: F2(
-			function (_v1, x) {
-				return x;
-			}),
-		initialStates: F2(
-			function (_v2, x) {
-				return x;
-			}),
-		initialiseDeltas: $elm$core$Basics$identity,
-		makeDeltaSetters: $elm$core$Basics$identity,
-		makeStateSetters: $elm$core$Basics$identity,
-		parser: $elm$core$Basics$identity,
-		stateAfter: $author$project$Control$End,
-		stateAfters: $author$project$Control$End,
-		stateBefore: $elm$core$Basics$identity,
-		stateBefores: $elm$core$Basics$identity,
-		stateInserter: $elm$core$Basics$identity,
-		subscriptionCollector: $elm$core$Basics$identity,
-		toArgStates: $elm$core$Basics$identity,
-		updater: $elm$core$Basics$identity,
-		viewer: $elm$core$Basics$identity
-	};
+	return $author$project$Control$CustomTypeBuilder(
+		{
+			alertEmitter: $elm$core$Basics$identity,
+			applyInputs: $elm$core$Basics$identity,
+			debouncingReceiverCollector: $elm$core$Basics$identity,
+			deltaAfter: $author$project$Control$End,
+			deltaAfters: $author$project$Control$End,
+			deltaBefore: $elm$core$Basics$identity,
+			deltaBefores: $elm$core$Basics$identity,
+			destructor: destructor,
+			errorCollector: $elm$core$Basics$identity,
+			fns: F2(
+				function (_v0, x) {
+					return x;
+				}),
+			idleSetter: $elm$core$Basics$identity,
+			index: 0,
+			initialDeltas: F2(
+				function (_v1, x) {
+					return x;
+				}),
+			initialStates: F2(
+				function (_v2, x) {
+					return x;
+				}),
+			initialiseDeltas: $elm$core$Basics$identity,
+			makeDeltaSetters: $elm$core$Basics$identity,
+			makeStateSetters: $elm$core$Basics$identity,
+			parser: $elm$core$Basics$identity,
+			stateAfter: $author$project$Control$End,
+			stateAfters: $author$project$Control$End,
+			stateBefore: $elm$core$Basics$identity,
+			stateBefores: $elm$core$Basics$identity,
+			stateInserter: $elm$core$Basics$identity,
+			subscriptionCollector: $elm$core$Basics$identity,
+			toArgStates: $elm$core$Basics$identity,
+			updater: $elm$core$Basics$identity,
+			viewer: $elm$core$Basics$identity
+		});
 };
 var $author$project$Control$applyStateSettersToInitialiser = F4(
 	function (stateSetterToInitialiserApplier_, initialiser, stateSetters, tag) {
@@ -18945,44 +18956,45 @@ var $author$project$Control$viewSelectedTagState = F4(
 			setters,
 			config.state);
 	});
-var $author$project$Control$endCustomType = function (rec) {
+var $author$project$Control$endCustomType = function (_v0) {
+	var builder = _v0.a;
 	return $author$project$Control$Control(
 		function (path) {
-			var initialStates = A2(rec.initialStates, path, $author$project$Control$End);
-			var initialDeltas = A2(rec.initialDeltas, path, $author$project$Control$End);
-			var fns = A2(rec.fns, path, $author$project$Control$End);
-			var parse = function (_v10) {
+			var initialStates = A2(builder.initialStates, path, $author$project$Control$End);
+			var initialDeltas = A2(builder.initialDeltas, path, $author$project$Control$End);
+			var fns = A2(builder.fns, path, $author$project$Control$End);
+			var parse = function (_v11) {
+				var internalState = _v11.a;
+				var state = _v11.b;
+				return A4($author$project$Control$validateSelectedTagState, builder.parser, internalState.selected, fns, state);
+			};
+			var setAllIdle = function (_v10) {
 				var internalState = _v10.a;
 				var state = _v10.b;
-				return A4($author$project$Control$validateSelectedTagState, rec.parser, internalState.selected, fns, state);
-			};
-			var setAllIdle = function (_v9) {
-				var internalState = _v9.a;
-				var state = _v9.b;
 				return A2(
 					$author$project$Control$State,
 					_Utils_update(
 						internalState,
 						{status: $author$project$Control$Idle_}),
-					A4($author$project$Control$setSelectedTagStateIdle, rec.idleSetter, internalState.selected, fns, state));
+					A4($author$project$Control$setSelectedTagStateIdle, builder.idleSetter, internalState.selected, fns, state));
 			};
-			var stateSetters = A7($author$project$Control$makeStateSetters, rec.makeStateSetters, rec.stateInserter, initialStates, fns, rec.toArgStates, rec.stateBefores, rec.stateAfters);
-			var emitAlerts = function (_v8) {
-				var internalState = _v8.a;
-				var state = _v8.b;
-				return A4($author$project$Control$emitAlertsForCustomType, rec.alertEmitter, internalState.selected, fns, state);
+			var stateSetters = A7($author$project$Control$makeStateSetters, builder.makeStateSetters, builder.stateInserter, initialStates, fns, builder.toArgStates, builder.stateBefores, builder.stateAfters);
+			var emitAlerts = function (_v9) {
+				var internalState = _v9.a;
+				var state = _v9.b;
+				return A4($author$project$Control$emitAlertsForCustomType, builder.alertEmitter, internalState.selected, fns, state);
 			};
-			var deltaSetters = A3($author$project$Control$makeDeltaSetters, rec.makeDeltaSetters, rec.deltaBefores, rec.deltaAfters);
+			var deltaSetters = A3($author$project$Control$makeDeltaSetters, builder.makeDeltaSetters, builder.deltaBefores, builder.deltaAfters);
 			var subcontrolView = function (config) {
-				return A4($author$project$Control$viewSelectedTagState, rec.viewer, fns, deltaSetters, config);
+				return A4($author$project$Control$viewSelectedTagState, builder.viewer, fns, deltaSetters, config);
 			};
 			var view = function (config) {
 				return A3($author$project$Control$customTypeView, path, config, subcontrolView);
 			};
 			var update = F2(
-				function (delta, _v4) {
-					var internalState = _v4.a;
-					var state = _v4.b;
+				function (delta, _v5) {
+					var internalState = _v5.a;
+					var state = _v5.b;
 					switch (delta.$) {
 						case 'Skip':
 							return _Utils_Tuple2(
@@ -19000,17 +19012,17 @@ var $author$project$Control$endCustomType = function (rec) {
 								$elm$core$Platform$Cmd$none);
 						case 'ChangeStateOnInput':
 							var tagDelta = delta.a;
-							var _v6 = A5($author$project$Control$updateCustomTypeStates, rec.updater, fns, deltaSetters, tagDelta, state);
-							var newTagStates = _v6.a;
-							var cmd = _v6.b;
+							var _v7 = A5($author$project$Control$updateCustomTypeStates, builder.updater, fns, deltaSetters, tagDelta, state);
+							var newTagStates = _v7.a;
+							var cmd = _v7.b;
 							return _Utils_Tuple2(
 								A2($author$project$Control$State, internalState, newTagStates),
 								A2($elm$core$Platform$Cmd$map, $author$project$Control$ChangeStateOnInput, cmd));
 						case 'ChangeStateInternally':
 							var tagDelta = delta.a;
-							var _v7 = A5($author$project$Control$updateCustomTypeStates, rec.updater, fns, deltaSetters, tagDelta, state);
-							var newTagStates = _v7.a;
-							var cmd = _v7.b;
+							var _v8 = A5($author$project$Control$updateCustomTypeStates, builder.updater, fns, deltaSetters, tagDelta, state);
+							var newTagStates = _v8.a;
+							var cmd = _v8.b;
 							return _Utils_Tuple2(
 								A2($author$project$Control$State, internalState, newTagStates),
 								A2($elm$core$Platform$Cmd$map, $author$project$Control$ChangeStateInternally, cmd));
@@ -19022,18 +19034,18 @@ var $author$project$Control$endCustomType = function (rec) {
 				});
 			return $author$project$Control$ControlFns(
 				{
-					baseUpdate: function (_v0) {
+					baseUpdate: function (_v1) {
 						return update;
 					},
 					_class: _List_Nil,
-					collectDebouncingReceivers: function (_v1) {
-						var states = _v1.b;
-						return A3($author$project$Control$collectDebouncingReceiversForCustomType, rec.debouncingReceiverCollector, fns, states);
+					collectDebouncingReceivers: function (_v2) {
+						var states = _v2.b;
+						return A3($author$project$Control$collectDebouncingReceiversForCustomType, builder.debouncingReceiverCollector, fns, states);
 					},
 					collectErrors: F2(
-						function (_v2, alerts) {
-							var states = _v2.b;
-							return A4($author$project$Control$collectErrorsForCustomType, rec.errorCollector, alerts, fns, states);
+						function (_v3, alerts) {
+							var states = _v3.b;
+							return A4($author$project$Control$collectErrorsForCustomType, builder.errorCollector, alerts, fns, states);
 						}),
 					emitAlerts: emitAlerts,
 					id: $elm$core$Maybe$Nothing,
@@ -19043,10 +19055,10 @@ var $author$project$Control$endCustomType = function (rec) {
 							$author$project$Control$State,
 							{selected: 1, status: $author$project$Control$Intact_},
 							initialStates),
-						A3($author$project$Control$initialiseCustomTypeDeltas, rec.initialiseDeltas, deltaSetters, initialDeltas)),
+						A3($author$project$Control$initialiseCustomTypeDeltas, builder.initialiseDeltas, deltaSetters, initialDeltas)),
 					initWith: function (tag) {
 						return _Utils_Tuple2(
-							A4($author$project$Control$applyStateSettersToInitialiser, rec.applyInputs, rec.destructor, stateSetters, tag),
+							A4($author$project$Control$applyStateSettersToInitialiser, builder.applyInputs, builder.destructor, stateSetters, tag),
 							A2($author$project$Control$fixme, 'initWith for custom types doesn\'t run Cmds of subcontrols', $elm$core$Platform$Cmd$none));
 					},
 					label: 'Custom Type',
@@ -19056,9 +19068,9 @@ var $author$project$Control$endCustomType = function (rec) {
 					receiverCount: 0,
 					setAllIdle: setAllIdle,
 					subControlViews: subcontrolView,
-					subscriptions: function (_v3) {
-						var states = _v3.b;
-						return A4($author$project$Control$collectCustomTypeSubscriptions, rec.subscriptionCollector, deltaSetters, fns, states);
+					subscriptions: function (_v4) {
+						var states = _v4.b;
+						return A4($author$project$Control$collectCustomTypeSubscriptions, builder.subscriptionCollector, deltaSetters, fns, states);
 					},
 					update: update,
 					view: view
@@ -19322,82 +19334,84 @@ var $author$project$Control$stateSetterToInitialiserApplier = F3(
 			stateSetters);
 	});
 var $author$project$Control$tagHelper = F4(
-	function (label_, internalRecord, toArgState, rec) {
-		var newIndex = rec.index + 1;
-		var _v0 = A2($author$project$Control$label, label_, internalRecord);
-		var control = _v0.a;
-		return {
-			alertEmitter: A2($elm$core$Basics$composeR, rec.alertEmitter, $author$project$Control$customTypeAlertEmitter),
-			applyInputs: A2($elm$core$Basics$composeR, rec.applyInputs, $author$project$Control$stateSetterToInitialiserApplier),
-			debouncingReceiverCollector: A2($elm$core$Basics$composeR, rec.debouncingReceiverCollector, $author$project$Control$customTypeDebouncingReceiverCollector),
-			deltaAfter: _Utils_Tuple2($author$project$Control$Skip, rec.deltaAfter),
-			deltaAfters: _Utils_Tuple2(rec.deltaAfter, rec.deltaAfters),
-			deltaBefore: A2(
-				$elm$core$Basics$composeL,
-				rec.deltaBefore,
-				$elm$core$Tuple$pair($author$project$Control$Skip)),
-			deltaBefores: A2(
-				$elm$core$Basics$composeL,
-				rec.deltaBefores,
-				$elm$core$Tuple$pair(rec.deltaBefore)),
-			destructor: rec.destructor,
-			errorCollector: A2($elm$core$Basics$composeR, rec.errorCollector, $author$project$Control$customTypeErrorCollector),
-			fns: function (path) {
-				var _v1 = control(
-					A2($author$project$Path$add, newIndex, path));
-				var controlFns = _v1.a;
-				return A2(
+	function (label_, internalRecord, toArgState, _v0) {
+		var builder = _v0.a;
+		var newIndex = builder.index + 1;
+		var _v1 = A2($author$project$Control$label, label_, internalRecord);
+		var control = _v1.a;
+		return $author$project$Control$CustomTypeBuilder(
+			{
+				alertEmitter: A2($elm$core$Basics$composeR, builder.alertEmitter, $author$project$Control$customTypeAlertEmitter),
+				applyInputs: A2($elm$core$Basics$composeR, builder.applyInputs, $author$project$Control$stateSetterToInitialiserApplier),
+				debouncingReceiverCollector: A2($elm$core$Basics$composeR, builder.debouncingReceiverCollector, $author$project$Control$customTypeDebouncingReceiverCollector),
+				deltaAfter: _Utils_Tuple2($author$project$Control$Skip, builder.deltaAfter),
+				deltaAfters: _Utils_Tuple2(builder.deltaAfter, builder.deltaAfters),
+				deltaBefore: A2(
 					$elm$core$Basics$composeL,
-					rec.fns(path),
-					$elm$core$Tuple$pair(
-						$author$project$Control$ControlFns(
-							_Utils_update(
-								controlFns,
-								{index: newIndex}))));
-			},
-			idleSetter: A2($elm$core$Basics$composeR, rec.idleSetter, $author$project$Control$selectedTagIdleSetter),
-			index: newIndex,
-			initialDeltas: function (path) {
-				var _v2 = control(
-					A2($author$project$Path$add, newIndex, path));
-				var controlFns = _v2.a;
-				return A2(
+					builder.deltaBefore,
+					$elm$core$Tuple$pair($author$project$Control$Skip)),
+				deltaBefores: A2(
 					$elm$core$Basics$composeL,
-					rec.initialDeltas(path),
-					$elm$core$Tuple$pair(controlFns.init.b));
-			},
-			initialStates: function (path) {
-				var _v3 = control(
-					A2($author$project$Path$add, newIndex, path));
-				var controlFns = _v3.a;
-				return A2(
+					builder.deltaBefores,
+					$elm$core$Tuple$pair(builder.deltaBefore)),
+				destructor: builder.destructor,
+				errorCollector: A2($elm$core$Basics$composeR, builder.errorCollector, $author$project$Control$customTypeErrorCollector),
+				fns: function (path) {
+					var _v2 = control(
+						A2($author$project$Path$add, newIndex, path));
+					var controlFns = _v2.a;
+					return A2(
+						$elm$core$Basics$composeL,
+						builder.fns(path),
+						$elm$core$Tuple$pair(
+							$author$project$Control$ControlFns(
+								_Utils_update(
+									controlFns,
+									{index: newIndex}))));
+				},
+				idleSetter: A2($elm$core$Basics$composeR, builder.idleSetter, $author$project$Control$selectedTagIdleSetter),
+				index: newIndex,
+				initialDeltas: function (path) {
+					var _v3 = control(
+						A2($author$project$Path$add, newIndex, path));
+					var controlFns = _v3.a;
+					return A2(
+						$elm$core$Basics$composeL,
+						builder.initialDeltas(path),
+						$elm$core$Tuple$pair(controlFns.init.b));
+				},
+				initialStates: function (path) {
+					var _v4 = control(
+						A2($author$project$Path$add, newIndex, path));
+					var controlFns = _v4.a;
+					return A2(
+						$elm$core$Basics$composeL,
+						builder.initialStates(path),
+						$elm$core$Tuple$pair(controlFns.init.a));
+				},
+				initialiseDeltas: A2($elm$core$Basics$composeR, builder.initialiseDeltas, $author$project$Control$customTypeDeltaInitialiser),
+				makeDeltaSetters: A2($elm$core$Basics$composeR, builder.makeDeltaSetters, $author$project$Control$deltaSetterMaker),
+				makeStateSetters: A2($elm$core$Basics$composeR, builder.makeStateSetters, $author$project$Control$stateSetterMaker),
+				parser: A2($elm$core$Basics$composeR, builder.parser, $author$project$Control$selectedTagParser),
+				stateAfter: _Utils_Tuple2($elm$core$Maybe$Nothing, builder.stateAfter),
+				stateAfters: _Utils_Tuple2(builder.stateAfter, builder.stateAfters),
+				stateBefore: A2(
 					$elm$core$Basics$composeL,
-					rec.initialStates(path),
-					$elm$core$Tuple$pair(controlFns.init.a));
-			},
-			initialiseDeltas: A2($elm$core$Basics$composeR, rec.initialiseDeltas, $author$project$Control$customTypeDeltaInitialiser),
-			makeDeltaSetters: A2($elm$core$Basics$composeR, rec.makeDeltaSetters, $author$project$Control$deltaSetterMaker),
-			makeStateSetters: A2($elm$core$Basics$composeR, rec.makeStateSetters, $author$project$Control$stateSetterMaker),
-			parser: A2($elm$core$Basics$composeR, rec.parser, $author$project$Control$selectedTagParser),
-			stateAfter: _Utils_Tuple2($elm$core$Maybe$Nothing, rec.stateAfter),
-			stateAfters: _Utils_Tuple2(rec.stateAfter, rec.stateAfters),
-			stateBefore: A2(
-				$elm$core$Basics$composeL,
-				rec.stateBefore,
-				$elm$core$Tuple$pair($elm$core$Maybe$Nothing)),
-			stateBefores: A2(
-				$elm$core$Basics$composeL,
-				rec.stateBefores,
-				$elm$core$Tuple$pair(rec.stateBefore)),
-			stateInserter: A2($elm$core$Basics$composeR, rec.stateInserter, $author$project$Control$argStateIntoTagStateInserter),
-			subscriptionCollector: A2($elm$core$Basics$composeR, rec.subscriptionCollector, $author$project$Control$customTypeSubscriptionCollector),
-			toArgStates: A2(
-				$elm$core$Basics$composeL,
-				rec.toArgStates,
-				$elm$core$Tuple$pair(toArgState)),
-			updater: A2($elm$core$Basics$composeR, rec.updater, $author$project$Control$customTypeStateUpdater),
-			viewer: A2($elm$core$Basics$composeR, rec.viewer, $author$project$Control$selectedTagViewer)
-		};
+					builder.stateBefore,
+					$elm$core$Tuple$pair($elm$core$Maybe$Nothing)),
+				stateBefores: A2(
+					$elm$core$Basics$composeL,
+					builder.stateBefores,
+					$elm$core$Tuple$pair(builder.stateBefore)),
+				stateInserter: A2($elm$core$Basics$composeR, builder.stateInserter, $author$project$Control$argStateIntoTagStateInserter),
+				subscriptionCollector: A2($elm$core$Basics$composeR, builder.subscriptionCollector, $author$project$Control$customTypeSubscriptionCollector),
+				toArgStates: A2(
+					$elm$core$Basics$composeL,
+					builder.toArgStates,
+					$elm$core$Tuple$pair(toArgState)),
+				updater: A2($elm$core$Basics$composeR, builder.updater, $author$project$Control$customTypeStateUpdater),
+				viewer: A2($elm$core$Basics$composeR, builder.viewer, $author$project$Control$selectedTagViewer)
+			});
 	});
 var $author$project$Control$tag1 = F3(
 	function (label_, tag, control) {
@@ -19515,48 +19529,43 @@ var $author$project$Docs$productListControl = A2(
 	$author$project$Control$label,
 	'List of products',
 	$author$project$Control$list($author$project$Docs$productControl));
-var $author$project$Docs$createYourOwn = A2(
-	$author$project$Docs$mdAfter,
-	$author$project$Docs$createYourOwnOutro,
-	A2(
-		$author$project$Docs$mdBefore,
-		$author$project$Docs$createYourOwnIntro,
-		$author$project$Control$endRecord(
+var $author$project$Docs$customerControl = $author$project$Control$endRecord(
+	A3(
+		$author$project$Control$field,
+		function ($) {
+			return $.password;
+		},
+		$author$project$Docs$passwordControl,
+		A3(
+			$author$project$Control$field,
+			function ($) {
+				return $.id;
+			},
+			$author$project$Docs$idControl,
 			A3(
 				$author$project$Control$field,
 				function ($) {
-					return $.password;
+					return $.products;
 				},
-				$author$project$Docs$passwordControl,
+				$author$project$Docs$productListControl,
 				A3(
 					$author$project$Control$field,
 					function ($) {
-						return $.id;
+						return $.dateOfBirth;
 					},
-					$author$project$Docs$idControl,
+					$author$project$Docs$dateControl,
 					A3(
 						$author$project$Control$field,
 						function ($) {
-							return $.products;
+							return $.name;
 						},
-						$author$project$Docs$productListControl,
-						A3(
-							$author$project$Control$field,
-							function ($) {
-								return $.dateOfBirth;
-							},
-							$author$project$Docs$dateControl,
-							A3(
-								$author$project$Control$field,
-								function ($) {
-									return $.name;
-								},
-								$author$project$Docs$nameControl,
-								$author$project$Control$record(
-									F5(
-										function (name, dateOfBirth, products, id, password) {
-											return {dateOfBirth: dateOfBirth, id: id, name: name, password: password, products: products};
-										}))))))))));
+						$author$project$Docs$nameControl,
+						$author$project$Control$record(
+							F5(
+								function (name, dateOfBirth, products, id, password) {
+									return {dateOfBirth: dateOfBirth, id: id, name: name, password: password, products: products};
+								}))))))));
+var $author$project$Docs$createYourOwn = A2($author$project$Docs$mdBefore, $author$project$Docs$createYourOwnIntro, $author$project$Docs$customerControl);
 var $author$project$Docs$customTypesCustomerControl = $author$project$Control$endRecord(
 	A3(
 		$author$project$Control$field,
@@ -19627,6 +19636,12 @@ var $author$project$Control$layout = F2(
 		return $author$project$Control$Control(
 			A2($elm$core$Basics$composeR, control, viewer));
 	});
+var $author$project$Docs$leavingTheSandboxIntro = '\n## Leaving the sandbox\n\nSo, we\'ve designed our `customerControl`, and tested it out in `Control.sandbox`... but where do we go from \nthere?\n\nWell, in practice, we probably want to integrate it into a larger Elm application - in this case, the customer \nrelationship management (CRM) system we\'re building for Shapes.com.\n\n### Initial setup\n\nLet\'s rename our `Main.elm` file to `Customer.elm`, and rename `customerControl` to just `control`. Then we\'ll make a few \nchanges to the exports:\n\n```\nmodule Customer exposing (Customer, Id, Product, control, main)\n```\n\nAnd we\'ll implement a very rubbish CRM application in a file called `Crm.elm`:\n\n```\nmodule Crm exposing (main)\n\nimport Browser\nimport Control\nimport Customer\n\ntype alias Model = \n    { customers : List Customer.Customer }\n\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n\nmain = \n    Browser.document \n        { init = init \n        , view = view\n        , update = update\n        , subscriptions = subscriptions\n        }\n\ninit flags = \n    ( { customers = [] }\n    , Cmd.none\n    )\n\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) ] \n    }\n\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ( { customers = \n                List.map \n                    (\\customer -> \n                        if customer.id == customerId then \n                            { customer | products = product :: customer.products } \n                        else customer\n                    ) \n                    model.customers \n              }\n            , Cmd.none\n            )\n\nsubscriptions model = \n    Sub.none\n```\n\nSo, how do we add our form to this app? \n\n### Working out the types\n\nFirst, we need to know what the types should be for the `state` of our form (which \nis this package\'s equivalent of a `Model` type), and its `delta` (equivalent to a `Msg` type).\n\nThese types will be quite complicated, and it would be painful to work them out by hand. Fortunately, we don\'t have to, \nbecause we can ask the Elm compiler to do it for us.\n\nOpen your terminal in the project root folder and type `elm repl`. Then, at the REPL prompt, type:\n\n```\n> import Customer\n> Customer.main\n```\n\nThis should print out the type signature for our sandbox program, which should look something like this:\n```\n<function>\n    : Program\n          ()\n          (\n          Control.State\n              ( Control.State String\n              , ( Control.State String\n                , ( Control.State\n                        (\n                        List\n                            (\n                            Control.State\n                                ( Control.State ( Control.State String, Control.End )\n                                , ( Control.State\n                                        ( Control.State String\n                                        , ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                        )\n                                  , ( Control.State\n                                          ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                    , Control.End\n                                    )\n                                  )\n                                )\n                            )\n                        )\n                  , ( Control.State ( Control.State String, Control.End )\n                    , ( Control.State\n                            ( Control.State\n                                  ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n          (\n          Control.Delta\n              ( Control.Delta String\n              , ( Control.Delta String\n                , ( Control.Delta\n                        (\n                        Control.ListDelta\n                            ( Control.Delta ( Control.Delta String, Control.End )\n                            , ( Control.Delta\n                                    ( Control.Delta String\n                                    , ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                    )\n                              , ( Control.Delta\n                                      ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                , Control.End\n                                )\n                              )\n                            )\n                        )\n                  , ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta\n                                  ( Control.Delta String\n                                  , ( Control.Delta String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n```\n\nThe `state` for our form will be the whole section containing `Control.State` types, and the `delta` will be the \nsection containing `Control.Delta` types.\n\nLet\'s copy-paste those relevant bits into a couple of type aliases in `Crm.elm`:\n\n```\ntype alias CustomerFormState =\n    Control.State\n        ( Control.State String\n        , ( Control.State String\n          , ( Control.State\n                (List\n                    (Control.State\n                        ( Control.State ( Control.State String, Control.End )\n                        , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                                )\n                          , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String, Control.End )\n                                )\n                            , Control.End\n                            )\n                          )\n                        )\n                    )\n                )\n            , ( Control.State ( Control.State String, Control.End )\n              , ( Control.State\n                    ( Control.State\n                        ( Control.State String\n                        , ( Control.State String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n\nAnd:\n\n```\ntype alias CustomerFormDelta =\n    Control.Delta\n        ( Control.Delta String\n        , ( Control.Delta String\n          , ( Control.Delta\n                (Control.ListDelta\n                    ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String\n                              , ( Control.Delta String, Control.End )\n                              )\n                            )\n                      , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String, Control.End )\n                            )\n                        , Control.End\n                        )\n                      )\n                    )\n                )\n            , ( Control.Delta ( Control.Delta String, Control.End )\n              , ( Control.Delta\n                    ( Control.Delta\n                        ( Control.Delta String\n                        , ( Control.Delta String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n### Extending the `Model` and `Msg` types\n\nNow, in `Crm.elm`, we\'ll add a field to the `Model` to hold the form\'s state:\n\n```\ntype alias Model = \n    { customers : List Customer.Customer \n    , customerFormState : CustomerFormState\n    }\n\n```\n\nNext, we\'ll add two new variants to the `Msg` type - one for updating the form\'s state, and one for submitting it:\n\n```\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n    | UpdatedCustomerForm CustomerFormDelta\n    | SubmittedCustomerForm\n```\n\n### Instantiating our form\n\nNow, in `Crm.elm`, let\'s use `Control.form` to turn our `control` into a form:\n\n```\ncustomerForm = \n    Control.form \n        { control = Customer.control\n        , onUpdate = UpdatedCustomerForm\n        , onSubmit = SubmttedCustomerForm\n        }\n```\n\nWe\'ll use this form in all the other functions that we pass to `Browser.document` in our `Crm.elm`\'s `main` function. \n\n### Wiring it up\n\nLet\'s start with the `init` function:\n\n```\ninit flags = \n    let\n        ( formState, cmd ) = \n            customerForm.init\n    in\n    ( { customers = [] \n      , customerFormState = formState\n      }\n    , cmd\n    )\n```\n\nNow `view`:\n\n```\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) \n        , customerForm.view model.customerFormState\n        ] \n    }\n```\n\nAnd `update`:\n\n```\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ...\n\n        UpdatedCustomerForm delta ->\n            let\n                ( newFormState, cmd ) =\n                    customerForm.update delta model.customerFormState\n            in\n            ( { model | customerFormState = newFormState }\n            , cmd\n            )\n\n        SubmittedCustomerForm ->\n            let\n                ( newFormState, result ) =\n                    customerForm.submit model.customerFormState\n            in\n            case result of\n                Ok customer ->\n                    ( { model \n                        | customers = customer :: model.customers \n                        , customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n                Err errors ->\n                    -- in a real app you\'d probably do something \n                    -- with the errors, but I\'ll leave that as an\n                    -- exercise for the reader; here, we\'ll just\n                    -- update the form\'s state.\n                    ( { model \n                        | customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n```\n\nAnd finally, `subscriptions`:\n\n```\nsubscriptions model = \n    customerForm.subscriptions model.customerFormState\n```\n\nVoila! Job done! If you open `Crm.elm` in `elm reactor`, you should now see a list of customer names, followed by \nsomething like this:\n';
+var $author$project$Docs$leavingTheSandboxOutro = '\nCongratulations! You made it through the tutorial. There\'s quite a lot more to learn about this package, but that\'s \nbeyond the scope of this introduction. For a deeper dive, check out the docs at \n[package.elm-lang.org](https://package.elm-lang.org/packages/edkelly303/elm-any-type-forms/latest).\n';
+var $author$project$Docs$leavingTheSandbox = A2(
+	$author$project$Docs$mdAfter,
+	$author$project$Docs$leavingTheSandboxOutro,
+	A2($author$project$Docs$mdBefore, $author$project$Docs$leavingTheSandboxIntro, $author$project$Docs$customerControl));
 var $author$project$Docs$listsIntro = '\n## Lists, Dicts, Sets and Arrays\n\nHang on a minute - if each Shapes.com customer can only purchase a single product, the company is probably not going to\nbe very successful! \n\nWhat we really want our system to do is keep track of _all_ the products that each customer buys. Perhaps we could use \nsome nifty data structure like a `List`?\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    , products : List Product\n    , id : Id\n    }\n```\n\nFortunately, it\'s easy to turn any control into a list of controls by passing it to `Control.list`:\n\n```\nproductListControl = \n    Control.list productControl\n```\n\nThis will give you a form that produces a list of products:\n';
 var $author$project$Docs$listsOutro = '\n### Wiring it up \n\nNow you can add your new `productListControl` to your `customerControl` as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age products -> \n            { name = name\n            , age = age\n            , products = products\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .products productListControl\n        |> Control.endRecord\n```\n\n### Other list-like things\n\nThe package includes built-in combinators for three other list-like data structures from Elm\'s standard library: \n`Array`, `Set` and `Dict`.\n\n`Control.array` and `Control.set` have exactly the same API as `Control.list` - just pass them a control of any type and \nyou\'ll get a control that produces an `Array` or `Set` of that type. \n\n`Control.dict` is similar, except that it takes _two_ controls as arguments. It uses the first as the key and the second \nas the value for the `Dict` it produces.\n';
 var $author$project$Docs$listsDictsSetsAndArrays = A2(
@@ -19968,98 +19983,109 @@ var $author$project$Docs$lessons = A2(
 				$author$project$Control$endCustomType(
 					A4(
 						$author$project$Control$tag1,
-						'Creating your own controls',
-						$author$project$Docs$CreateYourOwn,
-						$author$project$Docs$createYourOwn,
+						'Leaving the sandbox',
+						$author$project$Docs$LeavingTheSandbox,
+						$author$project$Docs$leavingTheSandbox,
 						A4(
 							$author$project$Control$tag1,
-							'Multi-control validation',
-							$author$project$Docs$MultiValidation,
-							$author$project$Docs$multivalidation,
+							'Creating your own controls',
+							$author$project$Docs$CreateYourOwn,
+							$author$project$Docs$createYourOwn,
 							A4(
 								$author$project$Control$tag1,
-								'Validating controls',
-								$author$project$Docs$Validation,
-								$author$project$Docs$validation,
+								'Multi-control validation',
+								$author$project$Docs$MultiValidation,
+								$author$project$Docs$multivalidation,
 								A4(
 									$author$project$Control$tag1,
-									'Converting controls',
-									$author$project$Docs$Mapping,
-									$author$project$Docs$mapping,
+									'Validating controls',
+									$author$project$Docs$Validation,
+									$author$project$Docs$validation,
 									A4(
 										$author$project$Control$tag1,
-										'Lists, Dicts, Sets & Arrays',
-										$author$project$Docs$ListsDictsSetsAndArrays,
-										$author$project$Docs$listsDictsSetsAndArrays,
+										'Converting controls',
+										$author$project$Docs$Mapping,
+										$author$project$Docs$mapping,
 										A4(
 											$author$project$Control$tag1,
-											'Custom types',
-											$author$project$Docs$CustomTypes,
-											$author$project$Docs$customTypes,
+											'Lists, Dicts, Sets & Arrays',
+											$author$project$Docs$ListsDictsSetsAndArrays,
+											$author$project$Docs$listsDictsSetsAndArrays,
 											A4(
 												$author$project$Control$tag1,
-												'Records and labels',
-												$author$project$Docs$Records,
-												$author$project$Docs$records,
+												'Custom types',
+												$author$project$Docs$CustomTypes,
+												$author$project$Docs$customTypes,
 												A4(
 													$author$project$Control$tag1,
-													'Tuples and triples',
-													$author$project$Docs$TuplesAndTriples,
-													$author$project$Docs$tuplesAndTriples,
+													'Records and labels',
+													$author$project$Docs$Records,
+													$author$project$Docs$records,
 													A4(
 														$author$project$Control$tag1,
-														'Basic controls',
-														$author$project$Docs$BasicControls,
-														$author$project$Docs$basicControls,
+														'Tuples and triples',
+														$author$project$Docs$TuplesAndTriples,
+														$author$project$Docs$tuplesAndTriples,
 														A4(
 															$author$project$Control$tag1,
-															'Your first form',
-															$author$project$Docs$YourFirstForm,
-															$author$project$Docs$yourFirstForm,
-															$author$project$Control$customType(
-																function (l01) {
-																	return function (l02) {
-																		return function (l03) {
-																			return function (l04) {
-																				return function (l05) {
-																					return function (l06) {
-																						return function (l07) {
-																							return function (l08) {
-																								return function (l09) {
-																									return function (l10) {
-																										return function (tag) {
-																											switch (tag.$) {
-																												case 'YourFirstForm':
-																													var data = tag.a;
-																													return l01(data);
-																												case 'BasicControls':
-																													var data = tag.a;
-																													return l02(data);
-																												case 'TuplesAndTriples':
-																													var data = tag.a;
-																													return l03(data);
-																												case 'Records':
-																													var data = tag.a;
-																													return l04(data);
-																												case 'CustomTypes':
-																													var data = tag.a;
-																													return l05(data);
-																												case 'ListsDictsSetsAndArrays':
-																													var data = tag.a;
-																													return l06(data);
-																												case 'Mapping':
-																													var data = tag.a;
-																													return l07(data);
-																												case 'Validation':
-																													var data = tag.a;
-																													return l08(data);
-																												case 'MultiValidation':
-																													var data = tag.a;
-																													return l09(data);
-																												default:
-																													var data = tag.a;
-																													return l10(data);
-																											}
+															'Basic controls',
+															$author$project$Docs$BasicControls,
+															$author$project$Docs$basicControls,
+															A4(
+																$author$project$Control$tag1,
+																'Your first form',
+																$author$project$Docs$YourFirstForm,
+																$author$project$Docs$yourFirstForm,
+																$author$project$Control$customType(
+																	function (l01) {
+																		return function (l02) {
+																			return function (l03) {
+																				return function (l04) {
+																					return function (l05) {
+																						return function (l06) {
+																							return function (l07) {
+																								return function (l08) {
+																									return function (l09) {
+																										return function (l10) {
+																											return function (l11) {
+																												return function (tag) {
+																													switch (tag.$) {
+																														case 'YourFirstForm':
+																															var data = tag.a;
+																															return l01(data);
+																														case 'BasicControls':
+																															var data = tag.a;
+																															return l02(data);
+																														case 'TuplesAndTriples':
+																															var data = tag.a;
+																															return l03(data);
+																														case 'Records':
+																															var data = tag.a;
+																															return l04(data);
+																														case 'CustomTypes':
+																															var data = tag.a;
+																															return l05(data);
+																														case 'ListsDictsSetsAndArrays':
+																															var data = tag.a;
+																															return l06(data);
+																														case 'Mapping':
+																															var data = tag.a;
+																															return l07(data);
+																														case 'Validation':
+																															var data = tag.a;
+																															return l08(data);
+																														case 'MultiValidation':
+																															var data = tag.a;
+																															return l09(data);
+																														case 'CreateYourOwn':
+																															var data = tag.a;
+																															return l10(data);
+																														default:
+																															var data = tag.a;
+																															return l11(data);
+																													}
+																												};
+																											};
 																										};
 																									};
 																								};
@@ -20069,8 +20095,7 @@ var $author$project$Docs$lessons = A2(
 																				};
 																			};
 																		};
-																	};
-																}))))))))))))))));
+																	})))))))))))))))));
 var $author$project$Docs$form = $author$project$Control$form(
 	{control: $author$project$Docs$lessons, onSubmit: $elm$core$Maybe$Nothing, onUpdate: $elm$core$Maybe$Just});
 var $author$project$Docs$main = $elm$browser$Browser$document(
