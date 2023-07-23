@@ -3125,7 +3125,7 @@ recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( delt
 -}
 
 
-type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter index initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer
+type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer
     = CustomTypeBuilder
         { applyInputs : applyInputs
         , debouncingReceiverCollector : debouncingReceiverCollector
@@ -3138,7 +3138,7 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
         , alertEmitter : alertEmitter
         , fns : fns
         , idleSetter : idleSetter
-        , index : index
+        , index : Int
         , initialDeltas : initialDeltas
         , initialStates : initialStates
         , initialiseDeltas : initialiseDeltas
