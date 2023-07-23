@@ -2137,7 +2137,7 @@ array itemControl =
 -}
 
 
-type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter index initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer
+type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer
     = RecordBuilder
         { after : after
         , afters : afters
@@ -2149,7 +2149,7 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         , alertEmitter : alertEmitter
         , fns : fns
         , idleSetter : idleSetter
-        , index : index
+        , index : Int
         , initialDeltas : initialDeltas
         , initialStates : initialStates
         , initialiser : initialiser
@@ -2253,7 +2253,6 @@ field :
              -> c2
             )
             (a8 -> restFns5 -> restStates5 -> restStates5)
-            Int
             (Path.Path -> ( Cmd (Delta delta11), a7 ) -> c1)
             (Path.Path -> ( State state9, a6 ) -> c)
             (a5 -> recordInput -> restFns4 -> restStates4)
@@ -2335,7 +2334,6 @@ field :
              -> ( State state5, restStates5 )
              -> ( State state5, restStates5 )
             )
-            Int
             (Path.Path -> a7 -> c1)
             (Path.Path -> a6 -> c)
             (a5
