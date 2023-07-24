@@ -33,7 +33,7 @@ html:focus-within {
 
 /* Set core body defaults */
 body {
-    min-height: 100vh;
+    min-height: 100dvh;
     text-rendering: optimizeSpeed;
     line-height: 1.5;
 }
@@ -80,7 +80,7 @@ select {
     --container-borders: 40px;
     --container-padding: 20px;
     --container-spacing: calc(var(--container-borders) + var(--container-padding));
-    --container-height: calc(100vh - (2 * var(--container-spacing)));
+    --container-height: calc(100dvh - (2 * var(--container-spacing)));
     --h1-height: 60px;
     --lessons-height: 70px;
     --lesson-page-height: calc(var(--container-height) - (var(--h1-height) + var(--lessons-height)))
