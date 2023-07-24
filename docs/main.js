@@ -80,6 +80,271 @@ function A9(fun, a, b, c, d, e, f, g, h, i) {
 console.warn('Compiled in DEV mode. Follow the advice at https://elm-lang.org/0.19.1/optimize for better performance and smaller assets.');
 
 
+// EQUALITY
+
+function _Utils_eq(x, y)
+{
+	for (
+		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
+		isEqual && (pair = stack.pop());
+		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
+		)
+	{}
+
+	return isEqual;
+}
+
+function _Utils_eqHelp(x, y, depth, stack)
+{
+	if (x === y)
+	{
+		return true;
+	}
+
+	if (typeof x !== 'object' || x === null || y === null)
+	{
+		typeof x === 'function' && _Debug_crash(5);
+		return false;
+	}
+
+	if (depth > 100)
+	{
+		stack.push(_Utils_Tuple2(x,y));
+		return true;
+	}
+
+	/**/
+	if (x.$ === 'Set_elm_builtin')
+	{
+		x = $elm$core$Set$toList(x);
+		y = $elm$core$Set$toList(y);
+	}
+	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
+	{
+		x = $elm$core$Dict$toList(x);
+		y = $elm$core$Dict$toList(y);
+	}
+	//*/
+
+	/**_UNUSED/
+	if (x.$ < 0)
+	{
+		x = $elm$core$Dict$toList(x);
+		y = $elm$core$Dict$toList(y);
+	}
+	//*/
+
+	for (var key in x)
+	{
+		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
+		{
+			return false;
+		}
+	}
+	return true;
+}
+
+var _Utils_equal = F2(_Utils_eq);
+var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
+
+
+
+// COMPARISONS
+
+// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
+// the particular integer values assigned to LT, EQ, and GT.
+
+function _Utils_cmp(x, y, ord)
+{
+	if (typeof x !== 'object')
+	{
+		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
+	}
+
+	/**/
+	if (x instanceof String)
+	{
+		var a = x.valueOf();
+		var b = y.valueOf();
+		return a === b ? 0 : a < b ? -1 : 1;
+	}
+	//*/
+
+	/**_UNUSED/
+	if (typeof x.$ === 'undefined')
+	//*/
+	/**/
+	if (x.$[0] === '#')
+	//*/
+	{
+		return (ord = _Utils_cmp(x.a, y.a))
+			? ord
+			: (ord = _Utils_cmp(x.b, y.b))
+				? ord
+				: _Utils_cmp(x.c, y.c);
+	}
+
+	// traverse conses until end of a list or a mismatch
+	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
+	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
+}
+
+var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
+var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
+var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
+var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
+
+var _Utils_compare = F2(function(x, y)
+{
+	var n = _Utils_cmp(x, y);
+	return n < 0 ? $elm$core$Basics$LT : n ? $elm$core$Basics$GT : $elm$core$Basics$EQ;
+});
+
+
+// COMMON VALUES
+
+var _Utils_Tuple0_UNUSED = 0;
+var _Utils_Tuple0 = { $: '#0' };
+
+function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
+function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
+
+function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
+function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
+
+function _Utils_chr_UNUSED(c) { return c; }
+function _Utils_chr(c) { return new String(c); }
+
+
+// RECORDS
+
+function _Utils_update(oldRecord, updatedFields)
+{
+	var newRecord = {};
+
+	for (var key in oldRecord)
+	{
+		newRecord[key] = oldRecord[key];
+	}
+
+	for (var key in updatedFields)
+	{
+		newRecord[key] = updatedFields[key];
+	}
+
+	return newRecord;
+}
+
+
+// APPEND
+
+var _Utils_append = F2(_Utils_ap);
+
+function _Utils_ap(xs, ys)
+{
+	// append Strings
+	if (typeof xs === 'string')
+	{
+		return xs + ys;
+	}
+
+	// append Lists
+	if (!xs.b)
+	{
+		return ys;
+	}
+	var root = _List_Cons(xs.a, ys);
+	xs = xs.b
+	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		curr = curr.b = _List_Cons(xs.a, ys);
+	}
+	return root;
+}
+
+
+
+var _List_Nil_UNUSED = { $: 0 };
+var _List_Nil = { $: '[]' };
+
+function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
+function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
+
+
+var _List_cons = F2(_List_Cons);
+
+function _List_fromArray(arr)
+{
+	var out = _List_Nil;
+	for (var i = arr.length; i--; )
+	{
+		out = _List_Cons(arr[i], out);
+	}
+	return out;
+}
+
+function _List_toArray(xs)
+{
+	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
+	{
+		out.push(xs.a);
+	}
+	return out;
+}
+
+var _List_map2 = F3(function(f, xs, ys)
+{
+	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
+	{
+		arr.push(A2(f, xs.a, ys.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map3 = F4(function(f, xs, ys, zs)
+{
+	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A3(f, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map4 = F5(function(f, ws, xs, ys, zs)
+{
+	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
+{
+	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
+	{
+		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
+	}
+	return _List_fromArray(arr);
+});
+
+var _List_sortBy = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		return _Utils_cmp(f(a), f(b));
+	}));
+});
+
+var _List_sortWith = F2(function(f, xs)
+{
+	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
+		var ord = A2(f, a, b);
+		return ord === $elm$core$Basics$EQ ? 0 : ord === $elm$core$Basics$LT ? -1 : 1;
+	}));
+});
+
+
+
 var _JsArray_empty = [];
 
 function _JsArray_singleton(value)
@@ -525,271 +790,6 @@ function _Debug_regionToString(region)
 	}
 	return 'on lines ' + region.start.line + ' through ' + region.end.line;
 }
-
-
-
-// EQUALITY
-
-function _Utils_eq(x, y)
-{
-	for (
-		var pair, stack = [], isEqual = _Utils_eqHelp(x, y, 0, stack);
-		isEqual && (pair = stack.pop());
-		isEqual = _Utils_eqHelp(pair.a, pair.b, 0, stack)
-		)
-	{}
-
-	return isEqual;
-}
-
-function _Utils_eqHelp(x, y, depth, stack)
-{
-	if (x === y)
-	{
-		return true;
-	}
-
-	if (typeof x !== 'object' || x === null || y === null)
-	{
-		typeof x === 'function' && _Debug_crash(5);
-		return false;
-	}
-
-	if (depth > 100)
-	{
-		stack.push(_Utils_Tuple2(x,y));
-		return true;
-	}
-
-	/**/
-	if (x.$ === 'Set_elm_builtin')
-	{
-		x = $elm$core$Set$toList(x);
-		y = $elm$core$Set$toList(y);
-	}
-	if (x.$ === 'RBNode_elm_builtin' || x.$ === 'RBEmpty_elm_builtin')
-	{
-		x = $elm$core$Dict$toList(x);
-		y = $elm$core$Dict$toList(y);
-	}
-	//*/
-
-	/**_UNUSED/
-	if (x.$ < 0)
-	{
-		x = $elm$core$Dict$toList(x);
-		y = $elm$core$Dict$toList(y);
-	}
-	//*/
-
-	for (var key in x)
-	{
-		if (!_Utils_eqHelp(x[key], y[key], depth + 1, stack))
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-var _Utils_equal = F2(_Utils_eq);
-var _Utils_notEqual = F2(function(a, b) { return !_Utils_eq(a,b); });
-
-
-
-// COMPARISONS
-
-// Code in Generate/JavaScript.hs, Basics.js, and List.js depends on
-// the particular integer values assigned to LT, EQ, and GT.
-
-function _Utils_cmp(x, y, ord)
-{
-	if (typeof x !== 'object')
-	{
-		return x === y ? /*EQ*/ 0 : x < y ? /*LT*/ -1 : /*GT*/ 1;
-	}
-
-	/**/
-	if (x instanceof String)
-	{
-		var a = x.valueOf();
-		var b = y.valueOf();
-		return a === b ? 0 : a < b ? -1 : 1;
-	}
-	//*/
-
-	/**_UNUSED/
-	if (typeof x.$ === 'undefined')
-	//*/
-	/**/
-	if (x.$[0] === '#')
-	//*/
-	{
-		return (ord = _Utils_cmp(x.a, y.a))
-			? ord
-			: (ord = _Utils_cmp(x.b, y.b))
-				? ord
-				: _Utils_cmp(x.c, y.c);
-	}
-
-	// traverse conses until end of a list or a mismatch
-	for (; x.b && y.b && !(ord = _Utils_cmp(x.a, y.a)); x = x.b, y = y.b) {} // WHILE_CONSES
-	return ord || (x.b ? /*GT*/ 1 : y.b ? /*LT*/ -1 : /*EQ*/ 0);
-}
-
-var _Utils_lt = F2(function(a, b) { return _Utils_cmp(a, b) < 0; });
-var _Utils_le = F2(function(a, b) { return _Utils_cmp(a, b) < 1; });
-var _Utils_gt = F2(function(a, b) { return _Utils_cmp(a, b) > 0; });
-var _Utils_ge = F2(function(a, b) { return _Utils_cmp(a, b) >= 0; });
-
-var _Utils_compare = F2(function(x, y)
-{
-	var n = _Utils_cmp(x, y);
-	return n < 0 ? $elm$core$Basics$LT : n ? $elm$core$Basics$GT : $elm$core$Basics$EQ;
-});
-
-
-// COMMON VALUES
-
-var _Utils_Tuple0_UNUSED = 0;
-var _Utils_Tuple0 = { $: '#0' };
-
-function _Utils_Tuple2_UNUSED(a, b) { return { a: a, b: b }; }
-function _Utils_Tuple2(a, b) { return { $: '#2', a: a, b: b }; }
-
-function _Utils_Tuple3_UNUSED(a, b, c) { return { a: a, b: b, c: c }; }
-function _Utils_Tuple3(a, b, c) { return { $: '#3', a: a, b: b, c: c }; }
-
-function _Utils_chr_UNUSED(c) { return c; }
-function _Utils_chr(c) { return new String(c); }
-
-
-// RECORDS
-
-function _Utils_update(oldRecord, updatedFields)
-{
-	var newRecord = {};
-
-	for (var key in oldRecord)
-	{
-		newRecord[key] = oldRecord[key];
-	}
-
-	for (var key in updatedFields)
-	{
-		newRecord[key] = updatedFields[key];
-	}
-
-	return newRecord;
-}
-
-
-// APPEND
-
-var _Utils_append = F2(_Utils_ap);
-
-function _Utils_ap(xs, ys)
-{
-	// append Strings
-	if (typeof xs === 'string')
-	{
-		return xs + ys;
-	}
-
-	// append Lists
-	if (!xs.b)
-	{
-		return ys;
-	}
-	var root = _List_Cons(xs.a, ys);
-	xs = xs.b
-	for (var curr = root; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		curr = curr.b = _List_Cons(xs.a, ys);
-	}
-	return root;
-}
-
-
-
-var _List_Nil_UNUSED = { $: 0 };
-var _List_Nil = { $: '[]' };
-
-function _List_Cons_UNUSED(hd, tl) { return { $: 1, a: hd, b: tl }; }
-function _List_Cons(hd, tl) { return { $: '::', a: hd, b: tl }; }
-
-
-var _List_cons = F2(_List_Cons);
-
-function _List_fromArray(arr)
-{
-	var out = _List_Nil;
-	for (var i = arr.length; i--; )
-	{
-		out = _List_Cons(arr[i], out);
-	}
-	return out;
-}
-
-function _List_toArray(xs)
-{
-	for (var out = []; xs.b; xs = xs.b) // WHILE_CONS
-	{
-		out.push(xs.a);
-	}
-	return out;
-}
-
-var _List_map2 = F3(function(f, xs, ys)
-{
-	for (var arr = []; xs.b && ys.b; xs = xs.b, ys = ys.b) // WHILE_CONSES
-	{
-		arr.push(A2(f, xs.a, ys.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map3 = F4(function(f, xs, ys, zs)
-{
-	for (var arr = []; xs.b && ys.b && zs.b; xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A3(f, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map4 = F5(function(f, ws, xs, ys, zs)
-{
-	for (var arr = []; ws.b && xs.b && ys.b && zs.b; ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A4(f, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_map5 = F6(function(f, vs, ws, xs, ys, zs)
-{
-	for (var arr = []; vs.b && ws.b && xs.b && ys.b && zs.b; vs = vs.b, ws = ws.b, xs = xs.b, ys = ys.b, zs = zs.b) // WHILE_CONSES
-	{
-		arr.push(A5(f, vs.a, ws.a, xs.a, ys.a, zs.a));
-	}
-	return _List_fromArray(arr);
-});
-
-var _List_sortBy = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		return _Utils_cmp(f(a), f(b));
-	}));
-});
-
-var _List_sortWith = F2(function(f, xs)
-{
-	return _List_fromArray(_List_toArray(xs).sort(function(a, b) {
-		var ord = A2(f, a, b);
-		return ord === $elm$core$Basics$EQ ? 0 : ord === $elm$core$Basics$LT ? -1 : 1;
-	}));
-});
 
 
 
@@ -4701,31 +4701,10 @@ function _Url_percentDecode(string)
 	{
 		return $elm$core$Maybe$Nothing;
 	}
-}var $elm$core$List$cons = _List_cons;
-var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
-var $elm$core$Array$foldr = F3(
-	function (func, baseCase, _v0) {
-		var tree = _v0.c;
-		var tail = _v0.d;
-		var helper = F2(
-			function (node, acc) {
-				if (node.$ === 'SubTree') {
-					var subTree = node.a;
-					return A3($elm$core$Elm$JsArray$foldr, helper, acc, subTree);
-				} else {
-					var values = node.a;
-					return A3($elm$core$Elm$JsArray$foldr, func, acc, values);
-				}
-			});
-		return A3(
-			$elm$core$Elm$JsArray$foldr,
-			helper,
-			A3($elm$core$Elm$JsArray$foldr, func, baseCase, tail),
-			tree);
-	});
-var $elm$core$Array$toList = function (array) {
-	return A3($elm$core$Array$foldr, $elm$core$List$cons, _List_Nil, array);
-};
+}var $elm$core$Basics$EQ = {$: 'EQ'};
+var $elm$core$Basics$GT = {$: 'GT'};
+var $elm$core$Basics$LT = {$: 'LT'};
+var $elm$core$List$cons = _List_cons;
 var $elm$core$Dict$foldr = F3(
 	function (func, acc, t) {
 		foldr:
@@ -4778,13 +4757,30 @@ var $elm$core$Set$toList = function (_v0) {
 	var dict = _v0.a;
 	return $elm$core$Dict$keys(dict);
 };
-var $elm$core$Basics$EQ = {$: 'EQ'};
-var $elm$core$Basics$GT = {$: 'GT'};
-var $elm$core$Basics$LT = {$: 'LT'};
-var $elm$core$Maybe$Just = function (a) {
-	return {$: 'Just', a: a};
+var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
+var $elm$core$Array$foldr = F3(
+	function (func, baseCase, _v0) {
+		var tree = _v0.c;
+		var tail = _v0.d;
+		var helper = F2(
+			function (node, acc) {
+				if (node.$ === 'SubTree') {
+					var subTree = node.a;
+					return A3($elm$core$Elm$JsArray$foldr, helper, acc, subTree);
+				} else {
+					var values = node.a;
+					return A3($elm$core$Elm$JsArray$foldr, func, acc, values);
+				}
+			});
+		return A3(
+			$elm$core$Elm$JsArray$foldr,
+			helper,
+			A3($elm$core$Elm$JsArray$foldr, func, baseCase, tail),
+			tree);
+	});
+var $elm$core$Array$toList = function (array) {
+	return A3($elm$core$Array$foldr, $elm$core$List$cons, _List_Nil, array);
 };
-var $elm$core$Maybe$Nothing = {$: 'Nothing'};
 var $elm$core$Result$Err = function (a) {
 	return {$: 'Err', a: a};
 };
@@ -4808,6 +4804,10 @@ var $elm$json$Json$Decode$OneOf = function (a) {
 };
 var $elm$core$Basics$False = {$: 'False'};
 var $elm$core$Basics$add = _Basics_add;
+var $elm$core$Maybe$Just = function (a) {
+	return {$: 'Just', a: a};
+};
+var $elm$core$Maybe$Nothing = {$: 'Nothing'};
 var $elm$core$String$all = _String_all;
 var $elm$core$Basics$and = _Basics_and;
 var $elm$core$Basics$append = _Utils_append;
@@ -5191,7 +5191,6 @@ var $elm$virtual_dom$VirtualDom$toHandlerInt = function (handler) {
 			return 3;
 	}
 };
-var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$browser$Browser$External = function (a) {
 	return {$: 'External', a: a};
 };
@@ -5995,6 +5994,7 @@ var $author$project$Control$wrapUpdate = F4(
 					$elm$core$Platform$Cmd$none);
 		}
 	});
+var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$p = _VirtualDom_node('p');
 var $author$project$Control$wrappedView = F2(
 	function (status, innerView) {
@@ -16701,6 +16701,7 @@ var $author$project$Docs$basicControls = A2(
 										}))))))))));
 var $elm$html$Html$button = _VirtualDom_node('button');
 var $author$project$Docs$createYourOwnIntro = '\n## Creating your own controls\n\nOne final issue with our `customerControl`: why the heck are we including the customer\'s current age? In a year\'s time, \nthat data is going to be completely stale and useless. Instead, it would be much better to capture their date of birth. \n\n### Playing the dating game\n\nThe first thing we\'ll need is a `Date` type. There isn\'t one in `elm/core`, so let\'s go to the terminal and do \n`elm install justinmimbs/date`. \n\nOnce the package has been installed, add a few imports to the top of the `Main.elm` module:\n```\nimport Date\nimport Html\nimport Html.Attributes\n```\n\nNow, change our `Customer` type as follows:\n\n```\ntype alias Customer = \n    { name : String\n    , dateOfBirth : Date.Date\n    , products : List Product\n    , id : Id\n    , password : String\n    }\n```\n\n### Building a Date control\n\nWe _could_ pull together a date control using the combinators we\'ve already learned - something like this:\n\n```\nboringDateControl =\n    Control.record Date.fromCalendarDate\n        |> Control.field Date.year\n            (Control.int\n                |> Control.label "Year"\n            )\n        |> Control.field Date.month\n            (Control.int\n                |> Control.label "Month"\n                |> Control.map\n                    { convert = Date.numberToMonth\n                    , revert = Date.monthToNumber\n                    }\n            )\n        |> Control.field Date.day\n            (Control.int\n                |> Control.label "Day"\n            )\n        |> Control.endRecord\n```\n\n(Notice that although we\'re using `Control.record`, we\'re not actually creating a record here! We\'re passing the values \nproduced by the three fields to the `Date.fromCalendarDate` function.)\n\n### Building a Date control _from scratch_\n\nBut let\'s not use `Control.record` - let\'s say we want to use HTML\'s built-in `<input type="date">` element to render \nour `Date` control. \n\nWe can do this with `Control.create`, which gives us the flexibility to build completely bespoke controls for any Elm \ntype.\n\n```\ndateControl =\n    Control.create\n        { label = "Date of birth"\n        , initEmpty = ( "1970-01-01", Cmd.none )\n        , initWith = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )\n        , update = \\delta state -> ( delta, Cmd.none )\n        , view =\n            \\{ state, id, label, name, class } ->\n                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]\n                , Html.input\n                    [ Html.Attributes.type_ "date"\n                    , Html.Attributes.value state\n                    , Html.Attributes.id id\n                    , Html.Attributes.class class\n                    , Html.Attributes.name name\n                    ]\n                    []\n                ]\n        , subscriptions = \\state -> Sub.none\n        , parse =\n            \\state ->\n                case Date.fromIsoString state of\n                    Ok date ->\n                        Ok date\n\n                    Err error ->\n                        Err [ error ]\n        }\n```\n\nThis looks like a lot to digest, but we can take it one field at a time.\n\n#### label : `String`\nThis is the default label that will be displayed on the control.\n\n#### initEmpty : `( state, Cmd delta )`\nThis specifies the default internal `state` of the control when it\'s initialised, \ntogether with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we \ndon\'t need to send any `Cmd`s.\n\n#### initWith : `output -> ( state, Cmd delta )`\nThis defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial \n`Cmd` if needed. In this case, we\'re teaching it how to turn a `Date` into a `String` and there\'s no `Cmd` to send.\n\n#### update : `delta -> state -> ( state, Cmd delta )`\nThis is exactly like a normal Elm app\'s `update` function - for \n`delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all \nwe need to do in our update function is replace the existing `state` with the new `delta`.\n\n#### view : `{ state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` \nThis is very similar to a normal Elm app\'s `view` function, but with two differences. First, in addition to the `state`, \nit also gives us access to some other stuff that we can include in our view\'s HTML attributes. Second, it produces a \nlist of HTML elements, rather than a single element.\n\n#### subscriptions : `state -> Sub delta`\nThis is exactly like a normal Elm app\'s `subscriptions` function. Here, we don\'t \nneed to manage any subscriptions, so we can just return `Sub.none`.\n\n#### parse : `state -> Result (List String) output`\nThis attempts to turn the control\'s `state` into a value of the \ncontrol\'s `output` type, returning a list of errors if it fails. In this case, it\'s trying to parse a `String` into a \n`Date`.\n\n### Wiring it up\n\nFinally, let\'s update `customerControl` to replace the `age` field with our new `dateOfBirth` field:\n\n```\ncustomerControl = \n    Control.record\n        (\\name dateOfBirth products id password ->\n            { name = name\n            , dateOfBirth = dateOfBirth\n            , products = products\n            , id = id\n            , password = password\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .dateOfBirth dateControl\n        |> Control.field .products productListControl\n        |> Control.field .id idControl\n        |> Control.field .password passwordControl\n        |> Control.endRecord\n        |> mdBefore createYourOwnIntro\n        |> mdAfter createYourOwnOutro\n```\n\nAnd the final result should look like this:\n';
+var $author$project$Docs$createYourOwnOutro = '\nNow our customer form is done... but to make it useful, we\'re going to want to embed it into a bigger Elm app. How can \nwe do that?\n';
 var $elm$time$Time$Jan = {$: 'Jan'};
 var $justinmimbs$date$Date$RD = function (a) {
 	return {$: 'RD', a: a};
@@ -19565,7 +19566,10 @@ var $author$project$Docs$customerControl = $author$project$Control$endRecord(
 								function (name, dateOfBirth, products, id, password) {
 									return {dateOfBirth: dateOfBirth, id: id, name: name, password: password, products: products};
 								}))))))));
-var $author$project$Docs$createYourOwn = A2($author$project$Docs$mdBefore, $author$project$Docs$createYourOwnIntro, $author$project$Docs$customerControl);
+var $author$project$Docs$createYourOwn = A2(
+	$author$project$Docs$mdAfter,
+	$author$project$Docs$createYourOwnOutro,
+	A2($author$project$Docs$mdBefore, $author$project$Docs$createYourOwnIntro, $author$project$Docs$customerControl));
 var $author$project$Docs$customTypesCustomerControl = $author$project$Control$endRecord(
 	A3(
 		$author$project$Control$field,
@@ -19636,7 +19640,7 @@ var $author$project$Control$layout = F2(
 		return $author$project$Control$Control(
 			A2($elm$core$Basics$composeR, control, viewer));
 	});
-var $author$project$Docs$leavingTheSandboxIntro = '\n## Leaving the sandbox\n\nSo, we\'ve designed our `customerControl`, and tested it out in `Control.sandbox`... but where do we go from \nthere?\n\nWell, in practice, we probably want to integrate it into a larger Elm application - in this case, the customer \nrelationship management (CRM) system we\'re building for Shapes.com.\n\n### Initial setup\n\nLet\'s rename our `Main.elm` file to `Customer.elm`, and rename `customerControl` to just `control`. Then we\'ll make a few \nchanges to the exports:\n\n```\nmodule Customer exposing (Customer, Id, Product, control, main)\n```\n\nAnd we\'ll implement a very rubbish CRM application in a file called `Crm.elm`:\n\n```\nmodule Crm exposing (main)\n\nimport Browser\nimport Control\nimport Customer\n\ntype alias Model = \n    { customers : List Customer.Customer }\n\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n\nmain = \n    Browser.document \n        { init = init \n        , view = view\n        , update = update\n        , subscriptions = subscriptions\n        }\n\ninit flags = \n    ( { customers = [] }\n    , Cmd.none\n    )\n\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) ] \n    }\n\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ( { customers = \n                List.map \n                    (\\customer -> \n                        if customer.id == customerId then \n                            { customer | products = product :: customer.products } \n                        else customer\n                    ) \n                    model.customers \n              }\n            , Cmd.none\n            )\n\nsubscriptions model = \n    Sub.none\n```\n\nSo, how do we add our form to this app? \n\n### Working out the types\n\nFirst, we need to know what the types should be for the `state` of our form (which \nis this package\'s equivalent of a `Model` type), and its `delta` (equivalent to a `Msg` type).\n\nThese types will be quite complicated, and it would be painful to work them out by hand. Fortunately, we don\'t have to, \nbecause we can ask the Elm compiler to do it for us.\n\nOpen your terminal in the project root folder and type `elm repl`. Then, at the REPL prompt, type:\n\n```\n> import Customer\n> Customer.main\n```\n\nThis should print out the type signature for our sandbox program, which should look something like this:\n```\n<function>\n    : Program\n          ()\n          (\n          Control.State\n              ( Control.State String\n              , ( Control.State String\n                , ( Control.State\n                        (\n                        List\n                            (\n                            Control.State\n                                ( Control.State ( Control.State String, Control.End )\n                                , ( Control.State\n                                        ( Control.State String\n                                        , ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                        )\n                                  , ( Control.State\n                                          ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                    , Control.End\n                                    )\n                                  )\n                                )\n                            )\n                        )\n                  , ( Control.State ( Control.State String, Control.End )\n                    , ( Control.State\n                            ( Control.State\n                                  ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n          (\n          Control.Delta\n              ( Control.Delta String\n              , ( Control.Delta String\n                , ( Control.Delta\n                        (\n                        Control.ListDelta\n                            ( Control.Delta ( Control.Delta String, Control.End )\n                            , ( Control.Delta\n                                    ( Control.Delta String\n                                    , ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                    )\n                              , ( Control.Delta\n                                      ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                , Control.End\n                                )\n                              )\n                            )\n                        )\n                  , ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta\n                                  ( Control.Delta String\n                                  , ( Control.Delta String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n```\n\nThe `state` for our form will be the whole section containing `Control.State` types, and the `delta` will be the \nsection containing `Control.Delta` types.\n\nLet\'s copy-paste those relevant bits into a couple of type aliases in `Crm.elm`:\n\n```\ntype alias CustomerFormState =\n    Control.State\n        ( Control.State String\n        , ( Control.State String\n          , ( Control.State\n                (List\n                    (Control.State\n                        ( Control.State ( Control.State String, Control.End )\n                        , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                                )\n                          , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String, Control.End )\n                                )\n                            , Control.End\n                            )\n                          )\n                        )\n                    )\n                )\n            , ( Control.State ( Control.State String, Control.End )\n              , ( Control.State\n                    ( Control.State\n                        ( Control.State String\n                        , ( Control.State String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n\nAnd:\n\n```\ntype alias CustomerFormDelta =\n    Control.Delta\n        ( Control.Delta String\n        , ( Control.Delta String\n          , ( Control.Delta\n                (Control.ListDelta\n                    ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String\n                              , ( Control.Delta String, Control.End )\n                              )\n                            )\n                      , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String, Control.End )\n                            )\n                        , Control.End\n                        )\n                      )\n                    )\n                )\n            , ( Control.Delta ( Control.Delta String, Control.End )\n              , ( Control.Delta\n                    ( Control.Delta\n                        ( Control.Delta String\n                        , ( Control.Delta String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n### Extending the `Model` and `Msg` types\n\nNow, in `Crm.elm`, we\'ll add a field to the `Model` to hold the form\'s state:\n\n```\ntype alias Model = \n    { customers : List Customer.Customer \n    , customerFormState : CustomerFormState\n    }\n\n```\n\nNext, we\'ll add two new variants to the `Msg` type - one for updating the form\'s state, and one for submitting it:\n\n```\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n    | UpdatedCustomerForm CustomerFormDelta\n    | SubmittedCustomerForm\n```\n\n### Instantiating our form\n\nNow, in `Crm.elm`, let\'s use `Control.form` to turn our `control` into a form:\n\n```\ncustomerForm = \n    Control.form \n        { control = Customer.control\n        , onUpdate = UpdatedCustomerForm\n        , onSubmit = SubmttedCustomerForm\n        }\n```\n\nWe\'ll use this form in all the other functions that we pass to `Browser.document` in our `Crm.elm`\'s `main` function. \n\n### Wiring it up\n\nLet\'s start with the `init` function:\n\n```\ninit flags = \n    let\n        ( formState, cmd ) = \n            customerForm.init\n    in\n    ( { customers = [] \n      , customerFormState = formState\n      }\n    , cmd\n    )\n```\n\nNow `view`:\n\n```\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) \n        , customerForm.view model.customerFormState\n        ] \n    }\n```\n\nAnd `update`:\n\n```\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ...\n\n        UpdatedCustomerForm delta ->\n            let\n                ( newFormState, cmd ) =\n                    customerForm.update delta model.customerFormState\n            in\n            ( { model | customerFormState = newFormState }\n            , cmd\n            )\n\n        SubmittedCustomerForm ->\n            let\n                ( newFormState, result ) =\n                    customerForm.submit model.customerFormState\n            in\n            case result of\n                Ok customer ->\n                    ( { model \n                        | customers = customer :: model.customers \n                        , customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n                Err errors ->\n                    -- in a real app you\'d probably do something \n                    -- with the errors, but I\'ll leave that as an\n                    -- exercise for the reader; here, we\'ll just\n                    -- update the form\'s state.\n                    ( { model \n                        | customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n```\n\nAnd finally, `subscriptions`:\n\n```\nsubscriptions model = \n    customerForm.subscriptions model.customerFormState\n```\n\nVoila! Job done! If you open `Crm.elm` in `elm reactor`, you should now see a list of customer names, followed by \nsomething like this:\n';
+var $author$project$Docs$leavingTheSandboxIntro = '\n## Leaving the sandbox\n\nSo, we\'ve designed our `customerControl`, and tested it out in `Control.sandbox`... but where do we go from \nthere?\n\nWell, in practice, we probably want to integrate it into a larger Elm application - in this case, the customer \nrelationship management (CRM) system we\'re building for Shapes.com.\n\n### Initial setup\n\nLet\'s rename our `Main.elm` file to `Customer.elm`, and rename `customerControl` to just `control`. Then we\'ll make a few \nchanges to the exports:\n\n```\nmodule Customer exposing (Customer, Id, Product, control, main)\n```\n\nAnd we\'ll implement a very rubbish CRM application in a file called `Crm.elm`:\n\n```\nmodule Crm exposing (main)\n\nimport Browser\nimport Control\nimport Customer\n\ntype alias Model = \n    { customers : List Customer.Customer }\n\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n\nmain = \n    Browser.document \n        { init = init \n        , view = view\n        , update = update\n        , subscriptions = subscriptions\n        }\n\ninit flags = \n    ( { customers = [] }\n    , Cmd.none\n    )\n\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) ] \n    }\n\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ( { customers = \n                List.map \n                    (\\customer -> \n                        if customer.id == customerId then \n                            { customer | products = product :: customer.products } \n                        else customer\n                    ) \n                    model.customers \n              }\n            , Cmd.none\n            )\n\nsubscriptions model = \n    Sub.none\n```\n\nSo, how do we add our form to this app? \n\n### Working out the types\n\n**Warning:** this is the scariest bit of the tutorial. Take a deep breath before you read the next section.\n\nFirst, we need to know what the types should be for the `state` of our form (which \nis this package\'s equivalent of a `Model` type), and its `delta` (equivalent to a `Msg` type).\n\nThese types will be quite complicated, and it would be painful to work them out by hand. Fortunately, we don\'t have to, \nbecause we can ask the Elm compiler to do it for us.\n\nOpen your terminal in the project root folder and type `elm repl`. Then, at the REPL prompt, type:\n\n```\n> import Customer\n> Customer.main\n```\n\nThis should print out the type signature for our sandbox program, which should look something like this:\n```\n<function>\n    : Program\n          ()\n          (\n          Control.State\n              ( Control.State String\n              , ( Control.State String\n                , ( Control.State\n                        (\n                        List\n                            (\n                            Control.State\n                                ( Control.State ( Control.State String, Control.End )\n                                , ( Control.State\n                                        ( Control.State String\n                                        , ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                        )\n                                  , ( Control.State\n                                          ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                    , Control.End\n                                    )\n                                  )\n                                )\n                            )\n                        )\n                  , ( Control.State ( Control.State String, Control.End )\n                    , ( Control.State\n                            ( Control.State\n                                  ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n          (\n          Control.Delta\n              ( Control.Delta String\n              , ( Control.Delta String\n                , ( Control.Delta\n                        (\n                        Control.ListDelta\n                            ( Control.Delta ( Control.Delta String, Control.End )\n                            , ( Control.Delta\n                                    ( Control.Delta String\n                                    , ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                    )\n                              , ( Control.Delta\n                                      ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                , Control.End\n                                )\n                              )\n                            )\n                        )\n                  , ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta\n                                  ( Control.Delta String\n                                  , ( Control.Delta String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n```\n\nAaargh! Right?\n\nDon\'t worry, it\'s not as bad as it looks - and we\'ll get through this _together_.\n\nThe `state` for our form will be the whole section containing `Control.State` types, and the `delta` will be the \nsection containing `Control.Delta` types.\n\nLet\'s copy-paste those relevant bits into a couple of type aliases in `Crm.elm`:\n\n```\ntype alias CustomerFormState =\n    Control.State\n        ( Control.State String\n        , ( Control.State String\n          , ( Control.State\n                (List\n                    (Control.State\n                        ( Control.State ( Control.State String, Control.End )\n                        , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                                )\n                          , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String, Control.End )\n                                )\n                            , Control.End\n                            )\n                          )\n                        )\n                    )\n                )\n            , ( Control.State ( Control.State String, Control.End )\n              , ( Control.State\n                    ( Control.State\n                        ( Control.State String\n                        , ( Control.State String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n\nAnd:\n\n```\ntype alias CustomerFormDelta =\n    Control.Delta\n        ( Control.Delta String\n        , ( Control.Delta String\n          , ( Control.Delta\n                (Control.ListDelta\n                    ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String\n                              , ( Control.Delta String, Control.End )\n                              )\n                            )\n                      , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String, Control.End )\n                            )\n                        , Control.End\n                        )\n                      )\n                    )\n                )\n            , ( Control.Delta ( Control.Delta String, Control.End )\n              , ( Control.Delta\n                    ( Control.Delta\n                        ( Control.Delta String\n                        , ( Control.Delta String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n\nPhew - job done! Now we don\'t have to think about those horrible types again.\n\n### Extending the `Model` and `Msg` types\n\nNow, in `Crm.elm`, we\'ll add a field to the `Model` to hold the form\'s state:\n\n```\ntype alias Model = \n    { customers : List Customer.Customer \n    , customerFormState : CustomerFormState\n    }\n\n```\n\nNext, we\'ll add two new variants to the `Msg` type - one for updating the form\'s state, and one for submitting it:\n\n```\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n    | UpdatedCustomerForm CustomerFormDelta\n    | SubmittedCustomerForm\n```\n\n### Instantiating our form\n\nNow, in `Crm.elm`, let\'s use `Control.form` to turn our `control` into a form:\n\n```\ncustomerForm = \n    Control.form \n        { control = Customer.control\n        , onUpdate = UpdatedCustomerForm\n        , onSubmit = SubmttedCustomerForm\n        }\n```\n\nWe\'ll use this form in all the other functions that we pass to `Browser.document` in our `Crm.elm`\'s `main` function. \n\n### Wiring it up\n\nLet\'s start with the `init` function:\n\n```\ninit flags = \n    let\n        ( formState, cmd ) = \n            customerForm.init\n    in\n    ( { customers = [] \n      , customerFormState = formState\n      }\n    , cmd\n    )\n```\n\nNow `view`:\n\n```\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) \n        , customerForm.view model.customerFormState\n        ] \n    }\n```\n\nAnd `update`:\n\n```\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ...\n\n        UpdatedCustomerForm delta ->\n            let\n                ( newFormState, cmd ) =\n                    customerForm.update delta model.customerFormState\n            in\n            ( { model | customerFormState = newFormState }\n            , cmd\n            )\n\n        SubmittedCustomerForm ->\n            let\n                ( newFormState, result ) =\n                    customerForm.submit model.customerFormState\n            in\n            case result of\n                Ok customer ->\n                    ( { model \n                        | customers = customer :: model.customers \n                        , customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n                Err errors ->\n                    -- in a real app you\'d probably do something \n                    -- with the errors, but I\'ll leave that as an\n                    -- exercise for the reader; here, we\'ll just\n                    -- update the form\'s state.\n                    ( { model \n                        | customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n```\n\nAnd finally, `subscriptions`:\n\n```\nsubscriptions model = \n    customerForm.subscriptions model.customerFormState\n```\n\nVoila! Job done! If you open `Crm.elm` in `elm reactor`, you should now see a list of customer names, followed by \nsomething like this:\n';
 var $author$project$Docs$leavingTheSandboxOutro = '\nCongratulations! You made it through the tutorial. There\'s quite a lot more to learn about this package, but that\'s \nbeyond the scope of this introduction. For a deeper dive, check out the docs at \n[package.elm-lang.org](https://package.elm-lang.org/packages/edkelly303/elm-any-type-forms/latest).\n';
 var $author$project$Docs$leavingTheSandbox = A2(
 	$author$project$Docs$mdAfter,
@@ -19919,10 +19923,51 @@ var $author$project$Docs$lessons = A2(
 				$author$project$Control$layout,
 				F2(
 					function (config, subcontrols) {
+						var nextLabel = A2(
+							$elm$core$Maybe$withDefault,
+							'ERROR',
+							$elm$core$List$head(
+								A2(
+									$elm$core$List$map,
+									function ($) {
+										return $.label;
+									},
+									A2(
+										$elm$core$List$filter,
+										function (sc) {
+											return _Utils_eq(sc.index, config.selected + 1);
+										},
+										subcontrols))));
+						var nextButton = _List_fromArray(
+							[
+								_Utils_eq(
+								config.selected,
+								$elm$core$List$length(subcontrols)) ? $elm$html$Html$text('') : A2(
+								$elm$html$Html$button,
+								_List_fromArray(
+									[
+										$elm$html$Html$Attributes$id('next-button'),
+										$elm$html$Html$Attributes$type_('button'),
+										$elm$html$Html$Events$onClick(
+										config.selectMsg(config.selected + 1))
+									]),
+								_List_fromArray(
+									[
+										$elm$html$Html$text('Next: ' + nextLabel)
+									]))
+							]);
 						var subcontrolViews = A2(
-							$elm$core$List$concatMap,
+							$elm$core$List$map,
 							function (sc) {
-								return _Utils_eq(sc.index, config.selected) ? sc.html : _List_Nil;
+								return _Utils_eq(sc.index, config.selected) ? A2(
+									$elm$html$Html$div,
+									_List_fromArray(
+										[
+											$elm$html$Html$Attributes$id(
+											$elm$core$String$fromInt(sc.index)),
+											$elm$html$Html$Attributes$class('lesson-page')
+										]),
+									_Utils_ap(sc.html, nextButton)) : $elm$html$Html$text('');
 							},
 							subcontrols);
 						var navBar = A2(
@@ -19950,35 +19995,7 @@ var $author$project$Docs$lessons = A2(
 											]));
 								},
 								subcontrols));
-						var backNext = _List_fromArray(
-							[
-								_Utils_eq(
-								config.selected,
-								$elm$core$List$length(subcontrols)) ? $elm$html$Html$text('') : A2(
-								$elm$html$Html$button,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$id('next-button'),
-										$elm$html$Html$Attributes$type_('button'),
-										$elm$html$Html$Events$onClick(
-										config.selectMsg(config.selected + 1))
-									]),
-								_List_fromArray(
-									[
-										$elm$html$Html$text('Next')
-									]))
-							]);
-						return _List_fromArray(
-							[
-								navBar,
-								A2(
-								$elm$html$Html$div,
-								_List_fromArray(
-									[
-										$elm$html$Html$Attributes$id('lesson-page')
-									]),
-								_Utils_ap(subcontrolViews, backNext))
-							]);
+						return A2($elm$core$List$cons, navBar, subcontrolViews);
 					}),
 				$author$project$Control$endCustomType(
 					A4(
@@ -20098,60 +20115,59 @@ var $author$project$Docs$lessons = A2(
 																	})))))))))))))))));
 var $author$project$Docs$form = $author$project$Control$form(
 	{control: $author$project$Docs$lessons, onSubmit: $elm$core$Maybe$Nothing, onUpdate: $elm$core$Maybe$Just});
-var $author$project$Docs$main = $elm$browser$Browser$document(
-	{
-		init: function (_v0) {
-			var _v1 = $author$project$Docs$form.init;
-			var initialForm = _v1.a;
-			var cmd = _v1.b;
+var $author$project$Docs$init = function (_v0) {
+	var _v1 = $author$project$Docs$form.init;
+	var initialForm = _v1.a;
+	var cmd = _v1.b;
+	return _Utils_Tuple2(
+		{form: initialForm, output: $elm$core$Maybe$Nothing},
+		cmd);
+};
+var $author$project$Docs$subscriptions = function (model) {
+	return $author$project$Docs$form.subscriptions(model.form);
+};
+var $author$project$Docs$update = F2(
+	function (msg, model) {
+		if (msg.$ === 'Nothing') {
+			var _v1 = $author$project$Docs$form.submit(model.form);
+			var newForm = _v1.a;
+			var result = _v1.b;
 			return _Utils_Tuple2(
-				{form: initialForm, output: $elm$core$Maybe$Nothing},
+				_Utils_update(
+					model,
+					{
+						form: newForm,
+						output: $elm$core$Maybe$Just(result)
+					}),
+				$elm$core$Platform$Cmd$none);
+		} else {
+			var delta = msg.a;
+			var _v2 = A2($author$project$Docs$form.update, delta, model.form);
+			var newForm = _v2.a;
+			var cmd = _v2.b;
+			return _Utils_Tuple2(
+				_Utils_update(
+					model,
+					{form: newForm}),
 				cmd);
-		},
-		subscriptions: function (model) {
-			return $author$project$Docs$form.subscriptions(model.form);
-		},
-		update: F2(
-			function (msg, model) {
-				if (msg.$ === 'Nothing') {
-					var _v3 = $author$project$Docs$form.submit(model.form);
-					var newForm = _v3.a;
-					var result = _v3.b;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								form: newForm,
-								output: $elm$core$Maybe$Just(result)
-							}),
-						$elm$core$Platform$Cmd$none);
-				} else {
-					var delta = msg.a;
-					var _v4 = A2($author$project$Docs$form.update, delta, model.form);
-					var newForm = _v4.a;
-					var cmd = _v4.b;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{form: newForm}),
-						cmd);
-				}
-			}),
-		view: function (model) {
-			return {
-				body: _List_fromArray(
-					[
-						A2(
-						$elm$html$Html$div,
-						_List_Nil,
-						_List_fromArray(
-							[
-								$author$project$Docs$form.view(model.form)
-							]))
-					]),
-				title: 'elm-any-type-forms tutorial'
-			};
 		}
 	});
+var $author$project$Docs$view = function (model) {
+	return {
+		body: _List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_Nil,
+				_List_fromArray(
+					[
+						$author$project$Docs$form.view(model.form)
+					]))
+			]),
+		title: 'elm-any-type-forms tutorial'
+	};
+};
+var $author$project$Docs$main = $elm$browser$Browser$document(
+	{init: $author$project$Docs$init, subscriptions: $author$project$Docs$subscriptions, update: $author$project$Docs$update, view: $author$project$Docs$view});
 _Platform_export({'Docs':{'init':$author$project$Docs$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));
