@@ -1047,6 +1047,7 @@ want to create a completely new type of control from scratch.
 createYourOwn =
     customerControl
         |> mdBefore createYourOwnIntro
+        |> mdAfter createYourOwnOutro
 
 
 customerControl =
@@ -1258,6 +1259,13 @@ And the final result should look like this:
 """
 
 
+createYourOwnOutro =
+    """
+Now our customer form is done... but to make it useful, we're going to want to embed it into a bigger Elm app. How can 
+we do that?
+"""
+
+
 leavingTheSandbox =
     customerControl
         |> mdBefore leavingTheSandboxIntro
@@ -1339,6 +1347,8 @@ subscriptions model =
 So, how do we add our form to this app? 
 
 ### Working out the types
+
+**Warning:** this is the scariest bit of the tutorial. Take a deep breath before you read the next section.
 
 First, we need to know what the types should be for the `state` of our form (which 
 is this package's equivalent of a `Model` type), and its `delta` (equivalent to a `Msg` type).
@@ -1439,6 +1449,10 @@ This should print out the type signature for our sandbox program, which should l
           )
 ```
 
+Aaargh! Right?
+
+Don't worry, it's not as bad as it looks - and we'll get through this _together_.
+
 The `state` for our form will be the whole section containing `Control.State` types, and the `delta` will be the 
 section containing `Control.Delta` types.
 
@@ -1525,6 +1539,9 @@ type alias CustomerFormDelta =
           )
         )
 ```
+
+Phew - job done! Now we don't have to think about those horrible types again.
+
 ### Extending the `Model` and `Msg` types
 
 Now, in `Crm.elm`, we'll add a field to the `Model` to hold the form's state:
