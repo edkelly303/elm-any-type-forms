@@ -101,11 +101,14 @@ body {
 }
 
 h1 {
-    margin: 0px;
     height: var(--h1-height);
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
+}
+
+h2 {
+    margin-block: 1em;
 }
 
 #lessons {
@@ -137,7 +140,7 @@ h1 {
     background-color: rgb(255, 243, 245);
 }
 
-#lesson-page {
+.lesson-page {
     overflow-y: scroll;
     height: var(--lesson-page-height);
 }
@@ -146,12 +149,8 @@ h1 {
     border: 1px solid lightpink;
     border-radius: 3px;
     background-color: aliceblue;
-    width: 100px;
     height: 60px;
-    padding: 5px;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: break-spaces;
+    padding-inline: 20px;
     cursor: pointer;
 }
 

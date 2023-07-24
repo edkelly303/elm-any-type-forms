@@ -163,17 +163,27 @@ lessons =
                             )
 
                     subcontrolViews =
-                        List.concatMap
+                        List.map
                             (\sc ->
                                 if sc.index == config.selected then
-                                    sc.html
+                                    H.div
+                                        [ HA.id (String.fromInt sc.index)
+                                        , HA.class "lesson-page"
+                                        ]
+                                        (sc.html ++ nextButton)
 
                                 else
-                                    []
+                                    H.text ""
                             )
                             subcontrols
 
-                    backNext =
+                    nextLabel =
+                        List.filter (\sc -> sc.index == config.selected + 1) subcontrols
+                            |> List.map .label
+                            |> List.head
+                            |> Maybe.withDefault "ERROR"
+
+                    nextButton =
                         [ if config.selected == List.length subcontrols then
                             H.text ""
 
@@ -183,10 +193,10 @@ lessons =
                                 , HA.type_ "button"
                                 , HE.onClick (config.selectMsg (config.selected + 1))
                                 ]
-                                [ H.text "Next" ]
+                                [ H.text ("Next: " ++ nextLabel) ]
                         ]
                 in
-                [ navBar, H.div [ HA.id "lesson-page" ] (subcontrolViews ++ backNext) ]
+                navBar :: subcontrolViews
             )
         |> Control.label "Lessons"
         |> Control.id "lessons"
