@@ -12,49 +12,59 @@ import Markdown.Renderer
 
 main =
     Browser.document
-        { init =
-            \() ->
-                let
-                    ( initialForm, cmd ) =
-                        form.init
-                in
-                ( { form = initialForm
-                  , output = Nothing
-                  }
-                , cmd
-                )
-        , update =
-            \msg model ->
-                case msg of
-                    Nothing ->
-                        let
-                            ( newForm, result ) =
-                                form.submit model.form
-                        in
-                        ( { model
-                            | form = newForm
-                            , output = Just result
-                          }
-                        , Cmd.none
-                        )
-
-                    Just delta ->
-                        let
-                            ( newForm, cmd ) =
-                                form.update delta model.form
-                        in
-                        ( { model | form = newForm }
-                        , cmd
-                        )
-        , view =
-            \model ->
-                { title = "elm-any-type-forms tutorial"
-                , body =
-                    [ H.div [] [ form.view model.form ]
-                    ]
-                }
-        , subscriptions = \model -> form.subscriptions model.form
+        { init = init
+        , update = update
+        , view = view
+        , subscriptions = subscriptions
         }
+
+
+init () =
+    let
+        ( initialForm, cmd ) =
+            form.init
+    in
+    ( { form = initialForm
+      , output = Nothing
+      }
+    , cmd
+    )
+
+
+update msg model =
+    case msg of
+        Nothing ->
+            let
+                ( newForm, result ) =
+                    form.submit model.form
+            in
+            ( { model
+                | form = newForm
+                , output = Just result
+              }
+            , Cmd.none
+            )
+
+        Just delta ->
+            let
+                ( newForm, cmd ) =
+                    form.update delta model.form
+            in
+            ( { model | form = newForm }
+            , cmd
+            )
+
+
+subscriptions model =
+    form.subscriptions model.form
+
+
+view model =
+    { title = "elm-any-type-forms tutorial"
+    , body =
+        [ H.div [] [ form.view model.form ]
+        ]
+    }
 
 
 form =
@@ -1025,7 +1035,7 @@ want to create a completely new type of control from scratch.
 
 
 createYourOwn =
-    customerControl 
+    customerControl
         |> mdBefore createYourOwnIntro
 
 
