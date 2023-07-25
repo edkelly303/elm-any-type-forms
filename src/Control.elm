@@ -51,8 +51,8 @@ another control higher up the tree.
 
 Take the example of a password creation form. You want to validate that the
 "Enter password" and "Confirm password" fields both contain the same string, and
-show helpful error messages on both fields if they don't. You can achieve this
-as follows:
+show a helpful error message on the "Confirm password" field if they don't. You 
+can achieve this as follows:
 
     passwordControl =
         record
@@ -61,14 +61,7 @@ as follows:
                 , confirmation = confirmation
                 }
             )
-            |> field
-                (string
-                    |> respond
-                        { alert = "passwords-do-not-match"
-                        , fail = True
-                        , message = "Must match 'Confirm password' field"
-                        }
-                )
+            |> field string
             |> field
                 (string
                     |> respond
@@ -77,8 +70,12 @@ as follows:
                         , message = "Must match 'Enter password' field"
                         }
                 )
-            |> end
-            |> alertIf (\{ password, confirmation } -> password /= confirmation) "passwords-do-not-match"
+            |> endRecord
+            |> alertIf 
+                (\{ password, confirmation } -> 
+                    password /= confirmation
+                ) 
+                "passwords-do-not-match"
 
 @docs alertIf, respond
 
@@ -898,15 +895,16 @@ strings, if and only if those first two items are "hello" and "world":
                 , message = "The first two items in the list must not be \"hello\" and \"world\"."
                 }
 
-    list myString
-        |> alertAtIndexes
-            (\list_ ->
-                case list of
-                    "hello" :: "world" :: _ -> [ 0, 1 ]
+    myList = 
+        list myString
+            |> alertAtIndexes
+                (\list_ ->
+                    case list of
+                        "hello" :: "world" :: _ -> [ 0, 1 ]
 
-                    _ -> []
-            )
-            "no-hello-world"
+                        _ -> []
+                )
+                "no-hello-world"
 
 -}
 alertAtIndexes :
@@ -952,7 +950,7 @@ This causes the `Control` to fail validation.
         int
             |> failIf
                 (\x -> x < 1)
-                "Must be greater than zero!"
+                "This must be greater than zero!"
 
 -}
 failIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
@@ -979,9 +977,9 @@ validation.
 
     positiveInt =
         int
-            |> failIf
+            |> noteIf
                 (\x -> x < 1)
-                "Must be greater than zero!"
+                "Should this be greater than zero?"
 
 -}
 noteIf : (output -> Bool) -> String -> Control state delta output -> Control state delta output
@@ -1206,8 +1204,8 @@ idea.
                 , age = age
                 }
             )
-            |> field "Name" string
-            |> field "Age" int
+            |> field string
+            |> field int
             |> end
             |> layout wizard
 
@@ -1302,7 +1300,7 @@ layout view (Control control) =
 
     wrappedInt =
         int
-            |> wrapView (\\view -> Html.div [] view)
+            |> wrapView (\view -> [ Html.div [] view ])
 
 -}
 wrapView :
@@ -1590,7 +1588,11 @@ however, we need to supply two functions that will allow us to both `convert` th
         = Id Int
 
     idControl =
-        map { convert = Id, revert = \(Id i) -> i } int
+        map 
+            { convert = \i -> Id i
+            , revert = \(Id i) -> i 
+            } 
+            int
 
 -}
 map :
@@ -2017,7 +2019,7 @@ list (Control ctrl) =
 types. The key type must be `comparable`.
 
     myDictControl =
-        dict ( "Key", int ) ( "Value", string )
+        dict int string
 
 -}
 dict :
@@ -2180,8 +2182,8 @@ this library is built using the `record` combinator).
                 , age = age
                 }
             )
-            |> field "Name" string
-            |> field "Age" int
+            |> field string
+            |> field int
             |> end
 
 -}
@@ -2240,7 +2242,7 @@ record toOutput =
 
     helloControl =
         record Hello
-            |> field "Hello" string
+            |> field string
             |> end
 
 -}
@@ -2427,7 +2429,7 @@ field =
 
     helloControl =
         record Hello
-            |> hiddenField "Hello" string
+            |> hiddenField string
             |> end
 
 -}
@@ -2614,7 +2616,7 @@ hiddenField =
 
     helloControl =
         record Hello
-            |> readOnlyfield "Hello" string
+            |> readOnlyfield string
             |> end
 
 -}
@@ -2880,7 +2882,7 @@ fieldHelper access fromInput (Control control) (RecordBuilder rec) =
 
     helloControl =
         record Hello
-            |> field "Hello" string
+            |> field string
             |> end
 
 -}
@@ -3675,7 +3677,7 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
             )
             |> tag0 "NoArgs" NoArgs
             |> tag1 "OneArg" OneArg string
-            |> tag2 "TwoArgs" TwoArgs ( "Int", int ) ( "Float", float )
+            |> tag2 "TwoArgs" TwoArgs int float
             |> end
 
 -}
@@ -4092,7 +4094,7 @@ endCustomType (CustomTypeBuilder builder) =
                     Unit ->
                         unit
             )
-            |> tag0 "Unit"
+            |> tag0 "Unit" Unit
             |> end
 
 -}
@@ -4607,7 +4609,7 @@ tag1 label_ tag control =
                     Point x y ->
                         point x y
             )
-            |> tag2 Point ( "X", float ) ( "Y", float )
+            |> tag2 "Point" Point float float
 
 -}
 tag2 :
@@ -4850,7 +4852,7 @@ tag2 label_ tag control1 control2 =
                     Point3D x y z ->
                         point3D x y z
             )
-            |> tag3 Point3D ( "X", float ) ( "Y", float ) ( "Z", float )
+            |> tag3 "Point3D" Point3D float float float
 
 -}
 tag3 :
