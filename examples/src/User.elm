@@ -8,21 +8,38 @@ type alias User =
     { name : String
     , age : Int
     , role : Role
+    , password : String
     }
 
 
+userControl :
+    Control.Control
+        ( Control.State String, ( Control.State String, ( Control.State ( Control.State (), ( Control.State ( Control.State String, Control.End ), Control.End ) ), ( Control.State ( Control.State ( Control.State String, ( Control.State String, Control.End ) ), Control.End ), Control.End ) ) ) )
+        ( Control.Delta String, ( Control.Delta String, ( Control.Delta ( Control.Delta (), ( Control.Delta ( Control.Delta String, Control.End ), Control.End ) ), ( Control.Delta ( Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) ), Control.End ), Control.End ) ) ) )
+        User
 userControl =
-    Control.record
-        (\name age role ->
-            { name = name
-            , age = age
-            , role = role
-            }
-        )
-        |> Control.field .name (Control.string |> Control.label "Name" |> Control.failIf String.isEmpty "Name is required")
-        |> Control.field .age Control.int
+    Control.record User
+        |> Control.field .name nameControl
+        |> Control.field .age ageControl
         |> Control.field .role roleControl
+        |> Control.field .password passwordControl
         |> Control.end
+
+
+ageControl : Control.Control String String Int
+ageControl =
+    Control.int
+        |> Control.label "Age"
+        |> Control.failIf (\a -> a < 0) "Age must be at least 0"
+        |> Control.noteIf (\a -> a >= 100) "Gosh, that's a ripe old age!"
+
+
+nameControl : Control.Control String String String
+nameControl =
+    Control.string
+        |> Control.label "Name"
+        |> Control.failIf String.isEmpty "Name is required"
+        |> Control.noteIf (String.uncons >> Maybe.map (Tuple.first >> Char.isLower) >> Maybe.withDefault False) "Should your name begin with an uppercase letter?"
 
 
 type Role
@@ -30,6 +47,11 @@ type Role
     | AdminLevel Int
 
 
+roleControl :
+    Control.Control
+        ( Control.State (), ( Control.State ( Control.State String, Control.End ), Control.End ) )
+        ( Control.Delta (), ( Control.Delta ( Control.Delta String, Control.End ), Control.End ) )
+        Role
 roleControl =
     Control.customType
         (\regular adminLevel tag ->
@@ -41,8 +63,46 @@ roleControl =
                     adminLevel level
         )
         |> Control.tag0 "Regular" Regular
-        |> Control.tag1 "Admin" AdminLevel (Control.int |> Control.label "Security clearance level")
+        |> Control.tag1 "Admin" AdminLevel levelControl
         |> Control.end
+        |> Control.label "Role"
+
+
+levelControl : Control.Control String String Int
+levelControl =
+    Control.int
+        |> Control.label "Security clearance level"
+        |> Control.failIf (\l -> not (List.member l [ 1, 2, 3 ])) "The only valid clearance levels are 1, 2 and 3"
+
+
+passwordControl :
+    Control.Control
+        ( Control.State ( Control.State String, ( Control.State String, Control.End ) ), Control.End )
+        ( Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) ), Control.End )
+        String
+passwordControl =
+    Control.record (\p1 p2 -> { password1 = p1, password2 = p2 })
+        |> Control.field .password1 password1Control
+        |> Control.field .password2 password2Control
+        |> Control.end
+        |> Control.alertIf
+            (\{ password1, password2 } -> password1 /= password2)
+            "passwords-do-not-match"
+        |> Control.map { convert = .password1, revert = \p -> { password1 = p, password2 = p } }
+
+
+password1Control : Control.Control String String String
+password1Control =
+    Control.string
+        |> Control.label "Password"
+        |> Control.failIf (\p -> String.length p < 12) "Password must be at least 12 characters"
+
+
+password2Control : Control.Control String String String
+password2Control =
+    Control.string
+        |> Control.label "Confirm password"
+        |> Control.respond { alert = "passwords-do-not-match", fail = True, message = "Passwords must match" }
 
 
 type alias Model =
@@ -61,11 +121,20 @@ type alias FormState =
         , ( Control.State String
           , ( Control.State
                 ( Control.State ()
-                , ( Control.State ( Control.State String, Control.End )
+                , ( Control.State
+                        ( Control.State String, Control.End )
                   , Control.End
                   )
                 )
-            , Control.End
+            , ( Control.State
+                    ( Control.State
+                        ( Control.State String
+                        , ( Control.State String, Control.End )
+                        )
+                    , Control.End
+                    )
+              , Control.End
+              )
             )
           )
         )
@@ -81,12 +150,26 @@ type alias FormDelta =
                   , Control.End
                   )
                 )
-            , Control.End
+            , ( Control.Delta
+                    ( Control.Delta
+                        ( Control.Delta String
+                        , ( Control.Delta String, Control.End )
+                        )
+                    , Control.End
+                    )
+              , Control.End
+              )
             )
           )
         )
 
 
+userForm :
+    Control.Form
+        ( Control.State String, ( Control.State String, ( Control.State ( Control.State (), ( Control.State ( Control.State String, Control.End ), Control.End ) ), ( Control.State ( Control.State ( Control.State String, ( Control.State String, Control.End ) ), Control.End ), Control.End ) ) ) )
+        ( Control.Delta String, ( Control.Delta String, ( Control.Delta ( Control.Delta (), ( Control.Delta ( Control.Delta String, Control.End ), Control.End ) ), ( Control.Delta ( Control.Delta ( Control.Delta String, ( Control.Delta String, Control.End ) ), Control.End ), Control.End ) ) ) )
+        User
+        Msg
 userForm =
     Control.form
         { control = userControl
@@ -134,6 +217,10 @@ main =
                             ( newFormState, Err errors ) ->
                                 -- in a real app, you might choose to do
                                 -- something with the `errors` here.
+                                let
+                                    _ =
+                                        Debug.log "errors" errors
+                                in
                                 ( { model | formState = newFormState }
                                 , Cmd.none
                                 )

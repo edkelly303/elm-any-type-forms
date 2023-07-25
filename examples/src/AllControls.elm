@@ -34,7 +34,11 @@ exampleControl =
         |> Control.field .time (timeControl Time.utc)
         |> Control.field .int Control.int
         |> Control.field .float Control.float
-        |> Control.field .string Control.string
+        |> Control.field .string
+            (Control.string
+                |> Control.failIf String.isEmpty "Mustn't be blank"
+                |> Control.noteIf (not << String.isEmpty) "Nice work!"
+            )
         |> Control.field .char Control.char
         |> Control.field .bool Control.bool
         |> Control.field .enum
@@ -75,7 +79,7 @@ type alias Example2 =
 example2Control =
     Control.record Example2
         |> Control.field .time (timeControl Time.utc)
-        |> Control.field .id (Control.wrapper { wrap = Id, unwrap = \(Id x) -> x } (Control.int |> Control.label "Id"))
+        |> Control.field .id (Control.map { convert = Id, revert = \(Id x) -> x } (Control.int |> Control.label "Id"))
         |> Control.field .tuple (Control.tuple Control.int Control.string)
         |> Control.field .triple (Control.triple Control.int Control.string Control.float)
         |> Control.field .result (Control.result Control.int Control.string)
@@ -124,23 +128,24 @@ counterControl =
                 )
         , view =
             \{ state, label, id, name } ->
-                Html.div
+                [ Html.div
                     [ Html.Attributes.id id
                     , Html.Attributes.name name
                     ]
                     [ Html.label [] [ Html.text label ]
                     , Html.button
                         [ Html.Attributes.type_ "button"
-                        , Html.Events.onClick Increment
-                        ]
-                        [ Html.text "+1" ]
-                    , Html.text <| String.fromInt state
-                    , Html.button
-                        [ Html.Attributes.type_ "button"
                         , Html.Events.onClick Decrement
                         ]
                         [ Html.text "-1" ]
+                    , Html.text <| String.fromInt state
+                    , Html.button
+                        [ Html.Attributes.type_ "button"
+                        , Html.Events.onClick Increment
+                        ]
+                        [ Html.text "+1" ]
                     ]
+                ]
         , parse = Ok
         , subscriptions = \_ -> Sub.none
         , label = "Counter"
@@ -186,25 +191,24 @@ timeControl tz =
                             |> String.fromInt
                             |> String.padLeft 2 '0'
                 in
-                Html.div []
-                    [ Html.label [ Html.Attributes.for id ] [ Html.text label ]
-                    , Html.input
-                        [ Html.Attributes.id id
-                        , Html.Attributes.name name
-                        , Html.Attributes.class class
-                        , Html.Events.onInput InputUpdated
-                        ]
-                        [ Html.text state.input ]
-                    , Html.small []
-                        [ Html.text
-                            ("(Current time is "
-                                ++ showTime Time.toHour
-                                ++ ":"
-                                ++ showTime Time.toMinute
-                                ++ ")"
-                            )
-                        ]
+                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]
+                , Html.input
+                    [ Html.Attributes.id id
+                    , Html.Attributes.name name
+                    , Html.Attributes.class class
+                    , Html.Events.onInput InputUpdated
                     ]
+                    [ Html.text state.input ]
+                , Html.small []
+                    [ Html.text
+                        ("(Current time is "
+                            ++ showTime Time.toHour
+                            ++ ":"
+                            ++ showTime Time.toMinute
+                            ++ ")"
+                        )
+                    ]
+                ]
         , parse =
             \{ input, now } ->
                 case String.split ":" input of

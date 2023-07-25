@@ -1,11 +1,12 @@
 {
-    "port": 8001,
+    "port": 8000,
     "targets": {
-        "elm-any-type-forms": {
+        "docs": {
             "inputs": [
-                "src/AllControls.elm"
+                "src/Docs.elm"
             ],
-            "output": "main.js"
+            "output": "../docs/main.js"
         }
-    }
+    },
+    "serve": "../docs"
 }
