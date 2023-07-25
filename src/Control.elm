@@ -6,7 +6,7 @@ module Control exposing
     , failIf, noteIf
     , alertIf, respond
     , alertAtIndexes
-    , initWith, debounce, id, name, label, class, classList, wrapView
+    , input, debounce, id, name, label, class, classList, wrapView
     , record, field, hiddenField, readOnlyField, endRecord, layout, LayoutConfig
     , customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
@@ -90,7 +90,7 @@ as follows:
 
 # Configuring controls
 
-@docs initWith, debounce, id, name, label, class, classList, wrapView
+@docs input, debounce, id, name, label, class, classList, wrapView
 
 
 # Building record combinators
@@ -249,6 +249,7 @@ type Alert
     | AlertList Path String (List Int)
 
 
+{-| Some internal stuff to handle validation -}
 type alias Feedback =
     { path : Path
     , label : String
@@ -433,7 +434,7 @@ form { onUpdate, onSubmit, control } =
         \output ->
             let
                 (Control initialisedControl) =
-                    initWith output control
+                    input output control
 
                 (ControlFns fns2) =
                     initialisedControl Path.root
@@ -686,8 +687,8 @@ create controlConfig =
                         |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                         |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , initWith =
-                    \input ->
-                        controlConfig.initWith input
+                    \input_ ->
+                        controlConfig.initWith input_
                             |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                             |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , baseUpdate = preUpdate
@@ -1338,11 +1339,11 @@ wrapView wrapper (Control control) =
             |> initWith ( 1, "hello" )
 
 -}
-initWith : input -> AdvancedControl input state delta output -> AdvancedControl input state delta output
-initWith input (Control control) =
+input : input -> AdvancedControl input state delta output -> AdvancedControl input state delta output
+input input_ (Control control) =
     let
         initialiser (ControlFns i) =
-            ControlFns { i | init = i.initWith input }
+            ControlFns { i | init = i.initWith input_ }
     in
     Control (control >> initialiser)
 
@@ -1881,7 +1882,7 @@ list (Control ctrl) =
                 { path = path
                 , index = 0
                 , initWith =
-                    \input ->
+                    \input_ ->
                         let
                             ( initialState, initialCmds ) =
                                 List.Extra.indexedFoldr
@@ -1898,7 +1899,7 @@ list (Control ctrl) =
                                         )
                                     )
                                     ( [], [] )
-                                    input
+                                    input_
                         in
                         ( State { status = Intact_, selected = 1 } initialState
                         , Cmd.map ChangeStateInternally (Cmd.batch initialCmds)
@@ -2816,8 +2817,8 @@ initialiseRecordStates :
     -> recordInput
     -> ( RecordFns output state delta output recordInput, restFns )
     -> State fieldStates
-initialiseRecordStates initialiser input fns =
-    initialiser (\_ End -> End) input fns
+initialiseRecordStates initialiser input_ fns =
+    initialiser (\_ End -> End) input_ fns
         |> State { status = Intact_, selected = 1 }
 
 
