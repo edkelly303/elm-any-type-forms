@@ -1,9 +1,9 @@
 {
     "port": 8000,
     "targets": {
-        "docs": {
+        "tutorial": {
             "inputs": [
-                "src/Docs.elm"
+                "src/Tutorial.elm"
             ],
             "output": "../docs/main.js"
         }

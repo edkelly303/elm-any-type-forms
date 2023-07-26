@@ -1,4 +1,4 @@
-module Docs exposing (main)
+module Tutorial exposing (main)
 
 import Browser
 import Control
@@ -1039,8 +1039,8 @@ And you should see something a little like this:
 
 multivalidationOutro =
     """
-We're nearly done with this tutorial - just one more lesson to go. The final thing we'll cover is what to do when you 
-want to create a completely new type of control from scratch.
+We've now covered all the basics for building controls with primitives and combinators. The next thing we'll cover is 
+what to do when you want to create a completely new type of control from scratch.
 """
 
 
