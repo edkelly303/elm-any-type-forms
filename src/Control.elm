@@ -7,8 +7,8 @@ module Control exposing
     , alertIf, respond
     , alertAtIndexes
     , initWith, debounce, id, name, label, class, classList, wrapView
-    , record, field, hiddenField, readOnlyField, endRecord, layout, LayoutConfig
-    , customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+    , RecordBuilder, record, field, hiddenField, readOnlyField, endRecord, LayoutConfig, Subcontrol, layout
+    , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
     , Access, AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
     )
@@ -51,7 +51,7 @@ another control higher up the tree.
 
 Take the example of a password creation form. You want to validate that the
 "Enter password" and "Confirm password" fields both contain the same string, and
-show a helpful error message on the "Confirm password" field if they don't. You 
+show a helpful error message on the "Confirm password" field if they don't. You
 can achieve this as follows:
 
     passwordControl =
@@ -71,10 +71,10 @@ can achieve this as follows:
                         }
                 )
             |> endRecord
-            |> alertIf 
-                (\{ password, confirmation } -> 
+            |> alertIf
+                (\{ password, confirmation } ->
                     password /= confirmation
-                ) 
+                )
                 "passwords-do-not-match"
 
 @docs alertIf, respond
@@ -92,12 +92,12 @@ can achieve this as follows:
 
 # Building record combinators
 
-@docs record, field, hiddenField, readOnlyField, endRecord, layout, LayoutConfig
+@docs RecordBuilder, record, field, hiddenField, readOnlyField, endRecord, LayoutConfig, Subcontrol, layout
 
 
 # Building custom type combinators
 
-@docs customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+@docs CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
 
 
 # Form internals
@@ -231,6 +231,8 @@ type ControlFns input state delta output
         }
 
 
+{-| Data used by the `layout` function to render a subcontrol of a combinator.
+-}
 type alias Subcontrol delta =
     { html : List (Html (Delta delta))
     , label : String
@@ -895,14 +897,16 @@ strings, if and only if those first two items are "hello" and "world":
                 , message = "The first two items in the list must not be \"hello\" and \"world\"."
                 }
 
-    myList = 
+    myList =
         list myString
             |> alertAtIndexes
                 (\list_ ->
                     case list of
-                        "hello" :: "world" :: _ -> [ 0, 1 ]
+                        "hello" :: "world" :: _ ->
+                            [ 0, 1 ]
 
-                        _ -> []
+                        _ ->
+                            []
                 )
                 "no-hello-world"
 
@@ -1588,10 +1592,10 @@ however, we need to supply two functions that will allow us to both `convert` th
         = Id Int
 
     idControl =
-        map 
+        map
             { convert = \i -> Id i
-            , revert = \(Id i) -> i 
-            } 
+            , revert = \(Id i) -> i
+            }
             int
 
 -}
@@ -2141,6 +2145,8 @@ array itemControl =
 -}
 
 
+{-| A data structure used to build records
+-}
 type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer
     = RecordBuilder
         { after : after
@@ -3623,6 +3629,8 @@ recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( delt
 -}
 
 
+{-| A data structure used to build custom types
+-}
 type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer
     = CustomTypeBuilder
         { applyInputs : applyInputs
