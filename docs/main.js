@@ -6383,6 +6383,11 @@ var $elm$core$List$append = F2(
 var $elm$core$List$concat = function (lists) {
 	return A3($elm$core$List$foldr, $elm$core$List$append, _List_Nil, lists);
 };
+var $elm$core$List$concatMap = F2(
+	function (f, list) {
+		return $elm$core$List$concat(
+			A2($elm$core$List$map, f, list));
+	});
 var $author$project$Control$emitAlertsForRecord = F3(
 	function (alertEmitter_, fns, states) {
 		return A4(
@@ -6567,13 +6572,12 @@ var $author$project$Control$endRecord = function (_v0) {
 					}
 				});
 			var view = function (config) {
-				return $elm$core$List$concat(
-					A2(
-						$elm$core$List$map,
-						function ($) {
-							return $.html;
-						},
-						A4($author$project$Control$viewRecordStates, rec.viewer, fns, deltaSetters, config)));
+				return A2(
+					$elm$core$List$concatMap,
+					function ($) {
+						return $.html;
+					},
+					A4($author$project$Control$viewRecordStates, rec.viewer, fns, deltaSetters, config));
 			};
 			return $author$project$Control$ControlFns(
 				{
@@ -8085,11 +8089,6 @@ var $dillonkearns$elm_markdown$Markdown$Parser$blockQuote = A2(
 		$elm$parser$Parser$Advanced$ignorer,
 		$elm$parser$Parser$Advanced$getChompedString($dillonkearns$elm_markdown$Helpers$chompUntilLineEndOrEnd),
 		$dillonkearns$elm_markdown$Helpers$lineEndOrEnd));
-var $elm$core$List$concatMap = F2(
-	function (f, list) {
-		return $elm$core$List$concat(
-			A2($elm$core$List$map, f, list));
-	});
 var $dillonkearns$elm_markdown$Markdown$Parser$deadEndsToString = function (deadEnds) {
 	return A2(
 		$elm$core$String$join,
@@ -18819,8 +18818,8 @@ var $author$project$Control$radioView = function (config) {
 					config.options)))
 		]);
 };
-var $author$project$Control$customTypeView = F3(
-	function (path, config, toSubcontrols) {
+var $author$project$Control$customTypeView = F2(
+	function (config, toSubcontrols) {
 		var subcontrols = toSubcontrols(config);
 		var subcontrolView = $elm$core$List$concat(
 			A2(
@@ -18990,7 +18989,7 @@ var $author$project$Control$endCustomType = function (_v0) {
 				return A4($author$project$Control$viewSelectedTagState, builder.viewer, fns, deltaSetters, config);
 			};
 			var view = function (config) {
-				return A3($author$project$Control$customTypeView, path, config, subcontrolView);
+				return A2($author$project$Control$customTypeView, config, subcontrolView);
 			};
 			var update = F2(
 				function (delta, _v5) {
