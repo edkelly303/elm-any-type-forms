@@ -5757,8 +5757,8 @@ var $author$project$Control$form = function (_v0) {
 			var debouncingReceivers = fns.collectDebouncingReceivers(s);
 			var alerts = A2(
 				$elm$core$List$filter,
-				function (f) {
-					return !A2($elm$core$List$member, f, debouncingReceivers);
+				function (emittedAlert) {
+					return !A2($elm$core$List$member, emittedAlert, debouncingReceivers);
 				},
 				emittedAlerts);
 			return A2(
@@ -19296,8 +19296,8 @@ var $author$project$Control$insertArgStateIntoTagState = F3(
 						{selected: selectedTag, status: $author$project$Control$Intact_},
 						tagStates($author$project$Control$End));
 				}),
-			0,
-			0,
+			1,
+			1,
 			$elm$core$Basics$identity,
 			maybeArgStates,
 			inits);
