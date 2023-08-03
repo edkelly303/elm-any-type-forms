@@ -5992,8 +5992,8 @@ insertArgStateIntoTagState :
 insertArgStateIntoTagState stateInserter_ maybeArgStates inits =
     stateInserter_
         (\_ selectedTag tagStates End End -> State { status = Intact_, selected = selectedTag } (tagStates End))
-        0
-        0
+        1
+        1
         identity
         maybeArgStates
         inits
