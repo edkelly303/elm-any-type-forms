@@ -455,7 +455,7 @@ form { onUpdate, onSubmit, control } =
                     fns.collectDebouncingReceivers s
 
                 alerts =
-                    List.filter (\f -> not <| List.member f debouncingReceivers) emittedAlerts
+                    List.filter (\emittedAlert -> not <| List.member emittedAlert debouncingReceivers) emittedAlerts
             in
             H.form [ HE.onSubmit onSubmit ]
                 ((fns.view
