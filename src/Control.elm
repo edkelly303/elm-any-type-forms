@@ -456,6 +456,9 @@ form { onUpdate, onSubmit, control } =
 
                 alerts =
                     List.filter (\emittedAlert -> not <| List.member emittedAlert debouncingReceivers) emittedAlerts
+
+                status =
+                    getStatus fns.parse fns.collectErrors alerts s
             in
             H.form [ HE.onSubmit onSubmit ]
                 ((fns.view
@@ -464,13 +467,13 @@ form { onUpdate, onSubmit, control } =
                     , label = fns.label
                     , class = fns.class
                     , state = state
-                    , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
+                    , status = status
                     , alerts = alerts
                     , selected = internalState.selected
                     }
                     |> List.map (H.map onUpdate)
                  )
-                    ++ [ H.input [ HA.type_ "submit", HA.value "Submit" ] [] ]
+                    ++ [ H.button [ HA.type_ "submit" ] [ H.text "Submit" ] ]
                 )
     , submit =
         \state ->

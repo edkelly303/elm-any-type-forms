@@ -280,6 +280,6 @@ code {
     background-color: aliceblue;
 }
 
-input[type="submit"] {
+button[type="submit"] {
     display: none;
 }
