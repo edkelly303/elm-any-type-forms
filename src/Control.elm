@@ -470,7 +470,7 @@ form { onUpdate, onSubmit, control } =
                     }
                     |> List.map (H.map onUpdate)
                  )
-                    ++ [ H.input [ HA.type_ "submit", HE.onClick onSubmit ] [ H.text "Submit" ] ]
+                    ++ [ H.input [ HA.type_ "submit", HA.value "Submit" ] [] ]
                 )
     , submit =
         \state ->
