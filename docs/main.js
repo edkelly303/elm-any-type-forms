@@ -5490,10 +5490,7 @@ var $elm$core$Task$perform = F2(
 				A2($elm$core$Task$map, toMessage, task)));
 	});
 var $elm$browser$Browser$document = _Browser_document;
-var $author$project$Control$State = F2(
-	function (a, b) {
-		return {$: 'State', a: a, b: b};
-	});
+var $elm$html$Html$button = _VirtualDom_node('button');
 var $elm$core$List$filter = F2(
 	function (isGood, list) {
 		return A3(
@@ -5561,7 +5558,6 @@ var $author$project$Control$initWith = F2(
 		return $author$project$Control$Control(
 			A2($elm$core$Basics$composeR, control, initialiser));
 	});
-var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$virtual_dom$VirtualDom$map = _VirtualDom_map;
 var $elm$html$Html$map = $elm$virtual_dom$VirtualDom$map;
 var $elm$core$Platform$Cmd$map = _Platform_map;
@@ -5634,6 +5630,8 @@ var $author$project$Path$Path = function (a) {
 var $author$project$Path$root = $author$project$Path$Path(
 	_List_fromArray(
 		[1]));
+var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
+var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $elm$core$String$toLower = _String_toLower;
 var $author$project$Path$toString = function (_v0) {
 	var path = _v0.a;
@@ -5655,7 +5653,6 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 			$elm$json$Json$Encode$string(string));
 	});
 var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
-var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
 var $elm$core$Maybe$withDefault = F2(
 	function (_default, maybe) {
 		if (maybe.$ === 'Just') {
@@ -5744,6 +5741,7 @@ var $author$project$Control$form = function (_v0) {
 					return !A2($elm$core$List$member, emittedAlert, debouncingReceivers);
 				},
 				emittedAlerts);
+			var status = A4($author$project$Control$getStatus, fns.parse, fns.collectErrors, alerts, s);
 			return A2(
 				$elm$html$Html$form,
 				_List_fromArray(
@@ -5769,23 +5767,20 @@ var $author$project$Control$form = function (_v0) {
 									fns.name),
 								selected: internalState.selected,
 								state: state,
-								status: A4(
-									$author$project$Control$getStatus,
-									fns.parse,
-									fns.collectErrors,
-									alerts,
-									A2($author$project$Control$State, internalState, state))
+								status: status
 							})),
 					_List_fromArray(
 						[
 							A2(
-							$elm$html$Html$input,
+							$elm$html$Html$button,
 							_List_fromArray(
 								[
-									$elm$html$Html$Attributes$type_('submit'),
-									$elm$html$Html$Attributes$value('Submit')
+									$elm$html$Html$Attributes$type_('submit')
 								]),
-							_List_Nil)
+							_List_fromArray(
+								[
+									$elm$html$Html$text('Submit')
+								]))
 						])));
 		}
 	};
@@ -5841,6 +5836,10 @@ var $author$project$Control$ChangeStateOnInput = function (a) {
 };
 var $author$project$Control$Idle_ = {$: 'Idle_'};
 var $author$project$Control$Intact_ = {$: 'Intact_'};
+var $author$project$Control$State = F2(
+	function (a, b) {
+		return {$: 'State', a: a, b: b};
+	});
 var $elm$core$Result$mapError = F2(
 	function (f, result) {
 		if (result.$ === 'Ok') {
@@ -5976,8 +5975,6 @@ var $author$project$Control$wrapUpdate = F4(
 	});
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$p = _VirtualDom_node('p');
-var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
-var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
 var $author$project$Control$wrappedView = F2(
 	function (status, innerView) {
 		return A2(
@@ -6144,6 +6141,7 @@ var $author$project$Control$create = function (controlConfig) {
 };
 var $elm$html$Html$Attributes$for = $elm$html$Html$Attributes$stringProperty('htmlFor');
 var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
+var $elm$html$Html$input = _VirtualDom_node('input');
 var $elm$html$Html$label = _VirtualDom_node('label');
 var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
 var $elm$core$Platform$Sub$batch = _Platform_batch;
@@ -6259,6 +6257,7 @@ var $elm$html$Html$Events$onInput = function (tagger) {
 			$elm$html$Html$Events$alwaysStop,
 			A2($elm$json$Json$Decode$map, tagger, $elm$html$Html$Events$targetValue)));
 };
+var $elm$html$Html$Attributes$value = $elm$html$Html$Attributes$stringProperty('value');
 var $author$project$Control$textControlView = F2(
 	function (type_, config) {
 		return _List_fromArray(
@@ -16695,7 +16694,6 @@ var $author$project$Tutorial$basicControls = A2(
 										function (bool, string, _char, _int, _float) {
 											return {bool: bool, _char: _char, _float: _float, _int: _int, string: string};
 										}))))))))));
-var $elm$html$Html$button = _VirtualDom_node('button');
 var $author$project$Tutorial$createYourOwnIntro = '\n## Creating your own controls\n\nOne final issue with our `customerControl`: why the heck are we including the customer\'s current age? In a year\'s time, \nthat data is going to be completely stale and useless. Instead, it would be much better to capture their date of birth. \n\n### Playing the dating game\n\nThe first thing we\'ll need is a `Date` type. There isn\'t one in `elm/core`, so let\'s go to the terminal and do \n`elm install justinmimbs/date`. \n\nOnce the package has been installed, add a few imports to the top of the `Main.elm` module:\n```\nimport Date\nimport Html\nimport Html.Attributes\n```\n\nNow, change our `Customer` type as follows:\n\n```\ntype alias Customer = \n    { name : String\n    , dateOfBirth : Date.Date\n    , products : List Product\n    , id : Id\n    , password : String\n    }\n```\n\n### Building a Date control\n\nWe _could_ pull together a date control using the combinators we\'ve already learned - something like this:\n\n```\nboringDateControl =\n    Control.record Date.fromCalendarDate\n        |> Control.field Date.year\n            (Control.int\n                |> Control.label "Year"\n            )\n        |> Control.field Date.month\n            (Control.int\n                |> Control.label "Month"\n                |> Control.map\n                    { convert = Date.numberToMonth\n                    , revert = Date.monthToNumber\n                    }\n            )\n        |> Control.field Date.day\n            (Control.int\n                |> Control.label "Day"\n            )\n        |> Control.endRecord\n```\n\n(Notice that although we\'re using `Control.record`, we\'re not actually creating a record here! We\'re passing the values \nproduced by the three fields to the `Date.fromCalendarDate` function.)\n\n### Building a Date control _from scratch_\n\nBut let\'s not use `Control.record` - let\'s say we want to use HTML\'s built-in `<input type="date">` element to render \nour `Date` control. \n\nWe can do this with `Control.create`, which gives us the flexibility to build completely bespoke controls for any Elm \ntype.\n\n```\ndateControl =\n    Control.create\n        { label = "Date of birth"\n        , initEmpty = ( "1970-01-01", Cmd.none )\n        , initWith = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )\n        , update = \\delta state -> ( delta, Cmd.none )\n        , view =\n            \\{ state, id, label, name, class } ->\n                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]\n                , Html.input\n                    [ Html.Attributes.type_ "date"\n                    , Html.Attributes.value state\n                    , Html.Attributes.id id\n                    , Html.Attributes.class class\n                    , Html.Attributes.name name\n                    ]\n                    []\n                ]\n        , subscriptions = \\state -> Sub.none\n        , parse =\n            \\state ->\n                case Date.fromIsoString state of\n                    Ok date ->\n                        Ok date\n\n                    Err error ->\n                        Err [ error ]\n        }\n```\n\nThis looks like a lot to digest, but we can take it one field at a time.\n\n#### label : `String`\nThis is the default label that will be displayed on the control.\n\n#### initEmpty : `( state, Cmd delta )`\nThis specifies the default internal `state` of the control when it\'s initialised, \ntogether with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we \ndon\'t need to send any `Cmd`s.\n\n#### initWith : `output -> ( state, Cmd delta )`\nThis defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial \n`Cmd` if needed. In this case, we\'re teaching it how to turn a `Date` into a `String` and there\'s no `Cmd` to send.\n\n#### update : `delta -> state -> ( state, Cmd delta )`\nThis is exactly like a normal Elm app\'s `update` function - for \n`delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all \nwe need to do in our update function is replace the existing `state` with the new `delta`.\n\n#### view : `{ state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` \nThis is very similar to a normal Elm app\'s `view` function, but with two differences. First, in addition to the `state`, \nit also gives us access to some other stuff that we can include in our view\'s HTML attributes. Second, it produces a \nlist of HTML elements, rather than a single element.\n\n#### subscriptions : `state -> Sub delta`\nThis is exactly like a normal Elm app\'s `subscriptions` function. Here, we don\'t \nneed to manage any subscriptions, so we can just return `Sub.none`.\n\n#### parse : `state -> Result (List String) output`\nThis attempts to turn the control\'s `state` into a value of the \ncontrol\'s `output` type, returning a list of errors if it fails. In this case, it\'s trying to parse a `String` into a \n`Date`.\n\n### Wiring it up\n\nFinally, let\'s update `customerControl` to replace the `age` field with our new `dateOfBirth` field:\n\n```\ncustomerControl = \n    Control.record\n        (\\name dateOfBirth products id password ->\n            { name = name\n            , dateOfBirth = dateOfBirth\n            , products = products\n            , id = id\n            , password = password\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .dateOfBirth dateControl\n        |> Control.field .products productListControl\n        |> Control.field .id idControl\n        |> Control.field .password passwordControl\n        |> Control.endRecord\n        |> mdBefore createYourOwnIntro\n        |> mdAfter createYourOwnOutro\n```\n\nAnd the final result should look like this:\n';
 var $author$project$Tutorial$createYourOwnOutro = '\nNow our customer form is done... but to make it useful, we\'re going to want to embed it into a bigger Elm app. How can \nwe do that?\n';
 var $elm$time$Time$Jan = {$: 'Jan'};
