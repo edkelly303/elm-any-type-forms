@@ -1210,7 +1210,7 @@ idea.
             )
             |> field string
             |> field int
-            |> end
+            |> endRecord
             |> layout wizard
 
     wizard config subcontrols =
@@ -1338,7 +1338,7 @@ wrapView wrapper (Control control) =
 {-| Initialise a `Control` using a value of the type that the `Control` outputs.
 
     oneAndHello =
-        tuple ( "Int", int ) ( "String", string )
+        tuple int string
             |> initWith ( 1, "hello" )
 
 -}
@@ -1712,7 +1712,7 @@ result failureControl successControl =
 {-| A combinator that produces a tuple of two controls of given types.
 
     myTupleControl =
-        tuple ( "First", string ) ( "Second", int )
+        tuple string int
 
 -}
 tuple :
@@ -2190,7 +2190,7 @@ this library is built using the `record` combinator).
             )
             |> field string
             |> field int
-            |> end
+            |> endRecord
 
 -}
 record :
@@ -2249,7 +2249,7 @@ record toOutput =
     helloControl =
         record Hello
             |> field string
-            |> end
+            |> endRecord
 
 -}
 field :
@@ -2412,7 +2412,7 @@ field =
     helloControl =
         record Hello
             |> hiddenField string
-            |> end
+            |> endRecord
 
 -}
 hiddenField :
@@ -2575,7 +2575,7 @@ hiddenField =
     helloControl =
         record Hello
             |> readOnlyfield string
-            |> end
+            |> endRecord
 
 -}
 readOnlyField :
@@ -2817,7 +2817,7 @@ fieldHelper access fromInput (Control control) (RecordBuilder rec) =
     helloControl =
         record Hello
             |> field string
-            |> end
+            |> endRecord
 
 -}
 endRecord :
@@ -3619,7 +3619,7 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
             |> tag0 "NoArgs" NoArgs
             |> tag1 "OneArg" OneArg string
             |> tag2 "TwoArgs" TwoArgs int float
-            |> end
+            |> endCustomType
 
 -}
 customType :
@@ -4025,7 +4025,7 @@ endCustomType (CustomTypeBuilder builder) =
                         unit
             )
             |> tag0 "Unit" Unit
-            |> end
+            |> endCustomType
 
 -}
 tag0 :
@@ -4280,7 +4280,7 @@ null tag =
             )
             |> tag1 "Ok" Ok int
             |> tag1 "Err" Err string
-            |> end
+            |> endCustomType
 
 -}
 tag1 :
