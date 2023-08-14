@@ -68,7 +68,7 @@ view model =
 
 
 form =
-    Control.form
+    Control.simpleForm
         { control = lessons
         , onSubmit = Nothing
         , onUpdate = Just
@@ -200,12 +200,21 @@ lessons =
             )
         |> Control.label "Lessons"
         |> Control.id "lessons"
-        |> mdBefore "# An introduction to `elm-any-type-forms`"
+        |> htmlBefore lessonsHeading
+
+
+lessonsHeading =
+    md "# An introduction to `elm-any-type-forms`"
 
 
 yourFirstForm =
     Control.bool
-        |> mdBefore """
+        |> htmlBefore yourFirstFormIntro
+        |> htmlAfter yourFirstFormOutro
+
+
+yourFirstFormIntro =
+    md """
 ## Your first form
 Let's get up and running by building the simplest possible thing: a form that consists of just a single `Bool` control.
 
@@ -230,38 +239,49 @@ If you now run `elm reactor` from the root of your project folder and visit
 [http://localhost:8000/src/Main.elm](http://localhost:8000/src/Main.elm), you should see a webpage with a control 
 something like this:
 """
-        |> mdAfter """
+
+
+yourFirstFormOutro =
+    md """
 (Although the styling will be different, because `elm reactor` doesn't include any CSS.)
 
 Next up, let's take a look at some of the other basic controls included in this package.
-"""
+    """
 
 
 basicControls =
     Control.record (\bool string char int float -> { bool = bool, string = string, char = char, int = int, float = float })
         |> Control.field .bool
-            (Control.bool |> mdBefore """
+            (Control.bool |> htmlBefore (md """
 As we've already seen, there's `Control.bool`, which we render using a standard HTML `<input type="checkbox">` 
-element.""")
+element."""))
         |> Control.field .string
-            (Control.string |> mdBefore """
-`Control.string` is rendered as `<input type="text">`.""")
+            (Control.string |> htmlBefore (md """
+`Control.string` is rendered as `<input type="text">`."""))
         |> Control.field .char
-            (Control.char |> mdBefore """
+            (Control.char |> htmlBefore (md """
 `Control.char` is very similar, except that it provides built-in validation to ensure that the user enters exactly one 
-character.""")
+character."""))
         |> Control.field .int
-            (Control.int |> mdBefore """
+            (Control.int |> htmlBefore (md """
 `Control.int` and `Control.float` are both rendered as `<input type="number">`. Both provide built-in validation to 
-ensure that the user enters the right type of number.""")
+ensure that the user enters the right type of number."""))
         |> Control.field .float Control.float
         |> Control.endRecord
-        |> mdBefore """
+        |> htmlBefore basicControlsIntro
+        |> htmlAfter basicControlsOutro
+
+
+basicControlsIntro =
+    md """
 ## Basic controls
 The package includes simple controls for all of Elm's primitive types: `Bool`, 
 `String`, `Char`, `Int` and `Float`.
 """
-        |> mdAfter """
+
+
+basicControlsOutro =
+    md """
 All controls are displayed with `<label>` elements to help with accessibility. Each control is wrapped in a 
 `<div class="control-container">`, which contains the label, the input, and potentially also a 
 `<div class="control-feedback-container">` that contains a list of feedback from validation.
@@ -281,14 +301,15 @@ interesting?"""
 tuplesAndTriples =
     Control.record (\_ _ -> ())
         |> Control.field (\() -> ( 1, "hello" )) (Control.tuple Control.int Control.string)
-        |> Control.field (\() -> ( 1, "hello", 1.0 )) (Control.triple Control.int Control.string Control.float |> mdBefore tripleIntro)
+        |> Control.field (\() -> ( 1, "hello", 1.0 )) (Control.triple Control.int Control.string Control.float |> htmlBefore tripleIntro)
         |> Control.endRecord
-        |> mdBefore tuplesAndTriplesIntro
-        |> mdAfter tupleAndTripleOutro
+        |> htmlBefore tuplesAndTriplesIntro
+        |> htmlAfter tupleAndTripleOutro
 
 
 tuplesAndTriplesIntro =
-    """
+    md
+        """
 ## Tuples and Triples
 
 The simplest way of combining two values in Elm is to use a tuple. We can create tuples by passing two `Control`s to the
@@ -316,7 +337,8 @@ Which should look something like this:
 
 
 tripleIntro =
-    """
+    md
+        """
 Triples work too - if you change your code to: 
 
 ```
@@ -329,7 +351,8 @@ You'll get an `( Int, String, Float )` triple like this:
 
 
 tupleAndTripleOutro =
-    """
+    md
+        """
 But tuples and triples are Elm's least-loved data structures - if you want to combine multiple values, records tend to 
 be much more flexible and user-friendly.
 
@@ -343,7 +366,7 @@ records =
             |> Control.field .name Control.string
             |> Control.field .age Control.int
             |> Control.endRecord
-            |> mdAfter recordMiddle
+            |> htmlAfter recordMiddle
         )
         (Control.record (\name age -> { name = name, age = age })
             |> Control.field .name (Control.string |> Control.label "Name")
@@ -351,12 +374,13 @@ records =
             |> Control.endRecord
         )
         |> Control.layout (\config subcontrols -> List.concatMap .html subcontrols)
-        |> mdBefore recordIntro
-        |> mdAfter recordOutro
+        |> htmlBefore recordIntro
+        |> htmlAfter recordOutro
 
 
 recordIntro =
-    """
+    md
+        """
 ## Records and labels
 
 Imagine we are building a customer relationship management system for a company called Shapes.com. The company sells 
@@ -408,7 +432,8 @@ And you should see a form that looks like this:
 
 
 recordMiddle =
-    """
+    md
+        """
 ### Labelling controls
 That's ok...ish. But one of the nice things about records is that their fields are _named_. So really, we want the 
 controls to be labelled with the names of the fields. 
@@ -428,7 +453,8 @@ And you should now see something like this:
 
 
 recordOutro =
-    """
+    md
+        """
 **Note:** We're going to see other functions that work like `Control.label` later - this is a common pattern for 
 configuring controls. 
 
@@ -470,8 +496,8 @@ type Product
 
 customTypes =
     customTypesCustomerControl
-        |> mdBefore customTypesIntro
-        |> mdAfter customTypesOutro
+        |> htmlBefore customTypesIntro
+        |> htmlAfter customTypesOutro
 
 
 customTypesCustomerControl =
@@ -518,7 +544,8 @@ productControl =
 
 
 customTypesIntro =
-    """
+    md
+        """
 ## Custom types
 
 Shapes.com sells circles, triangles and rectangles to its customers. The company's unique selling point is that it 
@@ -613,7 +640,8 @@ And you'll see something like this:
 
 
 customTypesOutro =
-    """
+    md
+        """
 ### Maybe and Result
 You could easily implement Elm's `Maybe` and `Result` custom types using `Control.customType`. But 
 there's no need - they're included as `Control.maybe` and `Control.result`.
@@ -626,8 +654,8 @@ list-like things.
 
 listsDictsSetsAndArrays =
     productListControl
-        |> mdBefore listsIntro
-        |> mdAfter listsOutro
+        |> htmlBefore listsIntro
+        |> htmlAfter listsOutro
 
 
 productListControl =
@@ -636,7 +664,8 @@ productListControl =
 
 
 listsIntro =
-    """
+    md
+        """
 ## Lists, Dicts, Sets and Arrays
 
 Hang on a minute - if each Shapes.com customer can only purchase a single product, the company is probably not going to
@@ -666,7 +695,8 @@ This will give you a form that produces a list of products:
 
 
 listsOutro =
-    """
+    md
+        """
 ### Wiring it up 
 
 Now you can add your new `productListControl` to your `customerControl` as follows:
@@ -705,8 +735,8 @@ type Id
 
 mapping =
     idControl
-        |> mdBefore mappingIntro
-        |> mdAfter mappingOutro
+        |> htmlBefore mappingIntro
+        |> htmlAfter mappingOutro
 
 
 idControl =
@@ -719,7 +749,8 @@ idControl =
 
 
 mappingIntro =
-    """
+    md
+        """
 ## Converting control types
 
 In some circumstances, you may want to convert the type produced by a control to some other type. That's where 
@@ -758,7 +789,8 @@ It'll look something like this:
 
 
 mappingOutro =
-    """
+    md
+        """
 ### Wiring it up
 
 You can add this new field to your `Customer` control as follows:
@@ -784,8 +816,8 @@ customerControl =
 
 validation =
     nameControl
-        |> mdBefore validationIntro
-        |> mdAfter validationOutro
+        |> htmlBefore validationIntro
+        |> htmlAfter validationOutro
 
 
 nameControl =
@@ -796,7 +828,8 @@ nameControl =
 
 
 validationIntro =
-    """
+    md
+        """
 ## Validating controls
 
 We've shown how we can build controls that produce pretty much any Elm type - but what if just producing any old value 
@@ -843,7 +876,8 @@ This makes it easy to style errors and notifications differently with CSS, as yo
 
 
 validationOutro =
-    """
+    md
+        """
 ### Debouncing
 
 You'll notice that the field doesn't validate itself instantly when you type into it. This is because by 
@@ -879,8 +913,8 @@ multivalidation =
         |> Control.field .id idControl
         |> Control.field .password passwordControl
         |> Control.endRecord
-        |> mdBefore multivalidationIntro
-        |> mdAfter multivalidationOutro
+        |> htmlBefore multivalidationIntro
+        |> htmlAfter multivalidationOutro
 
 
 passwordControl =
@@ -913,7 +947,8 @@ confirmPasswordControl =
 
 
 multivalidationIntro =
-    """
+    md
+        """
 ## Multi-control validation
 
 Sometimes you might need to validate the input of one control based on the input of another. The classic example is
@@ -1038,7 +1073,8 @@ And you should see something a little like this:
 
 
 multivalidationOutro =
-    """
+    md
+        """
 We've now covered all the basics for building controls with primitives and combinators. The next thing we'll cover is 
 what to do when you want to create a completely new type of control from scratch.
 """
@@ -1046,8 +1082,8 @@ what to do when you want to create a completely new type of control from scratch
 
 createYourOwn =
     customerControl
-        |> mdBefore createYourOwnIntro
-        |> mdAfter createYourOwnOutro
+        |> htmlBefore createYourOwnIntro
+        |> htmlAfter createYourOwnOutro
 
 
 customerControl =
@@ -1099,7 +1135,8 @@ dateControl =
 
 
 createYourOwnIntro =
-    """
+    md
+        """
 ## Creating your own controls
 
 One final issue with our `customerControl`: why the heck are we including the customer's current age? In a year's time, 
@@ -1251,8 +1288,8 @@ customerControl =
         |> Control.field .id idControl
         |> Control.field .password passwordControl
         |> Control.endRecord
-        |> mdBefore createYourOwnIntro
-        |> mdAfter createYourOwnOutro
+        |> htmlBefore createYourOwnIntro
+        |> htmlAfter createYourOwnOutro
 ```
 
 And the final result should look like this:
@@ -1260,7 +1297,8 @@ And the final result should look like this:
 
 
 createYourOwnOutro =
-    """
+    md
+        """
 Now our customer form is done... but to make it useful, we're going to want to embed it into a bigger Elm app. How can 
 we do that?
 """
@@ -1268,12 +1306,13 @@ we do that?
 
 leavingTheSandbox =
     customerControl
-        |> mdBefore leavingTheSandboxIntro
-        |> mdAfter leavingTheSandboxOutro
+        |> htmlBefore leavingTheSandboxIntro
+        |> htmlAfter leavingTheSandboxOutro
 
 
 leavingTheSandboxIntro =
-    """
+    md
+        """
 ## Leaving the sandbox
 
 So, we've designed our `customerControl`, and tested it out in `Control.sandbox`... but where do we go from 
@@ -1565,18 +1604,20 @@ type Msg
 
 ### Instantiating our form
 
-Now, in `Crm.elm`, let's use `Control.form` to turn our `control` into a form:
+Now, in `Crm.elm`, let's use `Control.simpleForm` to turn our `control` into a basic form that will render as an HTML 
+`<form>` element, with a submit button at the bottom:
 
 ```
 customerForm = 
-    Control.form 
+    Control.simpleForm 
         { control = Customer.control
         , onUpdate = UpdatedCustomerForm
         , onSubmit = SubmttedCustomerForm
         }
 ```
 
-We'll use this form in all the other functions that we pass to `Browser.document` in our `Crm.elm`'s `main` function. 
+This `customerForm` is a record that contains the `init`, `update`, `submit`, `view` and `subscriptions` functions that 
+will bring our form to life. Next, we'll integrate these functions into our CRM app's `main` function. 
 
 ### Wiring it up
 
@@ -1662,7 +1703,8 @@ something like this:
 
 
 leavingTheSandboxOutro =
-    """
+    md
+        """
 Congratulations! You made it through the tutorial. There's quite a lot more to learn about this package, but that's 
 beyond the scope of this introduction. For a deeper dive, check out the docs at 
 [package.elm-lang.org](https://package.elm-lang.org/packages/edkelly303/elm-any-type-forms/latest).
@@ -1682,12 +1724,12 @@ beyond the scope of this introduction. For a deeper dive, check out the docs at
 -}
 
 
-mdBefore str =
-    Control.wrapView (\v -> md str :: v)
+htmlBefore str =
+    Control.wrapView (\v -> str :: v)
 
 
-mdAfter str =
-    Control.wrapView (\v -> v ++ [ md str ])
+htmlAfter str =
+    Control.wrapView (\v -> v ++ [ str ])
 
 
 md : String -> H.Html msg
