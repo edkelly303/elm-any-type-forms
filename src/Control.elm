@@ -1,5 +1,5 @@
 module Control exposing
-    ( Control, Form, sandbox, form
+    ( Control, Form, sandbox, simpleForm, form
     , bool, int, float, string, char, enum
     , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, create
@@ -18,7 +18,7 @@ module Control exposing
 
 # Creating a form
 
-@docs Control, Form, sandbox, form
+@docs Control, Form, sandbox, simpleForm, form
 
 
 # Basic controls
@@ -400,9 +400,51 @@ type End
 -}
 
 
-{-| Convert a `Control` into a `Form`, which you can then plumb into your Elm application. You will need to supply a
-couple of variants from your app's `Msg` type: one to handle updates of the form's state, and one to handle the
-submission of the form.
+{-| Convert a `Control` into a simple `Form`, rendered as a list of controls
+wrapped in an HTML `<form>` element, with a submit button at the bottom.
+
+You will need to supply a couple of variants from your app's `Msg` type: one to
+handle updates of the form's state, and one to handle the submission of the
+form, as follows:
+
+    type alias Msg
+        = FormUpdated (Delta String)
+        | FormSubmitted
+
+    mySimpleForm : Form (State String) (Delta String) Int Msg
+    mySimpleForm =
+        form
+            { control = int
+            , onUpdate = FormUpdated
+            , onSubmit = FormSubmitted
+            }
+
+Now you can integrate your `Form` into a larger Elm app:
+
+1.  Call `mySimpleForm.init` or `mySimpleForm.initWith` in your `init` function.
+2.  Call `mySimpleForm.update` in the `FormUpdated` branch of your `update` function.
+3.  Call `mySimpleForm.submit` in the `FormSubmitted` branch of your `update` function.
+4.  Call `mySimpleForm.view` in your `view` function.
+5.  Call `mySimpleForm.subscriptions` in your `subscriptions` function.
+
+-}
+simpleForm : { control : Control state delta output, onUpdate : Delta delta -> msg, onSubmit : msg } -> Form state delta output msg
+simpleForm { onUpdate, onSubmit, control } =
+    form
+        { control = control
+        , onUpdate = onUpdate
+        , view =
+            \controlView ->
+                H.form [ HE.onSubmit onSubmit ]
+                    (controlView ++ [ H.button [ HA.type_ "submit" ] [ H.text "Submit" ] ])
+        }
+
+
+{-| Convert a `Control` into a `Form`, and render the form however you like.
+
+You will need to supply a variant from your app's `Msg` type to handle updates of the form's state.
+You will also need to supply a `view` function that takes the `List (Html msg)` produced by the
+supplied `Control` and returns an `Html msg`, as follows:
 
     type alias Msg
         = FormUpdated (Delta String)
@@ -413,12 +455,24 @@ submission of the form.
         form
             { control = int
             , onUpdate = FormUpdated
-            , onSubmit = FormSubmitted
+            , view =
+                \controlView ->
+                    H.form
+                        [ HE.onSubmit FormSubmitted ]
+                        (controlView ++ [ H.button [ HA.type_ "submit" ] [ H.text "Submit" ] ])
             }
 
+Now you can integrate your `Form` into a larger Elm app:
+
+1.  Call `myForm.init` or `myForm.initWith` in your `init` function.
+2.  Call `myForm.update` in the `FormUpdated` branch of your `update` function.
+3.  Call `myForm.submit` in the `FormSubmitted` branch of your `update` function.
+4.  Call `myForm.view` in your `view` function.
+5.  Call `myForm.subscriptions` in your `subscriptions` function.
+
 -}
-form : { control : Control state delta output, onUpdate : Delta delta -> msg, onSubmit : msg } -> Form state delta output msg
-form { onUpdate, onSubmit, control } =
+form : { control : Control state delta output, onUpdate : Delta delta -> msg, view : List (Html msg) -> Html msg } -> Form state delta output msg
+form { control, onUpdate, view } =
     let
         path =
             Path.root
@@ -460,8 +514,8 @@ form { onUpdate, onSubmit, control } =
                 status =
                     getStatus fns.parse fns.collectErrors alerts s
             in
-            H.form [ HE.onSubmit onSubmit ]
-                ((fns.view
+            view
+                (fns.view
                     { id = Maybe.withDefault (Path.toString path) fns.id
                     , name = Maybe.withDefault (Path.toString path) fns.name
                     , label = fns.label
@@ -472,8 +526,6 @@ form { onUpdate, onSubmit, control } =
                     , selected = internalState.selected
                     }
                     |> List.map (H.map onUpdate)
-                 )
-                    ++ [ H.button [ HA.type_ "submit" ] [ H.text "Submit" ] ]
                 )
     , submit =
         \state ->
