@@ -1449,7 +1449,7 @@ int =
 
                     Nothing ->
                         Err [ "Must be a whole number" ]
-        , subscriptions = \state -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "Int"
         }
         |> debounce 500
@@ -1484,7 +1484,7 @@ float =
 
                     Nothing ->
                         Err [ "Must be a number" ]
-        , subscriptions = \state -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "Float"
         }
         |> debounce 500
@@ -1511,7 +1511,7 @@ string =
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse = Ok
-        , subscriptions = \state -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "String"
         }
         |> debounce 500
@@ -1549,7 +1549,7 @@ char =
 
                     Nothing ->
                         Err [ "Must not be blank" ]
-        , subscriptions = \state -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "Char"
         }
         |> debounce 500
@@ -1634,7 +1634,7 @@ bool =
                 ]
         , update = \delta _ -> ( delta, Cmd.none )
         , parse = Ok
-        , subscriptions = \state -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "Bool"
         }
 
@@ -2109,7 +2109,7 @@ dict keyControl valueControl =
         (tuple
             (keyControl |> respond { alert = "@@dict-unique-keys", fail = True, message = "Keys must be unique" })
             valueControl
-            |> layout (\config subcontrols -> List.concatMap .html subcontrols)
+            |> layout (\_ subcontrols -> List.concatMap .html subcontrols)
         )
         |> alertAtIndexes
             (List.map Tuple.first >> nonUniqueIndexes)
@@ -3503,13 +3503,11 @@ endCustomType (CustomTypeBuilder builder) =
                                 initialiseCustomTypeDeltas builder.initialiseDeltas deltaSetters initialDeltas
                                     |> List.indexedMap
                                         (\idx initDelta ->
-                                            if Debug.log "idx" (idx + 1) == Debug.log "selected" selected then
+                                            if (idx + 1) == selected then
                                                 initWithDelta
-                                                    |> Debug.log "initWithDelta"
 
                                             else
                                                 initDelta
-                                                    |> Debug.log "initDelta"
                                         )
                         in
                         ( initWithState
