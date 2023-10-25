@@ -7,7 +7,7 @@ type Path
 
 root : Path
 root =
-    Path [ 1 ]
+    Path []
 
 
 add : Int -> Path -> Path
@@ -21,4 +21,3 @@ toString (Path path) =
         |> List.reverse
         |> List.map String.fromInt
         |> String.join "-"
-        |> String.toLower
