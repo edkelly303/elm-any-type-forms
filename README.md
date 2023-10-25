@@ -47,7 +47,6 @@ worrying about any annoying state management or book-keeping.
 * The types of the forms it generates are complex and weird-looking.
 * The type signatures of some of the functions in the `Control` module are quite terrifying.
 * The implementation is very complex, undocumented, and difficult to understand.
-* There are a few known bugs - see "Known bugs and future work" at the end of this README.
 
 # Getting started
 
@@ -67,8 +66,3 @@ $ cd examples
 $ npm install
 $ . run
 ```
-
-## Known bugs and future work
-
-- `Control.initWith` doesn't send out initial Cmds for record fields or custom 
-type variants.
