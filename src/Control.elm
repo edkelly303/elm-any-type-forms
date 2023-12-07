@@ -668,8 +668,8 @@ Here's how we could create a control like the famous
     counterControl : Control Int CounterDelta Int
     counterControl =
         create
-            { initEmpty = 0
-            , initPrefilled = identity
+            { blank = 0
+            , prefill = identity
             , update =
                 \delta state ->
                     case delta of
