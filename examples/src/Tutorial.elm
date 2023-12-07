@@ -1207,7 +1207,7 @@ type.
 dateControl =
     Control.create
         { label = "Date of birth"
-        , initEmpty = ( "1970-01-01", Cmd.none )
+        , initBlank = ( "1970-01-01", Cmd.none )
         , initPrefilled = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
         , update = \\delta state -> ( delta, Cmd.none )
         , view =
@@ -1239,7 +1239,7 @@ This looks like a lot to digest, but we can take it one field at a time.
 #### label : `String`
 This is the default label that will be displayed on the control.
 
-#### initEmpty : `( state, Cmd delta )`
+#### initBlank : `( state, Cmd delta )`
 This specifies the default internal `state` of the control when it's initialised, 
 together with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we 
 don't need to send any `Cmd`s.
