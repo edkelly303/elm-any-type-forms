@@ -22,7 +22,7 @@ main =
 init () =
     let
         ( initialForm, cmd ) =
-            form.init
+            form.blank
     in
     ( { form = initialForm
       , output = Nothing
@@ -1107,8 +1107,8 @@ customerControl =
 dateControl =
     Control.create
         { label = "Date of birth"
-        , initEmpty = ( "1970-01-01", Cmd.none )
-        , initWith = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
+        , initBlank = ( "1970-01-01", Cmd.none )
+        , initPrefilled = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
         , update = \delta state -> ( delta, Cmd.none )
         , view =
             \{ state, id, label, name, class } ->
@@ -1208,7 +1208,7 @@ dateControl =
     Control.create
         { label = "Date of birth"
         , initEmpty = ( "1970-01-01", Cmd.none )
-        , initWith = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
+        , initPrefilled = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
         , update = \\delta state -> ( delta, Cmd.none )
         , view =
             \\{ state, id, label, name, class } ->
@@ -1244,7 +1244,7 @@ This specifies the default internal `state` of the control when it's initialised
 together with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we 
 don't need to send any `Cmd`s.
 
-#### initWith : `output -> ( state, Cmd delta )`
+#### initPrefilled : `output -> ( state, Cmd delta )`
 This defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial 
 `Cmd` if needed. In this case, we're teaching it how to turn a `Date` into a `String` and there's no `Cmd` to send.
 
@@ -1616,18 +1616,18 @@ customerForm =
         }
 ```
 
-This `customerForm` is a record that contains the `init`, `update`, `submit`, `view` and `subscriptions` functions that 
-will bring our form to life. Next, we'll integrate these functions into our CRM app's `main` function. 
+This `customerForm` is a record that contains the functions we'll need to bring our form to life. Next, we'll integrate 
+these functions into our CRM app's `init`, `view`, `update` and `subscriptions` functions. 
 
 ### Wiring it up
 
-Let's start with the `init` function:
+Let's start with our app's `init` function:
 
 ```
 init flags = 
     let
         ( formState, cmd ) = 
-            customerForm.init
+            customerForm.blank
     in
     ( { customers = [] 
       , customerFormState = formState

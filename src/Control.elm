@@ -6,7 +6,7 @@ module Control exposing
     , failIf, noteIf
     , alertIf, respond
     , alertAtIndexes
-    , initWith, debounce, id, name, label, class, classList, wrapView
+    , default, debounce, id, name, label, class, classList, wrapView
     , RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
     , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
@@ -87,7 +87,7 @@ can achieve this as follows:
 
 # Configuring controls
 
-@docs initWith, debounce, id, name, label, class, classList, wrapView
+@docs default, debounce, id, name, label, class, classList, wrapView
 
 
 # Building record combinators
@@ -146,8 +146,8 @@ import Time
 Elm `Program` to initialise, view, update, subscribe, and submit your form.
 -}
 type alias Form state delta output msg =
-    { init : ( State state, Cmd msg )
-    , initWith : output -> ( State state, Cmd msg )
+    { blank : ( State state, Cmd msg )
+    , prefill : output -> ( State state, Cmd msg )
     , update : Delta delta -> State state -> ( State state, Cmd msg )
     , view : State state -> Html msg
     , subscriptions : State state -> Sub msg
@@ -158,7 +158,7 @@ type alias Form state delta output msg =
 {-| Configuration for a custom control. You need to supply the following fields:
 
   - `initEmpty`: a default initial "empty" value for the `state` of the control. For a control whose `state` is of type `String`, this might be `""`, for a number it might be `0`.
-  - `initWith`: a function that initialises the control's `state` from a value of the control's `output` type. For a control that outputs an `Int`, but whose `state` is a `String`, this might be `String.fromInt`.
+  - `initPrefilled`: a function that initialises the control's `state` from a value of the control's `output` type. For a control that outputs an `Int`, but whose `state` is a `String`, this might be `String.fromInt`.
   - `update`: a function that updates the `state` of the control based on its existing `state` and a `delta` type that it receives. This is exactly analogous to an Elm program's update function, where `state` = `Model` and `delta` = `Msg`.
   - `view`: a function that outputs `Html delta` based on the `state` of the control. This is similar to an Elm program's view function, except instead of just taking the `state` as an argument, it takes a record containing the `state` plus the id, name, class, and label for the input.
   - `subscriptions`: a function that outputs `Sub delta` based on the `state` of the control. This is exactly analogous to an Elm program's subscriptions function.
@@ -166,8 +166,8 @@ type alias Form state delta output msg =
 
 -}
 type alias ControlConfig state delta output =
-    { initEmpty : ( state, Cmd delta )
-    , initWith : output -> ( state, Cmd delta )
+    { initBlank : ( state, Cmd delta )
+    , initPrefilled : output -> ( state, Cmd delta )
     , update : delta -> state -> ( state, Cmd delta )
     , view : { label : String, id : String, name : String, class : String, state : state } -> List (Html delta)
     , subscriptions : state -> Sub delta
@@ -204,8 +204,8 @@ type RecordFns input state delta output recordOutput
 type ControlFns input state delta output
     = ControlFns
         { index : Int
-        , init : ( State state, Cmd (Delta delta) )
-        , initWith : input -> ( State state, Cmd (Delta delta) )
+        , initBlank : ( State state, Cmd (Delta delta) )
+        , initPrefilled : input -> ( State state, Cmd (Delta delta) )
         , baseUpdate : Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
         , update : Delta delta -> State state -> ( State state, Cmd (Delta delta) )
         , view : InternalViewConfig state -> List (Html (Delta delta))
@@ -415,7 +415,7 @@ form, as follows:
 
 Now you can integrate your `Form` into a larger Elm app:
 
-1.  Call `mySimpleForm.init` or `mySimpleForm.initWith` in your `init` function.
+1.  Call `mySimpleForm.blank` or `mySimpleForm.prefill` in your `init` function.
 2.  Call `mySimpleForm.update` in the `FormUpdated` branch of your `update` function.
 3.  Call `mySimpleForm.submit` in the `FormSubmitted` branch of your `update` function.
 4.  Call `mySimpleForm.view` in your `view` function.
@@ -458,7 +458,7 @@ supplied `Control` and returns an `Html msg`, as follows:
 
 Now you can integrate your `Form` into a larger Elm app:
 
-1.  Call `myForm.init` or `myForm.initWith` in your `init` function.
+1.  Call `myForm.blank` or `myForm.prefill` in your `init` function.
 2.  Call `myForm.update` in the `FormUpdated` branch of your `update` function.
 3.  Call `myForm.submit` in the `FormSubmitted` branch of your `update` function.
 4.  Call `myForm.view` in your `view` function.
@@ -477,17 +477,17 @@ form { control, onUpdate, view } =
         (ControlFns fns) =
             c path
     in
-    { init = fns.init |> Tuple.mapSecond (Cmd.map onUpdate)
-    , initWith =
+    { blank = fns.initBlank |> Tuple.mapSecond (Cmd.map onUpdate)
+    , prefill =
         \output ->
             let
                 (Control initialisedControl) =
-                    initWith output control
+                    default output control
 
                 (ControlFns fns2) =
                     initialisedControl Path.root
             in
-            fns2.init
+            fns2.initBlank
                 |> Tuple.mapSecond (Cmd.map onUpdate)
     , update =
         \msg state ->
@@ -582,7 +582,7 @@ sandbox { outputToString, control } =
     Browser.element
         { init =
             \() ->
-                fns.init
+                fns.initBlank
         , update =
             \msg state ->
                 fns.update msg state
@@ -669,7 +669,7 @@ Here's how we could create a control like the famous
     counterControl =
         create
             { initEmpty = 0
-            , initWith = identity
+            , initPrefilled = identity
             , update =
                 \delta state ->
                     case delta of
@@ -731,13 +731,13 @@ create controlConfig =
             ControlFns
                 { path = path
                 , index = 0
-                , init =
-                    controlConfig.initEmpty
+                , initBlank =
+                    controlConfig.initBlank
                         |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                         |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
-                , initWith =
+                , initPrefilled =
                     \input ->
-                        controlConfig.initWith input
+                        controlConfig.initPrefilled input
                             |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                             |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , baseUpdate = preUpdate
@@ -1396,27 +1396,27 @@ wrapView wrapper (Control control) =
 
 
 {-
-   d888888b d8b   db d888888b d888888b db   d8b   db d888888b d888888b db   db
-     `88'   888o  88   `88'   `~~88~~' 88   I8I   88   `88'   `~~88~~' 88   88
-      88    88V8o 88    88       88    88   I8I   88    88       88    88ooo88
-      88    88 V8o88    88       88    Y8   I8I   88    88       88    88~~~88
-     .88.   88  V888   .88.      88    `8b d8'8b d8'   .88.      88    88   88
-   Y888888P VP   V8P Y888888P    YP     `8b8' `8d8'  Y888888P    YP    YP   YP
+   d8888b. d88888b d88888b  .d8b.  db    db db      d888888b
+   88  `8D 88'     88'     d8' `8b 88    88 88      `~~88~~'
+   88   88 88ooooo 88ooo   88ooo88 88    88 88         88
+   88   88 88~~~~~ 88~~~   88~~~88 88    88 88         88
+   88  .8D 88.     88      88   88 88b  d88 88booo.    88
+   Y8888D' Y88888P YP      YP   YP ~Y8888P' Y88888P    YP
 -}
 
 
-{-| Initialise a `Control` using a value of the type that the `Control` outputs.
+{-| Set a default `output` value for a `Control`.
 
     oneAndHello =
         tuple int string
-            |> initWith ( 1, "hello" )
+            |> default ( 1, "hello" )
 
 -}
-initWith : input -> AdvancedControl input state delta output -> AdvancedControl input state delta output
-initWith input (Control control) =
+default : input -> AdvancedControl input state delta output -> AdvancedControl input state delta output
+default input (Control control) =
     let
         initialiser (ControlFns i) =
-            ControlFns { i | init = i.initWith input }
+            ControlFns { i | initBlank = i.initPrefilled input }
     in
     Control (control >> initialiser)
 
@@ -1437,8 +1437,8 @@ initWith input (Control control) =
 int : Control String String Int
 int =
     create
-        { initEmpty = ( "", Cmd.none )
-        , initWith = \s -> ( String.fromInt s, Cmd.none )
+        { initBlank = ( "", Cmd.none )
+        , initPrefilled = \s -> ( String.fromInt s, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "numeric"
         , parse =
@@ -1472,8 +1472,8 @@ int =
 float : Control String String Float
 float =
     create
-        { initEmpty = ( "", Cmd.none )
-        , initWith = \f -> ( String.fromFloat f, Cmd.none )
+        { initBlank = ( "", Cmd.none )
+        , initPrefilled = \f -> ( String.fromFloat f, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "decimal"
         , parse =
@@ -1506,8 +1506,8 @@ float =
 string : Control String String String
 string =
     create
-        { initEmpty = ( "", Cmd.none )
-        , initWith = \s -> ( s, Cmd.none )
+        { initBlank = ( "", Cmd.none )
+        , initPrefilled = \s -> ( s, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse = Ok
@@ -1533,8 +1533,8 @@ string =
 char : Control String String Char
 char =
     create
-        { initEmpty = ( "", Cmd.none )
-        , initWith = \c -> ( String.fromChar c, Cmd.none )
+        { initBlank = ( "", Cmd.none )
+        , initPrefilled = \c -> ( String.fromChar c, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse =
@@ -1589,8 +1589,8 @@ enum :
     -> Control enum enum enum
 enum first second rest =
     create
-        { initEmpty = ( Tuple.second first, Cmd.none )
-        , initWith = \e -> ( e, Cmd.none )
+        { initBlank = ( Tuple.second first, Cmd.none )
+        , initPrefilled = \e -> ( e, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = enumView (first :: second :: rest)
         , parse = Ok
@@ -1615,8 +1615,8 @@ enum first second rest =
 bool : Control Bool Bool Bool
 bool =
     create
-        { initEmpty = ( False, Cmd.none )
-        , initWith = \b -> ( b, Cmd.none )
+        { initBlank = ( False, Cmd.none )
+        , initPrefilled = \b -> ( b, Cmd.none )
         , view =
             \config ->
                 [ H.label
@@ -1875,7 +1875,7 @@ list (Control ctrl) =
                                     ctrl path
 
                                 ( initialState, initialCmd ) =
-                                    fns.init
+                                    fns.initBlank
 
                                 before =
                                     List.take idx state
@@ -1958,7 +1958,7 @@ list (Control ctrl) =
             ControlFns
                 { path = path
                 , index = 0
-                , initWith =
+                , initPrefilled =
                     \input ->
                         let
                             ( initialState, initialCmds ) =
@@ -1969,7 +1969,7 @@ list (Control ctrl) =
                                                 ctrl (Path.add idx path)
 
                                             ( itemState, itemCmd ) =
-                                                itemControl.initWith itemInput
+                                                itemControl.initPrefilled itemInput
                                         in
                                         ( itemState :: itemInputs
                                         , Cmd.map (ChangeItem idx) itemCmd :: itemCmds
@@ -1981,7 +1981,7 @@ list (Control ctrl) =
                         ( State { status = Intact_, selected = 1 } initialState
                         , Cmd.map ChangeStateInternally (Cmd.batch initialCmds)
                         )
-                , init =
+                , initBlank =
                     ( State { status = Intact_, selected = 1 } []
                     , Cmd.none
                     )
@@ -2508,7 +2508,7 @@ field fromInput (Control control) (RecordBuilder rec) =
                 in
                 rec.initialStates path
                     << Tuple.pair
-                        (fns.init
+                        (fns.initBlank
                             |> Tuple.first
                         )
         , initialDeltas =
@@ -2522,7 +2522,7 @@ field fromInput (Control control) (RecordBuilder rec) =
                 in
                 rec.initialDeltas path
                     << Tuple.pair
-                        (fns.init
+                        (fns.initBlank
                             |> Tuple.second
                         )
         , updater = rec.updater >> recordStateUpdater
@@ -2749,11 +2749,11 @@ endRecord (RecordBuilder rec) =
             ControlFns
                 { path = path
                 , index = 0
-                , init =
+                , initBlank =
                     ( State { status = Intact_, selected = 1 } initialStates
                     , initialiseRecordDeltas rec.deltaInitialiser deltaSetters initialDeltas
                     )
-                , initWith = \output -> initialiseRecordStates rec.initialiser output fns deltaSetters
+                , initPrefilled = \output -> initialiseRecordStates rec.initialiser output fns deltaSetters
                 , baseUpdate = \_ -> update
                 , update = update
                 , subControlViews = \config -> subcontrolViews config
@@ -3019,7 +3019,7 @@ recordStateInitialiser next states deltas recordInput ( RecordFns fns, restFns )
         ( state, delta ) =
             recordInput
                 |> fns.fromInput
-                |> controlFns.initWith
+                |> controlFns.initPrefilled
     in
     next (states << Tuple.pair state) (Cmd.map deltaSetter delta :: deltas) recordInput restFns restDeltaSetters
 
@@ -3708,7 +3708,7 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
                 in
                 builder.initialStates path
                     << Tuple.pair
-                        (controlFns.init
+                        (controlFns.initBlank
                             |> Tuple.first
                         )
         , initialDeltas =
@@ -3719,7 +3719,7 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
                 in
                 builder.initialDeltas path
                     << Tuple.pair
-                        (controlFns.init
+                        (controlFns.initBlank
                             |> Tuple.second
                         )
         , updater = builder.updater >> customTypeStateUpdater
@@ -3999,17 +3999,17 @@ endCustomType (CustomTypeBuilder builder) =
             ControlFns
                 { path = path
                 , index = 0
-                , init =
+                , initBlank =
                     ( State { status = Intact_, selected = 1 } initialStates
                     , Cmd.batch (initialiseCustomTypeDeltas builder.initialiseDeltas deltaSetters initialDeltas)
                     )
-                , initWith =
+                , initPrefilled =
                     \tag ->
                         let
                             destructor =
                                 applyInputToStateConvertersToDestructor builder.applyInputs builder.destructor stateSetters
 
-                            ( (State { selected } _) as initWithState, initWithDelta ) =
+                            ( (State { selected } _) as initPrefilledState, initPrefilledDelta ) =
                                 destructor tag
 
                             deltas =
@@ -4017,13 +4017,13 @@ endCustomType (CustomTypeBuilder builder) =
                                     |> List.indexedMap
                                         (\idx initDelta ->
                                             if (idx + 1) == selected then
-                                                initWithDelta
+                                                initPrefilledDelta
 
                                             else
                                                 initDelta
                                         )
                         in
-                        ( initWithState
+                        ( initPrefilledState
                         , Cmd.batch deltas
                         )
                 , baseUpdate = \_ -> update
@@ -4328,8 +4328,8 @@ tag0 label_ tag =
 null : tag -> Control () () tag
 null tag =
     create
-        { initEmpty = ( (), Cmd.none )
-        , initWith = \_ -> ( (), Cmd.none )
+        { initBlank = ( (), Cmd.none )
+        , initPrefilled = \_ -> ( (), Cmd.none )
         , update = \() () -> ( (), Cmd.none )
         , view = \_ -> []
         , parse = \() -> Ok tag
@@ -6128,7 +6128,7 @@ convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, 
                 (\tupledInput ->
                     let
                         ( state, delta ) =
-                            fns.initWith tupledInput
+                            fns.initPrefilled tupledInput
 
                         maybeOverrides =
                             maybeOverrideBefore ( Just state, maybeOverrideAfter )
