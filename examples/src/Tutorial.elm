@@ -1107,8 +1107,8 @@ customerControl =
 dateControl =
     Control.create
         { label = "Date of birth"
-        , initBlank = ( "1970-01-01", Cmd.none )
-        , initPrefilled = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
+        , blank = ( "1970-01-01", Cmd.none )
+        , prefill = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
         , update = \delta state -> ( delta, Cmd.none )
         , view =
             \{ state, id, label, name, class } ->

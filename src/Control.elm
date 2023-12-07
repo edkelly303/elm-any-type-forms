@@ -166,8 +166,8 @@ type alias Form state delta output msg =
 
 -}
 type alias ControlConfig state delta output =
-    { initBlank : ( state, Cmd delta )
-    , initPrefilled : output -> ( state, Cmd delta )
+    { blank : ( state, Cmd delta )
+    , prefill : output -> ( state, Cmd delta )
     , update : delta -> state -> ( state, Cmd delta )
     , view : { label : String, id : String, name : String, class : String, state : state } -> List (Html delta)
     , subscriptions : state -> Sub delta
@@ -732,12 +732,12 @@ create controlConfig =
                 { path = path
                 , index = 0
                 , initBlank =
-                    controlConfig.initBlank
+                    controlConfig.blank
                         |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                         |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , initPrefilled =
                     \input ->
-                        controlConfig.initPrefilled input
+                        controlConfig.prefill input
                             |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                             |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
                 , baseUpdate = preUpdate
@@ -1437,8 +1437,8 @@ default input (Control control) =
 int : Control String String Int
 int =
     create
-        { initBlank = ( "", Cmd.none )
-        , initPrefilled = \s -> ( String.fromInt s, Cmd.none )
+        { blank = ( "", Cmd.none )
+        , prefill = \s -> ( String.fromInt s, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "numeric"
         , parse =
@@ -1472,8 +1472,8 @@ int =
 float : Control String String Float
 float =
     create
-        { initBlank = ( "", Cmd.none )
-        , initPrefilled = \f -> ( String.fromFloat f, Cmd.none )
+        { blank = ( "", Cmd.none )
+        , prefill = \f -> ( String.fromFloat f, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "decimal"
         , parse =
@@ -1506,8 +1506,8 @@ float =
 string : Control String String String
 string =
     create
-        { initBlank = ( "", Cmd.none )
-        , initPrefilled = \s -> ( s, Cmd.none )
+        { blank = ( "", Cmd.none )
+        , prefill = \s -> ( s, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse = Ok
@@ -1533,8 +1533,8 @@ string =
 char : Control String String Char
 char =
     create
-        { initBlank = ( "", Cmd.none )
-        , initPrefilled = \c -> ( String.fromChar c, Cmd.none )
+        { blank = ( "", Cmd.none )
+        , prefill = \c -> ( String.fromChar c, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = textControlView "text"
         , parse =
@@ -1589,8 +1589,8 @@ enum :
     -> Control enum enum enum
 enum first second rest =
     create
-        { initBlank = ( Tuple.second first, Cmd.none )
-        , initPrefilled = \e -> ( e, Cmd.none )
+        { blank = ( Tuple.second first, Cmd.none )
+        , prefill = \e -> ( e, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
         , view = enumView (first :: second :: rest)
         , parse = Ok
@@ -1615,8 +1615,8 @@ enum first second rest =
 bool : Control Bool Bool Bool
 bool =
     create
-        { initBlank = ( False, Cmd.none )
-        , initPrefilled = \b -> ( b, Cmd.none )
+        { blank = ( False, Cmd.none )
+        , prefill = \b -> ( b, Cmd.none )
         , view =
             \config ->
                 [ H.label
@@ -4328,8 +4328,8 @@ tag0 label_ tag =
 null : tag -> Control () () tag
 null tag =
     create
-        { initBlank = ( (), Cmd.none )
-        , initPrefilled = \_ -> ( (), Cmd.none )
+        { blank = ( (), Cmd.none )
+        , prefill = \_ -> ( (), Cmd.none )
         , update = \() () -> ( (), Cmd.none )
         , view = \_ -> []
         , parse = \() -> Ok tag

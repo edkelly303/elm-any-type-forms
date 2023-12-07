@@ -608,7 +608,7 @@ ${variant}`;
   var VERSION = "1.2.0-beta.3";
   var TARGET_NAME = "tutorial";
   var INITIAL_ELM_COMPILED_TIMESTAMP = Number(
-    "1701978059088"
+    "1701978282601"
   );
   var ORIGINAL_COMPILATION_MODE = "standard";
   var ORIGINAL_BROWSER_UI_POSITION = "BottomLeft";
@@ -18615,7 +18615,7 @@ var $author$project$Control$create = function (controlConfig) {
 							$elm$core$Tuple$mapFirst,
 							$author$project$Control$State(
 								{selected: 1, status: $author$project$Control$Intact_}),
-							controlConfig.initBlank)),
+							controlConfig.blank)),
 					initPrefilled: function (input) {
 						return A2(
 							$elm$core$Tuple$mapSecond,
@@ -18624,7 +18624,7 @@ var $author$project$Control$create = function (controlConfig) {
 								$elm$core$Tuple$mapFirst,
 								$author$project$Control$State(
 									{selected: 1, status: $author$project$Control$Intact_}),
-								controlConfig.initPrefilled(input)));
+								controlConfig.prefill(input)));
 					},
 					label: controlConfig.label,
 					name: $elm$core$Maybe$Nothing,
@@ -18699,12 +18699,12 @@ var $elm$html$Html$Events$onClick = function (msg) {
 };
 var $author$project$Control$bool = $author$project$Control$create(
 	{
-		initBlank: _Utils_Tuple2(false, $elm$core$Platform$Cmd$none),
-		initPrefilled: function (b) {
-			return _Utils_Tuple2(b, $elm$core$Platform$Cmd$none);
-		},
+		blank: _Utils_Tuple2(false, $elm$core$Platform$Cmd$none),
 		label: 'Bool',
 		parse: $elm$core$Result$Ok,
+		prefill: function (b) {
+			return _Utils_Tuple2(b, $elm$core$Platform$Cmd$none);
+		},
 		subscriptions: function (_v0) {
 			return $elm$core$Platform$Sub$none;
 		},
@@ -18833,12 +18833,7 @@ var $author$project$Control$char = A2(
 	500,
 	$author$project$Control$create(
 		{
-			initBlank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
-			initPrefilled: function (c) {
-				return _Utils_Tuple2(
-					$elm$core$String$fromChar(c),
-					$elm$core$Platform$Cmd$none);
-			},
+			blank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			label: 'Char',
 			parse: function (str) {
 				var _v0 = $elm$core$String$uncons(str);
@@ -18854,6 +18849,11 @@ var $author$project$Control$char = A2(
 						_List_fromArray(
 							['Must not be blank']));
 				}
+			},
+			prefill: function (c) {
+				return _Utils_Tuple2(
+					$elm$core$String$fromChar(c),
+					$elm$core$Platform$Cmd$none);
 			},
 			subscriptions: function (_v2) {
 				return $elm$core$Platform$Sub$none;
@@ -19542,12 +19542,7 @@ var $author$project$Control$float = A2(
 	500,
 	$author$project$Control$create(
 		{
-			initBlank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
-			initPrefilled: function (f) {
-				return _Utils_Tuple2(
-					$elm$core$String$fromFloat(f),
-					$elm$core$Platform$Cmd$none);
-			},
+			blank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			label: 'Float',
 			parse: function (state) {
 				var _v0 = $elm$core$String$toFloat(state);
@@ -19559,6 +19554,11 @@ var $author$project$Control$float = A2(
 						_List_fromArray(
 							['Must be a number']));
 				}
+			},
+			prefill: function (f) {
+				return _Utils_Tuple2(
+					$elm$core$String$fromFloat(f),
+					$elm$core$Platform$Cmd$none);
 			},
 			subscriptions: function (_v1) {
 				return $elm$core$Platform$Sub$none;
@@ -19607,12 +19607,7 @@ var $author$project$Control$int = A2(
 	500,
 	$author$project$Control$create(
 		{
-			initBlank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
-			initPrefilled: function (s) {
-				return _Utils_Tuple2(
-					$elm$core$String$fromInt(s),
-					$elm$core$Platform$Cmd$none);
-			},
+			blank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			label: 'Int',
 			parse: function (state) {
 				var _v0 = $elm$core$String$toInt(state);
@@ -19624,6 +19619,11 @@ var $author$project$Control$int = A2(
 						_List_fromArray(
 							['Must be a whole number']));
 				}
+			},
+			prefill: function (s) {
+				return _Utils_Tuple2(
+					$elm$core$String$fromInt(s),
+					$elm$core$Platform$Cmd$none);
 			},
 			subscriptions: function (_v1) {
 				return $elm$core$Platform$Sub$none;
@@ -19673,12 +19673,12 @@ var $author$project$Control$string = A2(
 	500,
 	$author$project$Control$create(
 		{
-			initBlank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
-			initPrefilled: function (s) {
-				return _Utils_Tuple2(s, $elm$core$Platform$Cmd$none);
-			},
+			blank: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			label: 'String',
 			parse: $elm$core$Result$Ok,
+			prefill: function (s) {
+				return _Utils_Tuple2(s, $elm$core$Platform$Cmd$none);
+			},
 			subscriptions: function (_v0) {
 				return $elm$core$Platform$Sub$none;
 			},
@@ -20908,12 +20908,7 @@ var $justinmimbs$date$Date$fromIsoString = A2(
 				$elm$core$Maybe$withDefault('')))));
 var $author$project$Tutorial$dateControl = $author$project$Control$create(
 	{
-		initBlank: _Utils_Tuple2('1970-01-01', $elm$core$Platform$Cmd$none),
-		initPrefilled: function (date) {
-			return _Utils_Tuple2(
-				A2($justinmimbs$date$Date$format, 'yyyy-MM-dd', date),
-				$elm$core$Platform$Cmd$none);
-		},
+		blank: _Utils_Tuple2('1970-01-01', $elm$core$Platform$Cmd$none),
 		label: 'Date of birth',
 		parse: function (state) {
 			var _v0 = $justinmimbs$date$Date$fromIsoString(state);
@@ -20926,6 +20921,11 @@ var $author$project$Tutorial$dateControl = $author$project$Control$create(
 					_List_fromArray(
 						[error]));
 			}
+		},
+		prefill: function (date) {
+			return _Utils_Tuple2(
+				A2($justinmimbs$date$Date$format, 'yyyy-MM-dd', date),
+				$elm$core$Platform$Cmd$none);
 		},
 		subscriptions: function (state) {
 			return $elm$core$Platform$Sub$none;
