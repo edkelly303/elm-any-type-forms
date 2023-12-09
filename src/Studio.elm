@@ -1,4 +1,4 @@
-module Studio exposing (..)
+module Studio exposing (Debug, Model, Msg(..), Page(..), stylesheet, view)
 
 import DebugParser
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..))
@@ -75,16 +75,16 @@ view { debugToString, metadata, outputParsingResult, validationErrors, oldState,
                     )
                 ]
     in
-    H.div [ HA.id "sandbox-debug-container" ]
-        [ H.div [ HA.id "sandbox-debug-state" ]
+    H.div [ HA.id "studio-debug-container" ]
+        [ H.div [ HA.id "studio-debug-state" ]
             [ H.h3 [] [ H.text "State" ]
-            , H.pre [ HA.id "sandbox-debug-state-list" ]
+            , H.pre [ HA.id "studio-debug-state-list" ]
                 (stateToHtml debugToString metadata oldState newState)
             ]
-        , H.div [ HA.id "sandbox-debug-deltas-and-output" ]
-            [ H.div [ HA.id "sandbox-debug-deltas" ]
+        , H.div [ HA.id "studio-debug-deltas-and-output" ]
+            [ H.div [ HA.id "studio-debug-deltas" ]
                 [ H.h3 [] [ H.text "Deltas" ]
-                , H.pre [ HA.id "sandbox-debug-deltas-list" ]
+                , H.pre [ HA.id "studio-debug-deltas-list" ]
                     (case deltas of
                         [] ->
                             [ H.text "[ no deltas ]" ]
@@ -93,7 +93,7 @@ view { debugToString, metadata, outputParsingResult, validationErrors, oldState,
                             List.indexedMap (\idx delta -> deltaToHtml idx metadata debugToString delta) deltas
                     )
                 ]
-            , H.div [ HA.id "sandbox-debug-output" ]
+            , H.div [ HA.id "studio-debug-output" ]
                 [ H.h3 [] [ H.text "Output" ]
                 , H.pre []
                     (case ( outputParsingResult, validationErrors ) of
@@ -145,7 +145,7 @@ deltaToHtml idx metadata debugToString delta =
     case parsed of
         Ok (Expandable _ (ElmSequence SeqTuple [ _, Expandable _ (ElmType "Just" [ Expandable _ (ElmType _ [ parsedDelta ]) ]), _ ])) ->
             H.button
-                [ HE.onClick (TimeTravelled idx), HA.class "sandbox-debug-delta-button" ]
+                [ HE.onClick (TimeTravelled idx), HA.class "studio-debug-delta-button" ]
                 (parsedDeltaToHtml metadata parsedDelta)
 
         _ ->
@@ -262,7 +262,7 @@ parsedStateToHtmlHelper metadata idx path oldState newState =
             in
             [ H.div
                 [ HA.classList
-                    [ ( "sandbox-debug-state-item", True )
+                    [ ( "studio-debug-state-item", True )
                     , ( "updated", oldStrings /= newStrings )
                     ]
                 ]
@@ -350,7 +350,7 @@ cssParserHelper : List String -> P.Parser (P.Step (List String) (List String))
 cssParserHelper revStmts =
     P.oneOf
         [ commentParser |> P.map (\_ -> P.Loop revStmts)
-        , statementParser |> P.mapChompedString (\str () -> P.Loop (("#sandbox-form " ++ str) :: revStmts))
+        , statementParser |> P.mapChompedString (\str () -> P.Loop (("#studio-form " ++ str) :: revStmts))
         , P.chompIf (\c -> List.member c [ ' ', '\n', '\t' ]) |> P.map (\_ -> P.Loop revStmts)
         , P.succeed () |> P.map (\_ -> P.Done (List.reverse revStmts))
         ]
@@ -453,14 +453,14 @@ select {
     }
 }
 
-#sandbox-container {
+#studio-container {
     display: flex;
     flex-direction: column;
     width: 100dvw;
     height: 100dvh;
 }
 
-#sandbox-header {
+#studio-header {
     background-color: #151530;
     color: white;
     font-family: sans-serif;
@@ -468,19 +468,19 @@ select {
     flex: 0;
 }
 
-#sandbox-body {
+#studio-body {
     display: flex;
     flex: 1;
 }
 
-#sandbox-form {
+#studio-form {
     flex: 1;
     padding: 30px;
     border: solid 10px #151530;
     overflow: scroll;
 }
 
-#sandbox-tools {
+#studio-tools {
     flex: 1;
     padding: 10px;
     background-color: #151530;
@@ -491,12 +491,12 @@ select {
     flex-direction: column;
 }
 
-#sandbox-nav {
+#studio-nav {
     margin-bottom: 20px;
     flex: 0 0;
 }
 
-#sandbox-nav button {
+#studio-nav button {
     color: white;
     background-color: inherit;
     font-size: 12pt;
@@ -505,11 +505,11 @@ select {
     padding: 10px;
 }
 
-#sandbox-nav button.selected {
+#studio-nav button.selected {
     border-bottom: white solid 1px;
 }
 
-#sandbox-debug {
+#studio-debug {
     flex: 1;
     display: flex;
     flex-direction: row;
@@ -518,51 +518,51 @@ select {
     
 }
 
-#sandbox-debug-container {
+#studio-debug-container {
     flex: 1;
     display: flex;
     gap: 20px;
 }
 
-#sandbox-debug-state {
+#studio-debug-state {
     flex: 1;
     display: flex;
     flex-direction: column;
 }
 
-#sandbox-debug-state-list {
+#studio-debug-state-list {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 10px;
 }
 
-.sandbox-debug-state-item {
+.studio-debug-state-item {
     padding: 10px;
     border: 1px solid gray;
     border-radius: 5px;
 }
 
-.sandbox-debug-state-item.updated {
+.studio-debug-state-item.updated {
     background-color: white;
     border-color: white;
     color: #151530;
 }
 
-#sandbox-debug-deltas-and-output {
+#studio-debug-deltas-and-output {
     display: flex;
     flex-direction: column;
     flex: 1;
     align-items: stretch;
 }
 
-#sandbox-debug-deltas {
+#studio-debug-deltas {
     flex: 1;
     display: flex;
     flex-direction: column;
 }
 
-#sandbox-debug-deltas-list {
+#studio-debug-deltas-list {
     display: flex;
     flex-direction: column;
     max-height: 400px;
@@ -570,7 +570,7 @@ select {
     gap: 10px;
 }
 
-.sandbox-debug-delta-button {
+.studio-debug-delta-button {
     width: 100%;
     text-align: left;
     background-color: #151530;
@@ -580,33 +580,33 @@ select {
     border-radius: 5px;
 }
 
-#sandbox-debug-output {
+#studio-debug-output {
     flex: 1;
 }
 
-#sandbox-style {
+#studio-style {
     flex: 1;
     display: flex;
     justify-content: stretch;
     gap: 20px;
 }
 
-#sandbox-style-controls-list {
+#studio-style-controls-list {
     flex: 1;
 }
 
-.sandbox-style-controls-item {
+.studio-style-controls-item {
     display: flex;
     flex-direction: column;
 }
 
-#sandbox-style-css-editor {
+#studio-style-css-editor {
     flex: 2;
     display: flex;
     flex-direction: column;
 }
 
-#sandbox-css-editor {
+#studio-css-editor {
     width: 100%;
     overflow: scroll;
     flex-grow: 1;
@@ -614,12 +614,12 @@ select {
     padding: 10px;
 }
 
-#sandbox-deploy {
+#studio-deploy {
     display: flex;
     flex-direction: column;
 }
 
-#sandbox-deploy pre {
+#studio-deploy pre {
     user-select: all; 
     overflow: scroll;
     flex: 1 1;

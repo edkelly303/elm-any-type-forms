@@ -675,11 +675,11 @@ studio { debugToString, control } =
                     metadata =
                         Path.dict.fromList fns.metadata
                 in
-                H.main_ [ HA.id "sandbox-container" ]
+                H.main_ [ HA.id "studio-container" ]
                     [ H.node "style" [] [ H.text (Studio.stylesheet model.css) ]
-                    , H.header [] [ H.h1 [ HA.id "sandbox-header" ] [ H.text "elm-any-type-forms sandbox" ] ]
-                    , H.div [ HA.id "sandbox-body" ]
-                        [ H.form [ HA.id "sandbox-form" ]
+                    , H.header [] [ H.h1 [ HA.id "studio-header" ] [ H.text "elm-any-type-forms studio" ] ]
+                    , H.div [ HA.id "studio-body" ]
+                        [ H.form [ HA.id "studio-form" ]
                             (fns.view
                                 { id = Maybe.withDefault ("control-" ++ Path.toString path) fns.id
                                 , name = Maybe.withDefault ("control-" ++ Path.toString path) fns.name
@@ -692,8 +692,8 @@ studio { debugToString, control } =
                                 }
                                 |> List.map (H.map Studio.FormChanged)
                             )
-                        , H.div [ HA.id "sandbox-tools" ]
-                            [ H.nav [ HA.id "sandbox-nav" ]
+                        , H.div [ HA.id "studio-tools" ]
+                            [ H.nav [ HA.id "studio-nav" ]
                                 [ H.button
                                     [ HA.classList [ ( "selected", model.page == Studio.Debug ) ]
                                     , HE.onClick (Studio.PageChanged Studio.Debug)
@@ -724,7 +724,7 @@ studio { debugToString, control } =
                                         (State _ oldState) =
                                             model.oldState
                                     in
-                                    H.div [ HA.id "sandbox-debug" ]
+                                    H.div [ HA.id "studio-debug" ]
                                         [ Studio.view
                                             { debugToString = debugToString
                                             , metadata = metadata
@@ -737,11 +737,11 @@ studio { debugToString, control } =
                                         ]
 
                                 Studio.Style ->
-                                    H.div [ HA.id "sandbox-style" ]
-                                        [ H.div [ HA.id "sandbox-style-css-editor" ]
+                                    H.div [ HA.id "studio-style" ]
+                                        [ H.div [ HA.id "studio-style-css-editor" ]
                                             [ H.h3 [] [ H.text "CSS editor" ]
                                             , H.textarea
-                                                [ HA.id "sandbox-css-editor"
+                                                [ HA.id "studio-css-editor"
                                                 , HA.value model.css
                                                 , HE.onInput Studio.CssChanged
                                                 ]
@@ -749,7 +749,7 @@ studio { debugToString, control } =
                                             ]
                                         , H.div []
                                             [ H.h3 [] [ H.text "Control selectors" ]
-                                            , H.div [ HA.id "sandbox-style-controls-list" ]
+                                            , H.div [ HA.id "studio-style-controls-list" ]
                                                 (Path.dict.toList metadata
                                                     |> List.map
                                                         (\( k, v ) ->
@@ -758,7 +758,7 @@ studio { debugToString, control } =
                                                                     ("#" ++ Maybe.withDefault ("control-" ++ Path.toString k) v.id)
                                                                         :: List.map (\class_ -> "." ++ class_) v.class
                                                             in
-                                                            H.pre [ HA.class "sandbox-style-controls-item" ]
+                                                            H.pre [ HA.class "studio-style-controls-item" ]
                                                                 [ H.strong [] [ H.text v.label ]
                                                                 , H.text (String.join "\n" selectors)
                                                                 ]
@@ -768,7 +768,7 @@ studio { debugToString, control } =
                                         ]
 
                                 Studio.Deploy ->
-                                    H.div [ HA.id "sandbox-deploy" ]
+                                    H.div [ HA.id "studio-deploy" ]
                                         [ H.p []
                                             [ H.text "Select the "
                                             , H.code [] [ H.text "FormState" ]
