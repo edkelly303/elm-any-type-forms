@@ -4279,7 +4279,7 @@ endCustomType (CustomTypeBuilder builder) =
                 , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns states
                 , stateTypeName = makeTypeName "State" builder.stateTypeNames
                 , deltaTypeName = makeTypeName "State" builder.stateTypeNames
-                , metadata = ( path, { id = Nothing, class = [], label = "Record" } ) :: builder.metadata path
+                , metadata = ( path, { id = Nothing, class = [], label = "Custom Type" } ) :: builder.metadata path
                 }
         )
 
