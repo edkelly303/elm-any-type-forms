@@ -11,6 +11,7 @@ module Control exposing
     , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
+    , studio
     )
 
 {-|
@@ -127,6 +128,7 @@ import List.Extra
 import Path
 import Process
 import Set
+import Studio
 import Task
 import Time
 
@@ -173,6 +175,8 @@ type alias ControlConfig state delta output =
     , subscriptions : state -> Sub delta
     , parse : state -> Result (List String) output
     , label : String
+    , stateTypeName : String
+    , deltaTypeName : String
     }
 
 
@@ -222,7 +226,17 @@ type ControlFns input state delta output
         , name : Maybe String
         , class : List String
         , subscriptions : State state -> Sub (Delta delta)
+        , stateTypeName : String
+        , deltaTypeName : String
+        , metadata : List ( Path, Metadata )
         }
+
+
+type alias Metadata =
+    { label : String
+    , class : List String
+    , id : Maybe String
+    }
 
 
 {-| Data used by the `layout` function to render a subcontrol of a combinator.
@@ -644,6 +658,235 @@ sandbox { outputToString, control } =
         }
 
 
+{-| A specialised Elm `Program` that you can use as the `main` entrypoint for testing and debugging a `Control`
+-}
+type alias Studio state delta =
+    Program () (Studio.Model state delta) (Studio.Msg delta)
+
+
+{-| Test and debug a `Control` by turning it into a `Program` that you can run as a standalone Elm application.
+
+This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
+your main Elm application's `Model`and `Msg` types.
+
+Once you're happy with the form, you can then ask the Elm repl (or your editor's Elm plugin) to tell you the type
+signature of the `Program`, which will give you the form's `State` and `Delta` types. You can then plug these into your
+main `Model`and `Msg` types wherever appropriate.
+
+    main : Program () (State String) (Delta String)
+    main =
+        sandbox
+            { control = int
+            , debugToString = Debug.toString
+            }
+
+-}
+studio :
+    { debugToString : ( Maybe state, Maybe (Delta delta), Maybe output ) -> String
+    , control : Control state delta output
+    }
+    -> Studio (State state) (Delta delta)
+studio { debugToString, control } =
+    let
+        path =
+            Path.root
+
+        (Control c) =
+            control
+
+        (ControlFns fns) =
+            c path
+    in
+    Browser.element
+        { init =
+            \() ->
+                let
+                    ( formState, cmd ) =
+                        fns.initBlank
+                in
+                ( { css = ""
+                  , oldState = formState
+                  , newState = formState
+                  , page = Studio.Debug
+                  , deltas = []
+                  }
+                , Cmd.map Studio.FormChanged cmd
+                )
+        , update =
+            \msg model ->
+                case msg of
+                    Studio.FormChanged delta ->
+                        let
+                            ( newFormState, cmd ) =
+                                fns.update delta model.newState
+                        in
+                        ( { model
+                            | oldState = model.newState
+                            , newState = newFormState
+                            , deltas = delta :: model.deltas
+                          }
+                        , Cmd.map Studio.FormChanged cmd
+                        )
+
+                    Studio.TimeTravelled idx ->
+                        let
+                            oldDeltas =
+                                List.drop (idx + 1) model.deltas
+
+                            newDeltas =
+                                List.drop idx model.deltas
+
+                            initialState =
+                                Tuple.first fns.initBlank
+
+                            oldState =
+                                List.foldr (\d s -> fns.update d s |> Tuple.first) initialState oldDeltas
+
+                            newState =
+                                List.foldr (\d s -> fns.update d s |> Tuple.first) initialState newDeltas
+                        in
+                        ( { model | oldState = oldState, newState = newState }, Cmd.none )
+
+                    Studio.CssChanged css ->
+                        ( { model | css = css }, Cmd.none )
+
+                    Studio.PageChanged page ->
+                        ( { model | page = page }, Cmd.none )
+        , view =
+            \model ->
+                let
+                    (State internalState state) =
+                        model.newState
+
+                    emittedAlerts =
+                        fns.emitAlerts model.newState
+
+                    debouncingReceivers =
+                        fns.collectDebouncingReceivers model.newState
+
+                    alerts =
+                        List.filter (\f -> not <| List.member f debouncingReceivers) emittedAlerts
+
+                    metadata =
+                        Path.dict.fromList fns.metadata
+                in
+                H.main_ [ HA.id "sandbox-container" ]
+                    [ H.node "style" [] [ H.text (Studio.stylesheet model.css) ]
+                    , H.header [] [ H.h1 [ HA.id "sandbox-header" ] [ H.text "elm-any-type-forms sandbox" ] ]
+                    , H.div [ HA.id "sandbox-body" ]
+                        [ H.form [ HA.id "sandbox-form" ]
+                            (fns.view
+                                { id = Maybe.withDefault ("control-" ++ Path.toString path) fns.id
+                                , name = Maybe.withDefault ("control-" ++ Path.toString path) fns.name
+                                , label = fns.label
+                                , class = fns.class
+                                , state = state
+                                , status = getStatus fns.parse fns.collectErrors alerts model.newState
+                                , alerts = alerts
+                                , selected = internalState.selected
+                                }
+                                |> List.map (H.map Studio.FormChanged)
+                            )
+                        , H.div [ HA.id "sandbox-tools" ]
+                            [ H.nav [ HA.id "sandbox-nav" ]
+                                [ H.button
+                                    [ HA.classList [ ( "selected", model.page == Studio.Debug ) ]
+                                    , HE.onClick (Studio.PageChanged Studio.Debug)
+                                    ]
+                                    [ H.text "Debug" ]
+                                , H.button
+                                    [ HA.classList [ ( "selected", model.page == Studio.Style ) ]
+                                    , HE.onClick (Studio.PageChanged Studio.Style)
+                                    ]
+                                    [ H.text "Style" ]
+                                , H.button
+                                    [ HA.classList [ ( "selected", model.page == Studio.Deploy ) ]
+                                    , HE.onClick (Studio.PageChanged Studio.Deploy)
+                                    ]
+                                    [ H.text "Deploy" ]
+                                ]
+                            , case model.page of
+                                Studio.Debug ->
+                                    let
+                                        parsingResult =
+                                            fns.parse model.newState
+
+                                        validationErrors =
+                                            fns.emitAlerts model.newState
+                                                |> fns.collectErrors model.newState
+                                                |> List.filter .fail
+
+                                        (State _ oldState) =
+                                            model.oldState
+                                    in
+                                    H.div [ HA.id "sandbox-debug" ]
+                                        [ Studio.view
+                                            { debugToString = debugToString
+                                            , metadata = metadata
+                                            , outputParsingResult = parsingResult
+                                            , validationErrors = validationErrors
+                                            , oldState = oldState
+                                            , newState = state
+                                            , deltas = model.deltas
+                                            }
+                                        ]
+
+                                Studio.Style ->
+                                    H.div [ HA.id "sandbox-style" ]
+                                        [ H.div [ HA.id "sandbox-style-css-editor" ]
+                                            [ H.h3 [] [ H.text "CSS editor" ]
+                                            , H.textarea
+                                                [ HA.id "sandbox-css-editor"
+                                                , HA.value model.css
+                                                , HE.onInput Studio.CssChanged
+                                                ]
+                                                []
+                                            ]
+                                        , H.div []
+                                            [ H.h3 [] [ H.text "Control selectors" ]
+                                            , H.div [ HA.id "sandbox-style-controls-list" ]
+                                                (Path.dict.toList metadata
+                                                    |> List.map
+                                                        (\( k, v ) ->
+                                                            let
+                                                                selectors =
+                                                                    ("#" ++ Maybe.withDefault ("control-" ++ Path.toString k) v.id)
+                                                                        :: List.map (\class_ -> "." ++ class_) v.class
+                                                            in
+                                                            H.pre [ HA.class "sandbox-style-controls-item" ]
+                                                                [ H.strong [] [ H.text v.label ]
+                                                                , H.text (String.join "\n" selectors)
+                                                                ]
+                                                        )
+                                                )
+                                            ]
+                                        ]
+
+                                Studio.Deploy ->
+                                    H.div [ HA.id "sandbox-deploy" ]
+                                        [ H.p []
+                                            [ H.text "Select the "
+                                            , H.code [] [ H.text "FormState" ]
+                                            , H.text " and "
+                                            , H.code [] [ H.text "FormDelta" ]
+                                            , H.text " types below and copy and paste them into the file where your "
+                                            , H.code [] [ H.text "Model" ]
+                                            , H.text " and "
+                                            , H.code [] [ H.text "Msg" ]
+                                            , H.text " types live:"
+                                            ]
+                                        , H.pre []
+                                            [ H.text ("type alias FormState = \n    Control.State " ++ fns.stateTypeName)
+                                            , H.text ("\n\ntype alias FormDelta = \n    Control.Delta " ++ fns.deltaTypeName)
+                                            ]
+                                        ]
+                            ]
+                        ]
+                    ]
+        , subscriptions = \model -> fns.subscriptions model.newState |> Sub.map Studio.FormChanged
+        }
+
+
 
 {-
     .o88b.  .d88b.  d8b   db d888888b d8888b.  .d88b.  db      .d8888.
@@ -769,6 +1012,9 @@ create controlConfig =
                     \(State _ s) ->
                         controlConfig.subscriptions s
                             |> Sub.map ChangeStateInternally
+                , stateTypeName = controlConfig.stateTypeName
+                , deltaTypeName = controlConfig.deltaTypeName
+                , metadata = [ ( path, { label = controlConfig.label, class = [], id = Nothing } ) ]
                 }
         )
 
@@ -1451,6 +1697,8 @@ int =
                         Err [ "Must be a whole number" ]
         , subscriptions = \_ -> Sub.none
         , label = "Int"
+        , stateTypeName = "String"
+        , deltaTypeName = "String"
         }
         |> debounce 500
 
@@ -1486,6 +1734,8 @@ float =
                         Err [ "Must be a number" ]
         , subscriptions = \_ -> Sub.none
         , label = "Float"
+        , stateTypeName = "String"
+        , deltaTypeName = "String"
         }
         |> debounce 500
 
@@ -1513,6 +1763,8 @@ string =
         , parse = Ok
         , subscriptions = \_ -> Sub.none
         , label = "String"
+        , stateTypeName = "String"
+        , deltaTypeName = "String"
         }
         |> debounce 500
 
@@ -1551,6 +1803,8 @@ char =
                         Err [ "Must not be blank" ]
         , subscriptions = \_ -> Sub.none
         , label = "Char"
+        , stateTypeName = "String"
+        , deltaTypeName = "String"
         }
         |> debounce 500
 
@@ -1583,19 +1837,22 @@ variants have any payload. Renders as an HTML radio input.
 
 -}
 enum :
-    ( String, enum )
+    String
+    -> ( String, enum )
     -> ( String, enum )
     -> List ( String, enum )
     -> Control enum enum enum
-enum first second rest =
+enum typeName firstTag secondTag restTags =
     create
-        { blank = ( Tuple.second first, Cmd.none )
+        { blank = ( Tuple.second firstTag, Cmd.none )
         , prefill = \e -> ( e, Cmd.none )
         , update = \delta _ -> ( delta, Cmd.none )
-        , view = enumView (first :: second :: rest)
+        , view = enumView (firstTag :: secondTag :: restTags)
         , parse = Ok
         , subscriptions = \_ -> Sub.none
-        , label = "Enum"
+        , label = typeName
+        , stateTypeName = typeName
+        , deltaTypeName = typeName
         }
 
 
@@ -1636,6 +1893,8 @@ bool =
         , parse = Ok
         , subscriptions = \_ -> Sub.none
         , label = "Bool"
+        , stateTypeName = "Bool"
+        , deltaTypeName = "Bool"
         }
 
 
@@ -2074,6 +2333,19 @@ list (Control ctrl) =
                             listState
                             |> Sub.batch
                             |> Sub.map ChangeStateInternally
+                , stateTypeName =
+                    let
+                        (ControlFns itemControl) =
+                            ctrl (Path.add 0 path)
+                    in
+                    "List " ++ itemControl.stateTypeName
+                , deltaTypeName =
+                    let
+                        (ControlFns itemControl) =
+                            ctrl (Path.add 0 path)
+                    in
+                    "Control.ListDelta " ++ itemControl.deltaTypeName
+                , metadata = [ ( path, { label = "List", class = [], id = Nothing } ) ]
                 }
         )
 
@@ -2239,6 +2511,9 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         , toOutput : toOutput
         , updater : updater
         , viewer : viewer
+        , stateTypeNames : List String
+        , deltaTypeNames : List String
+        , metadata : Path -> List ( Path, Metadata )
         }
 
 
@@ -2308,6 +2583,9 @@ record toOutput =
         , errorCollector = identity
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
+        , stateTypeNames = []
+        , deltaTypeNames = []
+        , metadata = \_ -> []
         }
 
 
@@ -2540,6 +2818,28 @@ field fromInput (Control control) (RecordBuilder rec) =
         , errorCollector = rec.errorCollector >> recordErrorCollector
         , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
         , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
+        , stateTypeNames =
+            let
+                (ControlFns fns) =
+                    control Path.root
+            in
+            fns.stateTypeName :: rec.stateTypeNames
+        , deltaTypeNames =
+            let
+                (ControlFns fns) =
+                    control Path.root
+            in
+            fns.deltaTypeName :: rec.deltaTypeNames
+        , metadata =
+            \path ->
+                let
+                    newPath =
+                        Path.add newIndex path
+
+                    (ControlFns fns) =
+                        control newPath
+                in
+                fns.metadata ++ rec.metadata path
         }
 
 
@@ -2769,6 +3069,9 @@ endRecord (RecordBuilder rec) =
                 , name = Nothing
                 , class = []
                 , subscriptions = \(State _ states) -> collectRecordSubscriptions rec.subscriptionCollector deltaSetters fns states
+                , stateTypeName = makeTypeName "State" rec.stateTypeNames
+                , deltaTypeName = makeTypeName "Delta" rec.deltaTypeNames
+                , metadata = ( path, { label = "Record", class = [], id = Nothing } ) :: rec.metadata path
                 }
         )
 
@@ -3344,6 +3647,9 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
         , toArgStates : toArgStates
         , updater : updater
         , viewer : viewer
+        , stateTypeNames : List String
+        , deltaTypeNames : List String
+        , metadata : Path -> List ( Path, Metadata )
         }
 
 
@@ -3432,6 +3738,9 @@ customType destructor =
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
         , destructor = destructor
+        , stateTypeNames = []
+        , deltaTypeNames = []
+        , metadata = \_ -> []
         }
 
 
@@ -3745,6 +4054,28 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> customTypeSubscriptionCollector
         , destructor = builder.destructor
+        , stateTypeNames =
+            let
+                (ControlFns fns) =
+                    control Path.root
+            in
+            fns.stateTypeName :: builder.stateTypeNames
+        , deltaTypeNames =
+            let
+                (ControlFns fns) =
+                    control Path.root
+            in
+            fns.deltaTypeName :: builder.deltaTypeNames
+        , metadata =
+            \path ->
+                let
+                    newPath =
+                        Path.add newIndex path
+
+                    (ControlFns fns) =
+                        control newPath
+                in
+                fns.metadata ++ builder.metadata path
         }
 
 
@@ -4041,8 +4372,28 @@ endCustomType (CustomTypeBuilder builder) =
                 , name = Nothing
                 , class = []
                 , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns states
+                , stateTypeName = makeTypeName "State" builder.stateTypeNames
+                , deltaTypeName = makeTypeName "State" builder.stateTypeNames
+                , metadata = ( path, { id = Nothing, class = [], label = "Record" } ) :: builder.metadata path
                 }
         )
+
+
+makeTypeName : String -> List String -> String
+makeTypeName stateOrDelta listOfStateOrDeltaNames =
+    let
+        joiner =
+            ", ( Control." ++ stateOrDelta ++ " "
+
+        innards =
+            listOfStateOrDeltaNames
+                |> List.reverse
+                |> String.join joiner
+
+        closingParens =
+            String.repeat (List.length listOfStateOrDeltaNames) " )"
+    in
+    "( Control." ++ stateOrDelta ++ " " ++ innards ++ ", Control.End" ++ closingParens
 
 
 
@@ -4335,6 +4686,8 @@ null tag =
         , parse = \() -> Ok tag
         , subscriptions = \() -> Sub.none
         , label = ""
+        , stateTypeName = "()"
+        , deltaTypeName = "()"
         }
 
 
