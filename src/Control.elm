@@ -1254,7 +1254,22 @@ id : String -> Control state delta output -> Control state delta output
 id id_ (Control control) =
     let
         identifier (ControlFns i) =
-            ControlFns { i | id = Just id_ }
+            ControlFns
+                { i
+                    | id = Just id_
+                    , metadata =
+                        List.map
+                            (\( path, meta ) ->
+                                ( path
+                                , if i.path == path then
+                                    { meta | id = Just id_ }
+
+                                  else
+                                    meta
+                                )
+                            )
+                            i.metadata
+                }
     in
     Control (control >> identifier)
 
@@ -1329,6 +1344,18 @@ label label_ (Control control) =
                                             )
                                             fs
                                     )
+                    , metadata =
+                        List.map
+                            (\( path, meta ) ->
+                                ( path
+                                , if i.path == path then
+                                    { meta | label = label_ }
+
+                                  else
+                                    meta
+                                )
+                            )
+                            i.metadata
                 }
     in
     Control (control >> labeller)
@@ -1358,7 +1385,22 @@ class : String -> Control state delta output -> Control state delta output
 class class_ (Control control) =
     let
         classifier (ControlFns i) =
-            ControlFns { i | class = class_ :: i.class }
+            ControlFns
+                { i
+                    | class = class_ :: i.class
+                    , metadata =
+                        List.map
+                            (\( path, meta ) ->
+                                ( path
+                                , if i.path == path then
+                                    { meta | class = class_ :: i.class }
+
+                                  else
+                                    meta
+                                )
+                            )
+                            i.metadata
+                }
     in
     Control (control >> classifier)
 
@@ -1392,6 +1434,30 @@ classList classList_ (Control control) =
                             )
                             classList_
                             ++ i.class
+                    , metadata =
+                        List.map
+                            (\( path, meta ) ->
+                                ( path
+                                , if i.path == path then
+                                    { meta
+                                        | class =
+                                            List.filterMap
+                                                (\( class_, isActive ) ->
+                                                    if isActive then
+                                                        Just class_
+
+                                                    else
+                                                        Nothing
+                                                )
+                                                classList_
+                                                ++ i.class
+                                    }
+
+                                  else
+                                    meta
+                                )
+                            )
+                            i.metadata
                 }
     in
     Control (control >> classifier)
