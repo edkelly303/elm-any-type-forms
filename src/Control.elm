@@ -1,5 +1,5 @@
 module Control exposing
-    ( Control, Form, studio, simpleForm, form
+    ( Control, Form, Studio, studio, simpleForm, form
     , bool, int, float, string, char, enum
     , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, create
@@ -18,7 +18,7 @@ module Control exposing
 
 # Creating a form
 
-@docs Control, Form, studio, simpleForm, form
+@docs Control, Form, Studio, studio, simpleForm, form
 
 
 # Basic controls
@@ -2309,13 +2309,13 @@ list (Control ctrl) =
                         (ControlFns itemControl) =
                             ctrl (Path.add 0 path)
                     in
-                    "List " ++ itemControl.stateTypeName
+                    "(List (Control.State " ++ itemControl.stateTypeName ++ "))"
                 , deltaTypeName =
                     let
                         (ControlFns itemControl) =
                             ctrl (Path.add 0 path)
                     in
-                    "Control.ListDelta " ++ itemControl.deltaTypeName
+                    "(Control.ListDelta " ++ itemControl.deltaTypeName ++ ")"
                 , metadata = [ ( path, { label = "List", class = [], id = Nothing } ) ]
                 }
         )
@@ -4344,7 +4344,7 @@ endCustomType (CustomTypeBuilder builder) =
                 , class = []
                 , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns states
                 , stateTypeName = makeTypeName "State" builder.stateTypeNames
-                , deltaTypeName = makeTypeName "State" builder.stateTypeNames
+                , deltaTypeName = makeTypeName "Delta" builder.deltaTypeNames
                 , metadata = ( path, { id = Nothing, class = [], label = "Custom Type" } ) :: builder.metadata path
                 }
         )
