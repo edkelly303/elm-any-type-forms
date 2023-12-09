@@ -1,5 +1,5 @@
 module Control exposing
-    ( Control, Form, sandbox, simpleForm, form
+    ( Control, Form, studio, simpleForm, form
     , bool, int, float, string, char, enum
     , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, create
@@ -11,7 +11,6 @@ module Control exposing
     , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
-    , studio
     )
 
 {-|
@@ -19,7 +18,7 @@ module Control exposing
 
 # Creating a form
 
-@docs Control, Form, sandbox, simpleForm, form
+@docs Control, Form, studio, simpleForm, form
 
 
 # Basic controls
@@ -562,100 +561,6 @@ form { control, onUpdate, view } =
             fns.subscriptions state
                 |> Sub.map onUpdate
     }
-
-
-{-| Test and debug a `Control` by turning it into a `Program` that you can run as a standalone Elm application.
-
-This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
-your main Elm application's `Model`and `Msg` types.
-
-Once you're happy with the form, you can then ask the Elm repl (or your editor's Elm plugin) to tell you the type
-signature of the `Program`, which will give you the form's `State` and `Delta` types. You can then plug these into your
-main `Model`and `Msg` types wherever appropriate.
-
-    main : Program () (State String) (Delta String)
-    main =
-        sandbox
-            { control = int
-            , outputToString = Debug.toString
-            }
-
--}
-sandbox : { outputToString : output -> String, control : Control state delta output } -> Program () (State state) (Delta delta)
-sandbox { outputToString, control } =
-    let
-        path =
-            Path.root
-
-        (Control c) =
-            control
-
-        (ControlFns fns) =
-            c path
-    in
-    Browser.element
-        { init =
-            \() ->
-                fns.initBlank
-        , update =
-            \msg state ->
-                fns.update msg state
-        , view =
-            \((State internalState state) as s) ->
-                let
-                    emittedAlerts =
-                        fns.emitAlerts s
-
-                    debouncingReceivers =
-                        fns.collectDebouncingReceivers s
-
-                    alerts =
-                        List.filter (\f -> not <| List.member f debouncingReceivers) emittedAlerts
-
-                    parsingResult =
-                        fns.parse s
-
-                    validationErrors =
-                        fns.emitAlerts s
-                            |> fns.collectErrors s
-                            |> List.filter .fail
-
-                    failView errs =
-                        H.div []
-                            [ H.p [] [ H.text "Failure! Your form has errors on the following fields:" ]
-                            , H.ul [] (List.map (\feedback -> H.li [] [ H.text (Path.toString feedback.path ++ ": " ++ feedback.message) ]) errs)
-                            ]
-                in
-                H.div []
-                    [ H.h1 [] [ H.text "Form" ]
-                    , H.form []
-                        (fns.view
-                            { id = Maybe.withDefault (Path.toString path) fns.id
-                            , name = Maybe.withDefault (Path.toString path) fns.name
-                            , label = fns.label
-                            , class = fns.class
-                            , state = state
-                            , status = getStatus fns.parse fns.collectErrors alerts (State internalState state)
-                            , alerts = alerts
-                            , selected = internalState.selected
-                            }
-                        )
-                    , H.h2 [] [ H.text "Output" ]
-                    , case ( parsingResult, validationErrors ) of
-                        ( Ok output, [] ) ->
-                            H.div []
-                                [ H.p [] [ H.text "Success! Your form produced the following value:" ]
-                                , H.pre [] [ H.text (outputToString output) ]
-                                ]
-
-                        ( Ok _, vErrs ) ->
-                            failView vErrs
-
-                        ( Err errs, vErrs ) ->
-                            failView (errs ++ vErrs)
-                    ]
-        , subscriptions = fns.subscriptions
-        }
 
 
 {-| A specialised Elm `Program` that you can use as the `main` entrypoint for testing and debugging a `Control`
