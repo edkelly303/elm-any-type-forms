@@ -11,16 +11,19 @@ import Markdown.Renderer
 
 
 main =
-    Control.studio 
+    Control.studio
         { control = lessons
         , debugToString = Debug.toString
         }
-    -- Browser.document
-    --     { init = init
-    --     , update = update
-    --     , view = view
-    --     , subscriptions = subscriptions
-    --     }
+
+
+
+-- Browser.document
+--     { init = init
+--     , update = update
+--     , view = view
+--     , subscriptions = subscriptions
+--     }
 
 
 init () =
