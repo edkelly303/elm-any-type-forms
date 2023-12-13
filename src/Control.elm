@@ -1801,7 +1801,7 @@ variants have any payload. Renders as an HTML radio input.
 
     colourControl : Control Colour Colour Colour
     colourControl =
-        enum
+        enum "Colour"
             ( "Red", Red )
             ( "Green", Green )
             [ ( "Blue", Blue ) ]
