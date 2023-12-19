@@ -2,9 +2,11 @@ module Studio exposing (Debug, Model, Msg(..), Page(..), stylesheet, view)
 
 import DebugParser
 import DebugParser.ElmValue exposing (ElmValue(..), ExpandableValue(..), PlainValue(..), SequenceType(..))
+import Dict
 import Html as H
 import Html.Attributes as HA
 import Html.Events as HE
+import Http
 import Parser as P exposing ((|.))
 import Path
 
@@ -21,7 +23,8 @@ type alias Metadata =
 
 
 type alias Model state delta =
-    { css : String
+    { css : Dict.Dict Int { url : String, content : String, autoReload : Bool }
+    , autoReloadInterval : Float
     , oldState : state
     , newState : state
     , page : Page
@@ -45,7 +48,10 @@ type Page
 
 type Msg delta
     = FormChanged delta
+    | CssLoaded Int (Result Http.Error String)
     | CssChanged String
+    | CssReloadRequested
+    | CssAutoreloadToggled Int
     | PageChanged Page
     | TimeTravelled Int
 

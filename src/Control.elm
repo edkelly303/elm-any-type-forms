@@ -122,6 +122,7 @@ import Dict
 import Html as H exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
+import Http
 import Json.Decode
 import List.Extra
 import Path
@@ -589,15 +590,16 @@ main `Model`and `Msg` types wherever appropriate.
 studio :
     { debugToString : ( Maybe state, Maybe (Delta delta), Maybe output ) -> String
     , control : Control state delta output
+    , css : List String
     }
     -> Studio (State state) (Delta delta)
-studio { debugToString, control } =
+studio config =
     let
         path =
             Path.root
 
         (Control c) =
-            control
+            config.control
 
         (ControlFns fns) =
             c path
@@ -608,14 +610,32 @@ studio { debugToString, control } =
                 let
                     ( formState, cmd ) =
                         fns.initBlank
+
+                    css =
+                        config.css
+                            |> List.indexedMap (\index url -> ( index, { url = url, autoReload = False, content = "" } ))
+                            |> Dict.fromList
                 in
-                ( { css = ""
+                ( { css = css
+                  , autoReloadInterval = 1000
                   , oldState = formState
                   , newState = formState
                   , page = Studio.Debug
                   , deltas = []
                   }
-                , Cmd.map Studio.FormChanged cmd
+                , Cmd.batch
+                    [ Cmd.map Studio.FormChanged cmd
+                    , css
+                        |> Dict.map
+                            (\index { url } ->
+                                Http.get
+                                    { url = url
+                                    , expect = Http.expectString (Studio.CssLoaded index)
+                                    }
+                            )
+                        |> Dict.values
+                        |> Cmd.batch
+                    ]
                 )
         , update =
             \msg model ->
@@ -652,9 +672,44 @@ studio { debugToString, control } =
                         in
                         ( { model | oldState = oldState, newState = newState }, Cmd.none )
 
-                    Studio.CssChanged css ->
-                        ( { model | css = css }, Cmd.none )
+                    Studio.CssLoaded index (Ok loadedCss) ->
+                        ( { model | css = Dict.update index (Maybe.map (\rec -> { rec | content = loadedCss })) model.css }, Cmd.none )
 
+                    Studio.CssLoaded index (Err _) ->
+                        ( model, Cmd.none )
+
+                    Studio.CssReloadRequested ->
+                        ( model
+                        , Cmd.batch
+                            (model.css
+                                |> Dict.map
+                                    (\index { url, autoReload } ->
+                                        if autoReload then
+                                            Http.get { url = url, expect = Http.expectString (Studio.CssLoaded index) }
+
+                                        else
+                                            Cmd.none
+                                    )
+                                |> Dict.values
+                            )
+                        )
+
+                    Studio.CssAutoreloadToggled index ->
+                        ( { model
+                            | css =
+                                Dict.update index
+                                    (Maybe.map
+                                        (\rec -> { rec | autoReload = not rec.autoReload })
+                                    )
+                                    model.css
+                          }
+                        , Cmd.none
+                        )
+
+                    Studio.CssChanged changedCss ->
+                        ( model, Cmd.none )
+
+                    --( { model | css = changedCss }, Cmd.none )
                     Studio.PageChanged page ->
                         ( { model | page = page }, Cmd.none )
         , view =
@@ -676,7 +731,7 @@ studio { debugToString, control } =
                         Path.dict.fromList fns.metadata
                 in
                 H.main_ [ HA.id "studio-container" ]
-                    [ H.node "style" [] [ H.text (Studio.stylesheet model.css) ]
+                    [ H.node "style" [] [ H.text (Studio.stylesheet (Dict.values model.css |> List.map .content |> String.concat)) ]
                     , H.header [] [ H.h1 [ HA.id "studio-header" ] [ H.text "elm-any-type-forms studio" ] ]
                     , H.div [ HA.id "studio-body" ]
                         [ H.form [ HA.id "studio-form" ]
@@ -726,7 +781,7 @@ studio { debugToString, control } =
                                     in
                                     H.div [ HA.id "studio-debug" ]
                                         [ Studio.view
-                                            { debugToString = debugToString
+                                            { debugToString = config.debugToString
                                             , metadata = metadata
                                             , outputParsingResult = parsingResult
                                             , validationErrors = validationErrors
@@ -739,13 +794,38 @@ studio { debugToString, control } =
                                 Studio.Style ->
                                     H.div [ HA.id "studio-style" ]
                                         [ H.div [ HA.id "studio-style-css-editor" ]
-                                            [ H.h3 [] [ H.text "CSS editor" ]
-                                            , H.textarea
-                                                [ HA.id "studio-css-editor"
-                                                , HA.value model.css
-                                                , HE.onInput Studio.CssChanged
-                                                ]
-                                                []
+                                            [ H.h3 [] [ H.text "CSS stylesheets" ]
+                                            , H.ul []
+                                                (model.css
+                                                    |> Dict.toList
+                                                    |> List.map
+                                                        (\( index, { url, content, autoReload } ) ->
+                                                            let
+                                                                autoReloadId =
+                                                                    "studio-css-editor-autoreload-" ++ String.fromInt index
+                                                            in
+                                                            H.li []
+                                                                [ H.h4 [] [ H.text url ]
+                                                                , H.label [ HA.for autoReloadId ] [ H.text "Autoreload?" ]
+                                                                , H.input
+                                                                    [ HA.id autoReloadId
+                                                                    , HA.type_ "checkbox"
+                                                                    , HE.onClick (Studio.CssAutoreloadToggled index)
+                                                                    , HA.checked autoReload
+                                                                    ]
+                                                                    []
+                                                                , H.details []
+                                                                    [ H.summary [] [ H.text "Contents" ]
+                                                                    , H.textarea
+                                                                        [ HA.id "studio-css-editor"
+                                                                        , HA.value content
+                                                                        , HE.onInput Studio.CssChanged
+                                                                        ]
+                                                                        []
+                                                                    ]
+                                                                ]
+                                                        )
+                                                )
                                             ]
                                         , H.div []
                                             [ H.h3 [] [ H.text "Control selectors" ]
@@ -788,7 +868,12 @@ studio { debugToString, control } =
                             ]
                         ]
                     ]
-        , subscriptions = \model -> fns.subscriptions model.newState |> Sub.map Studio.FormChanged
+        , subscriptions =
+            \model ->
+                Sub.batch
+                    [ fns.subscriptions model.newState |> Sub.map Studio.FormChanged
+                    , Time.every model.autoReloadInterval (\_ -> Studio.CssReloadRequested)
+                    ]
         }
 
 

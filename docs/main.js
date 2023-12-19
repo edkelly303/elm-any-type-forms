@@ -608,7 +608,7 @@ ${variant}`;
   var VERSION = "1.2.0-beta.3";
   var TARGET_NAME = "tutorial";
   var INITIAL_ELM_COMPILED_TIMESTAMP = Number(
-    "1702136324579"
+    "1703020520081"
   );
   var ORIGINAL_COMPILATION_MODE = "standard";
   var ORIGINAL_BROWSER_UI_POSITION = "BottomLeft";
@@ -7910,7 +7910,182 @@ function _Browser_load(url)
 		}
 	}));
 }
-var $elm$core$List$cons = _List_cons;
+
+
+
+// SEND REQUEST
+
+var _Http_toTask = F3(function(router, toTask, request)
+{
+	return _Scheduler_binding(function(callback)
+	{
+		function done(response) {
+			callback(toTask(request.expect.a(response)));
+		}
+
+		var xhr = new XMLHttpRequest();
+		xhr.addEventListener('error', function() { done($elm$http$Http$NetworkError_); });
+		xhr.addEventListener('timeout', function() { done($elm$http$Http$Timeout_); });
+		xhr.addEventListener('load', function() { done(_Http_toResponse(request.expect.b, xhr)); });
+		$elm$core$Maybe$isJust(request.tracker) && _Http_track(router, xhr, request.tracker.a);
+
+		try {
+			xhr.open(request.method, request.url, true);
+		} catch (e) {
+			return done($elm$http$Http$BadUrl_(request.url));
+		}
+
+		_Http_configureRequest(xhr, request);
+
+		request.body.a && xhr.setRequestHeader('Content-Type', request.body.a);
+		xhr.send(request.body.b);
+
+		return function() { xhr.c = true; xhr.abort(); };
+	});
+});
+
+
+// CONFIGURE
+
+function _Http_configureRequest(xhr, request)
+{
+	for (var headers = request.headers; headers.b; headers = headers.b) // WHILE_CONS
+	{
+		xhr.setRequestHeader(headers.a.a, headers.a.b);
+	}
+	xhr.timeout = request.timeout.a || 0;
+	xhr.responseType = request.expect.d;
+	xhr.withCredentials = request.allowCookiesFromOtherDomains;
+}
+
+
+// RESPONSES
+
+function _Http_toResponse(toBody, xhr)
+{
+	return A2(
+		200 <= xhr.status && xhr.status < 300 ? $elm$http$Http$GoodStatus_ : $elm$http$Http$BadStatus_,
+		_Http_toMetadata(xhr),
+		toBody(xhr.response)
+	);
+}
+
+
+// METADATA
+
+function _Http_toMetadata(xhr)
+{
+	return {
+		url: xhr.responseURL,
+		statusCode: xhr.status,
+		statusText: xhr.statusText,
+		headers: _Http_parseHeaders(xhr.getAllResponseHeaders())
+	};
+}
+
+
+// HEADERS
+
+function _Http_parseHeaders(rawHeaders)
+{
+	if (!rawHeaders)
+	{
+		return $elm$core$Dict$empty;
+	}
+
+	var headers = $elm$core$Dict$empty;
+	var headerPairs = rawHeaders.split('\r\n');
+	for (var i = headerPairs.length; i--; )
+	{
+		var headerPair = headerPairs[i];
+		var index = headerPair.indexOf(': ');
+		if (index > 0)
+		{
+			var key = headerPair.substring(0, index);
+			var value = headerPair.substring(index + 2);
+
+			headers = A3($elm$core$Dict$update, key, function(oldValue) {
+				return $elm$core$Maybe$Just($elm$core$Maybe$isJust(oldValue)
+					? value + ', ' + oldValue.a
+					: value
+				);
+			}, headers);
+		}
+	}
+	return headers;
+}
+
+
+// EXPECT
+
+var _Http_expect = F3(function(type, toBody, toValue)
+{
+	return {
+		$: 0,
+		d: type,
+		b: toBody,
+		a: toValue
+	};
+});
+
+var _Http_mapExpect = F2(function(func, expect)
+{
+	return {
+		$: 0,
+		d: expect.d,
+		b: expect.b,
+		a: function(x) { return func(expect.a(x)); }
+	};
+});
+
+function _Http_toDataView(arrayBuffer)
+{
+	return new DataView(arrayBuffer);
+}
+
+
+// BODY and PARTS
+
+var _Http_emptyBody = { $: 0 };
+var _Http_pair = F2(function(a, b) { return { $: 0, a: a, b: b }; });
+
+function _Http_toFormData(parts)
+{
+	for (var formData = new FormData(); parts.b; parts = parts.b) // WHILE_CONS
+	{
+		var part = parts.a;
+		formData.append(part.a, part.b);
+	}
+	return formData;
+}
+
+var _Http_bytesToBlob = F2(function(mime, bytes)
+{
+	return new Blob([bytes], { type: mime });
+});
+
+
+// PROGRESS
+
+function _Http_track(router, xhr, tracker)
+{
+	// TODO check out lengthComputable on loadstart event
+
+	xhr.upload.addEventListener('progress', function(event) {
+		if (xhr.c) { return; }
+		_Scheduler_rawSpawn(A2($elm$core$Platform$sendToSelf, router, _Utils_Tuple2(tracker, $elm$http$Http$Sending({
+			sent: event.loaded,
+			size: event.total
+		}))));
+	});
+	xhr.addEventListener('progress', function(event) {
+		if (xhr.c) { return; }
+		_Scheduler_rawSpawn(A2($elm$core$Platform$sendToSelf, router, _Utils_Tuple2(tracker, $elm$http$Http$Receiving({
+			received: event.loaded,
+			size: event.lengthComputable ? $elm$core$Maybe$Just(event.total) : $elm$core$Maybe$Nothing
+		}))));
+	});
+}var $elm$core$List$cons = _List_cons;
 var $elm$core$Elm$JsArray$foldr = _JsArray_foldr;
 var $elm$core$Array$foldr = F3(
 	function (func, baseCase, _v0) {
@@ -20911,13 +21086,25 @@ var $author$project$Tutorial$Id = function (a) {
 var $author$project$Control$label = F2(
 	function (label_, _v0) {
 		var control = _v0.a;
-		var labeller = function (_v1) {
-			var i = _v1.a;
+		var labeller = function (_v2) {
+			var i = _v2.a;
 			return $author$project$Control$ControlFns(
 				_Utils_update(
 					i,
 					{
 						label: label_,
+						metadata: A2(
+							$elm$core$List$map,
+							function (_v1) {
+								var path = _v1.a;
+								var meta = _v1.b;
+								return _Utils_Tuple2(
+									path,
+									_Utils_eq(i.path, path) ? _Utils_update(
+										meta,
+										{label: label_}) : meta);
+							},
+							i.metadata),
 						parse: function (state) {
 							return A2(
 								$elm$core$Result$mapError,
@@ -21514,7 +21701,7 @@ var $author$project$Control$list = function (_v0) {
 						var _v4 = ctrl(
 							A2($author$project$Path$add, 0, path));
 						var itemControl = _v4.a;
-						return 'Control.ListDelta ' + itemControl.deltaTypeName;
+						return '(Control.ListDelta ' + (itemControl.deltaTypeName + ')');
 					}(),
 					emitAlerts: function (_v5) {
 						var s = _v5.b;
@@ -21609,7 +21796,7 @@ var $author$project$Control$list = function (_v0) {
 						var _v13 = ctrl(
 							A2($author$project$Path$add, 0, path));
 						var itemControl = _v13.a;
-						return 'List ' + itemControl.stateTypeName;
+						return '(List (Control.State ' + (itemControl.stateTypeName + '))');
 					}(),
 					subControlViews: function (_v14) {
 						return _List_Nil;
@@ -22075,7 +22262,7 @@ var $author$project$Control$endCustomType = function (_v0) {
 							var states = _v3.b;
 							return A4($author$project$Control$collectErrorsForCustomType, builder.errorCollector, alerts, fns, states);
 						}),
-					deltaTypeName: A2($author$project$Control$makeTypeName, 'State', builder.stateTypeNames),
+					deltaTypeName: A2($author$project$Control$makeTypeName, 'Delta', builder.deltaTypeNames),
 					emitAlerts: emitAlerts,
 					id: $elm$core$Maybe$Nothing,
 					index: 0,
@@ -22108,7 +22295,7 @@ var $author$project$Control$endCustomType = function (_v0) {
 						$elm$core$List$cons,
 						_Utils_Tuple2(
 							path,
-							{_class: _List_Nil, id: $elm$core$Maybe$Nothing, label: 'Record'}),
+							{_class: _List_Nil, id: $elm$core$Maybe$Nothing, label: 'Custom Type'}),
 						builder.metadata(path)),
 					name: $elm$core$Maybe$Nothing,
 					parse: parse,
@@ -22703,13 +22890,27 @@ var $author$project$Tutorial$customTypes = A2(
 var $author$project$Control$id = F2(
 	function (id_, _v0) {
 		var control = _v0.a;
-		var identifier = function (_v1) {
-			var i = _v1.a;
+		var identifier = function (_v2) {
+			var i = _v2.a;
 			return $author$project$Control$ControlFns(
 				_Utils_update(
 					i,
 					{
-						id: $elm$core$Maybe$Just(id_)
+						id: $elm$core$Maybe$Just(id_),
+						metadata: A2(
+							$elm$core$List$map,
+							function (_v1) {
+								var path = _v1.a;
+								var meta = _v1.b;
+								return _Utils_Tuple2(
+									path,
+									_Utils_eq(i.path, path) ? _Utils_update(
+										meta,
+										{
+											id: $elm$core$Maybe$Just(id_)
+										}) : meta);
+							},
+							i.metadata)
 					}));
 		};
 		return $author$project$Control$Control(
@@ -23216,9 +23417,17 @@ var $author$project$Tutorial$lessons = A2(
 																			};
 																		};
 																	})))))))))))))))));
+var $author$project$Studio$CssAutoreloadToggled = function (a) {
+	return {$: 'CssAutoreloadToggled', a: a};
+};
 var $author$project$Studio$CssChanged = function (a) {
 	return {$: 'CssChanged', a: a};
 };
+var $author$project$Studio$CssLoaded = F2(
+	function (a, b) {
+		return {$: 'CssLoaded', a: a, b: b};
+	});
+var $author$project$Studio$CssReloadRequested = {$: 'CssReloadRequested'};
 var $author$project$Studio$Debug = {$: 'Debug'};
 var $author$project$Studio$Deploy = {$: 'Deploy'};
 var $author$project$Studio$FormChanged = function (a) {
@@ -23238,6 +23447,10 @@ var $elm$html$Html$Attributes$classList = function (classes) {
 				$elm$core$Tuple$first,
 				A2($elm$core$List$filter, $elm$core$Tuple$second, classes))));
 };
+var $elm$core$String$concat = function (strings) {
+	return A2($elm$core$String$join, '', strings);
+};
+var $elm$html$Html$details = _VirtualDom_node('details');
 var $author$project$Path$Dict = function (a) {
 	return {$: 'Dict', a: a};
 };
@@ -23399,9 +23612,482 @@ var $elm$core$Basics$never = function (_v0) {
 	}
 };
 var $elm$browser$Browser$element = _Browser_element;
+var $elm$time$Time$Every = F2(
+	function (a, b) {
+		return {$: 'Every', a: a, b: b};
+	});
+var $elm$time$Time$State = F2(
+	function (taggers, processes) {
+		return {processes: processes, taggers: taggers};
+	});
+var $elm$time$Time$init = $elm$core$Task$succeed(
+	A2($elm$time$Time$State, $elm$core$Dict$empty, $elm$core$Dict$empty));
+var $elm$time$Time$addMySub = F2(
+	function (_v0, state) {
+		var interval = _v0.a;
+		var tagger = _v0.b;
+		var _v1 = A2($elm$core$Dict$get, interval, state);
+		if (_v1.$ === 'Nothing') {
+			return A3(
+				$elm$core$Dict$insert,
+				interval,
+				_List_fromArray(
+					[tagger]),
+				state);
+		} else {
+			var taggers = _v1.a;
+			return A3(
+				$elm$core$Dict$insert,
+				interval,
+				A2($elm$core$List$cons, tagger, taggers),
+				state);
+		}
+	});
+var $elm$core$Process$kill = _Scheduler_kill;
+var $elm$core$Dict$merge = F6(
+	function (leftStep, bothStep, rightStep, leftDict, rightDict, initialResult) {
+		var stepState = F3(
+			function (rKey, rValue, _v0) {
+				stepState:
+				while (true) {
+					var list = _v0.a;
+					var result = _v0.b;
+					if (!list.b) {
+						return _Utils_Tuple2(
+							list,
+							A3(rightStep, rKey, rValue, result));
+					} else {
+						var _v2 = list.a;
+						var lKey = _v2.a;
+						var lValue = _v2.b;
+						var rest = list.b;
+						if (_Utils_cmp(lKey, rKey) < 0) {
+							var $temp$rKey = rKey,
+								$temp$rValue = rValue,
+								$temp$_v0 = _Utils_Tuple2(
+								rest,
+								A3(leftStep, lKey, lValue, result));
+							rKey = $temp$rKey;
+							rValue = $temp$rValue;
+							_v0 = $temp$_v0;
+							continue stepState;
+						} else {
+							if (_Utils_cmp(lKey, rKey) > 0) {
+								return _Utils_Tuple2(
+									list,
+									A3(rightStep, rKey, rValue, result));
+							} else {
+								return _Utils_Tuple2(
+									rest,
+									A4(bothStep, lKey, lValue, rValue, result));
+							}
+						}
+					}
+				}
+			});
+		var _v3 = A3(
+			$elm$core$Dict$foldl,
+			stepState,
+			_Utils_Tuple2(
+				$elm$core$Dict$toList(leftDict),
+				initialResult),
+			rightDict);
+		var leftovers = _v3.a;
+		var intermediateResult = _v3.b;
+		return A3(
+			$elm$core$List$foldl,
+			F2(
+				function (_v4, result) {
+					var k = _v4.a;
+					var v = _v4.b;
+					return A3(leftStep, k, v, result);
+				}),
+			intermediateResult,
+			leftovers);
+	});
+var $elm$core$Platform$sendToSelf = _Platform_sendToSelf;
+var $elm$time$Time$setInterval = _Time_setInterval;
+var $elm$core$Process$spawn = _Scheduler_spawn;
+var $elm$time$Time$spawnHelp = F3(
+	function (router, intervals, processes) {
+		if (!intervals.b) {
+			return $elm$core$Task$succeed(processes);
+		} else {
+			var interval = intervals.a;
+			var rest = intervals.b;
+			var spawnTimer = $elm$core$Process$spawn(
+				A2(
+					$elm$time$Time$setInterval,
+					interval,
+					A2($elm$core$Platform$sendToSelf, router, interval)));
+			var spawnRest = function (id) {
+				return A3(
+					$elm$time$Time$spawnHelp,
+					router,
+					rest,
+					A3($elm$core$Dict$insert, interval, id, processes));
+			};
+			return A2($elm$core$Task$andThen, spawnRest, spawnTimer);
+		}
+	});
+var $elm$time$Time$onEffects = F3(
+	function (router, subs, _v0) {
+		var processes = _v0.processes;
+		var rightStep = F3(
+			function (_v6, id, _v7) {
+				var spawns = _v7.a;
+				var existing = _v7.b;
+				var kills = _v7.c;
+				return _Utils_Tuple3(
+					spawns,
+					existing,
+					A2(
+						$elm$core$Task$andThen,
+						function (_v5) {
+							return kills;
+						},
+						$elm$core$Process$kill(id)));
+			});
+		var newTaggers = A3($elm$core$List$foldl, $elm$time$Time$addMySub, $elm$core$Dict$empty, subs);
+		var leftStep = F3(
+			function (interval, taggers, _v4) {
+				var spawns = _v4.a;
+				var existing = _v4.b;
+				var kills = _v4.c;
+				return _Utils_Tuple3(
+					A2($elm$core$List$cons, interval, spawns),
+					existing,
+					kills);
+			});
+		var bothStep = F4(
+			function (interval, taggers, id, _v3) {
+				var spawns = _v3.a;
+				var existing = _v3.b;
+				var kills = _v3.c;
+				return _Utils_Tuple3(
+					spawns,
+					A3($elm$core$Dict$insert, interval, id, existing),
+					kills);
+			});
+		var _v1 = A6(
+			$elm$core$Dict$merge,
+			leftStep,
+			bothStep,
+			rightStep,
+			newTaggers,
+			processes,
+			_Utils_Tuple3(
+				_List_Nil,
+				$elm$core$Dict$empty,
+				$elm$core$Task$succeed(_Utils_Tuple0)));
+		var spawnList = _v1.a;
+		var existingDict = _v1.b;
+		var killTask = _v1.c;
+		return A2(
+			$elm$core$Task$andThen,
+			function (newProcesses) {
+				return $elm$core$Task$succeed(
+					A2($elm$time$Time$State, newTaggers, newProcesses));
+			},
+			A2(
+				$elm$core$Task$andThen,
+				function (_v2) {
+					return A3($elm$time$Time$spawnHelp, router, spawnList, existingDict);
+				},
+				killTask));
+	});
+var $elm$time$Time$onSelfMsg = F3(
+	function (router, interval, state) {
+		var _v0 = A2($elm$core$Dict$get, interval, state.taggers);
+		if (_v0.$ === 'Nothing') {
+			return $elm$core$Task$succeed(state);
+		} else {
+			var taggers = _v0.a;
+			var tellTaggers = function (time) {
+				return $elm$core$Task$sequence(
+					A2(
+						$elm$core$List$map,
+						function (tagger) {
+							return A2(
+								$elm$core$Platform$sendToApp,
+								router,
+								tagger(time));
+						},
+						taggers));
+			};
+			return A2(
+				$elm$core$Task$andThen,
+				function (_v1) {
+					return $elm$core$Task$succeed(state);
+				},
+				A2($elm$core$Task$andThen, tellTaggers, $elm$time$Time$now));
+		}
+	});
+var $elm$time$Time$subMap = F2(
+	function (f, _v0) {
+		var interval = _v0.a;
+		var tagger = _v0.b;
+		return A2(
+			$elm$time$Time$Every,
+			interval,
+			A2($elm$core$Basics$composeL, f, tagger));
+	});
+_Platform_effectManagers['Time'] = _Platform_createManager($elm$time$Time$init, $elm$time$Time$onEffects, $elm$time$Time$onSelfMsg, 0, $elm$time$Time$subMap);
+var $elm$time$Time$subscription = _Platform_leaf('Time');
+var $elm$time$Time$every = F2(
+	function (interval, tagger) {
+		return $elm$time$Time$subscription(
+			A2($elm$time$Time$Every, interval, tagger));
+	});
+var $elm$http$Http$BadStatus_ = F2(
+	function (a, b) {
+		return {$: 'BadStatus_', a: a, b: b};
+	});
+var $elm$http$Http$BadUrl_ = function (a) {
+	return {$: 'BadUrl_', a: a};
+};
+var $elm$http$Http$GoodStatus_ = F2(
+	function (a, b) {
+		return {$: 'GoodStatus_', a: a, b: b};
+	});
+var $elm$http$Http$NetworkError_ = {$: 'NetworkError_'};
+var $elm$http$Http$Receiving = function (a) {
+	return {$: 'Receiving', a: a};
+};
+var $elm$http$Http$Sending = function (a) {
+	return {$: 'Sending', a: a};
+};
+var $elm$http$Http$Timeout_ = {$: 'Timeout_'};
+var $elm$core$Maybe$isJust = function (maybe) {
+	if (maybe.$ === 'Just') {
+		return true;
+	} else {
+		return false;
+	}
+};
+var $elm$http$Http$expectStringResponse = F2(
+	function (toMsg, toResult) {
+		return A3(
+			_Http_expect,
+			'',
+			$elm$core$Basics$identity,
+			A2($elm$core$Basics$composeR, toResult, toMsg));
+	});
+var $elm$http$Http$BadBody = function (a) {
+	return {$: 'BadBody', a: a};
+};
+var $elm$http$Http$BadStatus = function (a) {
+	return {$: 'BadStatus', a: a};
+};
+var $elm$http$Http$BadUrl = function (a) {
+	return {$: 'BadUrl', a: a};
+};
+var $elm$http$Http$NetworkError = {$: 'NetworkError'};
+var $elm$http$Http$Timeout = {$: 'Timeout'};
+var $elm$http$Http$resolve = F2(
+	function (toResult, response) {
+		switch (response.$) {
+			case 'BadUrl_':
+				var url = response.a;
+				return $elm$core$Result$Err(
+					$elm$http$Http$BadUrl(url));
+			case 'Timeout_':
+				return $elm$core$Result$Err($elm$http$Http$Timeout);
+			case 'NetworkError_':
+				return $elm$core$Result$Err($elm$http$Http$NetworkError);
+			case 'BadStatus_':
+				var metadata = response.a;
+				return $elm$core$Result$Err(
+					$elm$http$Http$BadStatus(metadata.statusCode));
+			default:
+				var body = response.b;
+				return A2(
+					$elm$core$Result$mapError,
+					$elm$http$Http$BadBody,
+					toResult(body));
+		}
+	});
+var $elm$http$Http$expectString = function (toMsg) {
+	return A2(
+		$elm$http$Http$expectStringResponse,
+		toMsg,
+		$elm$http$Http$resolve($elm$core$Result$Ok));
+};
 var $elm$html$Html$form = _VirtualDom_node('form');
+var $elm$http$Http$emptyBody = _Http_emptyBody;
+var $elm$http$Http$Request = function (a) {
+	return {$: 'Request', a: a};
+};
+var $elm$http$Http$State = F2(
+	function (reqs, subs) {
+		return {reqs: reqs, subs: subs};
+	});
+var $elm$http$Http$init = $elm$core$Task$succeed(
+	A2($elm$http$Http$State, $elm$core$Dict$empty, _List_Nil));
+var $elm$http$Http$updateReqs = F3(
+	function (router, cmds, reqs) {
+		updateReqs:
+		while (true) {
+			if (!cmds.b) {
+				return $elm$core$Task$succeed(reqs);
+			} else {
+				var cmd = cmds.a;
+				var otherCmds = cmds.b;
+				if (cmd.$ === 'Cancel') {
+					var tracker = cmd.a;
+					var _v2 = A2($elm$core$Dict$get, tracker, reqs);
+					if (_v2.$ === 'Nothing') {
+						var $temp$router = router,
+							$temp$cmds = otherCmds,
+							$temp$reqs = reqs;
+						router = $temp$router;
+						cmds = $temp$cmds;
+						reqs = $temp$reqs;
+						continue updateReqs;
+					} else {
+						var pid = _v2.a;
+						return A2(
+							$elm$core$Task$andThen,
+							function (_v3) {
+								return A3(
+									$elm$http$Http$updateReqs,
+									router,
+									otherCmds,
+									A2($elm$core$Dict$remove, tracker, reqs));
+							},
+							$elm$core$Process$kill(pid));
+					}
+				} else {
+					var req = cmd.a;
+					return A2(
+						$elm$core$Task$andThen,
+						function (pid) {
+							var _v4 = req.tracker;
+							if (_v4.$ === 'Nothing') {
+								return A3($elm$http$Http$updateReqs, router, otherCmds, reqs);
+							} else {
+								var tracker = _v4.a;
+								return A3(
+									$elm$http$Http$updateReqs,
+									router,
+									otherCmds,
+									A3($elm$core$Dict$insert, tracker, pid, reqs));
+							}
+						},
+						$elm$core$Process$spawn(
+							A3(
+								_Http_toTask,
+								router,
+								$elm$core$Platform$sendToApp(router),
+								req)));
+				}
+			}
+		}
+	});
+var $elm$http$Http$onEffects = F4(
+	function (router, cmds, subs, state) {
+		return A2(
+			$elm$core$Task$andThen,
+			function (reqs) {
+				return $elm$core$Task$succeed(
+					A2($elm$http$Http$State, reqs, subs));
+			},
+			A3($elm$http$Http$updateReqs, router, cmds, state.reqs));
+	});
+var $elm$http$Http$maybeSend = F4(
+	function (router, desiredTracker, progress, _v0) {
+		var actualTracker = _v0.a;
+		var toMsg = _v0.b;
+		return _Utils_eq(desiredTracker, actualTracker) ? $elm$core$Maybe$Just(
+			A2(
+				$elm$core$Platform$sendToApp,
+				router,
+				toMsg(progress))) : $elm$core$Maybe$Nothing;
+	});
+var $elm$http$Http$onSelfMsg = F3(
+	function (router, _v0, state) {
+		var tracker = _v0.a;
+		var progress = _v0.b;
+		return A2(
+			$elm$core$Task$andThen,
+			function (_v1) {
+				return $elm$core$Task$succeed(state);
+			},
+			$elm$core$Task$sequence(
+				A2(
+					$elm$core$List$filterMap,
+					A3($elm$http$Http$maybeSend, router, tracker, progress),
+					state.subs)));
+	});
+var $elm$http$Http$Cancel = function (a) {
+	return {$: 'Cancel', a: a};
+};
+var $elm$http$Http$cmdMap = F2(
+	function (func, cmd) {
+		if (cmd.$ === 'Cancel') {
+			var tracker = cmd.a;
+			return $elm$http$Http$Cancel(tracker);
+		} else {
+			var r = cmd.a;
+			return $elm$http$Http$Request(
+				{
+					allowCookiesFromOtherDomains: r.allowCookiesFromOtherDomains,
+					body: r.body,
+					expect: A2(_Http_mapExpect, func, r.expect),
+					headers: r.headers,
+					method: r.method,
+					timeout: r.timeout,
+					tracker: r.tracker,
+					url: r.url
+				});
+		}
+	});
+var $elm$http$Http$MySub = F2(
+	function (a, b) {
+		return {$: 'MySub', a: a, b: b};
+	});
+var $elm$http$Http$subMap = F2(
+	function (func, _v0) {
+		var tracker = _v0.a;
+		var toMsg = _v0.b;
+		return A2(
+			$elm$http$Http$MySub,
+			tracker,
+			A2($elm$core$Basics$composeR, toMsg, func));
+	});
+_Platform_effectManagers['Http'] = _Platform_createManager($elm$http$Http$init, $elm$http$Http$onEffects, $elm$http$Http$onSelfMsg, $elm$http$Http$cmdMap, $elm$http$Http$subMap);
+var $elm$http$Http$command = _Platform_leaf('Http');
+var $elm$http$Http$subscription = _Platform_leaf('Http');
+var $elm$http$Http$request = function (r) {
+	return $elm$http$Http$command(
+		$elm$http$Http$Request(
+			{allowCookiesFromOtherDomains: false, body: r.body, expect: r.expect, headers: r.headers, method: r.method, timeout: r.timeout, tracker: r.tracker, url: r.url}));
+};
+var $elm$http$Http$get = function (r) {
+	return $elm$http$Http$request(
+		{body: $elm$http$Http$emptyBody, expect: r.expect, headers: _List_Nil, method: 'GET', timeout: $elm$core$Maybe$Nothing, tracker: $elm$core$Maybe$Nothing, url: r.url});
+};
 var $elm$html$Html$header = _VirtualDom_node('header');
 var $elm$html$Html$main_ = _VirtualDom_node('main');
+var $elm$core$Dict$map = F2(
+	function (func, dict) {
+		if (dict.$ === 'RBEmpty_elm_builtin') {
+			return $elm$core$Dict$RBEmpty_elm_builtin;
+		} else {
+			var color = dict.a;
+			var key = dict.b;
+			var value = dict.c;
+			var left = dict.d;
+			var right = dict.e;
+			return A5(
+				$elm$core$Dict$RBNode_elm_builtin,
+				color,
+				key,
+				A2(func, key, value),
+				A2($elm$core$Dict$map, func, left),
+				A2($elm$core$Dict$map, func, right));
+		}
+	});
 var $elm$html$Html$nav = _VirtualDom_node('nav');
 var $elm$virtual_dom$VirtualDom$node = function (tag) {
 	return _VirtualDom_node(
@@ -23466,7 +24152,7 @@ var $author$project$Studio$cssParserHelper = function (revStmts) {
 				F2(
 					function (str, _v1) {
 						return $elm$parser$Parser$Loop(
-							A2($elm$core$List$cons, '#sandbox-form ' + str, revStmts));
+							A2($elm$core$List$cons, '#studio-form ' + str, revStmts));
 					}),
 				$author$project$Studio$statementParser),
 				A2(
@@ -23527,9 +24213,20 @@ var $author$project$Studio$sanitiseCss = function (css) {
 	}
 };
 var $author$project$Studio$stylesheet = function (formCss) {
-	return '\n/* RESET */\n/* Box sizing rules */\n*,\n*::before,\n*::after {\n    box-sizing: border-box;\n}\n\n/* Remove default margin */\nbody,\nh1,\nh2,\nh3,\nh4,\np,\nfigure,\nblockquote,\ndl,\ndd {\n    margin: 0;\n}\n\n/* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */\nul[role=\'list\'],\nol[role=\'list\'] {\n    list-style: none;\n}\n\n/* Set core root defaults */\nhtml:focus-within {\n    scroll-behavior: smooth;\n}\n\n/* Set core body defaults */\nbody {\n    min-height: 100dvh;\n    text-rendering: optimizeSpeed;\n    line-height: 1.5;\n}\n\n/* A elements that don\'t have a class get default styles */\na:not([class]) {\n    text-decoration-skip-ink: auto;\n}\n\n/* Make images easier to work with */\nimg,\npicture {\n    max-width: 100%;\n    display: block;\n}\n\n/* Inherit fonts for inputs and buttons */\ninput,\nbutton,\ntextarea,\nselect {\n    font: inherit;\n}\n\n/* Remove all animations, transitions and smooth scroll for people that prefer not to see them */\n@media (prefers-reduced-motion: reduce) {\n    html:focus-within {\n        scroll-behavior: auto;\n    }\n\n    *,\n    *::before,\n    *::after {\n        animation-duration: 0.01ms !important;\n        animation-iteration-count: 1 !important;\n        transition-duration: 0.01ms !important;\n        scroll-behavior: auto !important;\n    }\n}\n\n#sandbox-container {\n    display: flex;\n    flex-direction: column;\n    width: 100dvw;\n    height: 100dvh;\n}\n\n#sandbox-header {\n    background-color: #151530;\n    color: white;\n    font-family: sans-serif;\n    text-align: center;    \n    flex: 0;\n}\n\n#sandbox-body {\n    display: flex;\n    flex: 1;\n}\n\n#sandbox-form {\n    flex: 1;\n    padding: 30px;\n    border: solid 10px #151530;\n    overflow: scroll;\n}\n\n#sandbox-tools {\n    flex: 1;\n    padding: 10px;\n    background-color: #151530;\n    color: white;\n    overflow: scroll;\n    font-family: sans-serif;\n    display: flex;\n    flex-direction: column;\n}\n\n#sandbox-nav {\n    margin-bottom: 20px;\n    flex: 0 0;\n}\n\n#sandbox-nav button {\n    color: white;\n    background-color: inherit;\n    font-size: 12pt;\n    font-weight: 800;\n    border: none;\n    padding: 10px;\n}\n\n#sandbox-nav button.selected {\n    border-bottom: white solid 1px;\n}\n\n#sandbox-debug {\n    flex: 1;\n    display: flex;\n    flex-direction: row;\n    justify-content: stretch;\n    align-items: stretch;\n    \n}\n\n#sandbox-debug-container {\n    flex: 1;\n    display: flex;\n    gap: 20px;\n}\n\n#sandbox-debug-state {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n}\n\n#sandbox-debug-state-list {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n    gap: 10px;\n}\n\n.sandbox-debug-state-item {\n    padding: 10px;\n    border: 1px solid gray;\n    border-radius: 5px;\n}\n\n.sandbox-debug-state-item.updated {\n    background-color: white;\n    border-color: white;\n    color: #151530;\n}\n\n#sandbox-debug-deltas-and-output {\n    display: flex;\n    flex-direction: column;\n    flex: 1;\n    align-items: stretch;\n}\n\n#sandbox-debug-deltas {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n}\n\n#sandbox-debug-deltas-list {\n    display: flex;\n    flex-direction: column;\n    max-height: 400px;\n    overflow: auto;\n    gap: 10px;\n}\n\n.sandbox-debug-delta-button {\n    width: 100%;\n    text-align: left;\n    background-color: #151530;\n    color: white;\n    padding: 10px;\n    border: 1px solid gray;\n    border-radius: 5px;\n}\n\n#sandbox-debug-output {\n    flex: 1;\n}\n\n#sandbox-style {\n    flex: 1;\n    display: flex;\n    justify-content: stretch;\n    gap: 20px;\n}\n\n#sandbox-style-controls-list {\n    flex: 1;\n}\n\n.sandbox-style-controls-item {\n    display: flex;\n    flex-direction: column;\n}\n\n#sandbox-style-css-editor {\n    flex: 2;\n    display: flex;\n    flex-direction: column;\n}\n\n#sandbox-css-editor {\n    width: 100%;\n    overflow: scroll;\n    flex-grow: 1;\n    font-family: monospace;\n    padding: 10px;\n}\n\n#sandbox-deploy {\n    display: flex;\n    flex-direction: column;\n}\n\n#sandbox-deploy pre {\n    user-select: all; \n    overflow: scroll;\n    flex: 1 1;\n    border: 1px solid white;\n    padding: 10px;\n}\n\n.diff-inserted {\n    background-color: palegreen;\n}\n\n.diff-deleted {\n    background-color: pink;\n}\n' + $author$project$Studio$sanitiseCss(formCss);
+	return '\n/* RESET */\n/* Box sizing rules */\n*,\n*::before,\n*::after {\n    box-sizing: border-box;\n}\n\n/* Remove default margin */\nbody,\nh1,\nh2,\nh3,\nh4,\np,\nfigure,\nblockquote,\ndl,\ndd {\n    margin: 0;\n}\n\n/* Remove list styles on ul, ol elements with a list role, which suggests default styling will be removed */\nul[role=\'list\'],\nol[role=\'list\'] {\n    list-style: none;\n}\n\n/* Set core root defaults */\nhtml:focus-within {\n    scroll-behavior: smooth;\n}\n\n/* Set core body defaults */\nbody {\n    min-height: 100dvh;\n    text-rendering: optimizeSpeed;\n    line-height: 1.5;\n}\n\n/* A elements that don\'t have a class get default styles */\na:not([class]) {\n    text-decoration-skip-ink: auto;\n}\n\n/* Make images easier to work with */\nimg,\npicture {\n    max-width: 100%;\n    display: block;\n}\n\n/* Inherit fonts for inputs and buttons */\ninput,\nbutton,\ntextarea,\nselect {\n    font: inherit;\n}\n\n/* Remove all animations, transitions and smooth scroll for people that prefer not to see them */\n@media (prefers-reduced-motion: reduce) {\n    html:focus-within {\n        scroll-behavior: auto;\n    }\n\n    *,\n    *::before,\n    *::after {\n        animation-duration: 0.01ms !important;\n        animation-iteration-count: 1 !important;\n        transition-duration: 0.01ms !important;\n        scroll-behavior: auto !important;\n    }\n}\n\n#studio-container {\n    display: flex;\n    flex-direction: column;\n    width: 100dvw;\n    height: 100dvh;\n}\n\n#studio-header {\n    background-color: #151530;\n    color: white;\n    font-family: sans-serif;\n    text-align: center;    \n    flex: 0;\n}\n\n#studio-body {\n    display: flex;\n    flex: 1;\n}\n\n#studio-form {\n    flex: 1;\n    padding: 30px;\n    border: solid 10px #151530;\n    overflow: scroll;\n}\n\n#studio-tools {\n    flex: 1;\n    padding: 10px;\n    background-color: #151530;\n    color: white;\n    overflow: scroll;\n    font-family: sans-serif;\n    display: flex;\n    flex-direction: column;\n}\n\n#studio-nav {\n    margin-bottom: 20px;\n    flex: 0 0;\n}\n\n#studio-nav button {\n    color: white;\n    background-color: inherit;\n    font-size: 12pt;\n    font-weight: 800;\n    border: none;\n    padding: 10px;\n}\n\n#studio-nav button.selected {\n    border-bottom: white solid 1px;\n}\n\n#studio-debug {\n    flex: 1;\n    display: flex;\n    flex-direction: row;\n    justify-content: stretch;\n    align-items: stretch;\n    \n}\n\n#studio-debug-container {\n    flex: 1;\n    display: flex;\n    gap: 20px;\n}\n\n#studio-debug-state {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n}\n\n#studio-debug-state-list {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n    gap: 10px;\n}\n\n.studio-debug-state-item {\n    padding: 10px;\n    border: 1px solid gray;\n    border-radius: 5px;\n}\n\n.studio-debug-state-item.updated {\n    background-color: white;\n    border-color: white;\n    color: #151530;\n}\n\n#studio-debug-deltas-and-output {\n    display: flex;\n    flex-direction: column;\n    flex: 1;\n    align-items: stretch;\n}\n\n#studio-debug-deltas {\n    flex: 1;\n    display: flex;\n    flex-direction: column;\n}\n\n#studio-debug-deltas-list {\n    display: flex;\n    flex-direction: column;\n    max-height: 400px;\n    overflow: auto;\n    gap: 10px;\n}\n\n.studio-debug-delta-button {\n    width: 100%;\n    text-align: left;\n    background-color: #151530;\n    color: white;\n    padding: 10px;\n    border: 1px solid gray;\n    border-radius: 5px;\n}\n\n#studio-debug-output {\n    flex: 1;\n}\n\n#studio-style {\n    flex: 1;\n    display: flex;\n    justify-content: stretch;\n    gap: 20px;\n}\n\n#studio-style-controls-list {\n    flex: 1;\n}\n\n.studio-style-controls-item {\n    display: flex;\n    flex-direction: column;\n}\n\n#studio-style-css-editor {\n    flex: 2;\n    display: flex;\n    flex-direction: column;\n}\n\n#studio-css-editor {\n    width: 100%;\n    overflow: scroll;\n    flex-grow: 1;\n    font-family: monospace;\n    padding: 10px;\n}\n\n#studio-deploy {\n    display: flex;\n    flex-direction: column;\n}\n\n#studio-deploy pre {\n    user-select: all; \n    overflow: scroll;\n    flex: 1 1;\n    border: 1px solid white;\n    padding: 10px;\n}\n\n.diff-inserted {\n    background-color: palegreen;\n}\n\n.diff-deleted {\n    background-color: pink;\n}\n' + $author$project$Studio$sanitiseCss(formCss);
 };
+var $elm$html$Html$summary = _VirtualDom_node('summary');
 var $elm$html$Html$textarea = _VirtualDom_node('textarea');
+var $elm$core$Dict$values = function (dict) {
+	return A3(
+		$elm$core$Dict$foldr,
+		F3(
+			function (key, value, valueList) {
+				return A2($elm$core$List$cons, value, valueList);
+			}),
+		_List_Nil,
+		dict);
+};
 var $author$project$Path$compare = F2(
 	function (_v0, _v1) {
 		var p1 = _v0.a;
@@ -23971,9 +24668,6 @@ var $kraklin$elm_debug_parser$DebugParser$parseCustomTypeWithoutValue = function
 				}
 			}),
 		$kraklin$elm_debug_parser$DebugParser$parseTypeName);
-};
-var $elm$core$String$concat = function (strings) {
-	return A2($elm$core$String$join, '', strings);
 };
 var $kraklin$elm_debug_parser$DebugParser$addHex = F2(
 	function (_char, total) {
@@ -25128,7 +25822,7 @@ var $author$project$Studio$deltaToHtml = F4(
 					[
 						$elm$html$Html$Events$onClick(
 						$author$project$Studio$TimeTravelled(idx)),
-						$elm$html$Html$Attributes$class('sandbox-debug-delta-button')
+						$elm$html$Html$Attributes$class('studio-debug-delta-button')
 					]),
 				A2($author$project$Studio$parsedDeltaToHtml, metadata, parsedDelta));
 		} else {
@@ -25262,7 +25956,7 @@ var $author$project$Studio$parsedStateToHtmlHelper = F5(
 								$elm$html$Html$Attributes$classList(
 								_List_fromArray(
 									[
-										_Utils_Tuple2('sandbox-debug-state-item', true),
+										_Utils_Tuple2('studio-debug-state-item', true),
 										_Utils_Tuple2(
 										'updated',
 										!_Utils_eq(oldStrings, newStrings))
@@ -25425,7 +26119,7 @@ var $author$project$Studio$view = function (_v0) {
 		$elm$html$Html$div,
 		_List_fromArray(
 			[
-				$elm$html$Html$Attributes$id('sandbox-debug-container')
+				$elm$html$Html$Attributes$id('studio-debug-container')
 			]),
 		_List_fromArray(
 			[
@@ -25433,7 +26127,7 @@ var $author$project$Studio$view = function (_v0) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$id('sandbox-debug-state')
+						$elm$html$Html$Attributes$id('studio-debug-state')
 					]),
 				_List_fromArray(
 					[
@@ -25448,7 +26142,7 @@ var $author$project$Studio$view = function (_v0) {
 						$elm$html$Html$pre,
 						_List_fromArray(
 							[
-								$elm$html$Html$Attributes$id('sandbox-debug-state-list')
+								$elm$html$Html$Attributes$id('studio-debug-state-list')
 							]),
 						A4($author$project$Studio$stateToHtml, debugToString, metadata, oldState, newState))
 					])),
@@ -25456,7 +26150,7 @@ var $author$project$Studio$view = function (_v0) {
 				$elm$html$Html$div,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$id('sandbox-debug-deltas-and-output')
+						$elm$html$Html$Attributes$id('studio-debug-deltas-and-output')
 					]),
 				_List_fromArray(
 					[
@@ -25464,7 +26158,7 @@ var $author$project$Studio$view = function (_v0) {
 						$elm$html$Html$div,
 						_List_fromArray(
 							[
-								$elm$html$Html$Attributes$id('sandbox-debug-deltas')
+								$elm$html$Html$Attributes$id('studio-debug-deltas')
 							]),
 						_List_fromArray(
 							[
@@ -25479,7 +26173,7 @@ var $author$project$Studio$view = function (_v0) {
 								$elm$html$Html$pre,
 								_List_fromArray(
 									[
-										$elm$html$Html$Attributes$id('sandbox-debug-deltas-list')
+										$elm$html$Html$Attributes$id('studio-debug-deltas-list')
 									]),
 								function () {
 									if (!deltas.b) {
@@ -25502,7 +26196,7 @@ var $author$project$Studio$view = function (_v0) {
 						$elm$html$Html$div,
 						_List_fromArray(
 							[
-								$elm$html$Html$Attributes$id('sandbox-debug-output')
+								$elm$html$Html$Attributes$id('studio-debug-output')
 							]),
 						_List_fromArray(
 							[
@@ -25559,38 +26253,75 @@ var $author$project$Studio$view = function (_v0) {
 					]))
 			]));
 };
-var $author$project$Control$studio = function (_v0) {
-	var debugToString = _v0.debugToString;
-	var control = _v0.control;
+var $author$project$Control$studio = function (config) {
 	var path = $author$project$Path$root;
-	var _v1 = control;
-	var c = _v1.a;
-	var _v2 = c(path);
-	var fns = _v2.a;
+	var _v0 = config.control;
+	var c = _v0.a;
+	var _v1 = c(path);
+	var fns = _v1.a;
 	return $elm$browser$Browser$element(
 		{
-			init: function (_v3) {
-				var _v4 = fns.initBlank;
-				var formState = _v4.a;
-				var cmd = _v4.b;
+			init: function (_v2) {
+				var css = $elm$core$Dict$fromList(
+					A2(
+						$elm$core$List$indexedMap,
+						F2(
+							function (index, url) {
+								return _Utils_Tuple2(
+									index,
+									{autoReload: false, content: '', url: url});
+							}),
+						config.css));
+				var _v3 = fns.initBlank;
+				var formState = _v3.a;
+				var cmd = _v3.b;
 				return _Utils_Tuple2(
-					{css: '', deltas: _List_Nil, newState: formState, oldState: formState, page: $author$project$Studio$Debug},
-					A2($elm$core$Platform$Cmd$map, $author$project$Studio$FormChanged, cmd));
+					{autoReloadInterval: 1000, css: css, deltas: _List_Nil, newState: formState, oldState: formState, page: $author$project$Studio$Debug},
+					$elm$core$Platform$Cmd$batch(
+						_List_fromArray(
+							[
+								A2($elm$core$Platform$Cmd$map, $author$project$Studio$FormChanged, cmd),
+								$elm$core$Platform$Cmd$batch(
+								$elm$core$Dict$values(
+									A2(
+										$elm$core$Dict$map,
+										F2(
+											function (index, _v4) {
+												var url = _v4.url;
+												return $elm$http$Http$get(
+													{
+														expect: $elm$http$Http$expectString(
+															$author$project$Studio$CssLoaded(index)),
+														url: url
+													});
+											}),
+										css)))
+							])));
 			},
 			subscriptions: function (model) {
-				return A2(
-					$elm$core$Platform$Sub$map,
-					$author$project$Studio$FormChanged,
-					fns.subscriptions(model.newState));
+				return $elm$core$Platform$Sub$batch(
+					_List_fromArray(
+						[
+							A2(
+							$elm$core$Platform$Sub$map,
+							$author$project$Studio$FormChanged,
+							fns.subscriptions(model.newState)),
+							A2(
+							$elm$time$Time$every,
+							model.autoReloadInterval,
+							function (_v5) {
+								return $author$project$Studio$CssReloadRequested;
+							})
+						]));
 			},
 			update: F2(
 				function (msg, model) {
 					switch (msg.$) {
 						case 'FormChanged':
 							var delta = msg.a;
-							var _v6 = A2(fns.update, delta, model.newState);
-							var newFormState = _v6.a;
-							var cmd = _v6.b;
+							var _v7 = A2(fns.update, delta, model.newState);
+							var newFormState = _v7.a;
+							var cmd = _v7.b;
 							return _Utils_Tuple2(
 								_Utils_update(
 									model,
@@ -25626,13 +26357,70 @@ var $author$project$Control$studio = function (_v0) {
 									model,
 									{newState: newState, oldState: oldState}),
 								$elm$core$Platform$Cmd$none);
-						case 'CssChanged':
-							var css = msg.a;
+						case 'CssLoaded':
+							if (msg.b.$ === 'Ok') {
+								var index = msg.a;
+								var loadedCss = msg.b.a;
+								return _Utils_Tuple2(
+									_Utils_update(
+										model,
+										{
+											css: A3(
+												$elm$core$Dict$update,
+												index,
+												$elm$core$Maybe$map(
+													function (rec) {
+														return _Utils_update(
+															rec,
+															{content: loadedCss});
+													}),
+												model.css)
+										}),
+									$elm$core$Platform$Cmd$none);
+							} else {
+								var index = msg.a;
+								return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
+							}
+						case 'CssReloadRequested':
+							return _Utils_Tuple2(
+								model,
+								$elm$core$Platform$Cmd$batch(
+									$elm$core$Dict$values(
+										A2(
+											$elm$core$Dict$map,
+											F2(
+												function (index, _v8) {
+													var url = _v8.url;
+													var autoReload = _v8.autoReload;
+													return autoReload ? $elm$http$Http$get(
+														{
+															expect: $elm$http$Http$expectString(
+																$author$project$Studio$CssLoaded(index)),
+															url: url
+														}) : $elm$core$Platform$Cmd$none;
+												}),
+											model.css))));
+						case 'CssAutoreloadToggled':
+							var index = msg.a;
 							return _Utils_Tuple2(
 								_Utils_update(
 									model,
-									{css: css}),
+									{
+										css: A3(
+											$elm$core$Dict$update,
+											index,
+											$elm$core$Maybe$map(
+												function (rec) {
+													return _Utils_update(
+														rec,
+														{autoReload: !rec.autoReload});
+												}),
+											model.css)
+									}),
 								$elm$core$Platform$Cmd$none);
+						case 'CssChanged':
+							var changedCss = msg.a;
+							return _Utils_Tuple2(model, $elm$core$Platform$Cmd$none);
 						default:
 							var page = msg.a;
 							return _Utils_Tuple2(
@@ -25652,14 +26440,14 @@ var $author$project$Control$studio = function (_v0) {
 						return !A2($elm$core$List$member, f, debouncingReceivers);
 					},
 					emittedAlerts);
-				var _v7 = model.newState;
-				var internalState = _v7.a;
-				var state = _v7.b;
+				var _v9 = model.newState;
+				var internalState = _v9.a;
+				var state = _v9.b;
 				return A2(
 					$elm$html$Html$main_,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$id('sandbox-container')
+							$elm$html$Html$Attributes$id('studio-container')
 						]),
 					_List_fromArray(
 						[
@@ -25670,7 +26458,14 @@ var $author$project$Control$studio = function (_v0) {
 							_List_fromArray(
 								[
 									$elm$html$Html$text(
-									$author$project$Studio$stylesheet(model.css))
+									$author$project$Studio$stylesheet(
+										$elm$core$String$concat(
+											A2(
+												$elm$core$List$map,
+												function ($) {
+													return $.content;
+												},
+												$elm$core$Dict$values(model.css)))))
 								])),
 							A2(
 							$elm$html$Html$header,
@@ -25681,18 +26476,18 @@ var $author$project$Control$studio = function (_v0) {
 									$elm$html$Html$h1,
 									_List_fromArray(
 										[
-											$elm$html$Html$Attributes$id('sandbox-header')
+											$elm$html$Html$Attributes$id('studio-header')
 										]),
 									_List_fromArray(
 										[
-											$elm$html$Html$text('elm-any-type-forms sandbox')
+											$elm$html$Html$text('elm-any-type-forms studio')
 										]))
 								])),
 							A2(
 							$elm$html$Html$div,
 							_List_fromArray(
 								[
-									$elm$html$Html$Attributes$id('sandbox-body')
+									$elm$html$Html$Attributes$id('studio-body')
 								]),
 							_List_fromArray(
 								[
@@ -25700,7 +26495,7 @@ var $author$project$Control$studio = function (_v0) {
 									$elm$html$Html$form,
 									_List_fromArray(
 										[
-											$elm$html$Html$Attributes$id('sandbox-form')
+											$elm$html$Html$Attributes$id('studio-form')
 										]),
 									A2(
 										$elm$core$List$map,
@@ -25726,7 +26521,7 @@ var $author$project$Control$studio = function (_v0) {
 									$elm$html$Html$div,
 									_List_fromArray(
 										[
-											$elm$html$Html$Attributes$id('sandbox-tools')
+											$elm$html$Html$Attributes$id('studio-tools')
 										]),
 									_List_fromArray(
 										[
@@ -25734,7 +26529,7 @@ var $author$project$Control$studio = function (_v0) {
 											$elm$html$Html$nav,
 											_List_fromArray(
 												[
-													$elm$html$Html$Attributes$id('sandbox-nav')
+													$elm$html$Html$Attributes$id('studio-nav')
 												]),
 											_List_fromArray(
 												[
@@ -25794,8 +26589,8 @@ var $author$project$Control$studio = function (_v0) {
 														]))
 												])),
 											function () {
-											var _v8 = model.page;
-											switch (_v8.$) {
+											var _v10 = model.page;
+											switch (_v10.$) {
 												case 'Debug':
 													var validationErrors = A2(
 														$elm$core$List$filter,
@@ -25807,25 +26602,25 @@ var $author$project$Control$studio = function (_v0) {
 															model.newState,
 															fns.emitAlerts(model.newState)));
 													var parsingResult = fns.parse(model.newState);
-													var _v9 = model.oldState;
-													var oldState = _v9.b;
+													var _v11 = model.oldState;
+													var oldState = _v11.b;
 													return A2(
 														$elm$html$Html$div,
 														_List_fromArray(
 															[
-																$elm$html$Html$Attributes$id('sandbox-debug')
+																$elm$html$Html$Attributes$id('studio-debug')
 															]),
 														_List_fromArray(
 															[
 																$author$project$Studio$view(
-																{debugToString: debugToString, deltas: model.deltas, metadata: metadata, newState: state, oldState: oldState, outputParsingResult: parsingResult, validationErrors: validationErrors})
+																{debugToString: config.debugToString, deltas: model.deltas, metadata: metadata, newState: state, oldState: oldState, outputParsingResult: parsingResult, validationErrors: validationErrors})
 															]));
 												case 'Style':
 													return A2(
 														$elm$html$Html$div,
 														_List_fromArray(
 															[
-																$elm$html$Html$Attributes$id('sandbox-style')
+																$elm$html$Html$Attributes$id('studio-style')
 															]),
 														_List_fromArray(
 															[
@@ -25833,7 +26628,7 @@ var $author$project$Control$studio = function (_v0) {
 																$elm$html$Html$div,
 																_List_fromArray(
 																	[
-																		$elm$html$Html$Attributes$id('sandbox-style-css-editor')
+																		$elm$html$Html$Attributes$id('studio-style-css-editor')
 																	]),
 																_List_fromArray(
 																	[
@@ -25842,17 +26637,77 @@ var $author$project$Control$studio = function (_v0) {
 																		_List_Nil,
 																		_List_fromArray(
 																			[
-																				$elm$html$Html$text('CSS editor')
+																				$elm$html$Html$text('CSS stylesheets')
 																			])),
 																		A2(
-																		$elm$html$Html$textarea,
-																		_List_fromArray(
-																			[
-																				$elm$html$Html$Attributes$id('sandbox-css-editor'),
-																				$elm$html$Html$Attributes$value(model.css),
-																				$elm$html$Html$Events$onInput($author$project$Studio$CssChanged)
-																			]),
-																		_List_Nil)
+																		$elm$html$Html$ul,
+																		_List_Nil,
+																		A2(
+																			$elm$core$List$map,
+																			function (_v12) {
+																				var index = _v12.a;
+																				var url = _v12.b.url;
+																				var content = _v12.b.content;
+																				var autoReload = _v12.b.autoReload;
+																				var autoReloadId = 'studio-css-editor-autoreload-' + $elm$core$String$fromInt(index);
+																				return A2(
+																					$elm$html$Html$li,
+																					_List_Nil,
+																					_List_fromArray(
+																						[
+																							A2(
+																							$elm$html$Html$h4,
+																							_List_Nil,
+																							_List_fromArray(
+																								[
+																									$elm$html$Html$text(url)
+																								])),
+																							A2(
+																							$elm$html$Html$label,
+																							_List_fromArray(
+																								[
+																									$elm$html$Html$Attributes$for(autoReloadId)
+																								]),
+																							_List_fromArray(
+																								[
+																									$elm$html$Html$text('Autoreload?')
+																								])),
+																							A2(
+																							$elm$html$Html$input,
+																							_List_fromArray(
+																								[
+																									$elm$html$Html$Attributes$id(autoReloadId),
+																									$elm$html$Html$Attributes$type_('checkbox'),
+																									$elm$html$Html$Events$onClick(
+																									$author$project$Studio$CssAutoreloadToggled(index)),
+																									$elm$html$Html$Attributes$checked(autoReload)
+																								]),
+																							_List_Nil),
+																							A2(
+																							$elm$html$Html$details,
+																							_List_Nil,
+																							_List_fromArray(
+																								[
+																									A2(
+																									$elm$html$Html$summary,
+																									_List_Nil,
+																									_List_fromArray(
+																										[
+																											$elm$html$Html$text('Contents')
+																										])),
+																									A2(
+																									$elm$html$Html$textarea,
+																									_List_fromArray(
+																										[
+																											$elm$html$Html$Attributes$id('studio-css-editor'),
+																											$elm$html$Html$Attributes$value(content),
+																											$elm$html$Html$Events$onInput($author$project$Studio$CssChanged)
+																										]),
+																									_List_Nil)
+																								]))
+																						]));
+																			},
+																			$elm$core$Dict$toList(model.css)))
 																	])),
 																A2(
 																$elm$html$Html$div,
@@ -25870,13 +26725,13 @@ var $author$project$Control$studio = function (_v0) {
 																		$elm$html$Html$div,
 																		_List_fromArray(
 																			[
-																				$elm$html$Html$Attributes$id('sandbox-style-controls-list')
+																				$elm$html$Html$Attributes$id('studio-style-controls-list')
 																			]),
 																		A2(
 																			$elm$core$List$map,
-																			function (_v10) {
-																				var k = _v10.a;
-																				var v = _v10.b;
+																			function (_v13) {
+																				var k = _v13.a;
+																				var v = _v13.b;
 																				var selectors = A2(
 																					$elm$core$List$cons,
 																					'#' + A2(
@@ -25893,7 +26748,7 @@ var $author$project$Control$studio = function (_v0) {
 																					$elm$html$Html$pre,
 																					_List_fromArray(
 																						[
-																							$elm$html$Html$Attributes$class('sandbox-style-controls-item')
+																							$elm$html$Html$Attributes$class('studio-style-controls-item')
 																						]),
 																					_List_fromArray(
 																						[
@@ -25916,7 +26771,7 @@ var $author$project$Control$studio = function (_v0) {
 														$elm$html$Html$div,
 														_List_fromArray(
 															[
-																$elm$html$Html$Attributes$id('sandbox-deploy')
+																$elm$html$Html$Attributes$id('studio-deploy')
 															]),
 														_List_fromArray(
 															[
@@ -25978,6 +26833,11 @@ var $author$project$Control$studio = function (_v0) {
 };
 var $elm$core$Debug$toString = _Debug_toString;
 var $author$project$Tutorial$main = $author$project$Control$studio(
-	{control: $author$project$Tutorial$lessons, debugToString: $elm$core$Debug$toString});
+	{
+		control: $author$project$Tutorial$lessons,
+		css: _List_fromArray(
+			['http://localhost:8000/reset.css', 'http://localhost:8000/styles.css']),
+		debugToString: $elm$core$Debug$toString
+	});
 _Platform_export({'Tutorial':{'init':$author$project$Tutorial$main(
 	$elm$json$Json$Decode$succeed(_Utils_Tuple0))(0)}});}(this));

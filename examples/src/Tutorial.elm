@@ -14,6 +14,10 @@ main =
     Control.studio
         { control = lessons
         , debugToString = Debug.toString
+        , css =
+            [ "http://localhost:8000/reset.css"
+            , "http://localhost:8000/styles.css"
+            ]
         }
 
 
