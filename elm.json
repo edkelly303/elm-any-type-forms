@@ -19,5 +19,7 @@
         "elm-community/list-extra": "8.7.0 <= v < 9.0.0",
         "kraklin/elm-debug-parser": "2.0.0 <= v < 3.0.0"
     },
-    "test-dependencies": {}
+    "test-dependencies": {
+        "elm-explorations/test": "2.0.0 <= v < 3.0.0"
+    }
 }
