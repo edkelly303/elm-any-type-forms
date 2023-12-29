@@ -8,7 +8,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Markdown.Parser as Markdown
 import Markdown.Renderer
-
+import Time
 
 main =
     Control.studio
@@ -1130,6 +1130,7 @@ dateControl =
                     , HA.id id
                     , HA.class class
                     , HA.name name
+                    , HE.onInput identity
                     ]
                     []
                 ]
@@ -1145,6 +1146,7 @@ dateControl =
         , stateTypeName = "String"
         , deltaTypeName = "String"
         }
+        |> Control.default (Date.fromCalendarDate 2022 Time.Jan 1)
 
 
 createYourOwnIntro =
@@ -1220,8 +1222,8 @@ type.
 dateControl =
     Control.create
         { label = "Date of birth"
-        , initBlank = ( "1970-01-01", Cmd.none )
-        , initPrefilled = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
+        , blank = ( "1970-01-01", Cmd.none )
+        , prefill = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
         , update = \\delta state -> ( delta, Cmd.none )
         , view =
             \\{ state, id, label, name, class } ->
@@ -1232,6 +1234,7 @@ dateControl =
                     , Html.Attributes.id id
                     , Html.Attributes.class class
                     , Html.Attributes.name name
+                    , Html.Events.onInput identity
                     ]
                     []
                 ]
@@ -1252,12 +1255,12 @@ This looks like a lot to digest, but we can take it one field at a time.
 #### label : `String`
 This is the default label that will be displayed on the control.
 
-#### initBlank : `( state, Cmd delta )`
+#### blank : `( state, Cmd delta )`
 This specifies the default internal `state` of the control when it's initialised, 
 together with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we 
 don't need to send any `Cmd`s.
 
-#### initPrefilled : `output -> ( state, Cmd delta )`
+#### prefill : `output -> ( state, Cmd delta )`
 This defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial 
 `Cmd` if needed. In this case, we're teaching it how to turn a `Date` into a `String` and there's no `Cmd` to send.
 
@@ -1269,7 +1272,12 @@ we need to do in our update function is replace the existing `state` with the ne
 #### view : `{ state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` 
 This is very similar to a normal Elm app's `view` function, but with two differences. First, in addition to the `state`, 
 it also gives us access to some other stuff that we can include in our view's HTML attributes. Second, it produces a 
-list of HTML elements, rather than a single element.
+list of HTML elements, rather than a single element. 
+
+It's also interesting to note that instead of passing a `Msg` constructor to `Html.Events.onInput`, as we would in a 
+typical Elm app, we instead pass `identity`. This is because the `delta` type for our date control is a bare `String`, 
+which is not wrapped in any `Msg` type. `Html.Events.onInput` requires us to supply a function `String -> delta`, and as 
+`identity` here is equivalent to `String -> String`, this will satisfy the type checker.
 
 #### subscriptions : `state -> Sub delta`
 This is exactly like a normal Elm app's `subscriptions` function. Here, we don't 
