@@ -1761,7 +1761,7 @@ int =
                     Nothing ->
                         Err [ "Must be a whole number" ]
         , subscriptions = \_ -> Sub.none
-        , label = "Int"
+        , label = "<Int>"
         , stateTypeName = "String"
         , deltaTypeName = "String"
         }
@@ -1798,7 +1798,7 @@ float =
                     Nothing ->
                         Err [ "Must be a number" ]
         , subscriptions = \_ -> Sub.none
-        , label = "Float"
+        , label = "<Float>"
         , stateTypeName = "String"
         , deltaTypeName = "String"
         }
@@ -1827,7 +1827,7 @@ string =
         , view = textControlView "text"
         , parse = Ok
         , subscriptions = \_ -> Sub.none
-        , label = "String"
+        , label = "<String>"
         , stateTypeName = "String"
         , deltaTypeName = "String"
         }
@@ -1867,7 +1867,7 @@ char =
                     Nothing ->
                         Err [ "Must not be blank" ]
         , subscriptions = \_ -> Sub.none
-        , label = "Char"
+        , label = "<Char>"
         , stateTypeName = "String"
         , deltaTypeName = "String"
         }
@@ -1957,7 +1957,7 @@ bool =
         , update = \delta _ -> ( delta, Cmd.none )
         , parse = Ok
         , subscriptions = \_ -> Sub.none
-        , label = "Bool"
+        , label = "<Bool>"
         , stateTypeName = "Bool"
         , deltaTypeName = "Bool"
         }
@@ -2047,7 +2047,7 @@ maybe control =
         |> tag0 "Nothing" Nothing
         |> tag1 "Just" Just control
         |> endCustomType
-        |> label "Maybe"
+        |> label "<Maybe>"
 
 
 
@@ -2089,7 +2089,7 @@ result failureControl successControl =
         |> tag1 "Err" Err failureControl
         |> tag1 "Ok" Ok successControl
         |> endCustomType
-        |> label "Result"
+        |> label "<Result>"
 
 
 
@@ -2118,7 +2118,7 @@ tuple first second =
         |> field Tuple.first first
         |> field Tuple.second second
         |> endRecord
-        |> label "Tuple"
+        |> label "<Tuple>"
         |> layout
             (\config subcontrols ->
                 [ H.fieldset [ HA.id config.id ] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
@@ -2157,7 +2157,7 @@ triple first second third =
         |> field (\( _, b, _ ) -> b) second
         |> field (\( _, _, c ) -> c) third
         |> endRecord
-        |> label "Triple"
+        |> label "<Triple>"
         |> layout
             (\config subcontrols ->
                 [ H.fieldset [ HA.id config.id ] (H.legend [] [ H.text config.label ] :: List.concatMap .html subcontrols) ]
@@ -2380,7 +2380,7 @@ list (Control ctrl) =
                             |> List.concat
                 , receiverCount = 0
                 , collectDebouncingReceivers = collectDebouncingReceivers
-                , label = "List"
+                , label = "<List>"
                 , id = Nothing
                 , name = Nothing
                 , class = []
@@ -2410,7 +2410,7 @@ list (Control ctrl) =
                             ctrl (Path.add 0 path)
                     in
                     "(Control.ListDelta " ++ itemControl.deltaTypeName ++ ")"
-                , metadata = [ ( path, { label = "List", class = [], id = Nothing } ) ]
+                , metadata = [ ( path, { label = "<List>", class = [], id = Nothing } ) ]
                 }
         )
 
@@ -2451,7 +2451,7 @@ dict keyControl valueControl =
         |> alertAtIndexes
             (List.map Tuple.first >> nonUniqueIndexes)
             "@@dict-unique-keys"
-        |> label "Dict"
+        |> label "<Dict>"
         |> map { convert = Dict.fromList, revert = Dict.toList }
 
 
@@ -2506,7 +2506,7 @@ set memberControl =
     list
         (memberControl |> respond { alert = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
         |> alertAtIndexes nonUniqueIndexes "@@set-unique-keys"
-        |> label "Set"
+        |> label "<Set>"
         |> map { convert = Set.fromList, revert = Set.toList }
 
 
@@ -2536,7 +2536,7 @@ array :
             (Array.Array output)
 array itemControl =
     list itemControl
-        |> label "Array"
+        |> label "<Array>"
         |> map { convert = Array.fromList, revert = Array.toList }
 
 
@@ -3129,14 +3129,14 @@ endRecord (RecordBuilder rec) =
                 , collectErrors = \(State _ states) alerts -> collectErrorsForRecord rec.errorCollector alerts fns states
                 , receiverCount = 0
                 , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.debouncingReceiverCollector fns states
-                , label = "Record"
+                , label = "<Record>"
                 , id = Nothing
                 , name = Nothing
                 , class = []
                 , subscriptions = \(State _ states) -> collectRecordSubscriptions rec.subscriptionCollector deltaSetters fns states
                 , stateTypeName = makeTypeName "State" rec.stateTypeNames
                 , deltaTypeName = makeTypeName "Delta" rec.deltaTypeNames
-                , metadata = ( path, { label = "Record", class = [], id = Nothing } ) :: rec.metadata path
+                , metadata = ( path, { label = "<Record>", class = [], id = Nothing } ) :: rec.metadata path
                 }
         )
 
@@ -4432,14 +4432,14 @@ endCustomType (CustomTypeBuilder builder) =
                 , collectErrors = \(State _ states) alerts -> collectErrorsForCustomType builder.errorCollector alerts fns states
                 , receiverCount = 0
                 , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns states
-                , label = "Custom Type"
+                , label = "<Custom Type>"
                 , id = Nothing
                 , name = Nothing
                 , class = []
                 , subscriptions = \(State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns states
                 , stateTypeName = makeTypeName "State" builder.stateTypeNames
                 , deltaTypeName = makeTypeName "Delta" builder.deltaTypeNames
-                , metadata = ( path, { id = Nothing, class = [], label = "Custom Type" } ) :: builder.metadata path
+                , metadata = ( path, { id = Nothing, class = [], label = "<Custom Type>" } ) :: builder.metadata path
                 }
         )
 
