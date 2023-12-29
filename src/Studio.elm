@@ -342,7 +342,7 @@ parsedStateToHtmlHelper metadata pathsAndDeltas expanded idx path oldState newSt
                             ]
                         , H.p []
                             [ H.text "HTML id: "
-                            , H.text (Maybe.withDefault "[none]" meta.id)
+                            , H.text (Maybe.withDefault ("control-" ++ Path.toString path) meta.id)
                             ]
                         , H.p []
                             [ H.text "HTML class: "
