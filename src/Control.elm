@@ -2008,6 +2008,7 @@ map config control =
             in
             inner path
         )
+        |> label "<Mapping>"
 
 
 
