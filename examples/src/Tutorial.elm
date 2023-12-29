@@ -754,7 +754,7 @@ idControl =
     Control.int
         |> Control.label "ID number"
         |> Control.map
-            { convert = Id
+            { convert = \int -> Id int
             , revert = \(Id int) -> int
             }
 
@@ -791,7 +791,7 @@ idControl =
     Control.int
         |> Control.label "ID number"
         |> Control.map 
-            { convert = Id
+            { convert = \\int -> Id int
             , revert = \\(Id int) -> int 
             }
 ```
