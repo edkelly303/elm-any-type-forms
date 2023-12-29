@@ -265,98 +265,116 @@ parsedStateToHtmlHelper :
     -> ElmValue
     -> List (H.Html (Msg delta))
 parsedStateToHtmlHelper metadata pathsAndDeltas expanded idx path oldState newState =
-    let
-        label =
-            Path.dict.get path metadata
-                |> Maybe.map .label
-                |> Maybe.withDefault "ERROR"
+    case Path.dict.get path metadata of
+        Nothing ->
+            [ H.text "ERROR: missing path" ]
 
-        collapseButton =
-            if idx == 1 then
-                H.div
-                    [ HA.style "position" "relative"
-                    , HA.style "left" (String.fromInt ((Path.depth path - 1) * 10) ++ "px")
-                    ]
-                    [ H.button [ HE.onClick (CollapseStateClicked path) ] [ H.text "-" ], H.text label ]
-
-            else
-                H.text ""
-
-        expandButton =
-            H.div
-                [ HA.style "position" "relative"
-                , HA.style "left" (String.fromInt ((Path.depth path - 1) * 10) ++ "px")
-                ]
-                [ H.button [ HE.onClick (ExpandStateClicked path) ] [ H.text "+" ], H.text label ]
-    in
-    case ( classifyState oldState, classifyState newState ) of
-        ( FinalCombinator thisStateOld, FinalCombinator thisStateNew ) ->
-            if Path.set.member path expanded then
-                collapseButton
-                    :: parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 (Path.add idx path) thisStateOld thisStateNew
-
-            else
-                [ expandButton ]
-
-        ( Combinator thisStateOld nextStateOld, Combinator thisStateNew nextStateNew ) ->
-            if Path.set.member path expanded then
-                collapseButton
-                    :: parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 (Path.add idx path) thisStateOld thisStateNew
-                    ++ parsedStateToHtmlHelper metadata pathsAndDeltas expanded (idx + 1) path nextStateOld nextStateNew
-
-            else
-                [ expandButton ]
-
-        ( Simple, Simple ) ->
+        Just meta ->
             let
-                oldStrings =
-                    elmValueToString oldState |> String.lines
+                collapseButton =
+                    if idx == 1 then
+                        H.div
+                            [ HA.style "position" "relative"
+                            , HA.style "left" (String.fromInt ((Path.depth path - 1) * 10) ++ "px")
+                            ]
+                            [ H.button [ HE.onClick (CollapseStateClicked path) ] [ H.text "-" ], H.text meta.label ]
 
-                newStrings =
-                    elmValueToString newState |> String.lines
+                    else
+                        H.text ""
 
-                deltas =
-                    List.filterMap
-                        (\( p, html ) ->
-                            if p == path then
-                                Just html
-
-                            else
-                                Nothing
-                        )
-                        pathsAndDeltas
+                expandButton =
+                    H.div
+                        [ HA.style "position" "relative"
+                        , HA.style "left" (String.fromInt ((Path.depth path - 1) * 10) ++ "px")
+                        ]
+                        [ H.button [ HE.onClick (ExpandStateClicked path) ] [ H.text "+" ], H.text meta.label ]
             in
-            [ H.div
-                [ HA.classList
-                    [ ( "studio-debug-state-item", True )
-                    , ( "updated", oldStrings /= newStrings )
-                    ]
-                ]
-                [ H.p []
-                    [ H.text (Path.toString path ++ ": ")
-                    , H.text label
-                    ]
-                , H.p []
-                    (List.map2
-                        (\oldLine newLine ->
-                            if oldLine /= newLine then
-                                H.div []
-                                    [ H.p [ HA.class "diff-deleted" ] [ H.text oldLine ]
-                                    , H.p [ HA.class "diff-inserted" ] [ H.text newLine ]
-                                    ]
+            case ( classifyState oldState, classifyState newState ) of
+                ( FinalCombinator thisStateOld, FinalCombinator thisStateNew ) ->
+                    if Path.set.member path expanded then
+                        collapseButton
+                            :: parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 (Path.add idx path) thisStateOld thisStateNew
 
-                            else
-                                H.p [] [ H.text oldLine ]
-                        )
-                        oldStrings
-                        newStrings
-                    )
-                , H.div [ HA.id "studio-debug-deltas-list" ] deltas
-                ]
-            ]
+                    else
+                        [ expandButton ]
 
-        _ ->
-            [ H.text "ERROR!" ]
+                ( Combinator thisStateOld nextStateOld, Combinator thisStateNew nextStateNew ) ->
+                    if Path.set.member path expanded then
+                        collapseButton
+                            :: parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 (Path.add idx path) thisStateOld thisStateNew
+                            ++ parsedStateToHtmlHelper metadata pathsAndDeltas expanded (idx + 1) path nextStateOld nextStateNew
+
+                    else
+                        [ expandButton ]
+
+                ( Simple, Simple ) ->
+                    let
+                        oldStrings =
+                            elmValueToString oldState |> String.lines
+
+                        newStrings =
+                            elmValueToString newState |> String.lines
+
+                        deltas =
+                            List.filterMap
+                                (\( p, html ) ->
+                                    if p == path then
+                                        Just html
+
+                                    else
+                                        Nothing
+                                )
+                                pathsAndDeltas
+                    in
+                    [ H.div
+                        [ HA.classList
+                            [ ( "studio-debug-state-item", True )
+                            , ( "updated", oldStrings /= newStrings )
+                            ]
+                        ]
+                        [ H.p []
+                            [ H.text "Label: "
+                            , H.strong [] [ H.text meta.label ]
+                            ]
+                        , H.p []
+                            [ H.text "Path: "
+                            , H.text (Path.toString path)
+                            ]
+                        , H.p []
+                            [ H.text "HTML id: "
+                            , H.text (Maybe.withDefault "[none]" meta.id)
+                            ]
+                        , H.p []
+                            [ H.text "HTML class: "
+                            , H.text ("\"" ++ String.join " " meta.class ++ "\"")
+                            ]
+                        , H.p []
+                            [ H.text "State:"
+                            , H.div []
+                                (List.map2
+                                    (\oldLine newLine ->
+                                        if oldLine /= newLine then
+                                            H.div []
+                                                [ H.p [ HA.class "diff-deleted" ] [ H.text oldLine ]
+                                                , H.p [ HA.class "diff-inserted" ] [ H.text newLine ]
+                                                ]
+
+                                        else
+                                            H.p [] [ H.text oldLine ]
+                                    )
+                                    oldStrings
+                                    newStrings
+                                )
+                            ]
+                        , H.details []
+                            [ H.summary [] [ H.text "Deltas" ]
+                            , H.div [ HA.id "studio-debug-deltas-list" ] deltas
+                            ]
+                        ]
+                    ]
+
+                _ ->
+                    [ H.text "ERROR: mismatched states!" ]
 
 
 type ClassifiedState
