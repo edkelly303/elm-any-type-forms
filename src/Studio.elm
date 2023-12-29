@@ -125,9 +125,17 @@ stateToHtml debugToString metadata pathsAndDeltas expanded oldState newState =
             ( Just newState, Nothing, Nothing )
                 |> debugToString
                 |> DebugParser.parseValue DebugParser.defaultConfig
+
+        extractParsedState elmValueResult =
+            case elmValueResult of
+                Ok (Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "Just" [ parsedState ]), _, _ ])) ->
+                    Just parsedState
+
+                _ ->
+                    Nothing
     in
-    case ( oldParsed, newParsed ) of
-        ( Ok (Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "Just" [ oldParsedState ]), _, _ ])), Ok (Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "Just" [ newParsedState ]), _, _ ])) ) ->
+    case ( extractParsedState oldParsed, extractParsedState newParsed ) of
+        ( Just oldParsedState, Just newParsedState ) ->
             parsedStateToHtml metadata pathsAndDeltas expanded oldParsedState newParsedState
 
         _ ->
@@ -236,6 +244,13 @@ elmValueToString elmValue =
             "Dict.fromList [ " ++ (List.map (\( k, v ) -> "( " ++ elmValueToString k ++ ", " ++ elmValueToString v ++ " )") listKeyValues |> String.join ", ") ++ " ]"
 
 
+parsedStateToHtml :
+    Path.Dict Metadata
+    -> List ( Path.Path, H.Html (Msg delta) )
+    -> Path.Set
+    -> ElmValue
+    -> ElmValue
+    -> List (H.Html (Msg delta))
 parsedStateToHtml metadata pathsAndDeltas expanded oldState newState =
     parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 Path.root oldState newState
 
@@ -398,7 +413,9 @@ parsedDeltaToHtmlHelper metadata idx path deltaValue =
         _ ->
             let
                 label =
-                    Path.dict.get path metadata |> Maybe.map .label |> Maybe.withDefault "ERROR"
+                    Path.dict.get path metadata
+                        |> Maybe.map .label
+                        |> Maybe.withDefault "ERROR"
             in
             [ ( path, [ H.text (elmValueToString deltaValue) ] ) ]
 
