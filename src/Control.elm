@@ -622,6 +622,9 @@ studio config =
                   , newState = formState
                   , page = Studio.Debug
                   , deltas = []
+                  , expanded =
+                        Path.set.empty
+                            |> Path.set.insert Path.root
                   }
                 , Cmd.batch
                     [ Cmd.map Studio.FormChanged cmd
@@ -709,9 +712,14 @@ studio config =
                     Studio.CssChanged changedCss ->
                         ( model, Cmd.none )
 
-                    --( { model | css = changedCss }, Cmd.none )
                     Studio.PageChanged page ->
                         ( { model | page = page }, Cmd.none )
+
+                    Studio.ExpandStateClicked path_ ->
+                        ( { model | expanded = Path.set.insert path_ model.expanded }, Cmd.none )
+
+                    Studio.CollapseStateClicked path_ ->
+                        ( { model | expanded = Path.set.remove path_ model.expanded }, Cmd.none )
         , view =
             \model ->
                 let
@@ -788,6 +796,7 @@ studio config =
                                             , oldState = oldState
                                             , newState = state
                                             , deltas = model.deltas
+                                            , expanded = model.expanded
                                             }
                                         ]
 

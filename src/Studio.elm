@@ -29,6 +29,7 @@ type alias Model state delta =
     , newState : state
     , page : Page
     , deltas : List delta
+    , expanded : Path.Set
     }
 
 
@@ -54,6 +55,8 @@ type Msg delta
     | CssAutoreloadToggled Int
     | PageChanged Page
     | TimeTravelled Int
+    | ExpandStateClicked Path.Path
+    | CollapseStateClicked Path.Path
 
 
 view :
@@ -64,9 +67,10 @@ view :
     , oldState : state
     , newState : state
     , deltas : List delta
+    , expanded : Path.Set
     }
     -> H.Html (Msg delta)
-view { debugToString, metadata, outputParsingResult, validationErrors, oldState, newState, deltas } =
+view { debugToString, metadata, outputParsingResult, validationErrors, oldState, newState, deltas, expanded } =
     let
         viewErrors errs =
             H.pre []
@@ -80,47 +84,37 @@ view { debugToString, metadata, outputParsingResult, validationErrors, oldState,
                             )
                     )
                 ]
+
+        pathsAndDeltas =
+            List.indexedMap (\idx delta -> deltaToHtml idx metadata debugToString delta) deltas
+                |> List.concat
     in
     H.div [ HA.id "studio-debug-container" ]
         [ H.div [ HA.id "studio-debug-state" ]
             [ H.h3 [] [ H.text "State" ]
             , H.pre [ HA.id "studio-debug-state-list" ]
-                (stateToHtml debugToString metadata oldState newState)
+                (stateToHtml debugToString metadata pathsAndDeltas expanded oldState newState)
             ]
-        , H.div [ HA.id "studio-debug-deltas-and-output" ]
-            [ H.div [ HA.id "studio-debug-deltas" ]
-                [ H.h3 [] [ H.text "Deltas" ]
-                , H.pre [ HA.id "studio-debug-deltas-list" ]
-                    (case deltas of
-                        [] ->
-                            [ H.text "[ no deltas ]" ]
+        , H.div [ HA.id "studio-debug-output" ]
+            [ H.h3 [] [ H.text "Output" ]
+            , H.pre []
+                (case ( outputParsingResult, validationErrors ) of
+                    ( Ok output, [] ) ->
+                        [ H.p [] [ H.text "Success! Your form produced this value:" ]
+                        , H.p [] [ outputToHtml debugToString output ]
+                        ]
 
-                        _ ->
-                            List.indexedMap (\idx delta -> deltaToHtml idx metadata debugToString delta) deltas
-                    )
-                ]
-            , H.div [ HA.id "studio-debug-output" ]
-                [ H.h3 [] [ H.text "Output" ]
-                , H.pre []
-                    (case ( outputParsingResult, validationErrors ) of
-                        ( Ok output, [] ) ->
-                            [ H.p [] [ H.text "Success! Your form produced this value:" ]
-                            , H.p [] [ outputToHtml debugToString output ]
-                            ]
+                    ( Err pErrs, vErrs ) ->
+                        [ viewErrors (pErrs ++ vErrs) ]
 
-                        ( Err pErrs, vErrs ) ->
-                            [ viewErrors (pErrs ++ vErrs) ]
-
-                        ( _, vErrs ) ->
-                            [ viewErrors vErrs ]
-                    )
-                ]
+                    ( _, vErrs ) ->
+                        [ viewErrors vErrs ]
+                )
             ]
         ]
 
 
-stateToHtml : (Debug state delta output -> String) -> Path.Dict Metadata -> state -> state -> List (H.Html msg)
-stateToHtml debugToString metadata oldState newState =
+stateToHtml debugToString metadata pathsAndDeltas expanded oldState newState =
     let
         oldParsed =
             ( Just oldState, Nothing, Nothing )
@@ -134,13 +128,13 @@ stateToHtml debugToString metadata oldState newState =
     in
     case ( oldParsed, newParsed ) of
         ( Ok (Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "Just" [ oldParsedState ]), _, _ ])), Ok (Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "Just" [ newParsedState ]), _, _ ])) ) ->
-            parsedStateToHtml metadata oldParsedState newParsedState
+            parsedStateToHtml metadata pathsAndDeltas expanded oldParsedState newParsedState
 
         _ ->
             []
 
 
-deltaToHtml : Int -> Path.Dict Metadata -> (Debug state delta output -> String) -> delta -> H.Html (Msg delta)
+deltaToHtml : Int -> Path.Dict Metadata -> (Debug state delta output -> String) -> delta -> List ( Path.Path, H.Html (Msg delta) )
 deltaToHtml idx metadata debugToString delta =
     let
         parsed =
@@ -150,12 +144,16 @@ deltaToHtml idx metadata debugToString delta =
     in
     case parsed of
         Ok (Expandable _ (ElmSequence SeqTuple [ _, Expandable _ (ElmType "Just" [ Expandable _ (ElmType _ [ parsedDelta ]) ]), _ ])) ->
-            H.button
-                [ HE.onClick (TimeTravelled idx), HA.class "studio-debug-delta-button" ]
-                (parsedDeltaToHtml metadata parsedDelta)
+            parsedDeltaToHtml metadata parsedDelta
+                |> List.map
+                    (Tuple.mapSecond
+                        (H.button
+                            [ HE.onClick (TimeTravelled idx), HA.class "studio-debug-delta-button" ]
+                        )
+                    )
 
         _ ->
-            H.text "ERROR!"
+            []
 
 
 outputToHtml : (Debug state delta output -> String) -> output -> H.Html msg
@@ -238,69 +236,127 @@ elmValueToString elmValue =
             "Dict.fromList [ " ++ (List.map (\( k, v ) -> "( " ++ elmValueToString k ++ ", " ++ elmValueToString v ++ " )") listKeyValues |> String.join ", ") ++ " ]"
 
 
-parsedStateToHtml : Path.Dict Metadata -> ElmValue -> ElmValue -> List (H.Html msg)
-parsedStateToHtml metadata oldState newState =
-    parsedStateToHtmlHelper metadata 1 Path.root oldState newState
+parsedStateToHtml metadata pathsAndDeltas expanded oldState newState =
+    parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 Path.root oldState newState
 
 
-parsedStateToHtmlHelper : Path.Dict Metadata -> Int -> Path.Path -> ElmValue -> ElmValue -> List (H.Html msg)
-parsedStateToHtmlHelper metadata idx path oldState newState =
-    case ( oldState, newState ) of
-        ( Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "State" [ _, oldFst ]), Expandable _ (ElmType "End" []) ]), Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "State" [ _, newFst ]), Expandable _ (ElmType "End" []) ]) ) ->
-            parsedStateToHtmlHelper metadata 1 (Path.add idx path) oldFst newFst
+parsedStateToHtmlHelper :
+    Path.Dict Metadata
+    -> List ( Path.Path, H.Html (Msg delta) )
+    -> Path.Set
+    -> Int
+    -> Path.Path
+    -> ElmValue
+    -> ElmValue
+    -> List (H.Html (Msg delta))
+parsedStateToHtmlHelper metadata pathsAndDeltas expanded idx path oldState newState =
+    let
+        label =
+            Path.dict.get path metadata
+                |> Maybe.map .label
+                |> Maybe.withDefault "ERROR"
 
-        ( Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "State" [ _, oldFst ]), oldSnd ]), Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "State" [ _, newFst ]), newSnd ]) ) ->
-            parsedStateToHtmlHelper metadata 1 (Path.add idx path) oldFst newFst
-                ++ parsedStateToHtmlHelper metadata (idx + 1) path oldSnd newSnd
+        collapseButton =
+            if idx == 1 then
+                H.div [ HA.style "position" "relative", HA.style "left" (String.fromInt ((Path.depth path - 1) * 10) ++ "px") ] [ H.button [ HE.onClick (CollapseStateClicked path) ] [ H.text "-" ], H.text label ]
+
+            else
+                H.text ""
+
+        expandButton =
+            H.div [ HA.style "position" "relative", HA.style "left" (String.fromInt ((Path.depth path - 1) * 10) ++ "px") ] [ H.button [ HE.onClick (ExpandStateClicked path) ] [ H.text "+" ], H.text label ]
+    in
+    if Path.set.member path expanded then
+        collapseButton
+            :: (case ( classifyState oldState, classifyState newState ) of
+                    ( FinalCombinator thisStateOld, FinalCombinator thisStateNew ) ->
+                        parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 (Path.add idx path) thisStateOld thisStateNew
+
+                    ( Combinator thisStateOld nextStateOld, Combinator thisStateNew nextStateNew ) ->
+                        parsedStateToHtmlHelper metadata pathsAndDeltas expanded 1 (Path.add idx path) thisStateOld thisStateNew
+                            ++ parsedStateToHtmlHelper metadata pathsAndDeltas expanded (idx + 1) path nextStateOld nextStateNew
+
+                    ( Simple _, Simple _ ) ->
+                        let
+                            oldStrings =
+                                elmValueToString oldState |> String.lines
+
+                            newStrings =
+                                elmValueToString newState |> String.lines
+
+                            deltas =
+                                List.filterMap
+                                    (\( p, html ) ->
+                                        if p == path then
+                                            Just html
+
+                                        else
+                                            Nothing
+                                    )
+                                    pathsAndDeltas
+                        in
+                        [ H.div
+                            [ HA.classList
+                                [ ( "studio-debug-state-item", True )
+                                , ( "updated", oldStrings /= newStrings )
+                                ]
+                            ]
+                            [ H.p []
+                                [ H.text (Path.toString path ++ ": ")
+                                , H.text label
+                                ]
+                            , H.p []
+                                (List.map2
+                                    (\oldLine newLine ->
+                                        if oldLine /= newLine then
+                                            H.div []
+                                                [ H.p [ HA.class "diff-deleted" ] [ H.text oldLine ]
+                                                , H.p [ HA.class "diff-inserted" ] [ H.text newLine ]
+                                                ]
+
+                                        else
+                                            H.p [] [ H.text oldLine ]
+                                    )
+                                    oldStrings
+                                    newStrings
+                                )
+                            , H.div [ HA.id "studio-debug-deltas-list" ] deltas
+                            ]
+                        ]
+
+                    _ ->
+                        [ H.text "ERROR!" ]
+               )
+
+    else
+        [ expandButton ]
+
+
+type ClassifiedState
+    = Combinator ElmValue ElmValue
+    | FinalCombinator ElmValue
+    | Simple ElmValue
+
+
+classifyState : ElmValue -> ClassifiedState
+classifyState state =
+    case state of
+        Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "State" [ _, thisState ]), Expandable _ (ElmType "End" []) ]) ->
+            FinalCombinator thisState
+
+        Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "State" [ _, thisState ]), nextState ]) ->
+            Combinator thisState nextState
 
         _ ->
-            let
-                oldStrings =
-                    elmValueToString oldState |> String.lines
-
-                newStrings =
-                    elmValueToString newState |> String.lines
-
-                label =
-                    Path.dict.get path metadata
-                        |> Maybe.map .label
-                        |> Maybe.withDefault "ERROR"
-            in
-            [ H.div
-                [ HA.classList
-                    [ ( "studio-debug-state-item", True )
-                    , ( "updated", oldStrings /= newStrings )
-                    ]
-                ]
-                [ H.p []
-                    [ H.text (Path.toString path ++ ": ")
-                    , H.text label
-                    ]
-                , H.p []
-                    (List.map2
-                        (\oldLine newLine ->
-                            if oldLine /= newLine then
-                                H.div []
-                                    [ H.p [ HA.class "diff-deleted" ] [ H.text oldLine ]
-                                    , H.p [ HA.class "diff-inserted" ] [ H.text newLine ]
-                                    ]
-
-                            else
-                                H.p [] [ H.text oldLine ]
-                        )
-                        oldStrings
-                        newStrings
-                    )
-                ]
-            ]
+            Simple state
 
 
-parsedDeltaToHtml : Path.Dict Metadata -> ElmValue -> List (H.Html (Msg delta))
+parsedDeltaToHtml : Path.Dict Metadata -> ElmValue -> List ( Path.Path, List (H.Html (Msg delta)) )
 parsedDeltaToHtml metadata deltaValue =
     parsedDeltaToHtmlHelper metadata 1 Path.root deltaValue
 
 
-parsedDeltaToHtmlHelper : Path.Dict Metadata -> Int -> Path.Path -> ElmValue -> List (H.Html (Msg delta))
+parsedDeltaToHtmlHelper : Path.Dict Metadata -> Int -> Path.Path -> ElmValue -> List ( Path.Path, List (H.Html (Msg delta)) )
 parsedDeltaToHtmlHelper metadata idx path deltaValue =
     case deltaValue of
         Expandable _ (ElmSequence SeqTuple [ Expandable _ (ElmType "Skip" _), Expandable _ (ElmType "End" _) ]) ->
@@ -332,8 +388,11 @@ parsedDeltaToHtmlHelper metadata idx path deltaValue =
                 label =
                     Path.dict.get path metadata |> Maybe.map .label |> Maybe.withDefault "ERROR"
             in
-            [ H.span [] [ H.text (Path.toString path ++ ": "), H.text label ]
-            , H.div [] [ H.text (elmValueToString deltaValue) ]
+            [ ( path
+              , [ H.span [] [ H.text (Path.toString path ++ ": "), H.text label ]
+                , H.div [] [ H.text (elmValueToString deltaValue) ]
+                ]
+              )
             ]
 
 
