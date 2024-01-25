@@ -2215,6 +2215,16 @@ array itemControl =
 -}
 
 
+nestForwards : (c -> a -> b) -> (b -> d) -> c -> a -> d
+nestForwards mkBifunctor previous this =
+    \next -> previous (mkBifunctor this next)
+
+
+nestBackwards : (a -> b -> c) -> b -> a -> c
+nestBackwards mkBifunctor this =
+    \next -> mkBifunctor next this
+
+
 {-| A data structure used to build records
 -}
 type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer
@@ -2473,30 +2483,33 @@ field :
              -> ( State state, restStates )
              -> List (Subcontrol recordDelta)
             )
-field fromInput (Control control) (RecordBuilder rec) =
+field fromInput (Control control) (RecordBuilder builder) =
     let
         newIndex =
-            rec.index + 1
+            builder.index + 1
     in
     RecordBuilder
         { index = newIndex
-        , toOutput = rec.toOutput
+        , toOutput = builder.toOutput
         , fns =
             \path ->
                 let
+                    previousFns =
+                        builder.fns path
+
                     newPath =
                         Path.add newIndex path
 
                     (ControlFns fns) =
                         control newPath
-                in
-                rec.fns path
-                    << Tuple.pair
-                        (RecordFns
+
+                    newFns =
+                        RecordFns
                             { fns = ControlFns { fns | index = newIndex }
                             , fromInput = fromInput
                             }
-                        )
+                in
+                nestForwards Tuple.pair previousFns newFns
         , initialStates =
             \path ->
                 let
@@ -2505,12 +2518,14 @@ field fromInput (Control control) (RecordBuilder rec) =
 
                     (ControlFns fns) =
                         control newPath
+
+                    previousInitialStates =
+                        builder.initialStates path
+
+                    newInitialState =
+                        Tuple.first fns.initBlank
                 in
-                rec.initialStates path
-                    << Tuple.pair
-                        (fns.initBlank
-                            |> Tuple.first
-                        )
+                nestForwards Tuple.pair previousInitialStates newInitialState
         , initialDeltas =
             \path ->
                 let
@@ -2519,27 +2534,29 @@ field fromInput (Control control) (RecordBuilder rec) =
 
                     (ControlFns fns) =
                         control newPath
+
+                    previousInitialDeltas =
+                        builder.initialDeltas path
+
+                    newInitialDelta =
+                        Tuple.second fns.initBlank
                 in
-                rec.initialDeltas path
-                    << Tuple.pair
-                        (fns.initBlank
-                            |> Tuple.second
-                        )
-        , updater = rec.updater >> recordStateUpdater
-        , viewer = rec.viewer >> recordStateViewer
-        , parser = rec.parser >> recordStateValidator
-        , idleSetter = rec.idleSetter >> recordStateIdleSetter
-        , initialiser = rec.initialiser >> recordStateInitialiser
-        , deltaInitialiser = rec.deltaInitialiser >> recordDeltaInitialiser
-        , before = rec.before << Tuple.pair Skip
-        , befores = rec.befores << Tuple.pair rec.before
-        , after = ( Skip, rec.after )
-        , afters = ( rec.after, rec.afters )
-        , makeSetters = rec.makeSetters >> deltaSetterMaker
-        , alertEmitter = rec.alertEmitter >> recordAlertEmitter
-        , errorCollector = rec.errorCollector >> recordErrorCollector
-        , debouncingReceiverCollector = rec.debouncingReceiverCollector >> recordDebouncingReceiverCollector
-        , subscriptionCollector = rec.subscriptionCollector >> recordSubscriptionCollector
+                nestForwards Tuple.pair previousInitialDeltas newInitialDelta
+        , updater = builder.updater >> recordStateUpdater
+        , viewer = builder.viewer >> recordStateViewer
+        , parser = builder.parser >> recordStateValidator
+        , idleSetter = builder.idleSetter >> recordStateIdleSetter
+        , initialiser = builder.initialiser >> recordStateInitialiser
+        , deltaInitialiser = builder.deltaInitialiser >> recordDeltaInitialiser
+        , before = nestForwards Tuple.pair builder.before Skip
+        , befores = nestForwards Tuple.pair builder.befores builder.before
+        , after = nestBackwards Tuple.pair builder.after Skip
+        , afters = nestBackwards Tuple.pair builder.afters builder.after
+        , makeSetters = builder.makeSetters >> deltaSetterMaker
+        , alertEmitter = builder.alertEmitter >> recordAlertEmitter
+        , errorCollector = builder.errorCollector >> recordErrorCollector
+        , debouncingReceiverCollector = builder.debouncingReceiverCollector >> recordDebouncingReceiverCollector
+        , subscriptionCollector = builder.subscriptionCollector >> recordSubscriptionCollector
         }
 
 
@@ -3021,7 +3038,7 @@ recordStateInitialiser next states deltas recordInput ( RecordFns fns, restFns )
                 |> fns.fromInput
                 |> controlFns.initPrefilled
     in
-    next (states << Tuple.pair state) (Cmd.map deltaSetter delta :: deltas) recordInput restFns restDeltaSetters
+    next (nestForwards Tuple.pair states state) (Cmd.map deltaSetter delta :: deltas) recordInput restFns restDeltaSetters
 
 
 initialiseRecordDeltas :
@@ -3293,7 +3310,7 @@ recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( delt
                 |> Cmd.map deltaSetter
     in
     next
-        { newStates = newStates << Tuple.pair newState
+        { newStates = nestForwards Tuple.pair newStates newState
         , newCmds = cmd2 :: newCmds
         }
         restFns
@@ -3697,46 +3714,42 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
                     (ControlFns controlFns) =
                         control (Path.add newIndex path)
                 in
-                builder.fns path
-                    << Tuple.pair
-                        (ControlFns { controlFns | index = newIndex })
+                nestForwards Tuple.pair
+                    (builder.fns path)
+                    (ControlFns { controlFns | index = newIndex })
         , initialStates =
             \path ->
                 let
                     (ControlFns controlFns) =
                         control (Path.add newIndex path)
                 in
-                builder.initialStates path
-                    << Tuple.pair
-                        (controlFns.initBlank
-                            |> Tuple.first
-                        )
+                nestForwards Tuple.pair
+                    (builder.initialStates path)
+                    (controlFns.initBlank |> Tuple.first)
         , initialDeltas =
             \path ->
                 let
                     (ControlFns controlFns) =
                         control (Path.add newIndex path)
                 in
-                builder.initialDeltas path
-                    << Tuple.pair
-                        (controlFns.initBlank
-                            |> Tuple.second
-                        )
+                nestForwards Tuple.pair
+                    (builder.initialDeltas path)
+                    (controlFns.initBlank |> Tuple.second)
         , updater = builder.updater >> customTypeStateUpdater
         , viewer = builder.viewer >> selectedTagViewer
         , parser = builder.parser >> selectedTagParser
         , idleSetter = builder.idleSetter >> selectedTagIdleSetter
-        , deltaBefore = builder.deltaBefore << Tuple.pair Skip
-        , deltaBefores = builder.deltaBefores << Tuple.pair builder.deltaBefore
-        , deltaAfter = ( Skip, builder.deltaAfter )
-        , deltaAfters = ( builder.deltaAfter, builder.deltaAfters )
+        , deltaBefore = nestForwards Tuple.pair builder.deltaBefore Skip
+        , deltaBefores = nestForwards Tuple.pair builder.deltaBefores builder.deltaBefore
+        , deltaAfter = nestBackwards Tuple.pair builder.deltaAfter Skip
+        , deltaAfters = nestBackwards Tuple.pair builder.deltaAfters builder.deltaAfter
         , makeDeltaSetters = builder.makeDeltaSetters >> deltaSetterMaker
         , initialiseDeltas = builder.initialiseDeltas >> customTypeDeltaInitialiser
-        , stateBefore = builder.stateBefore << Tuple.pair Nothing
-        , stateBefores = builder.stateBefores << Tuple.pair builder.stateBefore
-        , toArgStates = builder.toArgStates << Tuple.pair toArgState
-        , stateAfter = ( Nothing, builder.stateAfter )
-        , stateAfters = ( builder.stateAfter, builder.stateAfters )
+        , stateBefore = nestForwards Tuple.pair builder.stateBefore Nothing
+        , stateBefores = nestForwards Tuple.pair builder.stateBefores builder.stateBefore
+        , toArgStates = nestForwards Tuple.pair builder.toArgStates toArgState
+        , stateAfter = nestBackwards Tuple.pair builder.stateAfter Nothing
+        , stateAfters = nestBackwards Tuple.pair builder.stateAfters builder.stateAfter
         , inputToStateConverters = builder.inputToStateConverters >> convertInputToState
         , initialStateOverrider = builder.initialStateOverrider >> initialStateOverrider
         , applyInputs = builder.applyInputs >> inputToStateConverterToDestructorApplier
@@ -5962,7 +5975,7 @@ customTypeStateUpdater next { newStates, newCmds } ( ControlFns fns, restFns ) (
             fns.update delta state
     in
     next
-        { newStates = newStates << Tuple.pair newState
+        { newStates = nestForwards Tuple.pair newStates newState
         , newCmds = Cmd.map deltaSetter newCmd :: newCmds
         }
         restFns
@@ -6139,7 +6152,7 @@ convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, 
                 )
     in
     next
-        { finalTagStates = finalTagStates << Tuple.pair finalTagState
+        { finalTagStates = nestForwards Tuple.pair finalTagStates finalTagState
         , tagStateOverrider = tagStateOverrider
         , initialTagStates = initialTagStates
         , controlFns = restFns
@@ -6202,7 +6215,7 @@ initialStateOverrider next thisTagIndex currentlySelectedTagIndex tagStates ( th
                 Nothing ->
                     ( currentlySelectedTagIndex, initialTagState )
     in
-    next (thisTagIndex + 1) selectedTag (tagStates << Tuple.pair tagArgState) restMaybeOverrides restInitialTagStates
+    next (thisTagIndex + 1) selectedTag (nestForwards Tuple.pair tagStates tagArgState) restMaybeOverrides restInitialTagStates
 
 
 collectErrorsForCustomType :
