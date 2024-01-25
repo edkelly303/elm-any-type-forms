@@ -337,20 +337,20 @@ type InternalStatus
 used internally within a form to update its state.
 -}
 type Delta delta
-    = Skip
-    | ChangeStateOnInput delta
-    | ChangeStateInternally delta
-    | StartDebouncing Time.Posix
-    | CheckDebouncer Time.Posix
+    = NoDelta
+    | StateChangedByInput delta
+    | StateChangedInternally delta
+    | DebounceTimerSet Time.Posix
+    | DebounceTimerExpired Time.Posix
     | TagSelected Int
 
 
 {-| Special `Delta` type used only by `list` controls
 -}
 type ListDelta delta
-    = InsertItem Int
-    | DeleteItem Int
-    | ChangeItem Int (Delta delta)
+    = ItemInserted Int
+    | ItemDeleted Int
+    | ItemUpdated Int (Delta delta)
 
 
 
@@ -734,12 +734,12 @@ create controlConfig =
                 , initBlank =
                     controlConfig.blank
                         |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
-                        |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
+                        |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , initPrefilled =
                     \input ->
                         controlConfig.prefill input
                             |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
-                            |> Tuple.mapSecond (Cmd.map ChangeStateInternally)
+                            |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , baseUpdate = preUpdate
                 , update = preUpdate 0
                 , subControlViews = \_ -> []
@@ -753,7 +753,7 @@ create controlConfig =
                             , class = String.join " " viewConfig.class
                             }
                             |> wrappedView viewConfig.status
-                            |> H.map ChangeStateOnInput
+                            |> H.map StateChangedByInput
                         ]
                 , parse = parse
                 , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
@@ -768,7 +768,7 @@ create controlConfig =
                 , subscriptions =
                     \(State _ s) ->
                         controlConfig.subscriptions s
-                            |> Sub.map ChangeStateInternally
+                            |> Sub.map StateChangedInternally
                 }
         )
 
@@ -776,21 +776,21 @@ create controlConfig =
 wrapUpdate : (delta -> state -> ( state, Cmd delta )) -> Float -> Delta delta -> State state -> ( State state, Cmd (Delta delta) )
 wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
     case wrappedDelta of
-        Skip ->
+        NoDelta ->
             ( State internalState state
             , Cmd.none
             )
 
-        ChangeStateInternally delta ->
+        StateChangedInternally delta ->
             let
                 ( newState, cmd ) =
                     innerUpdate delta state
             in
             ( State internalState newState
-            , Cmd.map ChangeStateInternally cmd
+            , Cmd.map StateChangedInternally cmd
             )
 
-        ChangeStateOnInput delta ->
+        StateChangedByInput delta ->
             let
                 ( newState, cmd ) =
                     innerUpdate delta state
@@ -798,22 +798,22 @@ wrapUpdate innerUpdate debounce_ wrappedDelta (State internalState state) =
             if debounce_ > 0 then
                 ( State internalState newState
                 , Cmd.batch
-                    [ Task.perform StartDebouncing Time.now
-                    , Cmd.map ChangeStateOnInput cmd
+                    [ Task.perform DebounceTimerSet Time.now
+                    , Cmd.map StateChangedByInput cmd
                     ]
                 )
 
             else
                 ( State { internalState | status = Idle_ } newState
-                , Cmd.map ChangeStateOnInput cmd
+                , Cmd.map StateChangedByInput cmd
                 )
 
-        StartDebouncing now ->
+        DebounceTimerSet now ->
             ( State { internalState | status = DebouncingSince now } state
-            , Task.perform (\() -> CheckDebouncer now) (Process.sleep debounce_)
+            , Task.perform (\() -> DebounceTimerExpired now) (Process.sleep debounce_)
             )
 
-        CheckDebouncer now ->
+        DebounceTimerExpired now ->
             case internalState.status of
                 DebouncingSince startTime ->
                     if now == startTime then
@@ -1869,7 +1869,7 @@ list (Control ctrl) =
 
                 listUpdate delta state =
                     case delta of
-                        InsertItem idx ->
+                        ItemInserted idx ->
                             let
                                 (ControlFns fns) =
                                     ctrl path
@@ -1884,10 +1884,10 @@ list (Control ctrl) =
                                     List.drop idx state
                             in
                             ( before ++ initialState :: after
-                            , Cmd.map (ChangeItem idx) initialCmd
+                            , Cmd.map (ItemUpdated idx) initialCmd
                             )
 
-                        ChangeItem idx itemDelta ->
+                        ItemUpdated idx itemDelta ->
                             let
                                 ( newState, cmd ) =
                                     List.Extra.indexedFoldr
@@ -1909,10 +1909,10 @@ list (Control ctrl) =
                                         state
                             in
                             ( newState
-                            , Cmd.map (ChangeItem idx) cmd
+                            , Cmd.map (ItemUpdated idx) cmd
                             )
 
-                        DeleteItem idx ->
+                        ItemDeleted idx ->
                             ( List.Extra.removeAt idx state, Cmd.none )
 
                 parse =
@@ -1972,14 +1972,14 @@ list (Control ctrl) =
                                                 itemControl.initPrefilled itemInput
                                         in
                                         ( itemState :: itemInputs
-                                        , Cmd.map (ChangeItem idx) itemCmd :: itemCmds
+                                        , Cmd.map (ItemUpdated idx) itemCmd :: itemCmds
                                         )
                                     )
                                     ( [], [] )
                                     input
                         in
                         ( State { status = Intact_, selected = 1 } initialState
-                        , Cmd.map ChangeStateInternally (Cmd.batch initialCmds)
+                        , Cmd.map StateChangedInternally (Cmd.batch initialCmds)
                         )
                 , initBlank =
                     ( State { status = Intact_, selected = 1 } []
@@ -2069,11 +2069,11 @@ list (Control ctrl) =
                                         ctrl (Path.add idx path)
                                 in
                                 itemControl.subscriptions itemState
-                                    |> Sub.map (ChangeItem idx)
+                                    |> Sub.map (ItemUpdated idx)
                             )
                             listState
                             |> Sub.batch
-                            |> Sub.map ChangeStateInternally
+                            |> Sub.map StateChangedInternally
                 }
         )
 
@@ -2548,9 +2548,9 @@ field fromInput (Control control) (RecordBuilder builder) =
         , idleSetter = builder.idleSetter >> recordStateIdleSetter
         , initialiser = builder.initialiser >> recordStateInitialiser
         , deltaInitialiser = builder.deltaInitialiser >> recordDeltaInitialiser
-        , before = nestForwards Tuple.pair builder.before Skip
+        , before = nestForwards Tuple.pair builder.before NoDelta
         , befores = nestForwards Tuple.pair builder.befores builder.before
-        , after = nestBackwards Tuple.pair builder.after Skip
+        , after = nestBackwards Tuple.pair builder.after NoDelta
         , afters = nestBackwards Tuple.pair builder.afters builder.after
         , makeSetters = builder.makeSetters >> deltaSetterMaker
         , alertEmitter = builder.alertEmitter >> recordAlertEmitter
@@ -2718,25 +2718,25 @@ endRecord (RecordBuilder rec) =
 
                 update delta (State s state) =
                     case delta of
-                        Skip ->
+                        NoDelta ->
                             ( State s state, Cmd.none )
 
-                        ChangeStateOnInput deltas ->
+                        StateChangedByInput deltas ->
                             let
                                 ( newState, cmd ) =
                                     updateRecordStates rec.updater fns deltaSetters deltas state
                             in
                             ( State s newState
-                            , Cmd.map ChangeStateOnInput cmd
+                            , Cmd.map StateChangedByInput cmd
                             )
 
-                        ChangeStateInternally deltas ->
+                        StateChangedInternally deltas ->
                             let
                                 ( newState, cmd ) =
                                     updateRecordStates rec.updater fns deltaSetters deltas state
                             in
                             ( State s newState
-                            , Cmd.map ChangeStateInternally cmd
+                            , Cmd.map StateChangedInternally cmd
                             )
 
                         TagSelected index ->
@@ -2821,7 +2821,7 @@ collectRecordSubscriptions :
 collectRecordSubscriptions collector setters fns states =
     collector (\listSubs End End End -> listSubs) [] setters fns states
         |> Sub.batch
-        |> Sub.map ChangeStateInternally
+        |> Sub.map StateChangedInternally
 
 
 recordSubscriptionCollector :
@@ -3010,7 +3010,7 @@ initialiseRecordStates initialiser input fns deltaSetters =
     initialiser
         (\states deltas _ End End ->
             ( State { status = Intact_, selected = 1 } (states End)
-            , Cmd.batch deltas |> Cmd.map ChangeStateInternally
+            , Cmd.batch deltas |> Cmd.map StateChangedInternally
             )
         )
         identity
@@ -3054,7 +3054,7 @@ initialiseRecordDeltas :
 initialiseRecordDeltas deltaInitialiser_ deltaSetters deltas =
     deltaInitialiser_ (\cmdList End End -> cmdList) [] deltaSetters deltas
         |> Cmd.batch
-        |> Cmd.map ChangeStateInternally
+        |> Cmd.map StateChangedInternally
 
 
 recordDeltaInitialiser :
@@ -3203,7 +3203,7 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
                 , alerts = alerts
                 , selected = internalState.selected
                 }
-                |> List.map (H.map (\delta -> ChangeStateOnInput (setter delta)))
+                |> List.map (H.map (\delta -> StateChangedByInput (setter delta)))
     in
     next
         (views
@@ -3739,9 +3739,9 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
         , viewer = builder.viewer >> selectedTagViewer
         , parser = builder.parser >> selectedTagParser
         , idleSetter = builder.idleSetter >> selectedTagIdleSetter
-        , deltaBefore = nestForwards Tuple.pair builder.deltaBefore Skip
+        , deltaBefore = nestForwards Tuple.pair builder.deltaBefore NoDelta
         , deltaBefores = nestForwards Tuple.pair builder.deltaBefores builder.deltaBefore
-        , deltaAfter = nestBackwards Tuple.pair builder.deltaAfter Skip
+        , deltaAfter = nestBackwards Tuple.pair builder.deltaAfter NoDelta
         , deltaAfters = nestBackwards Tuple.pair builder.deltaAfters builder.deltaAfter
         , makeDeltaSetters = builder.makeDeltaSetters >> deltaSetterMaker
         , initialiseDeltas = builder.initialiseDeltas >> customTypeDeltaInitialiser
@@ -3964,28 +3964,28 @@ endCustomType (CustomTypeBuilder builder) =
                 update =
                     \delta (State internalState state) ->
                         case delta of
-                            Skip ->
+                            NoDelta ->
                                 ( State internalState state, Cmd.none )
 
                             TagSelected idx ->
                                 ( State { internalState | selected = idx } state, Cmd.none )
 
-                            ChangeStateOnInput tagDelta ->
+                            StateChangedByInput tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater fns deltaSetters tagDelta state
                                 in
                                 ( State internalState newTagStates
-                                , Cmd.map ChangeStateOnInput cmd
+                                , Cmd.map StateChangedByInput cmd
                                 )
 
-                            ChangeStateInternally tagDelta ->
+                            StateChangedInternally tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater fns deltaSetters tagDelta state
                                 in
                                 ( State internalState newTagStates
-                                , Cmd.map ChangeStateInternally cmd
+                                , Cmd.map StateChangedInternally cmd
                                 )
 
                             _ ->
@@ -5875,7 +5875,7 @@ collectCustomTypeSubscriptions :
 collectCustomTypeSubscriptions collector setters fns states =
     collector (\listSubs End End End -> listSubs) [] setters fns states
         |> Sub.batch
-        |> Sub.map ChangeStateInternally
+        |> Sub.map StateChangedInternally
 
 
 customTypeSubscriptionCollector :
@@ -5997,7 +5997,7 @@ initialiseCustomTypeDeltas :
 initialiseCustomTypeDeltas deltaInitialiser_ deltaSetters deltas =
     deltaInitialiser_ (\cmdList End End -> cmdList) [] deltaSetters deltas
         |> List.reverse
-        |> List.map (Cmd.map ChangeStateInternally)
+        |> List.map (Cmd.map StateChangedInternally)
 
 
 customTypeDeltaInitialiser :
@@ -6147,7 +6147,7 @@ convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, 
                             maybeOverrideBefore ( Just state, maybeOverrideAfter )
                     in
                     ( overrideInitialStates tagStateOverrider maybeOverrides initialTagStates
-                    , Cmd.map (deltaSetter >> ChangeStateInternally) delta
+                    , Cmd.map (deltaSetter >> StateChangedInternally) delta
                     )
                 )
     in
@@ -6433,7 +6433,7 @@ selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( sette
                         , alerts = alerts
                         , selected = internalState.selected
                         }
-                        |> List.map (H.map (setter >> ChangeStateOnInput))
+                        |> List.map (H.map (setter >> StateChangedByInput))
                  , label = fns.label
                  , index = fns.index
                  }
@@ -6570,7 +6570,7 @@ listView path config debouncingReceivers subcontrol =
                     [ HA.for config.id ]
                     [ H.text config.label ]
                 , if List.isEmpty config.state then
-                    button (ChangeStateOnInput (InsertItem 0)) "Add item"
+                    button (StateChangedByInput (ItemInserted 0)) "Add item"
 
                   else
                     H.ol []
@@ -6619,14 +6619,14 @@ listView path config debouncingReceivers subcontrol =
                                             , selected = internalState.selected
                                             }
                                         )
-                                        |> H.map (ChangeItem idx)
-                                    , button (DeleteItem idx) "Delete item"
-                                    , H.div [] [ button (InsertItem (idx + 1)) "Insert item" ]
+                                        |> H.map (ItemUpdated idx)
+                                    , button (ItemDeleted idx) "Delete item"
+                                    , H.div [] [ button (ItemInserted (idx + 1)) "Insert item" ]
                                     ]
                             )
                             config.state
                         )
-                        |> H.map ChangeStateOnInput
+                        |> H.map StateChangedByInput
                 ]
     in
     [ view_ ]
