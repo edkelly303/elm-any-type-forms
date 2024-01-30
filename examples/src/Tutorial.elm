@@ -36,7 +36,7 @@ update msg model =
         Nothing ->
             let
                 ( newForm, result ) =
-                    form.submit model.form
+                    form.submit () model.form
             in
             ( { model
                 | form = newForm
@@ -48,7 +48,7 @@ update msg model =
         Just delta ->
             let
                 ( newForm, cmd ) =
-                    form.update delta model.form
+                    form.update () delta model.form
             in
             ( { model | form = newForm }
             , cmd
@@ -56,13 +56,13 @@ update msg model =
 
 
 subscriptions model =
-    form.subscriptions model.form
+    form.subscriptions () model.form
 
 
 view model =
     { title = "elm-any-type-forms tutorial"
     , body =
-        [ H.div [] [ form.view model.form ]
+        [ H.div [] [ form.view () model.form ]
         ]
     }
 
@@ -1109,9 +1109,9 @@ dateControl =
         { label = "Date of birth"
         , blank = ( "1970-01-01", Cmd.none )
         , prefill = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
-        , update = \delta state -> ( delta, Cmd.none )
+        , update = \ctx delta state -> ( delta, Cmd.none )
         , view =
-            \{ state, id, label, name, class } ->
+            \ctx { state, id, label, name, class } ->
                 [ H.label [ HA.for id ] [ H.text label ]
                 , H.input
                     [ HA.type_ "date"
@@ -1122,9 +1122,9 @@ dateControl =
                     ]
                     []
                 ]
-        , subscriptions = \state -> Sub.none
+        , subscriptions = \ctx state -> Sub.none
         , parse =
-            \state ->
+            \ctx state ->
                 case Date.fromIsoString state of
                     Ok date ->
                         Ok date
