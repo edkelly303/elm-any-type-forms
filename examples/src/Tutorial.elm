@@ -8,7 +8,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Markdown.Parser as Markdown
 import Markdown.Renderer
-
+import Time
 
 main =
     Browser.document
@@ -26,6 +26,7 @@ init () =
     in
     ( { form = initialForm
       , output = Nothing
+      , bool = True
       }
     , cmd
     )
@@ -36,7 +37,8 @@ update msg model =
         Nothing ->
             let
                 ( newForm, result ) =
-                    form.submit () model.form
+                    form.submit (model.bool) model.form
+                _ = Debug.log "Output" result
             in
             ( { model
                 | form = newForm
@@ -48,7 +50,7 @@ update msg model =
         Just delta ->
             let
                 ( newForm, cmd ) =
-                    form.update () delta model.form
+                    form.update (model.bool) delta model.form
             in
             ( { model | form = newForm }
             , cmd
@@ -56,19 +58,19 @@ update msg model =
 
 
 subscriptions model =
-    form.subscriptions () model.form
+    form.subscriptions (model.bool) model.form
 
 
 view model =
     { title = "elm-any-type-forms tutorial"
     , body =
-        [ H.div [] [ form.view () model.form ]
+        [ H.div [] [ form.view (model.bool) model.form ]
         ]
     }
 
 
 form =
-    Control.simpleForm
+    Control.simpleFormWithContext
         { control = lessons
         , onSubmit = Nothing
         , onUpdate = Just
@@ -823,8 +825,8 @@ validation =
 nameControl =
     Control.string
         |> Control.label "Name"
-        |> Control.failIf (\name -> String.isEmpty name) "Name cannot be blank"
-        |> Control.noteIf (\name -> String.length name == 1) "Is that the full name?"
+        |> Control.failIfWithContext (\ctx name -> String.isEmpty name) "Name cannot be blank"
+        |> Control.noteIfWithContext (\ctx name -> String.length name == 1) "Is that the full name?"
 
 
 validationIntro =
@@ -922,8 +924,8 @@ passwordControl =
         |> Control.field .choose choosePasswordControl
         |> Control.field .confirm confirmPasswordControl
         |> Control.endRecord
-        |> Control.alertIf
-            (\{ choose, confirm } -> choose /= confirm)
+        |> Control.alertIfWithContext
+            (\ctx { choose, confirm } -> choose /= confirm)
             "password-mismatch"
         |> Control.map
             { convert = .choose
@@ -1109,22 +1111,31 @@ dateControl =
         { label = "Date of birth"
         , blank = ( "1970-01-01", Cmd.none )
         , prefill = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
-        , update = \ctx delta state -> ( delta, Cmd.none )
+        , update = 
+            \ctx delta state -> 
+                ( if ctx then delta else state, Cmd.none )
         , view =
             \ctx { state, id, label, name, class } ->
-                [ H.label [ HA.for id ] [ H.text label ]
+                [ H.label [ HA.for id ] [ H.text (if ctx then label ++ "?" else label ++ "!") ]
                 , H.input
                     [ HA.type_ "date"
                     , HA.value state
                     , HA.id id
                     , HA.class class
                     , HA.name name
+                    , HE.onInput identity
                     ]
                     []
                 ]
-        , subscriptions = \ctx state -> Sub.none
+        , subscriptions = 
+            \ctx state -> 
+                if ctx then 
+                    Time.every 5000 (always "2023-01-31") 
+                else 
+                    Sub.none
         , parse =
             \ctx state ->
+                if ctx then Err ["Context is True!"] else 
                 case Date.fromIsoString state of
                     Ok date ->
                         Ok date

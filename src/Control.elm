@@ -1,16 +1,17 @@
 module Control exposing
-    ( Control, Form, sandbox, simpleForm, form
+    ( Control, Form, sandbox, simpleForm
     , bool, int, float, string, char, enum
     , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, create
     , failIf, noteIf
-    , alertIf, respond
+    , respond
     , alertAtIndexes
     , default, debounce, id, name, label, class, classList, wrapView
     , RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
     , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
+    , alertAtIndexesWithContext, alertIfWithContext, failIfWithContext, formWithContext, noteIfWithContext, simpleFormWithContext, alertIf
     )
 
 {-|
@@ -145,13 +146,23 @@ import Time
 {-| A `Form` is an interface containing functions that you can use in your
 Elm `Program` to initialise, view, update, subscribe, and submit your form.
 -}
-type alias Form context state delta output msg =
+type alias FormWithContext context state delta output msg =
     { blank : ( State state, Cmd msg )
     , prefill : output -> ( State state, Cmd msg )
     , update : context -> Delta delta -> State state -> ( State state, Cmd msg )
     , view : context -> State state -> Html msg
     , subscriptions : context -> State state -> Sub msg
     , submit : context -> State state -> ( State state, Result (List Feedback) output )
+    }
+
+
+type alias Form state delta output msg =
+    { blank : ( State state, Cmd msg )
+    , prefill : output -> ( State state, Cmd msg )
+    , update : Delta delta -> State state -> ( State state, Cmd msg )
+    , view : State state -> Html msg
+    , subscriptions : State state -> Sub msg
+    , submit : State state -> ( State state, Result (List Feedback) output )
     }
 
 
@@ -423,10 +434,24 @@ Now you can integrate your `Form` into a larger Elm app:
 
 -}
 simpleForm :
-    { control : Control context state delta output, onUpdate : Delta delta -> msg, onSubmit : msg }
-    -> Form context state delta output msg
+    { control : Control () state delta output, onUpdate : Delta delta -> msg, onSubmit : msg }
+    -> Form state delta output msg
 simpleForm { onUpdate, onSubmit, control } =
     form
+        { control = control
+        , onUpdate = onUpdate
+        , view =
+            \controlView ->
+                H.form [ HE.onSubmit onSubmit ]
+                    (controlView ++ [ H.button [ HA.type_ "submit" ] [ H.text "Submit" ] ])
+        }
+
+
+simpleFormWithContext :
+    { control : Control context state delta output, onUpdate : Delta delta -> msg, onSubmit : msg }
+    -> FormWithContext context state delta output msg
+simpleFormWithContext { onUpdate, onSubmit, control } =
+    formWithContext
         { control = control
         , onUpdate = onUpdate
         , view =
@@ -468,9 +493,99 @@ Now you can integrate your `Form` into a larger Elm app:
 
 -}
 form :
-    { control : Control context state delta output, onUpdate : Delta delta -> msg, view : List (Html msg) -> Html msg }
-    -> Form context state delta output msg
+    { control : Control () state delta output
+    , onUpdate : Delta delta -> msg
+    , view : List (Html msg) -> Html msg
+    }
+    -> Form state delta output msg
 form { control, onUpdate, view } =
+    let
+        path =
+            Path.root
+
+        (Control c) =
+            control
+
+        (ControlFns fns) =
+            c path
+    in
+    { blank = fns.initBlank |> Tuple.mapSecond (Cmd.map onUpdate)
+    , prefill =
+        \output ->
+            let
+                (Control initialisedControl) =
+                    default output control
+
+                (ControlFns fns2) =
+                    initialisedControl Path.root
+            in
+            fns2.initBlank
+                |> Tuple.mapSecond (Cmd.map onUpdate)
+    , update =
+        \msg state ->
+            fns.update () msg state
+                |> Tuple.mapSecond (Cmd.map onUpdate)
+    , view =
+        \((State internalState state) as s) ->
+            let
+                emittedAlerts =
+                    fns.emitAlerts () s
+
+                debouncingReceivers =
+                    fns.collectDebouncingReceivers s
+
+                alerts =
+                    List.filter (\emittedAlert -> not <| List.member emittedAlert debouncingReceivers) emittedAlerts
+
+                status =
+                    getStatus fns.parse fns.collectErrors alerts () s
+            in
+            view
+                (fns.view ()
+                    { id = Maybe.withDefault ("control-" ++ Path.toString path) fns.id
+                    , name = Maybe.withDefault ("control-" ++ Path.toString path) fns.name
+                    , label = fns.label
+                    , class = fns.class
+                    , state = state
+                    , status = status
+                    , alerts = alerts
+                    , selected = internalState.selected
+                    }
+                    |> List.map (H.map onUpdate)
+                )
+    , submit =
+        \state ->
+            let
+                parsingResult =
+                    fns.parse () state
+
+                validationErrors =
+                    fns.emitAlerts () state
+                        |> fns.collectErrors state
+                        |> List.filter .fail
+            in
+            ( fns.setAllIdle state
+            , case ( parsingResult, validationErrors ) of
+                ( Ok output, [] ) ->
+                    Ok output
+
+                ( Ok _, vErrs ) ->
+                    Err vErrs
+
+                ( Err pErrs, vErrs ) ->
+                    Err (pErrs ++ vErrs)
+            )
+    , subscriptions =
+        \state ->
+            fns.subscriptions () state
+                |> Sub.map onUpdate
+    }
+
+
+formWithContext :
+    { control : Control context state delta output, onUpdate : Delta delta -> msg, view : List (Html msg) -> Html msg }
+    -> FormWithContext context state delta output msg
+formWithContext { control, onUpdate, view } =
     let
         path =
             Path.root
@@ -870,9 +985,14 @@ alert and displays an error or notification message on the appropriate
 control(s).
 
 -}
-alertIf : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
-alertIf when alert (Control control) =
+alertIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
+alertIfWithContext when alert (Control control) =
     Control (control >> alertEmitter when (AlertLabel alert))
+
+
+alertIf : (output -> Bool) -> String -> Control a state delta output -> Control a state delta output
+alertIf when alert control =
+    alertIfWithContext (\_ -> when) alert control
 
 
 alertEmitter : (context -> output -> Bool) -> Alert -> ControlFns context input state delta output -> ControlFns context input state delta output
@@ -975,13 +1095,22 @@ strings, if and only if those first two items are "hello" and "world":
                 "no-hello-world"
 
 -}
-alertAtIndexes :
+alertAtIndexesWithContext :
     (context -> output -> List Int)
     -> String
     -> Control context (List state) (ListDelta delta) output
     -> Control context (List state) (ListDelta delta) output
-alertAtIndexes toIndexes alert (Control control) =
+alertAtIndexesWithContext toIndexes alert (Control control) =
     Control (control >> listAlertEmitter toIndexes alert)
+
+
+alertAtIndexes :
+    (output -> List Int)
+    -> String
+    -> Control a (List state) (ListDelta delta) output
+    -> Control a (List state) (ListDelta delta) output
+alertAtIndexes toIndexes alert control =
+    alertAtIndexesWithContext (\_ -> toIndexes) alert control
 
 
 listAlertEmitter :
@@ -1021,8 +1150,8 @@ This causes the `Control` to fail validation.
                 "This must be greater than zero!"
 
 -}
-failIf : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
-failIf check message (Control c) =
+failIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
+failIfWithContext check message (Control c) =
     Control
         (\path ->
             let
@@ -1038,6 +1167,11 @@ failIf check message (Control c) =
         )
 
 
+failIf : (output -> Bool) -> String -> Control a state delta output -> Control a state delta output
+failIf check message control =
+    failIfWithContext (\_ -> check) message control
+
+
 {-| Display an note on a `Control` if its output fails to meet the predicate.
 
 This just shows the user a message - it doesn't cause the `Control` to fail
@@ -1050,8 +1184,8 @@ validation.
                 "Should this be greater than zero?"
 
 -}
-noteIf : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
-noteIf check message (Control c) =
+noteIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
+noteIfWithContext check message (Control c) =
     Control
         (\path ->
             let
@@ -1065,6 +1199,11 @@ noteIf check message (Control c) =
                 |> alertEmitter check alert
                 |> alertReceiver alert False message
         )
+
+
+noteIf : (output -> Bool) -> String -> Control a state delta output -> Control a state delta output
+noteIf check message control =
+    noteIfWithContext (\_ -> check) message control
 
 
 
@@ -2129,7 +2268,7 @@ dict keyControl valueControl =
             valueControl
             |> layout (\_ subcontrols -> List.concatMap .html subcontrols)
         )
-        |> alertAtIndexes
+        |> alertAtIndexesWithContext
             (\ctx output ->
                 output
                     |> List.map Tuple.first
@@ -2190,7 +2329,7 @@ set :
 set memberControl =
     list
         (memberControl |> respond { alert = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
-        |> alertAtIndexes nonUniqueIndexes "@@set-unique-keys"
+        |> alertAtIndexesWithContext nonUniqueIndexes "@@set-unique-keys"
         |> label "Set"
         |> map { convert = Set.fromList, revert = Set.toList }
 
