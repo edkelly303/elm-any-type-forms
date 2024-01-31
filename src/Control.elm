@@ -870,12 +870,12 @@ alert and displays an error or notification message on the appropriate
 control(s).
 
 -}
-alertIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
+alertIf : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 alertIf when alert (Control control) =
     Control (control >> alertEmitter when (AlertLabel alert))
 
 
-alertEmitter : (output -> Bool) -> Alert -> ControlFns context input state delta output -> ControlFns context input state delta output
+alertEmitter : (context -> output -> Bool) -> Alert -> ControlFns context input state delta output -> ControlFns context input state delta output
 alertEmitter check alert (ControlFns ctrl) =
     ControlFns
         { ctrl
@@ -888,7 +888,7 @@ alertEmitter check alert (ControlFns ctrl) =
                         newAlerts =
                             case ctrl.parse ctx state of
                                 Ok output ->
-                                    if check output then
+                                    if check ctx output then
                                         [ alert ]
 
                                     else
@@ -976,7 +976,7 @@ strings, if and only if those first two items are "hello" and "world":
 
 -}
 alertAtIndexes :
-    (output -> List Int)
+    (context -> output -> List Int)
     -> String
     -> Control context (List state) (ListDelta delta) output
     -> Control context (List state) (ListDelta delta) output
@@ -985,7 +985,7 @@ alertAtIndexes toIndexes alert (Control control) =
 
 
 listAlertEmitter :
-    (output -> List Int)
+    (context -> output -> List Int)
     -> String
     -> ControlFns context input (List state) (ListDelta delta) output
     -> ControlFns context input (List state) (ListDelta delta) output
@@ -1001,7 +1001,7 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
                         newAlerts =
                             case ctrl.parse ctx state of
                                 Ok output ->
-                                    [ AlertList ctrl.path alertLabel (check output) ]
+                                    [ AlertList ctrl.path alertLabel (check ctx output) ]
 
                                 Err _ ->
                                     []
@@ -1021,7 +1021,7 @@ This causes the `Control` to fail validation.
                 "This must be greater than zero!"
 
 -}
-failIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
+failIf : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 failIf check message (Control c) =
     Control
         (\path ->
@@ -1050,7 +1050,7 @@ validation.
                 "Should this be greater than zero?"
 
 -}
-noteIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
+noteIf : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 noteIf check message (Control c) =
     Control
         (\path ->
@@ -2130,14 +2130,18 @@ dict keyControl valueControl =
             |> layout (\_ subcontrols -> List.concatMap .html subcontrols)
         )
         |> alertAtIndexes
-            (List.map Tuple.first >> nonUniqueIndexes)
+            (\ctx output ->
+                output
+                    |> List.map Tuple.first
+                    |> nonUniqueIndexes ctx
+            )
             "@@dict-unique-keys"
         |> label "Dict"
         |> map { convert = Dict.fromList, revert = Dict.toList }
 
 
-nonUniqueIndexes : List comparable -> List Int
-nonUniqueIndexes listState =
+nonUniqueIndexes : context -> List comparable -> List Int
+nonUniqueIndexes ctx listState =
     let
         duplicates =
             List.Extra.frequencies listState
