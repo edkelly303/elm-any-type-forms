@@ -2,7 +2,7 @@ module Control exposing
     ( Control, Form, sandbox, simpleForm
     , bool, int, float, string, char, enum
     , tuple, triple, maybe, result, list, dict, set, array, map
-    , ControlConfig, create
+    , ControlConfig, define
     , failIf, noteIf
     , respond
     , alertAtIndexes
@@ -779,8 +779,8 @@ sandbox { outputToString, control, context } =
 -}
 
 
-{-| Create a simple control, with any arbitrary `state` and `delta` types, and
-producing any arbitrary `output` type.
+{-| Define a new type of control, with any arbitrary `state` and `delta` types, 
+and producing any arbitrary `output` type.
 
 Here's how we could create a control like the famous
 [counter example](https://elm-lang.org/examples/buttons) from the Elm Guide
@@ -830,8 +830,8 @@ Here's how we could create a control like the famous
             }
 
 -}
-create : ControlConfig context state delta output -> Control context state delta output
-create controlConfig =
+define : ControlConfig context state delta output -> Control context state delta output
+define controlConfig =
     Control
         (\path ->
             let
@@ -1590,7 +1590,7 @@ default input (Control control) =
 -}
 int : Control context String String Int
 int =
-    create
+    define
         { blank = ( "", Cmd.none )
         , prefill = \s -> ( String.fromInt s, Cmd.none )
         , update = \_ delta _ -> ( delta, Cmd.none )
@@ -1625,7 +1625,7 @@ int =
 -}
 float : Control context String String Float
 float =
-    create
+    define
         { blank = ( "", Cmd.none )
         , prefill = \f -> ( String.fromFloat f, Cmd.none )
         , update = \_ delta _ -> ( delta, Cmd.none )
@@ -1659,7 +1659,7 @@ float =
 -}
 string : Control context String String String
 string =
-    create
+    define
         { blank = ( "", Cmd.none )
         , prefill = \s -> ( s, Cmd.none )
         , update = \_ delta _ -> ( delta, Cmd.none )
@@ -1686,7 +1686,7 @@ string =
 -}
 char : Control context String String Char
 char =
-    create
+    define
         { blank = ( "", Cmd.none )
         , prefill = \c -> ( String.fromChar c, Cmd.none )
         , update = \_ delta _ -> ( delta, Cmd.none )
@@ -1742,7 +1742,7 @@ enum :
     -> List ( String, enum )
     -> Control context enum enum enum
 enum first second rest =
-    create
+    define
         { blank = ( Tuple.second first, Cmd.none )
         , prefill = \e -> ( e, Cmd.none )
         , update = \_ delta _ -> ( delta, Cmd.none )
@@ -1768,7 +1768,7 @@ enum first second rest =
 -}
 bool : Control context Bool Bool Bool
 bool =
-    create
+    define
         { blank = ( False, Cmd.none )
         , prefill = \b -> ( b, Cmd.none )
         , view =
@@ -3589,7 +3589,7 @@ tag0 label_ tag =
 
 null : tag -> Control context () () tag
 null tag =
-    create
+    define
         { blank = ( (), Cmd.none )
         , prefill = \_ -> ( (), Cmd.none )
         , update = \_ () () -> ( (), Cmd.none )
