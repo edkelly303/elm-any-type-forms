@@ -1,17 +1,17 @@
 module Control exposing
-    ( Control, Form, sandbox, simpleForm
+    ( Control, Form, sandbox, simpleForm, form
     , bool, int, float, string, char, enum
     , tuple, triple, maybe, result, list, dict, set, array, map
     , ControlConfig, define
     , failIf, noteIf
-    , respond
+    , alertIf, respond
     , alertAtIndexes
     , default, debounce, id, name, label, class, classList, wrapView
     , RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
     , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , State, Delta, ListDelta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
-    , alertAtIndexesWithContext, alertIfWithContext, failIfWithContext, formWithContext, noteIfWithContext, simpleFormWithContext, alertIf
+    , alertAtIndexesWithContext, alertIfWithContext, failIfWithContext, formWithContext, noteIfWithContext, simpleFormWithContext
     )
 
 {-|
@@ -34,7 +34,7 @@ module Control exposing
 
 # Creating a new control
 
-@docs ControlConfig, create
+@docs ControlConfig, define
 
 
 # Validating controls
@@ -779,7 +779,7 @@ sandbox { outputToString, control, context } =
 -}
 
 
-{-| Define a new type of control, with any arbitrary `state` and `delta` types, 
+{-| Define a new type of control, with any arbitrary `state` and `delta` types,
 and producing any arbitrary `output` type.
 
 Here's how we could create a control like the famous
