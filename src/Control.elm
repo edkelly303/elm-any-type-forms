@@ -2661,18 +2661,21 @@ endRecord (RecordBuilder rec) =
 
 
 collectRecordSubscriptions :
-    ((List (Sub msg)
-      -> End
-      -> End
-      -> context
-      -> End
+    (({ listSubs : List (Sub msg)
+      , setters : End
+      , fns : End
+      , context : context
+      , states : End
+      }
       -> List (Sub msg)
      )
-     -> List (Sub msg)
-     -> ( setter, restSetters )
-     -> ( RecordFns context input state delta output recordInput, restFns )
-     -> context
-     -> ( State state, restStates )
+     ->
+        { listSubs : List (Sub msg)
+        , setters : ( setter, restSetters )
+        , fns : ( RecordFns context input state delta output recordInput, restFns )
+        , context : context
+        , states : ( State state, restStates )
+        }
      -> List (Sub msg)
     )
     -> ( setter, restSetters )
@@ -2681,31 +2684,53 @@ collectRecordSubscriptions :
     -> ( State state, restStates )
     -> Sub (Delta msg)
 collectRecordSubscriptions collector setters fns ctx states =
-    collector (\listSubs End End _ End -> listSubs) [] setters fns ctx states
+    collector (\{ listSubs } -> listSubs) { listSubs = [], setters = setters, fns = fns, context = ctx, states = states }
         |> Sub.batch
         |> Sub.map StateChangedInternally
 
 
 recordSubscriptionCollector :
-    (List (Sub msg)
-     -> restDeltas
-     -> restFns
-     -> context
-     -> restStates
+    ({ listSubs : List (Sub msg)
+     , setters : restDeltas
+     , fns : restFns
+     , context : context
+     , states : restStates
+     }
      -> List (Sub msg)
     )
+    ->
+        { listSubs : List (Sub msg)
+        , setters : ( Delta delta -> msg, restDeltas )
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , context : context
+        , states : ( State state, restStates )
+        }
     -> List (Sub msg)
-    -> ( Delta delta -> msg, restDeltas )
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> context
-    -> ( State state, restStates )
-    -> List (Sub msg)
-recordSubscriptionCollector next listSubs ( setter, restSetters ) ( RecordFns fns, restFns ) ctx ( state, restStates ) =
+recordSubscriptionCollector next { listSubs, setters, fns, context, states } =
     let
+        ( setter, restSetters ) =
+            setters
+
+        ( RecordFns fns2, restFns ) =
+            fns
+
+        ( state, restStates ) =
+            states
+
         (ControlFns controlFns) =
-            fns.fns
+            fns2.fns
+
+        newSub =
+            controlFns.subscriptions context state
+                |> Sub.map setter
     in
-    next ((controlFns.subscriptions ctx state |> Sub.map setter) :: listSubs) restSetters restFns ctx restStates
+    next
+        { listSubs = newSub :: listSubs
+        , setters = restSetters
+        , fns = restFns
+        , context = context
+        , states = restStates
+        }
 
 
 collectDebouncingReceiversForRecord :
