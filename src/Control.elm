@@ -205,7 +205,7 @@ type AdvancedControl context input state delta output
 -}
 type RecordFns context input state delta output recordOutput
     = RecordFns
-        { fns : ControlFns context input state delta output
+        { controlFns : ControlFns context input state delta output
         , fromInput : recordOutput -> output
         }
 
@@ -225,7 +225,7 @@ type ControlFns context input state delta output
         , path : Path
         , emitAlerts : context -> State state -> List Alert
         , collectDebouncingReceivers : State state -> List Alert
-        , collectErrors : State state -> List Alert -> List Feedback
+        , collectFeedback : State state -> List Alert -> List Feedback
         , receiverCount : Int
         , setAllIdle : State state -> State state
         , label : String
@@ -538,7 +538,7 @@ form { control, onUpdate, view } =
                     List.filter (\emittedAlert -> not <| List.member emittedAlert debouncingReceivers) emittedAlerts
 
                 status =
-                    getStatus fns.parse fns.collectErrors alerts () s
+                    getStatus fns.parse fns.collectFeedback alerts () s
             in
             view
                 (fns.view ()
@@ -561,7 +561,7 @@ form { control, onUpdate, view } =
 
                 validationErrors =
                     fns.emitAlerts () state
-                        |> fns.collectErrors state
+                        |> fns.collectFeedback state
                         |> List.filter .fail
             in
             ( fns.setAllIdle state
@@ -625,7 +625,7 @@ formWithContext { control, onUpdate, view } =
                     List.filter (\emittedAlert -> not <| List.member emittedAlert debouncingReceivers) emittedAlerts
 
                 status =
-                    getStatus fns.parse fns.collectErrors alerts ctx s
+                    getStatus fns.parse fns.collectFeedback alerts ctx s
             in
             view
                 (fns.view ctx
@@ -648,7 +648,7 @@ formWithContext { control, onUpdate, view } =
 
                 validationErrors =
                     fns.emitAlerts ctx state
-                        |> fns.collectErrors state
+                        |> fns.collectFeedback state
                         |> List.filter .fail
             in
             ( fns.setAllIdle state
@@ -727,7 +727,7 @@ sandbox { outputToString, control, context } =
 
                     validationErrors =
                         emittedAlerts
-                            |> fns.collectErrors s
+                            |> fns.collectFeedback s
                             |> List.filter .fail
 
                     failView errs =
@@ -745,7 +745,7 @@ sandbox { outputToString, control, context } =
                             , label = fns.label
                             , class = fns.class
                             , state = state
-                            , status = getStatus fns.parse fns.collectErrors alerts context (State internalState state)
+                            , status = getStatus fns.parse fns.collectFeedback alerts context (State internalState state)
                             , alerts = alerts
                             , selected = internalState.selected
                             }
@@ -883,7 +883,7 @@ define controlConfig =
                 , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
                 , emitAlerts = \_ _ -> []
                 , collectDebouncingReceivers = \_ -> []
-                , collectErrors = \_ _ -> []
+                , collectFeedback = \_ _ -> []
                 , receiverCount = 0
                 , label = controlConfig.label
                 , id = Nothing
@@ -1036,11 +1036,11 @@ alertReceiver : Alert -> Bool -> String -> ControlFns context input state delta 
 alertReceiver alert fail message (ControlFns ctrl) =
     ControlFns
         { ctrl
-            | collectErrors =
+            | collectFeedback =
                 \state alerts ->
                     let
                         oldReceiver =
-                            ctrl.collectErrors state alerts
+                            ctrl.collectFeedback state alerts
 
                         newReceiver =
                             if List.member alert alerts then
@@ -2178,7 +2178,7 @@ list (Control ctrl) =
                             )
                             s
                             |> List.concat
-                , collectErrors =
+                , collectFeedback =
                     \(State _ listState) alerts ->
                         List.indexedMap
                             (\idx item ->
@@ -2206,7 +2206,7 @@ list (Control ctrl) =
                                             )
                                             alerts
                                 in
-                                itemControl.collectErrors item filteredAlerts
+                                itemControl.collectFeedback item filteredAlerts
                             )
                             listState
                             |> List.concat
@@ -2493,7 +2493,7 @@ field fromInput (Control control) (RecordBuilder builder) =
 
                     newFns =
                         RecordFns
-                            { fns = ControlFns { fns | index = newIndex }
+                            { controlFns = ControlFns { fns | index = newIndex }
                             , fromInput = fromInput
                             }
                 in
@@ -2542,7 +2542,7 @@ field fromInput (Control control) (RecordBuilder builder) =
         , afters = nestBackwards Tuple.pair builder.afters builder.after
         , makeSetters = builder.makeSetters >> deltaSetterMaker
         , alertEmitter = builder.alertEmitter >> recordAlertEmitter
-        , errorCollector = builder.errorCollector >> recordErrorCollector
+        , errorCollector = builder.errorCollector >> recordFeedbackCollector
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> recordDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> recordSubscriptionCollector
         }
@@ -2637,7 +2637,7 @@ endRecord (RecordBuilder rec) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectErrors = \(State _ states) alerts -> collectErrorsForRecord rec.errorCollector alerts fns states
+                , collectFeedback = \(State _ states) alerts -> collectFeedbackForRecord rec.errorCollector alerts fns states
                 , receiverCount = 0
                 , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.debouncingReceiverCollector fns states
                 , label = "Record"
@@ -2711,14 +2711,14 @@ recordSubscriptionCollector next { listSubs, setters, fns, context, states } =
         ( setter, restSetters ) =
             setters
 
-        ( RecordFns fns2, restFns ) =
+        ( RecordFns recordFns, restFns ) =
             fns
+
+        (ControlFns controlFns) =
+            recordFns.controlFns
 
         ( state, restStates ) =
             states
-
-        (ControlFns controlFns) =
-            fns2.fns
 
         newSub =
             controlFns.subscriptions context state
@@ -2734,93 +2734,134 @@ recordSubscriptionCollector next { listSubs, setters, fns, context, states } =
 
 
 collectDebouncingReceiversForRecord :
-    ((List Alert
-      -> End
-      -> End
+    (({ alerts : List Alert
+      , fns : End
+      , states : End
+      }
       -> List Alert
      )
-     -> List Alert
-     -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> ( State state, restStates )
+     ->
+        { alerts : List Alert
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , states : ( State state, restStates )
+        }
      -> List Alert
     )
     -> ( RecordFns context input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List Alert
 collectDebouncingReceiversForRecord debouncingReceiverCollector_ fns states =
-    debouncingReceiverCollector_ (\receivers End End -> receivers) [] fns states
+    debouncingReceiverCollector_ (\{ alerts } -> alerts) { alerts = [], fns = fns, states = states }
 
 
 recordDebouncingReceiverCollector :
-    (List Alert
-     -> restFns
-     -> restStates
+    ({ alerts : List Alert
+     , fns : restFns
+     , states : restStates
+     }
      -> List Alert
     )
+    ->
+        { alerts : List Alert
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , states : ( State state, restStates )
+        }
     -> List Alert
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( State state, restStates )
-    -> List Alert
-recordDebouncingReceiverCollector next receivers ( RecordFns fns, restFns ) ( state, restStates ) =
+recordDebouncingReceiverCollector next { alerts, fns, states } =
     let
+        ( RecordFns recordFns, restFns ) =
+            fns
+
         (ControlFns controlFns) =
-            fns.fns
+            recordFns.controlFns
+
+        ( state, restStates ) =
+            states
     in
-    next (receivers ++ controlFns.collectDebouncingReceivers state) restFns restStates
+    next
+        { alerts = alerts ++ controlFns.collectDebouncingReceivers state
+        , fns = restFns
+        , states = restStates
+        }
 
 
-collectErrorsForRecord :
-    ((List Alert
-      -> List Feedback
-      -> End
-      -> End
+collectFeedbackForRecord :
+    (({ alerts : List Alert
+      , feedback : List Feedback
+      , fns : End
+      , states : End
+      }
       -> List Feedback
      )
-     -> List Alert
-     -> List Feedback
-     -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> ( State state, restStates )
+     ->
+        { alerts : List Alert
+        , feedback : List Feedback
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , states : ( State state, restStates )
+        }
      -> List Feedback
     )
     -> List Alert
     -> ( RecordFns context input state delta output recordOutput, restFns )
     -> ( State state, restStates )
     -> List Feedback
-collectErrorsForRecord errorCollector_ alerts fns states =
-    errorCollector_ (\_ errors End End -> errors) alerts [] fns states
+collectFeedbackForRecord feedbackCollector_ alerts fns states =
+    feedbackCollector_ (\{ feedback } -> feedback)
+        { alerts = alerts
+        , feedback = []
+        , fns = fns
+        , states = states
+        }
 
 
-recordErrorCollector :
-    (List Alert
-     -> List Feedback
-     -> restFns
-     -> restStates
+recordFeedbackCollector :
+    ({ alerts : List Alert
+     , feedback : List Feedback
+     , fns : restFns
+     , states : restStates
+     }
      -> List Feedback
     )
-    -> List Alert
+    ->
+        { alerts : List Alert
+        , feedback : List Feedback
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , states : ( State state, restStates )
+        }
     -> List Feedback
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( State state, restStates )
-    -> List Feedback
-recordErrorCollector next alerts errors ( RecordFns fns, restFns ) ( state, restStates ) =
+recordFeedbackCollector next { alerts, feedback, fns, states } =
     let
+        ( RecordFns recordFns, restFns ) =
+            fns
+
         (ControlFns controlFns) =
-            fns.fns
+            recordFns.controlFns
+
+        ( state, restStates ) =
+            states
     in
-    next alerts (errors ++ controlFns.collectErrors state alerts) restFns restStates
+    next
+        { alerts = alerts
+        , feedback = feedback ++ controlFns.collectFeedback state alerts
+        , fns = restFns
+        , states = restStates
+        }
 
 
 emitAlertsForRecord :
-    ((List Alert
-      -> End
-      -> context
-      -> End
+    (({ alerts : List Alert
+      , fns : End
+      , context : context
+      , states : End
+      }
       -> List Alert
      )
-     -> List Alert
-     -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> context
-     -> ( State state, restStates )
+     ->
+        { alerts : List Alert
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , context : context
+        , states : ( State state, restStates )
+        }
      -> List Alert
     )
     -> ( RecordFns context input state delta output recordOutput, restFns )
@@ -2828,30 +2869,49 @@ emitAlertsForRecord :
     -> ( State state, restStates )
     -> List Alert
 emitAlertsForRecord alertEmitter_ fns ctx states =
-    alertEmitter_ (\alerts End _ End -> alerts) [] fns ctx states
+    alertEmitter_ (\{ alerts } -> alerts)
+        { alerts = []
+        , fns = fns
+        , context = ctx
+        , states = states
+        }
 
 
 recordAlertEmitter :
-    (List Alert
-     -> restFns
-     -> context
-     -> restStates
+    ({ alerts : List Alert
+     , fns : restFns
+     , context : context
+     , states : restStates
+     }
      -> List Alert
     )
+    ->
+        { alerts : List Alert
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , context : context
+        , states : ( State state, restStates )
+        }
     -> List Alert
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> context
-    -> ( State state, restStates )
-    -> List Alert
-recordAlertEmitter next alerts ( RecordFns fns, restFns ) ctx ( state, restStates ) =
+recordAlertEmitter next { alerts, context, fns, states } =
     let
-        newAlerts =
-            controlFns.emitAlerts ctx state
+        ( RecordFns recordFns, restFns ) =
+            fns
 
         (ControlFns controlFns) =
-            fns.fns
+            recordFns.controlFns
+
+        ( state, restStates ) =
+            states
+
+        newAlerts =
+            controlFns.emitAlerts context state
     in
-    next (alerts ++ newAlerts) restFns ctx restStates
+    next
+        { alerts = alerts ++ newAlerts
+        , fns = restFns
+        , context = context
+        , states = restStates
+        }
 
 
 makeDeltaSetters :
@@ -2925,7 +2985,7 @@ recordStateInitialiser :
 recordStateInitialiser next states deltas recordInput ( RecordFns fns, restFns ) ( deltaSetter, restDeltaSetters ) =
     let
         (ControlFns controlFns) =
-            fns.fns
+            fns.controlFns
 
         ( state, delta ) =
             recordInput
@@ -2998,7 +3058,7 @@ recordStateValidator :
 recordStateValidator next toOutputResult ( RecordFns fns, restFns ) ctx ( state, restStates ) =
     let
         (ControlFns controlFns) =
-            fns.fns
+            fns.controlFns
     in
     next
         (case ( toOutputResult, controlFns.parse ctx state ) of
@@ -3043,7 +3103,7 @@ recordStateIdleSetter :
 recordStateIdleSetter next ( RecordFns fns, restFns ) ( state, restStates ) =
     let
         (ControlFns controlFns) =
-            fns.fns
+            fns.controlFns
     in
     ( controlFns.setAllIdle state
     , next restFns restStates
@@ -3095,7 +3155,7 @@ recordStateViewer :
 recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSetters ) ctx ( State internalState state, restStates ) =
     let
         (ControlFns controlFns) =
-            fns.fns
+            fns.controlFns
 
         view =
             controlFns.view ctx
@@ -3104,7 +3164,7 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
                 , label = controlFns.label
                 , class = controlFns.class
                 , state = state
-                , status = getStatus controlFns.parse controlFns.collectErrors alerts ctx (State internalState state)
+                , status = getStatus controlFns.parse controlFns.collectFeedback alerts ctx (State internalState state)
                 , alerts = alerts
                 , selected = internalState.selected
                 }
@@ -3213,7 +3273,7 @@ recordStateUpdater :
 recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( deltaSetter, restDeltaSetters ) ctx ( delta, restDeltas ) ( state, restStates ) =
     let
         (ControlFns controlFns) =
-            fns.fns
+            fns.controlFns
 
         ( newState, newCmd ) =
             controlFns.update ctx delta state
@@ -3564,7 +3624,7 @@ endCustomType (CustomTypeBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectErrors = \(State _ states) alerts -> collectErrorsForCustomType builder.errorCollector alerts fns states
+                , collectFeedback = \(State _ states) alerts -> collectErrorsForCustomType builder.errorCollector alerts fns states
                 , receiverCount = 0
                 , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns states
                 , label = "Custom Type"
@@ -4168,7 +4228,7 @@ customTypeErrorCollector :
     -> ( State state, restStates )
     -> List Feedback
 customTypeErrorCollector next alerts errors ( ControlFns fns, restFns ) ( state, restStates ) =
-    next alerts (errors ++ fns.collectErrors state alerts) restFns restStates
+    next alerts (errors ++ fns.collectFeedback state alerts) restFns restStates
 
 
 emitAlertsForCustomType :
@@ -4562,7 +4622,7 @@ listView path ctx config debouncingReceivers subcontrol =
                                             , label = itemFns.label
                                             , class = itemFns.class
                                             , state = state
-                                            , status = getStatus itemFns.parse itemFns.collectErrors filteredAlerts2 ctx (State internalState state)
+                                            , status = getStatus itemFns.parse itemFns.collectFeedback filteredAlerts2 ctx (State internalState state)
                                             , alerts = filteredAlerts2
                                             , selected = internalState.selected
                                             }
