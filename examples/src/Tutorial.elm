@@ -1107,7 +1107,7 @@ customerControl =
 
 
 dateControl =
-    Control.create
+    Control.define
         { label = "Date of birth"
         , blank = ( "1970-01-01", Cmd.none )
         , prefill = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
