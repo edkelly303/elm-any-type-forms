@@ -2671,14 +2671,14 @@ collectRecordSubscriptions :
      )
      ->
         { listSubs : List (Sub msg)
-        , setters : ( setter, restSetters )
+        , setters : ( setter, restDeltaSetters )
         , fns : ( RecordFns context input state delta output recordInput, restFns )
         , context : context
         , states : ( State state, restStates )
         }
      -> List (Sub msg)
     )
-    -> ( setter, restSetters )
+    -> ( setter, restDeltaSetters )
     -> ( RecordFns context input state delta output recordInput, restFns )
     -> context
     -> ( State state, restStates )
@@ -2708,7 +2708,7 @@ recordSubscriptionCollector :
     -> List (Sub msg)
 recordSubscriptionCollector next { listSubs, setters, fns, context, states } =
     let
-        ( setter, restSetters ) =
+        ( setter, restDeltaSetters ) =
             setters
 
         ( RecordFns recordFns, restFns ) =
@@ -2726,7 +2726,7 @@ recordSubscriptionCollector next { listSubs, setters, fns, context, states } =
     in
     next
         { listSubs = newSub :: listSubs
-        , setters = restSetters
+        , setters = restDeltaSetters
         , fns = restFns
         , context = context
         , states = restStates
@@ -2915,110 +2915,212 @@ recordAlertEmitter next { alerts, context, fns, states } =
 
 
 makeDeltaSetters :
-    ((End -> End -> End)
-     -> befores
-     -> afters
+    (({ output : End -> deltaSetters
+      , befores : End
+      , afters : End
+      }
+      -> deltaSetters
+     )
+     ->
+        { output : identity -> identity
+        , befores : befores
+        , afters : afters
+        }
      -> deltaSetters
     )
     -> (End -> befores)
     -> afters
     -> deltaSetters
 makeDeltaSetters makeSetters_ befores afters =
-    makeSetters_ (\End End -> End) (befores End) afters
+    makeSetters_ (\{ output } -> output End)
+        { output = identity
+        , befores = befores End
+        , afters = afters
+        }
 
 
 deltaSetterMaker :
-    (befores
-     -> afters
-     -> next
+    ({ output : restDeltaSetters -> deltaSetters
+     , befores : befores
+     , afters : afters
+     }
+     -> deltaSetters
     )
-    -> ( ( value, after ) -> delta, befores )
-    -> ( after, afters )
-    -> ( value -> delta, next )
-deltaSetterMaker next ( before, befores ) ( after, afters ) =
-    ( \value -> before ( value, after )
-    , next befores afters
-    )
+    ->
+        { output : ( value -> delta, restDeltaSetters ) -> deltaSetters
+        , befores : ( ( value, after ) -> delta, befores )
+        , afters : ( after, afters )
+        }
+    -> deltaSetters
+deltaSetterMaker next { output, befores, afters } =
+    let
+        ( before, restBefores ) =
+            befores
+
+        ( after, restAfters ) =
+            afters
+    in
+    next
+        { output = nestForwards Tuple.pair output (\value -> before ( value, after ))
+        , befores = restBefores
+        , afters = restAfters
+        }
+
+
+
+-- initialiseRecordStates :
+--     (((End -> state)
+--       -> List (Cmd msg)
+--       -> b
+--       -> End
+--       -> End
+--       -> ( State state, Cmd (Delta msg) )
+--      )
+--      -> (a -> a)
+--      -> List c
+--      -> d
+--      -> e
+--      -> f
+--      -> g
+--     )
+--     -> d
+--     -> e
+--     -> f
+--     -> g
 
 
 initialiseRecordStates :
-    (((End -> state)
-      -> List (Cmd msg)
-      -> b
-      -> End
-      -> End
-      -> ( State state, Cmd (Delta msg) )
+    (({ states : End -> states
+      , deltas : List (Cmd delta)
+      , recordInput : recordInput
+      , fns : End
+      , deltaSetters : End
+      }
+      -> ( State states, Cmd (Delta delta) )
      )
-     -> (a -> a)
-     -> List c
-     -> d
-     -> e
-     -> f
-     -> g
+     ->
+        { states : identity -> identity
+        , deltas : List (Cmd delta)
+        , recordInput : recordInput
+        , fns : recordFns
+        , deltaSetters : deltaSetters
+        }
+     -> ( State states, Cmd (Delta delta) )
     )
-    -> d
-    -> e
-    -> f
-    -> g
+    -> recordInput
+    -> recordFns
+    -> deltaSetters
+    -> ( State states, Cmd (Delta delta) )
 initialiseRecordStates initialiser input fns deltaSetters =
     initialiser
-        (\states deltas _ End End ->
+        (\{ states, deltas } ->
             ( State { status = Intact_, selected = 1 } (states End)
             , Cmd.batch deltas |> Cmd.map StateChangedInternally
             )
         )
-        identity
-        []
-        input
-        fns
-        deltaSetters
+        { states = identity
+        , deltas = []
+        , recordInput = input
+        , fns = fns
+        , deltaSetters = deltaSetters
+        }
 
 
 recordStateInitialiser :
-    ((a2 -> c) -> List (Cmd msg) -> a -> b -> d -> e)
-    -> (( State state, a2 ) -> c)
-    -> List (Cmd msg)
-    -> a
-    -> ( RecordFns context output state delta output a, b )
-    -> ( Delta delta -> msg, d )
-    -> e
-recordStateInitialiser next states deltas recordInput ( RecordFns fns, restFns ) ( deltaSetter, restDeltaSetters ) =
+    ({ states : nextState -> states
+     , deltas : List (Cmd msg)
+     , recordInput : recordOutput
+     , fns : fns
+     , deltaSetters : deltaSetters
+     }
+     -> statesAndDeltas
+    )
+    ->
+        { states : ( State state, nextState ) -> states
+        , deltas : List (Cmd msg)
+        , recordInput : recordOutput
+        , fns : ( RecordFns context input state delta input recordOutput, fns )
+        , deltaSetters : ( Delta delta -> msg, deltaSetters )
+        }
+    -> statesAndDeltas
+recordStateInitialiser next { states, deltas, recordInput, fns, deltaSetters } =
     let
+        ( RecordFns recordFns, restFns ) =
+            fns
+
+        ( deltaSetter, restDeltaSetters ) =
+            deltaSetters
+
         (ControlFns controlFns) =
-            fns.controlFns
+            recordFns.controlFns
 
         ( state, delta ) =
             recordInput
-                |> fns.fromInput
+                |> recordFns.fromInput
                 |> controlFns.initPrefilled
     in
-    next (nestForwards Tuple.pair states state) (Cmd.map deltaSetter delta :: deltas) recordInput restFns restDeltaSetters
+    next
+        { states = nestForwards Tuple.pair states state
+        , deltas = Cmd.map deltaSetter delta :: deltas
+        , recordInput = recordInput
+        , fns = restFns
+        , deltaSetters = restDeltaSetters
+        }
 
 
 initialiseRecordDeltas :
-    ((List (Cmd delta) -> End -> End -> List (Cmd delta))
-     -> List (Cmd delta)
-     -> deltaSetters
-     -> deltas
-     -> List (Cmd delta)
+    (({ cmds : List (Cmd recordDelta)
+      , deltaSetters : End
+      , fieldDeltas : End
+      }
+      -> List (Cmd recordDelta)
+     )
+     ->
+        { cmds : List (Cmd recordDelta)
+        , deltaSetters : deltaSetters
+        , fieldDeltas : fieldDeltas
+        }
+     -> List (Cmd recordDelta)
     )
     -> deltaSetters
-    -> deltas
-    -> Cmd (Delta delta)
+    -> fieldDeltas
+    -> Cmd (Delta recordDelta)
 initialiseRecordDeltas deltaInitialiser_ deltaSetters deltas =
-    deltaInitialiser_ (\cmdList End End -> cmdList) [] deltaSetters deltas
+    deltaInitialiser_ (\{ cmds } -> cmds)
+        { cmds = []
+        , deltaSetters = deltaSetters
+        , fieldDeltas = deltas
+        }
         |> Cmd.batch
         |> Cmd.map StateChangedInternally
 
 
 recordDeltaInitialiser :
-    (List (Cmd delta1) -> restDeltaSetters -> restDeltas -> List (Cmd delta1))
-    -> List (Cmd delta1)
-    -> ( delta -> delta1, restDeltaSetters )
-    -> ( Cmd delta, restDeltas )
-    -> List (Cmd delta1)
-recordDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDeltas ) =
-    next (Cmd.map setter delta :: cmdList) restSetters restDeltas
+    ({ cmds : List (Cmd recordDelta)
+     , deltaSetters : restDeltaSetters
+     , fieldDeltas : restDeltas
+     }
+     -> List (Cmd recordDelta)
+    )
+    ->
+        { cmds : List (Cmd recordDelta)
+        , deltaSetters : ( fieldDelta -> recordDelta, restDeltaSetters )
+        , fieldDeltas : ( Cmd fieldDelta, restDeltas )
+        }
+    -> List (Cmd recordDelta)
+recordDeltaInitialiser next { cmds, deltaSetters, fieldDeltas } =
+    let
+        ( deltaSetter, restDeltaSetters ) =
+            deltaSetters
+
+        ( delta, restDeltas ) =
+            fieldDeltas
+    in
+    next
+        { cmds = Cmd.map deltaSetter delta :: cmds
+        , deltaSetters = restDeltaSetters
+        , fieldDeltas = restDeltas
+        }
 
 
 validateRecordStates :
@@ -3152,7 +3254,7 @@ recordStateViewer :
     -> context
     -> ( State state, restStates )
     -> List (Subcontrol recordDelta)
-recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSetters ) ctx ( State internalState state, restStates ) =
+recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restDeltaSetters ) ctx ( State internalState state, restStates ) =
     let
         (ControlFns controlFns) =
             fns.controlFns
@@ -3180,7 +3282,7 @@ recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restSet
         )
         alerts
         restFns
-        restSetters
+        restDeltaSetters
         ctx
         restStates
 
@@ -3227,14 +3329,14 @@ updateRecordStates :
      )
      -> { newStates : states -> states, newCmds : List (Cmd msg) }
      -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> ( setter, restSetters )
+     -> ( setter, restDeltaSetters )
      -> context
      -> ( Delta delta, restDeltas )
      -> ( State state, restStates )
      -> { newStates : End -> states, newCmds : List (Cmd msg) }
     )
     -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( setter, restSetters )
+    -> ( setter, restDeltaSetters )
     -> context
     -> ( Delta delta, restDeltas )
     -> ( State state, restStates )
@@ -3847,15 +3949,15 @@ collectCustomTypeSubscriptions collector setters fns ctx states =
 
 
 customTypeSubscriptionCollector :
-    (List (Sub delta1) -> restSetters -> restFns -> context -> restStates -> List (Sub delta1))
+    (List (Sub delta1) -> restDeltaSetters -> restFns -> context -> restStates -> List (Sub delta1))
     -> List (Sub delta1)
-    -> ( Delta delta -> delta1, restSetters )
+    -> ( Delta delta -> delta1, restDeltaSetters )
     -> ( ControlFns context input state delta output, restFns )
     -> context
     -> ( State state, restStates )
     -> List (Sub delta1)
-customTypeSubscriptionCollector next listSubs ( setter, restSetters ) ( ControlFns fns, restFns ) ctx ( state, restStates ) =
-    next ((fns.subscriptions ctx state |> Sub.map setter) :: listSubs) restSetters restFns ctx restStates
+customTypeSubscriptionCollector next listSubs ( setter, restDeltaSetters ) ( ControlFns fns, restFns ) ctx ( state, restStates ) =
+    next ((fns.subscriptions ctx state |> Sub.map setter) :: listSubs) restDeltaSetters restFns ctx restStates
 
 
 collectDebouncingReceiversForCustomType :
@@ -3901,14 +4003,14 @@ updateCustomTypeStates :
      )
      -> { newStates : states -> states, newCmds : List (Cmd msg) }
      -> ( ControlFns context input state delta output, restFns )
-     -> ( setter, restSetters )
+     -> ( setter, restDeltaSetters )
      -> ( Delta delta, restDeltas )
      -> context
      -> ( State state, restStates )
      -> { newStates : End -> states, newCmds : List (Cmd msg) }
     )
     -> ( ControlFns context input state delta output, restFns )
-    -> ( setter, restSetters )
+    -> ( setter, restDeltaSetters )
     -> ( Delta delta, restDeltas )
     -> context
     -> ( State state, restStates )
@@ -3982,8 +4084,8 @@ customTypeDeltaInitialiser :
     -> ( delta -> delta1, restDeltaSetters )
     -> ( Cmd delta, restDeltas )
     -> List (Cmd delta1)
-customTypeDeltaInitialiser next cmdList ( setter, restSetters ) ( delta, restDeltas ) =
-    next (Cmd.map setter delta :: cmdList) restSetters restDeltas
+customTypeDeltaInitialiser next cmdList ( setter, restDeltaSetters ) ( delta, restDeltas ) =
+    next (Cmd.map setter delta :: cmdList) restDeltaSetters restDeltas
 
 
 applyInputToStateConvertersToDestructor :
@@ -4412,7 +4514,7 @@ selectedTagViewer :
     (List (Subcontrol delta)
      -> List Alert
      -> restFns
-     -> restSetters
+     -> restDeltaSetters
      -> context
      -> restStates
      -> List (Subcontrol delta)
@@ -4420,11 +4522,11 @@ selectedTagViewer :
     -> List (Subcontrol delta)
     -> List Alert
     -> ( ControlFns context input state e output, restFns )
-    -> ( Delta e -> delta, restSetters )
+    -> ( Delta e -> delta, restDeltaSetters )
     -> context
     -> ( State state, restStates )
     -> List (Subcontrol delta)
-selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( setter, restSetters ) ctx ( State internalState state, restStates ) =
+selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( setter, restDeltaSetters ) ctx ( State internalState state, restStates ) =
     next
         (listSubcontrol
             ++ [ { html =
@@ -4446,7 +4548,7 @@ selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( sette
         )
         alerts
         restFns
-        restSetters
+        restDeltaSetters
         ctx
         restStates
 
