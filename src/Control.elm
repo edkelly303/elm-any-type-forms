@@ -2607,10 +2607,10 @@ endRecord (RecordBuilder rec) =
                             ( State s state, Cmd.none )
 
                 subcontrolViews ctx config =
-                    viewRecordStates rec.viewer fns deltaSetters ctx config
+                    viewRecordStates rec.viewer ctx fns deltaSetters config
 
                 view ctx config =
-                    viewRecordStates rec.viewer fns deltaSetters ctx config
+                    viewRecordStates rec.viewer ctx fns deltaSetters config
                         |> List.concatMap .html
 
                 parse ctx (State _ state) =
@@ -3256,78 +3256,101 @@ recordStateIdleSetter next { inputStates, outputStates, fns } =
 
 
 viewRecordStates :
-    ((List (Subcontrol msg)
-      -> List Alert
-      -> End
-      -> End
-      -> context
-      -> End
-      -> List (Subcontrol msg)
+    (({ views : List (Subcontrol recordDelta)
+      , alerts : List Alert
+      , context : context
+      , fns : End
+      , deltaSetters : End
+      , states : End
+      }
+      -> List (Subcontrol recordDelta)
      )
-     -> List (Subcontrol msg)
-     -> List Alert
-     -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> ( Delta delta -> recordDelta, restDeltaSetters )
-     -> context
-     -> ( State state, restStates )
-     -> List (Subcontrol msg)
+     ->
+        { views : List (Subcontrol recordDelta)
+        , alerts : List Alert
+        , context : context
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , deltaSetters : ( Delta delta -> recordDelta, restDeltaSetters )
+        , states : ( State state, restStates )
+        }
+     -> List (Subcontrol recordDelta)
     )
+    -> context
     -> ( RecordFns context input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> context
-    -> InternalViewConfig ( State state, restStates )
-    -> List (Subcontrol msg)
-viewRecordStates viewer fns setters ctx config =
-    viewer (\views _ End End _ End -> views) [] config.alerts fns setters ctx config.state
+    -> { j | alerts : List Alert, state : ( State state, restStates ) }
+    -> List (Subcontrol recordDelta)
+viewRecordStates viewer context fns setters config =
+    viewer (\{ views } -> views)
+        { views = []
+        , alerts = config.alerts
+        , fns = fns
+        , deltaSetters = setters
+        , context = context
+        , states = config.state
+        }
 
 
 recordStateViewer :
-    (List (Subcontrol recordDelta)
-     -> List Alert
-     -> restFns
-     -> restDeltaSetters
-     -> context
-     -> restStates
+    ({ views : List (Subcontrol recordDelta)
+     , alerts : List Alert
+     , fns : restFns
+     , deltaSetters : restDeltaSetters
+     , context : context
+     , states : restStates
+     }
      -> List (Subcontrol recordDelta)
     )
+    ->
+        { views : List (Subcontrol recordDelta)
+        , alerts : List Alert
+        , deltaSetters : ( Delta delta -> recordDelta, restDeltaSetters )
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , context : context
+        , states : ( State state, restStates )
+        }
     -> List (Subcontrol recordDelta)
-    -> List Alert
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> context
-    -> ( State state, restStates )
-    -> List (Subcontrol recordDelta)
-recordStateViewer next views alerts ( RecordFns fns, restFns ) ( setter, restDeltaSetters ) ctx ( State internalState state, restStates ) =
+recordStateViewer next { views, alerts, deltaSetters, fns, context, states } =
     let
+        ( RecordFns recordFns, restFns ) =
+            fns
+
         (ControlFns controlFns) =
-            fns.controlFns
+            recordFns.controlFns
+
+        ( setter, restDeltaSetters ) =
+            deltaSetters
+
+        ( State internalState state, restStates ) =
+            states
 
         view =
-            controlFns.view ctx
+            controlFns.view context
                 { id = Maybe.withDefault ("control-" ++ Path.toString controlFns.path) controlFns.id
                 , name = Maybe.withDefault ("control-" ++ Path.toString controlFns.path) controlFns.name
                 , label = controlFns.label
                 , class = controlFns.class
                 , state = state
-                , status = getStatus controlFns.parse controlFns.collectFeedback alerts ctx (State internalState state)
+                , status = getStatus controlFns.parse controlFns.collectFeedback alerts context (State internalState state)
                 , alerts = alerts
                 , selected = internalState.selected
                 }
                 |> List.map (H.map (\delta -> StateChangedByInput (setter delta)))
     in
     next
-        (views
-            ++ [ { html = view
-                 , label = controlFns.label
-                 , index = controlFns.index
-                 }
-               ]
-        )
-        alerts
-        restFns
-        restDeltaSetters
-        ctx
-        restStates
+        { views =
+            views
+                ++ [ { html = view
+                     , label = controlFns.label
+                     , index = controlFns.index
+                     }
+                   ]
+        , alerts = alerts
+        , fns = restFns
+        , deltaSetters = restDeltaSetters
+        , context = context
+        , states = restStates
+        }
 
 
 getStatus :
