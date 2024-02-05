@@ -3200,34 +3200,59 @@ recordStateValidator next { toOutputResult, fns, context, states } =
 
 
 setAllRecordStatesToIdle :
-    ((End -> End -> End)
-     -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> ( State state, restStates )
-     -> ( State state, restStates )
+    (({ inputStates : End
+      , outputStates : End -> outputStates
+      , fns : End
+      }
+      -> outputStates
+     )
+     ->
+        { inputStates : ( State inputState, restInputStates )
+        , outputStates : identity -> identity
+        , fns : ( RecordFns context input inputState delta output recordOutput, restFns )
+        }
+     -> outputStates
     )
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( State state, restStates )
-    -> ( State state, restStates )
+    -> ( RecordFns context input inputState delta output recordOutput, restFns )
+    -> ( State inputState, restInputStates )
+    -> outputStates
 setAllRecordStatesToIdle idleSetter_ fns states =
-    idleSetter_ (\End End -> End) fns states
+    idleSetter_ (\{ outputStates } -> outputStates End)
+        { outputStates = identity
+        , fns = fns
+        , inputStates = states
+        }
 
 
 recordStateIdleSetter :
-    (restFns
-     -> restStates
-     -> restStates
+    ({ inputStates : restInputStates
+     , outputStates : restInputStates -> outputStates
+     , fns : restFns
+     }
+     -> outputStates
     )
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( State state, restStates )
-    -> ( State state, restStates )
-recordStateIdleSetter next ( RecordFns fns, restFns ) ( state, restStates ) =
+    ->
+        { inputStates : ( State inputState, restInputStates )
+        , outputStates : ( State inputState, restInputStates ) -> outputStates
+        , fns : ( RecordFns context input inputState delta output recordOutput, restFns )
+        }
+    -> outputStates
+recordStateIdleSetter next { inputStates, outputStates, fns } =
     let
+        ( inputState, restInputStates ) =
+            inputStates
+
+        ( RecordFns recordFns, restFns ) =
+            fns
+
         (ControlFns controlFns) =
-            fns.controlFns
+            recordFns.controlFns
     in
-    ( controlFns.setAllIdle state
-    , next restFns restStates
-    )
+    next
+        { outputStates = nestForwards Tuple.pair outputStates (controlFns.setAllIdle inputState)
+        , fns = restFns
+        , inputStates = restInputStates
+        }
 
 
 viewRecordStates :
