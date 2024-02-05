@@ -2583,7 +2583,7 @@ endRecord (RecordBuilder rec) =
                         StateChangedByInput deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates rec.updater fns deltaSetters ctx deltas state
+                                    updateRecordStates rec.updater ctx fns deltaSetters deltas state
                             in
                             ( State s newState
                             , Cmd.map StateChangedByInput cmd
@@ -2592,7 +2592,7 @@ endRecord (RecordBuilder rec) =
                         StateChangedInternally deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates rec.updater fns deltaSetters ctx deltas state
+                                    updateRecordStates rec.updater ctx fns deltaSetters deltas state
                             in
                             ( State s newState
                             , Cmd.map StateChangedInternally cmd
@@ -3384,67 +3384,135 @@ getStatus parse collectErrors alerts ctx ((State internalState _) as state) =
             Idle (parsedErrors ++ flaggedErrors)
 
 
+
+-- updateRecordStates :
+--     (({ newStates : End -> states, newCmds : List (Cmd msg) }
+--       -> End
+--       -> End
+--       -> context
+--       -> End
+--       -> End
+--       -> { newStates : End -> states, newCmds : List (Cmd msg) }
+--      )
+--      -> { newStates : states -> states, newCmds : List (Cmd msg) }
+--      -> ( RecordFns context input state delta output recordOutput, restFns )
+--      -> ( setter, restDeltaSetters )
+--      -> context
+--      -> ( Delta delta, restDeltas )
+--      -> ( State state, restStates )
+--      -> { newStates : End -> states, newCmds : List (Cmd msg) }
+--     )
+--     -> ( RecordFns context input state delta output recordOutput, restFns )
+--     -> ( setter, restDeltaSetters )
+--     -> context
+--     -> ( Delta delta, restDeltas )
+--     -> ( State state, restStates )
+--     -> ( states, Cmd msg )
+
+
 updateRecordStates :
-    (({ newStates : End -> states, newCmds : List (Cmd msg) }
-      -> End
-      -> End
-      -> context
-      -> End
-      -> End
-      -> { newStates : End -> states, newCmds : List (Cmd msg) }
+    (({ newStates : End -> finalRecordStates
+      , newCmds : List (Cmd recordDelta)
+      , context : context
+      , fns : End
+      , deltaSetters : End
+      , deltas : End
+      , states : End
+      }
+      ->
+        { newStates : End -> finalRecordStates
+        , newCmds : List (Cmd recordDelta)
+        }
      )
-     -> { newStates : states -> states, newCmds : List (Cmd msg) }
-     -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> ( setter, restDeltaSetters )
-     -> context
-     -> ( Delta delta, restDeltas )
-     -> ( State state, restStates )
-     -> { newStates : End -> states, newCmds : List (Cmd msg) }
+     ->
+        { newStates : d -> d
+        , newCmds : List e
+        , context : context
+        , fns : ( RecordFns context input state fieldDelta output recordOutput, restFns )
+        , deltaSetters : ( Delta fieldDelta -> recordDelta, restDeltaSetters )
+        , deltas : ( Delta fieldDelta, restDeltas )
+        , states : ( State state, restStates )
+        }
+     ->
+        { newStates : End -> finalRecordStates
+        , newCmds : List (Cmd recordDelta)
+        }
     )
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( setter, restDeltaSetters )
     -> context
-    -> ( Delta delta, restDeltas )
+    -> ( RecordFns context input state fieldDelta output recordOutput, restFns )
+    -> ( Delta fieldDelta -> recordDelta, restDeltaSetters )
+    -> ( Delta fieldDelta, restDeltas )
     -> ( State state, restStates )
-    -> ( states, Cmd msg )
-updateRecordStates updater fields setters ctx deltas states =
+    -> ( finalRecordStates, Cmd recordDelta )
+updateRecordStates updater context fields setters deltas states =
     let
         { newStates, newCmds } =
             updater
-                (\output End End _ End End -> output)
-                { newStates = identity, newCmds = [] }
-                fields
-                setters
-                ctx
-                deltas
-                states
+                (\output ->
+                    { newStates = output.newStates
+                    , newCmds = output.newCmds
+                    }
+                )
+                { newStates = identity
+                , newCmds = []
+                , context = context
+                , fns = fields
+                , deltaSetters = setters
+                , deltas = deltas
+                , states = states
+                }
     in
-    ( newStates End, Cmd.batch newCmds )
+    ( newStates End
+    , Cmd.batch newCmds
+    )
 
 
 recordStateUpdater :
-    ({ newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) }
-     -> restFns
-     -> restDeltaSetters
-     -> context
-     -> restDeltas
-     -> restStates
-     -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
+    ({ newStates : restStates -> intermediateRecordStates
+     , newCmds : List (Cmd recordDelta)
+     , context : context
+     , fns : restFns
+     , deltaSetters : restDeltaSetters
+     , deltas : restDeltas
+     , states : restStates
+     }
+     ->
+        { newStates : finalRecordStates
+        , newCmds : List (Cmd recordDelta)
+        }
     )
-    -> { newStates : ( State state, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) }
-    -> ( RecordFns context input state delta output recordOutput, restFns )
-    -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> context
-    -> ( Delta delta, restDeltas )
-    -> ( State state, restStates )
-    -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
-recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( deltaSetter, restDeltaSetters ) ctx ( delta, restDeltas ) ( state, restStates ) =
+    ->
+        { newStates : ( State state, restStates ) -> intermediateRecordStates
+        , newCmds : List (Cmd recordDelta)
+        , context : context
+        , fns : ( RecordFns context input state fieldDelta output recordOutput, restFns )
+        , deltaSetters : ( Delta fieldDelta -> recordDelta, restDeltaSetters )
+        , deltas : ( Delta fieldDelta, restDeltas )
+        , states : ( State state, restStates )
+        }
+    ->
+        { newStates : finalRecordStates
+        , newCmds : List (Cmd recordDelta)
+        }
+recordStateUpdater next { newStates, newCmds, context, fns, deltaSetters, deltas, states } =
     let
+        ( RecordFns recordFns, restFns ) =
+            fns
+
+        ( deltaSetter, restDeltaSetters ) =
+            deltaSetters
+
+        ( delta, restDeltas ) =
+            deltas
+
+        ( state, restStates ) =
+            states
+
         (ControlFns controlFns) =
-            fns.controlFns
+            recordFns.controlFns
 
         ( newState, newCmd ) =
-            controlFns.update ctx delta state
+            controlFns.update context delta state
 
         cmd2 =
             newCmd
@@ -3453,12 +3521,12 @@ recordStateUpdater next { newStates, newCmds } ( RecordFns fns, restFns ) ( delt
     next
         { newStates = nestForwards Tuple.pair newStates newState
         , newCmds = cmd2 :: newCmds
+        , context = context
+        , fns = restFns
+        , deltaSetters = restDeltaSetters
+        , deltas = restDeltas
+        , states = restStates
         }
-        restFns
-        restDeltaSetters
-        ctx
-        restDeltas
-        restStates
 
 
 
