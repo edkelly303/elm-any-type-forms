@@ -2,16 +2,16 @@ module Control exposing
     ( Control, Form, sandbox, simpleForm, form
     , bool, int, float, string, char, enum
     , tuple, triple, maybe, result, list, dict, set, array, map
-    , ControlConfig, define
+    , RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
+    , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+    , Definition, define
     , failIf, noteIf
     , alertIf, respond
     , alertAtIndexes
     , default, debounce, id, name, label, class, classList, wrapView
-    , RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
-    , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+    , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
     , State, Delta, ListDelta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
-    , alertAtIndexesWithContext, alertIfWithContext, failIfWithContext, formWithContext, noteIfWithContext, simpleFormWithContext
     )
 
 {-|
@@ -32,9 +32,19 @@ module Control exposing
 @docs tuple, triple, maybe, result, list, dict, set, array, map
 
 
+# Building record combinators
+
+@docs RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
+
+
+# Building custom type combinators
+
+@docs CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+
+
 # Creating a new control
 
-@docs ControlConfig, define
+@docs Definition, define
 
 
 # Validating controls
@@ -91,14 +101,20 @@ can achieve this as follows:
 @docs default, debounce, id, name, label, class, classList, wrapView
 
 
-# Building record combinators
+# Forms with context
 
-@docs RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
+For some advanced use cases, you may want to create a form that knows about more
+than its own internal state - for example, it may need to know about some state
+that lives elsewhere in your app's `Model`.
 
+This is where the `...WithContext` family of types and functions come into play
 
-# Building custom type combinators
+  - they allow you to inject some external state into your form controls by
+    passing a `context` value as an additional argument to the form's `update`,
+    `view`, `subscriptions` and `submit` functions, and also to any validation
+    functions applied to the form's `Control`s.
 
-@docs CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+@docs FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
 
 
 # Form internals
@@ -143,8 +159,56 @@ import Time
 -}
 
 
-{-| A `Form` is an interface containing functions that you can use in your
+{-| A `FormWithContext` is a record which contains functions that you can use in your
 Elm `Program` to initialise, view, update, subscribe, and submit your form.
+
+Unlike the standard `Form`, several of the functions provided by `FormWithContext`
+take an extra `context` parameter, which allows you to feed external data (e.g. from
+your app's `Model`) into your form and allow the form to respond accordingly.
+
+For example, imagine your app's `Model` contains a list of users, and you build
+a form to create a new user. The new user record should only be valid if its
+nickname hasn't already been chosen by another user:
+
+    import Set
+
+    type alias User =
+        String
+
+    type alias Model =
+        { formState : State String
+        , existingUsers : Set String
+        }
+
+    type Msg
+        = FormUpdated (Delta String)
+        | FormSubmitted
+
+    userControl =
+        string
+            |> failIfWithContext
+                (\existingUsers newUser ->
+                    Set.member newUser existingUsers
+                )
+
+    form =
+        simpleFormWithContext
+            { control = userControl
+            , onUpdate = FormUpdated
+            , onSubmit = FormSubmitted
+            }
+
+    update msg model =
+        case msg of
+            FormUpdated delta ->
+                let
+                    (formState, cmd) =
+                        form.update model.existingUsers delta model.formState
+                in
+                ( { model | formState = formState }, cmd )
+
+            FormSubmitted ->
+
 -}
 type alias FormWithContext context state delta output msg =
     { blank : ( State state, Cmd msg )
@@ -156,6 +220,9 @@ type alias FormWithContext context state delta output msg =
     }
 
 
+{-| A `Form` is a record which contains functions that you can use in your
+Elm `Program` to initialise, view, update, subscribe, and submit your form.
+-}
 type alias Form state delta output msg =
     { blank : ( State state, Cmd msg )
     , prefill : output -> ( State state, Cmd msg )
@@ -166,7 +233,7 @@ type alias Form state delta output msg =
     }
 
 
-{-| Configuration for a custom control. You need to supply the following fields:
+{-| Definition for a custom control. You need to supply the following fields:
 
   - `blank`: an initial "empty" value for the `state` of the control, plus an initial (optional) `Cmd` to run. For a control whose `state` is of type `String`, the state value might be `""`, for a number it might be `0`.
   - `prefill`: a function that uses a value of the control's `output` type to initialise the control's `state` and (optionally) run an initial `Cmd`. For a control that outputs an `Int`, but whose `state` is a `String`, you might use `String.fromInt` to convert the `output` value into a `state` value.
@@ -174,9 +241,22 @@ type alias Form state delta output msg =
   - `view`: a function that outputs `Html delta` based on the `state` of the control. This is similar to an Elm program's view function, except instead of just taking the `state` as an argument, it takes a record containing the `state` plus the id, name, class, and label for the input.
   - `subscriptions`: a function that outputs `Sub delta` based on the `state` of the control. This is exactly analogous to an Elm program's subscriptions function.
   - `parse`: a function that attempts to parse the control's state into its output type, producing a result. If parsing fails, it can provide a list of errors.
+  - `label`: a default label for the control.
 
 -}
-type alias ControlConfig context state delta output =
+type alias Definition state delta output =
+    { blank : ( state, Cmd delta )
+    , prefill : output -> ( state, Cmd delta )
+    , update : delta -> state -> ( state, Cmd delta )
+    , view : { label : String, id : String, name : String, class : String, state : state } -> List (Html delta)
+    , subscriptions : state -> Sub delta
+    , parse : state -> Result (List String) output
+    , label : String
+    }
+
+
+{-| -}
+type alias DefinitionWithContext context state delta output =
     { blank : ( state, Cmd delta )
     , prefill : output -> ( state, Cmd delta )
     , update : context -> delta -> state -> ( state, Cmd delta )
@@ -447,6 +527,7 @@ simpleForm { onUpdate, onSubmit, control } =
         }
 
 
+{-| -}
 simpleFormWithContext :
     { control : Control context state delta output, onUpdate : Delta delta -> msg, onSubmit : msg }
     -> FormWithContext context state delta output msg
@@ -582,6 +663,7 @@ form { control, onUpdate, view } =
     }
 
 
+{-| -}
 formWithContext :
     { control : Control context state delta output, onUpdate : Delta delta -> msg, view : List (Html msg) -> Html msg }
     -> FormWithContext context state delta output msg
@@ -688,11 +770,25 @@ main `Model`and `Msg` types wherever appropriate.
 -}
 sandbox :
     { outputToString : output -> String
+    , control : Control () state delta output
+    }
+    -> Program () (State state) (Delta delta)
+sandbox { outputToString, control } =
+    sandboxWithContext
+        { outputToString = outputToString
+        , control = control
+        , context = ()
+        }
+
+
+{-| -}
+sandboxWithContext :
+    { outputToString : output -> String
     , control : Control context state delta output
     , context : context
     }
     -> Program () (State state) (Delta delta)
-sandbox { outputToString, control, context } =
+sandboxWithContext { outputToString, control, context } =
     let
         path =
             Path.root
@@ -830,22 +926,22 @@ Here's how we could create a control like the famous
             }
 
 -}
-define : ControlConfig context state delta output -> Control context state delta output
-define controlConfig =
+define : Definition state delta output -> Control context state delta output
+define definition =
     Control
         (\path ->
             let
                 preUpdate =
-                    wrapUpdate controlConfig.update
+                    wrapUpdate (\_ -> definition.update)
 
                 parse =
-                    \ctx (State _ state) ->
-                        controlConfig.parse ctx state
+                    \_ (State _ state) ->
+                        definition.parse state
                             |> Result.mapError
                                 (List.map
                                     (\message ->
                                         { message = message
-                                        , label = controlConfig.label
+                                        , label = definition.label
                                         , path = path
                                         , fail = True
                                         }
@@ -856,20 +952,20 @@ define controlConfig =
                 { path = path
                 , index = 0
                 , initBlank =
-                    controlConfig.blank
+                    definition.blank
                         |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                         |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , initPrefilled =
                     \input ->
-                        controlConfig.prefill input
+                        definition.prefill input
                             |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
                             |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , baseUpdate = preUpdate
                 , update = preUpdate 0
                 , subControlViews = \_ _ -> []
                 , view =
-                    \ctx viewConfig ->
-                        [ controlConfig.view ctx
+                    \_ viewConfig ->
+                        [ definition.view
                             { state = viewConfig.state
                             , label = viewConfig.label
                             , id = viewConfig.id
@@ -885,13 +981,81 @@ define controlConfig =
                 , collectDebouncingReceivers = \_ -> []
                 , collectFeedback = \_ _ -> []
                 , receiverCount = 0
-                , label = controlConfig.label
+                , label = definition.label
+                , id = Nothing
+                , name = Nothing
+                , class = []
+                , subscriptions =
+                    \_ (State _ s) ->
+                        definition.subscriptions s
+                            |> Sub.map StateChangedInternally
+                }
+        )
+
+
+{-| -}
+defineWithContext : DefinitionWithContext context state delta output -> Control context state delta output
+defineWithContext definition =
+    Control
+        (\path ->
+            let
+                preUpdate =
+                    wrapUpdate definition.update
+
+                parse =
+                    \ctx (State _ state) ->
+                        definition.parse ctx state
+                            |> Result.mapError
+                                (List.map
+                                    (\message ->
+                                        { message = message
+                                        , label = definition.label
+                                        , path = path
+                                        , fail = True
+                                        }
+                                    )
+                                )
+            in
+            ControlFns
+                { path = path
+                , index = 0
+                , initBlank =
+                    definition.blank
+                        |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
+                        |> Tuple.mapSecond (Cmd.map StateChangedInternally)
+                , initPrefilled =
+                    \input ->
+                        definition.prefill input
+                            |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
+                            |> Tuple.mapSecond (Cmd.map StateChangedInternally)
+                , baseUpdate = preUpdate
+                , update = preUpdate 0
+                , subControlViews = \_ _ -> []
+                , view =
+                    \ctx viewConfig ->
+                        [ definition.view ctx
+                            { state = viewConfig.state
+                            , label = viewConfig.label
+                            , id = viewConfig.id
+                            , name = viewConfig.name
+                            , class = String.join " " viewConfig.class
+                            }
+                            |> wrappedView viewConfig.status
+                            |> H.map StateChangedByInput
+                        ]
+                , parse = parse
+                , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
+                , emitAlerts = \_ _ -> []
+                , collectDebouncingReceivers = \_ -> []
+                , collectFeedback = \_ _ -> []
+                , receiverCount = 0
+                , label = definition.label
                 , id = Nothing
                 , name = Nothing
                 , class = []
                 , subscriptions =
                     \ctx (State _ s) ->
-                        controlConfig.subscriptions ctx s
+                        definition.subscriptions ctx s
                             |> Sub.map StateChangedInternally
                 }
         )
@@ -978,6 +1142,12 @@ wrapUpdate innerUpdate debounce_ ctx wrappedDelta (State internalState state) =
 -}
 
 
+{-| -}
+alertIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
+alertIfWithContext when alert (Control control) =
+    Control (control >> alertEmitter when (AlertLabel alert))
+
+
 {-| Emit an alert from a `Control` if its output fails to meet the predicate.
 
 This is meant to be used in combination with `respond`, which listens for the
@@ -985,12 +1155,7 @@ alert and displays an error or notification message on the appropriate
 control(s).
 
 -}
-alertIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
-alertIfWithContext when alert (Control control) =
-    Control (control >> alertEmitter when (AlertLabel alert))
-
-
-alertIf : (output -> Bool) -> String -> Control a state delta output -> Control a state delta output
+alertIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 alertIf when alert control =
     alertIfWithContext (\_ -> when) alert control
 
@@ -1067,6 +1232,16 @@ alertReceiver alert fail message (ControlFns ctrl) =
         }
 
 
+{-| -}
+alertAtIndexesWithContext :
+    (context -> output -> List Int)
+    -> String
+    -> Control context (List state) (ListDelta delta) output
+    -> Control context (List state) (ListDelta delta) output
+alertAtIndexesWithContext toIndexes alert (Control control) =
+    Control (control >> listAlertEmitter toIndexes alert)
+
+
 {-| Conditionally display an error on one or more items in a `list` control,
 based on the output of the `list` control.
 
@@ -1095,20 +1270,11 @@ strings, if and only if those first two items are "hello" and "world":
                 "no-hello-world"
 
 -}
-alertAtIndexesWithContext :
-    (context -> output -> List Int)
-    -> String
-    -> Control context (List state) (ListDelta delta) output
-    -> Control context (List state) (ListDelta delta) output
-alertAtIndexesWithContext toIndexes alert (Control control) =
-    Control (control >> listAlertEmitter toIndexes alert)
-
-
 alertAtIndexes :
     (output -> List Int)
     -> String
-    -> Control a (List state) (ListDelta delta) output
-    -> Control a (List state) (ListDelta delta) output
+    -> Control context (List state) (ListDelta delta) output
+    -> Control context (List state) (ListDelta delta) output
 alertAtIndexes toIndexes alert control =
     alertAtIndexesWithContext (\_ -> toIndexes) alert control
 
@@ -1139,17 +1305,7 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
         }
 
 
-{-| Display an error on a `Control` if its output fails to meet the predicate.
-
-This causes the `Control` to fail validation.
-
-    positiveInt =
-        int
-            |> failIf
-                (\x -> x < 1)
-                "This must be greater than zero!"
-
--}
+{-| -}
 failIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 failIfWithContext check message (Control c) =
     Control
@@ -1167,23 +1323,23 @@ failIfWithContext check message (Control c) =
         )
 
 
-failIf : (output -> Bool) -> String -> Control a state delta output -> Control a state delta output
+{-| Display an error on a `Control` if its output fails to meet the predicate.
+
+This causes the `Control` to fail validation.
+
+    positiveInt =
+        int
+            |> failIf
+                (\x -> x < 1)
+                "This must be greater than zero!"
+
+-}
+failIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 failIf check message control =
     failIfWithContext (\_ -> check) message control
 
 
-{-| Display an note on a `Control` if its output fails to meet the predicate.
-
-This just shows the user a message - it doesn't cause the `Control` to fail
-validation.
-
-    positiveInt =
-        int
-            |> noteIf
-                (\x -> x < 1)
-                "Should this be greater than zero?"
-
--}
+{-| -}
 noteIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 noteIfWithContext check message (Control c) =
     Control
@@ -1201,7 +1357,19 @@ noteIfWithContext check message (Control c) =
         )
 
 
-noteIf : (output -> Bool) -> String -> Control a state delta output -> Control a state delta output
+{-| Display an note on a `Control` if its output fails to meet the predicate.
+
+This just shows the user a message - it doesn't cause the `Control` to fail
+validation.
+
+    positiveInt =
+        int
+            |> noteIf
+                (\x -> x < 1)
+                "Should this be greater than zero?"
+
+-}
+noteIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 noteIf check message control =
     noteIfWithContext (\_ -> check) message control
 
@@ -1593,17 +1761,17 @@ int =
     define
         { blank = ( "", Cmd.none )
         , prefill = \s -> ( String.fromInt s, Cmd.none )
-        , update = \_ delta _ -> ( delta, Cmd.none )
-        , view = \_ -> textControlView "numeric"
+        , update = \delta _ -> ( delta, Cmd.none )
+        , view = textControlView "numeric"
         , parse =
-            \_ state ->
+            \state ->
                 case String.toInt state of
                     Just i ->
                         Ok i
 
                     Nothing ->
                         Err [ "Must be a whole number" ]
-        , subscriptions = \_ _ -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "Int"
         }
         |> debounce 500
@@ -1628,17 +1796,17 @@ float =
     define
         { blank = ( "", Cmd.none )
         , prefill = \f -> ( String.fromFloat f, Cmd.none )
-        , update = \_ delta _ -> ( delta, Cmd.none )
-        , view = \_ -> textControlView "decimal"
+        , update = \delta _ -> ( delta, Cmd.none )
+        , view = textControlView "decimal"
         , parse =
-            \_ state ->
+            \state ->
                 case String.toFloat state of
                     Just i ->
                         Ok i
 
                     Nothing ->
                         Err [ "Must be a number" ]
-        , subscriptions = \_ _ -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "Float"
         }
         |> debounce 500
@@ -1662,10 +1830,10 @@ string =
     define
         { blank = ( "", Cmd.none )
         , prefill = \s -> ( s, Cmd.none )
-        , update = \_ delta _ -> ( delta, Cmd.none )
-        , view = \_ -> textControlView "text"
-        , parse = \_ -> Ok
-        , subscriptions = \_ _ -> Sub.none
+        , update = \delta _ -> ( delta, Cmd.none )
+        , view = textControlView "text"
+        , parse = Ok
+        , subscriptions = \_ -> Sub.none
         , label = "String"
         }
         |> debounce 500
@@ -1689,10 +1857,10 @@ char =
     define
         { blank = ( "", Cmd.none )
         , prefill = \c -> ( String.fromChar c, Cmd.none )
-        , update = \_ delta _ -> ( delta, Cmd.none )
-        , view = \_ -> textControlView "text"
+        , update = \delta _ -> ( delta, Cmd.none )
+        , view = textControlView "text"
         , parse =
-            \_ str ->
+            \str ->
                 case String.uncons str of
                     Just ( char_, rest ) ->
                         if String.isEmpty rest then
@@ -1703,7 +1871,7 @@ char =
 
                     Nothing ->
                         Err [ "Must not be blank" ]
-        , subscriptions = \_ _ -> Sub.none
+        , subscriptions = \_ -> Sub.none
         , label = "Char"
         }
         |> debounce 500
@@ -1745,10 +1913,10 @@ enum first second rest =
     define
         { blank = ( Tuple.second first, Cmd.none )
         , prefill = \e -> ( e, Cmd.none )
-        , update = \_ delta _ -> ( delta, Cmd.none )
-        , view = \_ -> enumView (first :: second :: rest)
-        , parse = \_ -> Ok
-        , subscriptions = \_ _ -> Sub.none
+        , update = \delta _ -> ( delta, Cmd.none )
+        , view = enumView (first :: second :: rest)
+        , parse = Ok
+        , subscriptions = \_ -> Sub.none
         , label = "Enum"
         }
 
@@ -1772,7 +1940,7 @@ bool =
         { blank = ( False, Cmd.none )
         , prefill = \b -> ( b, Cmd.none )
         , view =
-            \_ config ->
+            \config ->
                 [ H.label
                     [ HA.for config.id ]
                     [ H.text config.label ]
@@ -1786,9 +1954,9 @@ bool =
                     ]
                     []
                 ]
-        , update = \_ delta _ -> ( delta, Cmd.none )
-        , parse = \_ -> Ok
-        , subscriptions = \_ _ -> Sub.none
+        , update = \delta _ -> ( delta, Cmd.none )
+        , parse = Ok
+        , subscriptions = \_ -> Sub.none
         , label = "Bool"
         }
 
@@ -2435,6 +2603,7 @@ this library is built using the `record` combinator).
             |> endRecord
 
 -}
+record : a -> RecordBuilder End End (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> i -> i) (j -> j) (k -> l -> l) (m -> n -> n) (o -> o) (p -> p) (q -> q) (r -> r) a (s -> s) (t -> t)
 record toOutput =
     RecordBuilder
         { index = 0
@@ -2471,6 +2640,273 @@ record toOutput =
             |> endRecord
 
 -}
+field :
+    (recordOutput9 -> output7)
+    -> AdvancedControl context9 input9 state8 delta10 output7
+    ->
+        RecordBuilder
+            a16
+            b
+            (( Delta delta11, a15 ) -> d4)
+            (( ( Delta delta11, a15 ) -> d4, a14 ) -> d3)
+            (a13
+             -> { alerts : List Alert, fns : restFns7, states : restStates6 }
+             -> List Alert
+            )
+            (a12
+             ->
+                { cmds : List (Cmd recordDelta2)
+                , deltaSetters : restDeltaSetters3
+                , fieldDeltas : restDeltas2
+                }
+             -> List (Cmd recordDelta2)
+            )
+            (a11
+             ->
+                { alerts : List Alert
+                , feedback : List Feedback
+                , fns : restFns6
+                , states : restStates5
+                }
+             -> List Feedback
+            )
+            (a10
+             ->
+                { alerts : List Alert
+                , context : context6
+                , fns : restFns5
+                , states : restStates4
+                }
+             -> List Alert
+            )
+            (Path.Path
+             -> ( RecordFns context9 input9 state8 delta10 output7 recordOutput9, a9 )
+             -> d2
+            )
+            (a8
+             ->
+                { fns : restFns4
+                , inputStates : restInputStates
+                , outputStates : restInputStates -> outputStates
+                }
+             -> outputStates
+            )
+            (Path.Path -> ( Cmd (Delta delta10), a7 ) -> d1)
+            (Path.Path -> ( State state8, a6 ) -> d)
+            (a5
+             ->
+                { deltaSetters : deltaSetters1
+                , deltas : List (Cmd msg1)
+                , fns : fns
+                , recordInput : recordOutput4
+                , states : nextState -> states
+                }
+             -> statesAndDeltas
+            )
+            (a4
+             ->
+                { afters : afters
+                , befores : befores
+                , output : restDeltaSetters2 -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a3
+             ->
+                { context : context3
+                , fns : restFns3
+                , states : restStates3
+                , toOutputResult : Result (List Feedback) output1_1
+                }
+             -> Result (List Feedback) output2_1
+            )
+            (a2
+             ->
+                { context : context2
+                , fns : restFns2
+                , listSubs : List (Sub msg)
+                , setters : restDeltas1
+                , states : restStates2
+                }
+             -> List (Sub msg)
+            )
+            toOutput
+            (a1
+             ->
+                { context : context1
+                , deltaSetters : restDeltaSetters1
+                , deltas : restDeltas
+                , fns : restFns1
+                , newCmds : List (Cmd recordDelta1)
+                , newStates : restStates1 -> intermediateRecordStates
+                , states : restStates1
+                }
+             -> { newCmds : List (Cmd recordDelta1), newStates : finalRecordStates }
+            )
+            (a
+             ->
+                { alerts : List Alert
+                , context : context
+                , deltaSetters : restDeltaSetters
+                , fns : restFns
+                , states : restStates
+                , views : List (Subcontrol recordDelta)
+                }
+             -> List (Subcontrol recordDelta)
+            )
+    ->
+        RecordBuilder
+            ( Delta delta9, a16 )
+            ( a16, b )
+            (a15 -> d4)
+            (a14 -> d3)
+            (a13
+             ->
+                { alerts : List Alert
+                , fns :
+                    ( RecordFns context8 input8 state7 delta8 output6 recordOutput8
+                    , restFns7
+                    )
+                , states : ( State state7, restStates6 )
+                }
+             -> List Alert
+            )
+            (a12
+             ->
+                { cmds : List (Cmd recordDelta2)
+                , deltaSetters : ( fieldDelta1 -> recordDelta2, restDeltaSetters3 )
+                , fieldDeltas : ( Cmd fieldDelta1, restDeltas2 )
+                }
+             -> List (Cmd recordDelta2)
+            )
+            (a11
+             ->
+                { alerts : List Alert
+                , feedback : List Feedback
+                , fns :
+                    ( RecordFns context7 input7 state6 delta7 output5 recordOutput7
+                    , restFns6
+                    )
+                , states : ( State state6, restStates5 )
+                }
+             -> List Feedback
+            )
+            (a10
+             ->
+                { alerts : List Alert
+                , context : context6
+                , fns :
+                    ( RecordFns context6 input6 state5 delta6 output4 recordOutput6
+                    , restFns5
+                    )
+                , states : ( State state5, restStates4 )
+                }
+             -> List Alert
+            )
+            (Path.Path -> a9 -> d2)
+            (a8
+             ->
+                { fns :
+                    ( RecordFns
+                        context5
+                        input5
+                        inputState
+                        delta5
+                        output3
+                        recordOutput5
+                    , restFns4
+                    )
+                , inputStates : ( State inputState, restInputStates )
+                , outputStates : ( State inputState, restInputStates ) -> outputStates
+                }
+             -> outputStates
+            )
+            (Path.Path -> a7 -> d1)
+            (Path.Path -> a6 -> d)
+            (a5
+             ->
+                { deltaSetters : ( Delta delta4 -> msg1, deltaSetters1 )
+                , deltas : List (Cmd msg1)
+                , fns :
+                    ( RecordFns context4 input4 state4 delta4 input4 recordOutput4
+                    , fns
+                    )
+                , recordInput : recordOutput4
+                , states : ( State state4, nextState ) -> states
+                }
+             -> statesAndDeltas
+            )
+            (a4
+             ->
+                { afters : ( after, afters )
+                , befores : ( ( value, after ) -> delta3, befores )
+                , output : ( value -> delta3, restDeltaSetters2 ) -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a3
+             ->
+                { context : context3
+                , fns :
+                    ( RecordFns context3 input3 state3 delta2 output0 recordOutput3
+                    , restFns3
+                    )
+                , states : ( State state3, restStates3 )
+                , toOutputResult : Result (List Feedback) (output0 -> output1_1)
+                }
+             -> Result (List Feedback) output2_1
+            )
+            (a2
+             ->
+                { context : context2
+                , fns :
+                    ( RecordFns context2 input2 state2 delta1 output2 recordOutput2
+                    , restFns2
+                    )
+                , listSubs : List (Sub msg)
+                , setters : ( Delta delta1 -> msg, restDeltas1 )
+                , states : ( State state2, restStates2 )
+                }
+             -> List (Sub msg)
+            )
+            toOutput
+            (a1
+             ->
+                { context : context1
+                , deltaSetters :
+                    ( Delta fieldDelta -> recordDelta1, restDeltaSetters1 )
+                , deltas : ( Delta fieldDelta, restDeltas )
+                , fns :
+                    ( RecordFns
+                        context1
+                        input1
+                        state1
+                        fieldDelta
+                        output1
+                        recordOutput1
+                    , restFns1
+                    )
+                , newCmds : List (Cmd recordDelta1)
+                , newStates :
+                    ( State state1, restStates1 ) -> intermediateRecordStates
+                , states : ( State state1, restStates1 )
+                }
+             -> { newCmds : List (Cmd recordDelta1), newStates : finalRecordStates }
+            )
+            (a
+             ->
+                { alerts : List Alert
+                , context : context
+                , deltaSetters : ( Delta delta -> recordDelta, restDeltaSetters )
+                , fns :
+                    ( RecordFns context input state delta output recordOutput
+                    , restFns
+                    )
+                , states : ( State state, restStates )
+                , views : List (Subcontrol recordDelta)
+                }
+             -> List (Subcontrol recordDelta)
+            )
 field fromInput (Control control) (RecordBuilder builder) =
     let
         newIndex =
@@ -2559,6 +2995,226 @@ field fromInput (Control control) (RecordBuilder builder) =
             |> endRecord
 
 -}
+endRecord :
+    RecordBuilder
+        after
+        afters
+        before
+        (End -> befores)
+        (({ alerts : List Alert, fns : End, states : End } -> List Alert)
+         ->
+            { alerts : List Alert
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , states : ( State state, restStates )
+            }
+         -> List Alert
+        )
+        (({ cmds : List (Cmd ( Delta delta, restDeltas ))
+          , deltaSetters : End
+          , fieldDeltas : End
+          }
+          -> List (Cmd ( Delta delta, restDeltas ))
+         )
+         ->
+            { cmds : List (Cmd ( Delta delta, restDeltas ))
+            , deltaSetters :
+                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+            , fieldDeltas : fieldDeltas
+            }
+         -> List (Cmd ( Delta delta, restDeltas ))
+        )
+        (({ alerts : List Alert, feedback : List Feedback, fns : End, states : End }
+          -> List Feedback
+         )
+         ->
+            { alerts : List Alert
+            , feedback : List Feedback
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , states : ( State state, restStates )
+            }
+         -> List Feedback
+        )
+        (({ alerts : List Alert, context : context, fns : End, states : End }
+          -> List Alert
+         )
+         ->
+            { alerts : List Alert
+            , context : context
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , states : ( State state, restStates )
+            }
+         -> List Alert
+        )
+        (Path
+         -> End
+         -> ( RecordFns context input1 state delta output1 recordInput, restFns )
+        )
+        (({ fns : End
+          , inputStates : End
+          , outputStates : End -> ( State state, restStates )
+          }
+          -> ( State state, restStates )
+         )
+         ->
+            { fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , inputStates : ( State state, restStates )
+            , outputStates : identity2 -> identity2
+            }
+         -> ( State state, restStates )
+        )
+        (Path -> End -> fieldDeltas)
+        (Path -> End -> ( State state, restStates ))
+        (({ deltaSetters : End
+          , deltas : List (Cmd ( Delta delta, restDeltas ))
+          , fns : End
+          , recordInput : input
+          , states : End -> ( State state, restStates )
+          }
+          ->
+            ( State ( State state, restStates )
+            , Cmd (Delta ( Delta delta, restDeltas ))
+            )
+         )
+         ->
+            { deltaSetters :
+                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+            , deltas : List (Cmd ( Delta delta, restDeltas ))
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , recordInput : input
+            , states : identity1 -> identity1
+            }
+         ->
+            ( State ( State state, restStates )
+            , Cmd (Delta ( Delta delta, restDeltas ))
+            )
+        )
+        (({ afters : End
+          , befores : End
+          , output :
+                End
+                -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+          }
+          -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+         )
+         -> { afters : afters, befores : befores, output : identity -> identity }
+         -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+        )
+        (({ context : context
+          , fns : End
+          , states : End
+          , toOutputResult : Result (List Feedback) output
+          }
+          -> Result (List Feedback) output
+         )
+         ->
+            { context : context
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , states : ( State state, restStates )
+            , toOutputResult : Result (List Feedback) output1_1
+            }
+         -> Result (List Feedback) output
+        )
+        (({ context : context
+          , fns : End
+          , listSubs : List (Sub ( Delta delta, restDeltas ))
+          , setters : End
+          , states : End
+          }
+          -> List (Sub ( Delta delta, restDeltas ))
+         )
+         ->
+            { context : context
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , listSubs : List (Sub ( Delta delta, restDeltas ))
+            , setters :
+                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+            , states : ( State state, restStates )
+            }
+         -> List (Sub ( Delta delta, restDeltas ))
+        )
+        output1_1
+        (({ context : context
+          , deltaSetters : End
+          , deltas : End
+          , fns : End
+          , newCmds : List (Cmd ( Delta delta, restDeltas ))
+          , newStates : End -> ( State state, restStates )
+          , states : End
+          }
+          ->
+            { newCmds : List (Cmd ( Delta delta, restDeltas ))
+            , newStates : End -> ( State state, restStates )
+            }
+         )
+         ->
+            { context : context
+            , deltaSetters :
+                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+            , deltas : ( Delta delta, restDeltas )
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , newCmds : List e
+            , newStates : d -> d
+            , states : ( State state, restStates )
+            }
+         ->
+            { newCmds : List (Cmd ( Delta delta, restDeltas ))
+            , newStates : End -> ( State state, restStates )
+            }
+        )
+        (({ alerts : List Alert
+          , context : context
+          , deltaSetters : End
+          , fns : End
+          , states : End
+          , views : List (Subcontrol ( Delta delta, restDeltas ))
+          }
+          -> List (Subcontrol ( Delta delta, restDeltas ))
+         )
+         ->
+            { alerts : List Alert
+            , context : context
+            , deltaSetters :
+                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
+            , fns :
+                ( RecordFns context input1 state delta output1 recordInput
+                , restFns
+                )
+            , states : ( State state, restStates )
+            , views : List (Subcontrol ( Delta delta, restDeltas ))
+            }
+         -> List (Subcontrol ( Delta delta, restDeltas ))
+        )
+    ->
+        AdvancedControl
+            context
+            input
+            ( State state, restStates )
+            ( Delta delta, restDeltas )
+            output
 endRecord (RecordBuilder rec) =
     Control
         (\path ->
@@ -3719,6 +4375,174 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
             |> endCustomType
 
 -}
+endCustomType :
+    CustomTypeBuilder
+        (((input
+           ->
+            ( State ( State state, restStates )
+            , Cmd (Delta ( Delta delta, restDeltas ))
+            )
+          )
+          -> End
+          -> input
+          ->
+            ( State ( State state, restStates )
+            , Cmd (Delta ( Delta delta, restDeltas ))
+            )
+         )
+         -> (inputToStateConverter -> destructor)
+         -> ( inputToStateConverter, restInputToStateConverters )
+         -> input
+         ->
+            ( State ( State state, restStates )
+            , Cmd (Delta ( Delta delta, restDeltas ))
+            )
+        )
+        ((List Alert -> End -> End -> List Alert)
+         -> List Alert
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> ( State state, restStates )
+         -> List Alert
+        )
+        deltaAfter
+        afters
+        deltaBefore
+        (End -> befores)
+        (inputToStateConverter -> destructor)
+        ((List Alert -> List Feedback -> End -> End -> List Feedback)
+         -> List Alert
+         -> List Feedback
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> ( State state, restStates )
+         -> List Feedback
+        )
+        ((List Alert -> Int -> End -> context -> End -> List Alert)
+         -> List Alert
+         -> Int
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> context
+         -> ( State state, restStates )
+         -> List Alert
+        )
+        (Path -> End -> ( ControlFns context input1 state delta output1, restFns ))
+        ((Int -> End -> End -> End)
+         -> Int
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> ( State state, restStates )
+         -> ( State state, restStates )
+        )
+        (Path -> End -> deltas)
+        (Path -> End -> ( State state, restStates ))
+        ((List (Cmd ( Delta delta, restDeltas ))
+          -> End
+          -> End
+          -> List (Cmd ( Delta delta, restDeltas ))
+         )
+         -> List (Cmd ( Delta delta, restDeltas ))
+         -> ( setter, restDeltaSetters )
+         -> deltas
+         -> List (Cmd ( Delta delta, restDeltas ))
+        )
+        (({ afters : End
+          , befores : End
+          , output : End -> ( setter, restDeltaSetters )
+          }
+          -> ( setter, restDeltaSetters )
+         )
+         -> { afters : afters, befores : befores, output : identity -> identity }
+         -> ( setter, restDeltaSetters )
+        )
+        (({ c | finalTagStates : End -> b2 } -> b2)
+         ->
+            { controlFns : ( ControlFns context input1 state delta output1, restFns )
+            , deltaSetters : ( setter, restDeltaSetters )
+            , finalTagStates : a1 -> a1
+            , initialTagStates : ( State state, restStates )
+            , inputTuplizers : g
+            , maybeOverridesAfter : h
+            , maybeOverridesBefore : i
+            , tagStateOverrider : j
+            }
+         -> ( inputToStateConverter, restInputToStateConverters )
+        )
+        ((a -> b1 -> End -> context -> End -> a)
+         -> Result (List Feedback) value
+         -> Int
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> context
+         -> ( State state, restStates )
+         -> Result (List Feedback) output
+        )
+        stateAfter
+        h
+        stateBefore
+        (End -> i)
+        j
+        ((List (Sub ( Delta delta, restDeltas ))
+          -> End
+          -> End
+          -> context
+          -> End
+          -> List (Sub ( Delta delta, restDeltas ))
+         )
+         -> List (Sub ( Delta delta, restDeltas ))
+         -> ( setter, restDeltaSetters )
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> context
+         -> ( State state, restStates )
+         -> List (Sub ( Delta delta, restDeltas ))
+        )
+        (End -> g)
+        (({ newCmds : List (Cmd ( Delta delta, restDeltas ))
+          , newStates : End -> ( State state, restStates )
+          }
+          -> End
+          -> End
+          -> End
+          -> context
+          -> End
+          ->
+            { newCmds : List (Cmd ( Delta delta, restDeltas ))
+            , newStates : End -> ( State state, restStates )
+            }
+         )
+         ->
+            { newCmds : List (Cmd ( Delta delta, restDeltas ))
+            , newStates : ( State state, restStates ) -> ( State state, restStates )
+            }
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> ( setter, restDeltaSetters )
+         -> ( Delta delta, restDeltas )
+         -> context
+         -> ( State state, restStates )
+         ->
+            { newCmds : List (Cmd ( Delta delta, restDeltas ))
+            , newStates : End -> ( State state, restStates )
+            }
+        )
+        ((List (Subcontrol ( Delta delta, restDeltas ))
+          -> b
+          -> End
+          -> End
+          -> context
+          -> End
+          -> List (Subcontrol ( Delta delta, restDeltas ))
+         )
+         -> List (Subcontrol ( Delta delta, restDeltas ))
+         -> List Alert
+         -> ( ControlFns context input1 state delta output1, restFns )
+         -> ( setter, restDeltaSetters )
+         -> context
+         -> ( State state, restStates )
+         -> List (Subcontrol ( Delta delta, restDeltas ))
+        )
+    ->
+        AdvancedControl
+            context
+            input
+            ( State state, restStates )
+            ( Delta delta, restDeltas )
+            output
 endCustomType (CustomTypeBuilder builder) =
     Control
         (\path ->
@@ -3873,6 +4697,278 @@ endCustomType (CustomTypeBuilder builder) =
             |> endCustomType
 
 -}
+tag0 :
+    String
+    -> output9
+    ->
+        CustomTypeBuilder
+            (a23
+             -> destructor1
+             -> restInputToStateConverters
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22 -> List Alert -> restFns7 -> restStates8 -> List Alert)
+            a21
+            b1
+            (( Delta delta13, a20 ) -> d7)
+            (( ( Delta delta13, a20 ) -> d7, a19 ) -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> restFns6
+             -> restStates7
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> restFns5
+             -> context6
+             -> restStates6
+             -> List Alert
+            )
+            (Path.Path -> ( ControlFns context9 output9 () () output9, a16 ) -> d5)
+            (a15 -> Int -> restFns4 -> restStates5 -> restStates5)
+            (Path.Path -> ( Cmd (Delta ()), a14 ) -> d4)
+            (Path.Path -> ( State (), a13 ) -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> restDeltaSetters5
+             -> restDeltas1
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : afters
+                , befores : befores
+                , output : restDeltaSetters4 -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns : restControlFns
+                , deltaSetters : restDeltaSetters3
+                , finalTagStates : nextFinalTagState -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers : restInputTuplizers
+                , maybeOverridesAfter : restMaybeOverridesAfter
+                , maybeOverridesBefore : restMaybeOverridesBefore
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> restFns3
+             -> context3
+             -> restStates3
+             -> Result (List Feedback) output3
+            )
+            a7
+            b
+            (( Maybe a24, a6 ) -> d2)
+            (( ( Maybe a24, a6 ) -> d2, a5 ) -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (restArgStates -> tagStates)
+             -> restMaybeArgStates
+             -> restArgStates
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> restDeltaSetters2
+             -> restFns2
+             -> context2
+             -> restStates2
+             -> List (Sub delta1_1)
+            )
+            (( (output9 -> c) -> c, a2 ) -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : restStates1 -> recordState0
+                }
+             -> restFns1
+             -> restDeltaSetters1
+             -> restDeltas
+             -> context1
+             -> restStates1
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> restFns
+             -> restDeltaSetters
+             -> context
+             -> restStates
+             -> List (Subcontrol delta)
+            )
+    ->
+        CustomTypeBuilder
+            (a23
+             -> (inputToStateConverter -> destructor1)
+             -> ( inputToStateConverter, restInputToStateConverters )
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22
+             -> List Alert
+             -> ( ControlFns context8 input8 state8 delta11 output8, restFns7 )
+             -> ( State state8, restStates8 )
+             -> List Alert
+            )
+            ( Delta delta10, a21 )
+            ( a21, b1 )
+            (a20 -> d7)
+            (a19 -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> ( ControlFns context7 input7 state7 delta9 output7, restFns6 )
+             -> ( State state7, restStates7 )
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> ( ControlFns context6 input6 state6 delta8 output6, restFns5 )
+             -> context6
+             -> ( State state6, restStates6 )
+             -> List Alert
+            )
+            (Path.Path -> a16 -> d5)
+            (a15
+             -> Int
+             -> ( ControlFns context5 input5 state5 delta7 output5, restFns4 )
+             -> ( State state5, restStates5 )
+             -> ( State state5, restStates5 )
+            )
+            (Path.Path -> a14 -> d4)
+            (Path.Path -> a13 -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> ( delta6 -> delta1_2, restDeltaSetters5 )
+             -> ( Cmd delta6, restDeltas1 )
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : ( after, afters )
+                , befores : ( ( value, after ) -> delta5, befores )
+                , output : ( value -> delta5, restDeltaSetters4 ) -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns :
+                    ( ControlFns context4 input4 state1_1 delta4 output4
+                    , restControlFns
+                    )
+                , deltaSetters : ( Delta delta4 -> tagDelta, restDeltaSetters3 )
+                , finalTagStates :
+                    ( finalTagState, nextFinalTagState ) -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers :
+                    ( (input4 -> ( State tagStates1, Cmd (Delta tagDelta) ))
+                      -> finalTagState
+                    , restInputTuplizers
+                    )
+                , maybeOverridesAfter :
+                    ( maybeOverrideAfter, restMaybeOverridesAfter )
+                , maybeOverridesBefore :
+                    ( ( Maybe (State state1_1), maybeOverrideAfter )
+                      -> ( Maybe (State state4), restMaybeStates )
+                    , restMaybeOverridesBefore
+                    )
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> ( ControlFns context3 input3 state3 delta3 output3, restFns3 )
+             -> context3
+             -> ( State state3, restStates3 )
+             -> Result (List Feedback) output3
+            )
+            ( Maybe a8, a7 )
+            ( a7, b )
+            (a6 -> d2)
+            (a5 -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (( State argState, restArgStates ) -> tagStates)
+             -> ( Maybe (State argState), restMaybeArgStates )
+             -> ( State argState, restArgStates )
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> ( Delta delta2 -> delta1_1, restDeltaSetters2 )
+             -> ( ControlFns context2 input2 state2 delta2 output2, restFns2 )
+             -> context2
+             -> ( State state2, restStates2 )
+             -> List (Sub delta1_1)
+            )
+            (a2 -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state1, restStates1 ) -> recordState0
+                }
+             -> ( ControlFns context1 input1 state1 delta1 output1, restFns1 )
+             -> ( Delta delta1 -> recordDelta, restDeltaSetters1 )
+             -> ( Delta delta1, restDeltas )
+             -> context1
+             -> ( State state1, restStates1 )
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> ( ControlFns context input state e output, restFns )
+             -> ( Delta e -> delta, restDeltaSetters )
+             -> context
+             -> ( State state, restStates )
+             -> List (Subcontrol delta)
+            )
 tag0 label_ tag =
     tagHelper
         label_
@@ -3887,10 +4983,10 @@ null tag =
     define
         { blank = ( (), Cmd.none )
         , prefill = \_ -> ( (), Cmd.none )
-        , update = \_ () () -> ( (), Cmd.none )
-        , view = \_ _ -> []
-        , parse = \_ () -> Ok tag
-        , subscriptions = \_ () -> Sub.none
+        , update = \() () -> ( (), Cmd.none )
+        , view = \_ -> []
+        , parse = \() -> Ok tag
+        , subscriptions = \() -> Sub.none
         , label = ""
         }
 
@@ -3915,6 +5011,290 @@ null tag =
             |> endCustomType
 
 -}
+tag1 :
+    String
+    -> (output10 -> output9)
+    -> AdvancedControl context9 output10 state9 delta13 output10
+    ->
+        CustomTypeBuilder
+            (a23
+             -> destructor1
+             -> restInputToStateConverters
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22 -> List Alert -> restFns7 -> restStates8 -> List Alert)
+            a21
+            b1
+            (( Delta delta14, a20 ) -> d7)
+            (( ( Delta delta14, a20 ) -> d7, a19 ) -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> restFns6
+             -> restStates7
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> restFns5
+             -> context6
+             -> restStates6
+             -> List Alert
+            )
+            (Path.Path
+             ->
+                ( ControlFns
+                    context9
+                    ( output10, b2 )
+                    ( State state9, End )
+                    ( Delta delta13, End )
+                    output9
+                , a16
+                )
+             -> d5
+            )
+            (a15 -> Int -> restFns4 -> restStates5 -> restStates5)
+            (Path.Path -> ( Cmd (Delta ( Delta delta13, End )), a14 ) -> d4)
+            (Path.Path -> ( State ( State state9, End ), a13 ) -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> restDeltaSetters5
+             -> restDeltas1
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : afters
+                , befores : befores
+                , output : restDeltaSetters4 -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns : restControlFns
+                , deltaSetters : restDeltaSetters3
+                , finalTagStates : nextFinalTagState -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers : restInputTuplizers
+                , maybeOverridesAfter : restMaybeOverridesAfter
+                , maybeOverridesBefore : restMaybeOverridesBefore
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> restFns3
+             -> context3
+             -> restStates3
+             -> Result (List Feedback) output3
+            )
+            a7
+            b
+            (( Maybe a24, a6 ) -> d2)
+            (( ( Maybe a24, a6 ) -> d2, a5 ) -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (restArgStates -> tagStates)
+             -> restMaybeArgStates
+             -> restArgStates
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> restDeltaSetters2
+             -> restFns2
+             -> context2
+             -> restStates2
+             -> List (Sub delta1_1)
+            )
+            (( (( c, End ) -> f) -> c -> f, a2 ) -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : restStates1 -> recordState0
+                }
+             -> restFns1
+             -> restDeltaSetters1
+             -> restDeltas
+             -> context1
+             -> restStates1
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> restFns
+             -> restDeltaSetters
+             -> context
+             -> restStates
+             -> List (Subcontrol delta)
+            )
+    ->
+        CustomTypeBuilder
+            (a23
+             -> (inputToStateConverter -> destructor1)
+             -> ( inputToStateConverter, restInputToStateConverters )
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22
+             -> List Alert
+             -> ( ControlFns context8 input8 state8 delta11 output8, restFns7 )
+             -> ( State state8, restStates8 )
+             -> List Alert
+            )
+            ( Delta delta10, a21 )
+            ( a21, b1 )
+            (a20 -> d7)
+            (a19 -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> ( ControlFns context7 input7 state7 delta9 output7, restFns6 )
+             -> ( State state7, restStates7 )
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> ( ControlFns context6 input6 state6 delta8 output6, restFns5 )
+             -> context6
+             -> ( State state6, restStates6 )
+             -> List Alert
+            )
+            (Path.Path -> a16 -> d5)
+            (a15
+             -> Int
+             -> ( ControlFns context5 input5 state5 delta7 output5, restFns4 )
+             -> ( State state5, restStates5 )
+             -> ( State state5, restStates5 )
+            )
+            (Path.Path -> a14 -> d4)
+            (Path.Path -> a13 -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> ( delta6 -> delta1_2, restDeltaSetters5 )
+             -> ( Cmd delta6, restDeltas1 )
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : ( after, afters )
+                , befores : ( ( value, after ) -> delta5, befores )
+                , output : ( value -> delta5, restDeltaSetters4 ) -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns :
+                    ( ControlFns context4 input4 state1_1 delta4 output4
+                    , restControlFns
+                    )
+                , deltaSetters : ( Delta delta4 -> tagDelta, restDeltaSetters3 )
+                , finalTagStates :
+                    ( finalTagState, nextFinalTagState ) -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers :
+                    ( (input4 -> ( State tagStates1, Cmd (Delta tagDelta) ))
+                      -> finalTagState
+                    , restInputTuplizers
+                    )
+                , maybeOverridesAfter :
+                    ( maybeOverrideAfter, restMaybeOverridesAfter )
+                , maybeOverridesBefore :
+                    ( ( Maybe (State state1_1), maybeOverrideAfter )
+                      -> ( Maybe (State state4), restMaybeStates )
+                    , restMaybeOverridesBefore
+                    )
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> ( ControlFns context3 input3 state3 delta3 output3, restFns3 )
+             -> context3
+             -> ( State state3, restStates3 )
+             -> Result (List Feedback) output3
+            )
+            ( Maybe a8, a7 )
+            ( a7, b )
+            (a6 -> d2)
+            (a5 -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (( State argState, restArgStates ) -> tagStates)
+             -> ( Maybe (State argState), restMaybeArgStates )
+             -> ( State argState, restArgStates )
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> ( Delta delta2 -> delta1_1, restDeltaSetters2 )
+             -> ( ControlFns context2 input2 state2 delta2 output2, restFns2 )
+             -> context2
+             -> ( State state2, restStates2 )
+             -> List (Sub delta1_1)
+            )
+            (a2 -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state1, restStates1 ) -> recordState0
+                }
+             -> ( ControlFns context1 input1 state1 delta1 output1, restFns1 )
+             -> ( Delta delta1 -> recordDelta, restDeltaSetters1 )
+             -> ( Delta delta1, restDeltas )
+             -> context1
+             -> ( State state1, restStates1 )
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> ( ControlFns context input state e output, restFns )
+             -> ( Delta e -> delta, restDeltaSetters )
+             -> context
+             -> ( State state, restStates )
+             -> List (Subcontrol delta)
+            )
 tag1 label_ tag control =
     tagHelper
         label_
@@ -3942,6 +5322,297 @@ tag1 label_ tag control =
             |> tag2 "Point" Point float float
 
 -}
+tag2 :
+    String
+    -> (output11 -> output10 -> output9)
+    -> AdvancedControl context9 output11 state10 delta14 output11
+    -> AdvancedControl context9 output10 state9 delta13 output10
+    ->
+        CustomTypeBuilder
+            (a23
+             -> destructor1
+             -> restInputToStateConverters
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22 -> List Alert -> restFns7 -> restStates8 -> List Alert)
+            a21
+            b1
+            (( Delta delta15, a20 ) -> d7)
+            (( ( Delta delta15, a20 ) -> d7, a19 ) -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> restFns6
+             -> restStates7
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> restFns5
+             -> context6
+             -> restStates6
+             -> List Alert
+            )
+            (Path.Path
+             ->
+                ( ControlFns
+                    context9
+                    ( output11, ( output10, b2 ) )
+                    ( State state10, ( State state9, End ) )
+                    ( Delta delta14, ( Delta delta13, End ) )
+                    output9
+                , a16
+                )
+             -> d5
+            )
+            (a15 -> Int -> restFns4 -> restStates5 -> restStates5)
+            (Path.Path
+             -> ( Cmd (Delta ( Delta delta14, ( Delta delta13, End ) )), a14 )
+             -> d4
+            )
+            (Path.Path
+             -> ( State ( State state10, ( State state9, End ) ), a13 )
+             -> d3
+            )
+            (a12
+             -> List (Cmd delta1_2)
+             -> restDeltaSetters5
+             -> restDeltas1
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : afters
+                , befores : befores
+                , output : restDeltaSetters4 -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns : restControlFns
+                , deltaSetters : restDeltaSetters3
+                , finalTagStates : nextFinalTagState -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers : restInputTuplizers
+                , maybeOverridesAfter : restMaybeOverridesAfter
+                , maybeOverridesBefore : restMaybeOverridesBefore
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> restFns3
+             -> context3
+             -> restStates3
+             -> Result (List Feedback) output3
+            )
+            a7
+            b
+            (( Maybe a24, a6 ) -> d2)
+            (( ( Maybe a24, a6 ) -> d2, a5 ) -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (restArgStates -> tagStates)
+             -> restMaybeArgStates
+             -> restArgStates
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> restDeltaSetters2
+             -> restFns2
+             -> context2
+             -> restStates2
+             -> List (Sub delta1_1)
+            )
+            (( (( c, ( f, End ) ) -> g) -> c -> f -> g, a2 ) -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : restStates1 -> recordState0
+                }
+             -> restFns1
+             -> restDeltaSetters1
+             -> restDeltas
+             -> context1
+             -> restStates1
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> restFns
+             -> restDeltaSetters
+             -> context
+             -> restStates
+             -> List (Subcontrol delta)
+            )
+    ->
+        CustomTypeBuilder
+            (a23
+             -> (inputToStateConverter -> destructor1)
+             -> ( inputToStateConverter, restInputToStateConverters )
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22
+             -> List Alert
+             -> ( ControlFns context8 input8 state8 delta11 output8, restFns7 )
+             -> ( State state8, restStates8 )
+             -> List Alert
+            )
+            ( Delta delta10, a21 )
+            ( a21, b1 )
+            (a20 -> d7)
+            (a19 -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> ( ControlFns context7 input7 state7 delta9 output7, restFns6 )
+             -> ( State state7, restStates7 )
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> ( ControlFns context6 input6 state6 delta8 output6, restFns5 )
+             -> context6
+             -> ( State state6, restStates6 )
+             -> List Alert
+            )
+            (Path.Path -> a16 -> d5)
+            (a15
+             -> Int
+             -> ( ControlFns context5 input5 state5 delta7 output5, restFns4 )
+             -> ( State state5, restStates5 )
+             -> ( State state5, restStates5 )
+            )
+            (Path.Path -> a14 -> d4)
+            (Path.Path -> a13 -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> ( delta6 -> delta1_2, restDeltaSetters5 )
+             -> ( Cmd delta6, restDeltas1 )
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : ( after, afters )
+                , befores : ( ( value, after ) -> delta5, befores )
+                , output : ( value -> delta5, restDeltaSetters4 ) -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns :
+                    ( ControlFns context4 input4 state1_1 delta4 output4
+                    , restControlFns
+                    )
+                , deltaSetters : ( Delta delta4 -> tagDelta, restDeltaSetters3 )
+                , finalTagStates :
+                    ( finalTagState, nextFinalTagState ) -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers :
+                    ( (input4 -> ( State tagStates1, Cmd (Delta tagDelta) ))
+                      -> finalTagState
+                    , restInputTuplizers
+                    )
+                , maybeOverridesAfter :
+                    ( maybeOverrideAfter, restMaybeOverridesAfter )
+                , maybeOverridesBefore :
+                    ( ( Maybe (State state1_1), maybeOverrideAfter )
+                      -> ( Maybe (State state4), restMaybeStates )
+                    , restMaybeOverridesBefore
+                    )
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> ( ControlFns context3 input3 state3 delta3 output3, restFns3 )
+             -> context3
+             -> ( State state3, restStates3 )
+             -> Result (List Feedback) output3
+            )
+            ( Maybe a8, a7 )
+            ( a7, b )
+            (a6 -> d2)
+            (a5 -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (( State argState, restArgStates ) -> tagStates)
+             -> ( Maybe (State argState), restMaybeArgStates )
+             -> ( State argState, restArgStates )
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> ( Delta delta2 -> delta1_1, restDeltaSetters2 )
+             -> ( ControlFns context2 input2 state2 delta2 output2, restFns2 )
+             -> context2
+             -> ( State state2, restStates2 )
+             -> List (Sub delta1_1)
+            )
+            (a2 -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state1, restStates1 ) -> recordState0
+                }
+             -> ( ControlFns context1 input1 state1 delta1 output1, restFns1 )
+             -> ( Delta delta1 -> recordDelta, restDeltaSetters1 )
+             -> ( Delta delta1, restDeltas )
+             -> context1
+             -> ( State state1, restStates1 )
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> ( ControlFns context input state e output, restFns )
+             -> ( Delta e -> delta, restDeltaSetters )
+             -> context
+             -> ( State state, restStates )
+             -> List (Subcontrol delta)
+            )
 tag2 label_ tag control1 control2 =
     tagHelper
         label_
@@ -3970,6 +5641,307 @@ tag2 label_ tag control1 control2 =
             |> tag3 "Point3D" Point3D float float float
 
 -}
+tag3 :
+    String
+    -> (output12 -> output11 -> output10 -> output9)
+    -> AdvancedControl context9 output12 state11 delta15 output12
+    -> AdvancedControl context9 output11 state10 delta14 output11
+    -> AdvancedControl context9 output10 state9 delta13 output10
+    ->
+        CustomTypeBuilder
+            (a23
+             -> destructor1
+             -> restInputToStateConverters
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22 -> List Alert -> restFns7 -> restStates8 -> List Alert)
+            a21
+            b1
+            (( Delta delta16, a20 ) -> d7)
+            (( ( Delta delta16, a20 ) -> d7, a19 ) -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> restFns6
+             -> restStates7
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> restFns5
+             -> context6
+             -> restStates6
+             -> List Alert
+            )
+            (Path.Path
+             ->
+                ( ControlFns
+                    context9
+                    ( output12, ( output11, ( output10, b2 ) ) )
+                    ( State state11, ( State state10, ( State state9, End ) ) )
+                    ( Delta delta15, ( Delta delta14, ( Delta delta13, End ) ) )
+                    output9
+                , a16
+                )
+             -> d5
+            )
+            (a15 -> Int -> restFns4 -> restStates5 -> restStates5)
+            (Path.Path
+             ->
+                ( Cmd
+                    (Delta
+                        ( Delta delta15, ( Delta delta14, ( Delta delta13, End ) ) )
+                    )
+                , a14
+                )
+             -> d4
+            )
+            (Path.Path
+             ->
+                ( State ( State state11, ( State state10, ( State state9, End ) ) )
+                , a13
+                )
+             -> d3
+            )
+            (a12
+             -> List (Cmd delta1_2)
+             -> restDeltaSetters5
+             -> restDeltas1
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : afters
+                , befores : befores
+                , output : restDeltaSetters4 -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns : restControlFns
+                , deltaSetters : restDeltaSetters3
+                , finalTagStates : nextFinalTagState -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers : restInputTuplizers
+                , maybeOverridesAfter : restMaybeOverridesAfter
+                , maybeOverridesBefore : restMaybeOverridesBefore
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> restFns3
+             -> context3
+             -> restStates3
+             -> Result (List Feedback) output3
+            )
+            a7
+            b
+            (( Maybe a24, a6 ) -> d2)
+            (( ( Maybe a24, a6 ) -> d2, a5 ) -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (restArgStates -> tagStates)
+             -> restMaybeArgStates
+             -> restArgStates
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> restDeltaSetters2
+             -> restFns2
+             -> context2
+             -> restStates2
+             -> List (Sub delta1_1)
+            )
+            (( (( c, ( f, ( g, End ) ) ) -> h) -> c -> f -> g -> h, a2 ) -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : restStates1 -> recordState0
+                }
+             -> restFns1
+             -> restDeltaSetters1
+             -> restDeltas
+             -> context1
+             -> restStates1
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> restFns
+             -> restDeltaSetters
+             -> context
+             -> restStates
+             -> List (Subcontrol delta)
+            )
+    ->
+        CustomTypeBuilder
+            (a23
+             -> (inputToStateConverter -> destructor1)
+             -> ( inputToStateConverter, restInputToStateConverters )
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22
+             -> List Alert
+             -> ( ControlFns context8 input8 state8 delta11 output8, restFns7 )
+             -> ( State state8, restStates8 )
+             -> List Alert
+            )
+            ( Delta delta10, a21 )
+            ( a21, b1 )
+            (a20 -> d7)
+            (a19 -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> ( ControlFns context7 input7 state7 delta9 output7, restFns6 )
+             -> ( State state7, restStates7 )
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> ( ControlFns context6 input6 state6 delta8 output6, restFns5 )
+             -> context6
+             -> ( State state6, restStates6 )
+             -> List Alert
+            )
+            (Path.Path -> a16 -> d5)
+            (a15
+             -> Int
+             -> ( ControlFns context5 input5 state5 delta7 output5, restFns4 )
+             -> ( State state5, restStates5 )
+             -> ( State state5, restStates5 )
+            )
+            (Path.Path -> a14 -> d4)
+            (Path.Path -> a13 -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> ( delta6 -> delta1_2, restDeltaSetters5 )
+             -> ( Cmd delta6, restDeltas1 )
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : ( after, afters )
+                , befores : ( ( value, after ) -> delta5, befores )
+                , output : ( value -> delta5, restDeltaSetters4 ) -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns :
+                    ( ControlFns context4 input4 state1_1 delta4 output4
+                    , restControlFns
+                    )
+                , deltaSetters : ( Delta delta4 -> tagDelta, restDeltaSetters3 )
+                , finalTagStates :
+                    ( finalTagState, nextFinalTagState ) -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers :
+                    ( (input4 -> ( State tagStates1, Cmd (Delta tagDelta) ))
+                      -> finalTagState
+                    , restInputTuplizers
+                    )
+                , maybeOverridesAfter :
+                    ( maybeOverrideAfter, restMaybeOverridesAfter )
+                , maybeOverridesBefore :
+                    ( ( Maybe (State state1_1), maybeOverrideAfter )
+                      -> ( Maybe (State state4), restMaybeStates )
+                    , restMaybeOverridesBefore
+                    )
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> ( ControlFns context3 input3 state3 delta3 output3, restFns3 )
+             -> context3
+             -> ( State state3, restStates3 )
+             -> Result (List Feedback) output3
+            )
+            ( Maybe a8, a7 )
+            ( a7, b )
+            (a6 -> d2)
+            (a5 -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (( State argState, restArgStates ) -> tagStates)
+             -> ( Maybe (State argState), restMaybeArgStates )
+             -> ( State argState, restArgStates )
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> ( Delta delta2 -> delta1_1, restDeltaSetters2 )
+             -> ( ControlFns context2 input2 state2 delta2 output2, restFns2 )
+             -> context2
+             -> ( State state2, restStates2 )
+             -> List (Sub delta1_1)
+            )
+            (a2 -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state1, restStates1 ) -> recordState0
+                }
+             -> ( ControlFns context1 input1 state1 delta1 output1, restFns1 )
+             -> ( Delta delta1 -> recordDelta, restDeltaSetters1 )
+             -> ( Delta delta1, restDeltas )
+             -> context1
+             -> ( State state1, restStates1 )
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> ( ControlFns context input state e output, restFns )
+             -> ( Delta e -> delta, restDeltaSetters )
+             -> context
+             -> ( State state, restStates )
+             -> List (Subcontrol delta)
+            )
 tag3 label_ tag control1 control2 control3 =
     tagHelper
         label_
@@ -3986,6 +5958,321 @@ tag3 label_ tag control1 control2 control3 =
 
 {-| Add a tag with four arguments to a custom type.
 -}
+tag4 :
+    String
+    -> (output13 -> output12 -> output11 -> output10 -> output9)
+    -> AdvancedControl context9 output13 state12 delta16 output13
+    -> AdvancedControl context9 output12 state11 delta15 output12
+    -> AdvancedControl context9 output11 state10 delta14 output11
+    -> AdvancedControl context9 output10 state9 delta13 output10
+    ->
+        CustomTypeBuilder
+            (a23
+             -> destructor1
+             -> restInputToStateConverters
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22 -> List Alert -> restFns7 -> restStates8 -> List Alert)
+            a21
+            b1
+            (( Delta delta17, a20 ) -> d7)
+            (( ( Delta delta17, a20 ) -> d7, a19 ) -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> restFns6
+             -> restStates7
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> restFns5
+             -> context6
+             -> restStates6
+             -> List Alert
+            )
+            (Path.Path
+             ->
+                ( ControlFns
+                    context9
+                    ( output13, ( output12, ( output11, ( output10, b2 ) ) ) )
+                    ( State state12
+                    , ( State state11, ( State state10, ( State state9, End ) ) )
+                    )
+                    ( Delta delta16
+                    , ( Delta delta15, ( Delta delta14, ( Delta delta13, End ) ) )
+                    )
+                    output9
+                , a16
+                )
+             -> d5
+            )
+            (a15 -> Int -> restFns4 -> restStates5 -> restStates5)
+            (Path.Path
+             ->
+                ( Cmd
+                    (Delta
+                        ( Delta delta16
+                        , ( Delta delta15
+                          , ( Delta delta14, ( Delta delta13, End ) )
+                          )
+                        )
+                    )
+                , a14
+                )
+             -> d4
+            )
+            (Path.Path
+             ->
+                ( State
+                    ( State state12
+                    , ( State state11, ( State state10, ( State state9, End ) ) )
+                    )
+                , a13
+                )
+             -> d3
+            )
+            (a12
+             -> List (Cmd delta1_2)
+             -> restDeltaSetters5
+             -> restDeltas1
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : afters
+                , befores : befores
+                , output : restDeltaSetters4 -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns : restControlFns
+                , deltaSetters : restDeltaSetters3
+                , finalTagStates : nextFinalTagState -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers : restInputTuplizers
+                , maybeOverridesAfter : restMaybeOverridesAfter
+                , maybeOverridesBefore : restMaybeOverridesBefore
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> restFns3
+             -> context3
+             -> restStates3
+             -> Result (List Feedback) output3
+            )
+            a7
+            b
+            (( Maybe a24, a6 ) -> d2)
+            (( ( Maybe a24, a6 ) -> d2, a5 ) -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (restArgStates -> tagStates)
+             -> restMaybeArgStates
+             -> restArgStates
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> restDeltaSetters2
+             -> restFns2
+             -> context2
+             -> restStates2
+             -> List (Sub delta1_1)
+            )
+            (( (( c, ( f, ( g, ( h, End ) ) ) ) -> i) -> c -> f -> g -> h -> i, a2 )
+             -> d
+            )
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : restStates1 -> recordState0
+                }
+             -> restFns1
+             -> restDeltaSetters1
+             -> restDeltas
+             -> context1
+             -> restStates1
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> restFns
+             -> restDeltaSetters
+             -> context
+             -> restStates
+             -> List (Subcontrol delta)
+            )
+    ->
+        CustomTypeBuilder
+            (a23
+             -> (inputToStateConverter -> destructor1)
+             -> ( inputToStateConverter, restInputToStateConverters )
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22
+             -> List Alert
+             -> ( ControlFns context8 input8 state8 delta11 output8, restFns7 )
+             -> ( State state8, restStates8 )
+             -> List Alert
+            )
+            ( Delta delta10, a21 )
+            ( a21, b1 )
+            (a20 -> d7)
+            (a19 -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> ( ControlFns context7 input7 state7 delta9 output7, restFns6 )
+             -> ( State state7, restStates7 )
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> ( ControlFns context6 input6 state6 delta8 output6, restFns5 )
+             -> context6
+             -> ( State state6, restStates6 )
+             -> List Alert
+            )
+            (Path.Path -> a16 -> d5)
+            (a15
+             -> Int
+             -> ( ControlFns context5 input5 state5 delta7 output5, restFns4 )
+             -> ( State state5, restStates5 )
+             -> ( State state5, restStates5 )
+            )
+            (Path.Path -> a14 -> d4)
+            (Path.Path -> a13 -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> ( delta6 -> delta1_2, restDeltaSetters5 )
+             -> ( Cmd delta6, restDeltas1 )
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : ( after, afters )
+                , befores : ( ( value, after ) -> delta5, befores )
+                , output : ( value -> delta5, restDeltaSetters4 ) -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns :
+                    ( ControlFns context4 input4 state1_1 delta4 output4
+                    , restControlFns
+                    )
+                , deltaSetters : ( Delta delta4 -> tagDelta, restDeltaSetters3 )
+                , finalTagStates :
+                    ( finalTagState, nextFinalTagState ) -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers :
+                    ( (input4 -> ( State tagStates1, Cmd (Delta tagDelta) ))
+                      -> finalTagState
+                    , restInputTuplizers
+                    )
+                , maybeOverridesAfter :
+                    ( maybeOverrideAfter, restMaybeOverridesAfter )
+                , maybeOverridesBefore :
+                    ( ( Maybe (State state1_1), maybeOverrideAfter )
+                      -> ( Maybe (State state4), restMaybeStates )
+                    , restMaybeOverridesBefore
+                    )
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> ( ControlFns context3 input3 state3 delta3 output3, restFns3 )
+             -> context3
+             -> ( State state3, restStates3 )
+             -> Result (List Feedback) output3
+            )
+            ( Maybe a8, a7 )
+            ( a7, b )
+            (a6 -> d2)
+            (a5 -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (( State argState, restArgStates ) -> tagStates)
+             -> ( Maybe (State argState), restMaybeArgStates )
+             -> ( State argState, restArgStates )
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> ( Delta delta2 -> delta1_1, restDeltaSetters2 )
+             -> ( ControlFns context2 input2 state2 delta2 output2, restFns2 )
+             -> context2
+             -> ( State state2, restStates2 )
+             -> List (Sub delta1_1)
+            )
+            (a2 -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state1, restStates1 ) -> recordState0
+                }
+             -> ( ControlFns context1 input1 state1 delta1 output1, restFns1 )
+             -> ( Delta delta1 -> recordDelta, restDeltaSetters1 )
+             -> ( Delta delta1, restDeltas )
+             -> context1
+             -> ( State state1, restStates1 )
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> ( ControlFns context input state e output, restFns )
+             -> ( Delta e -> delta, restDeltaSetters )
+             -> context
+             -> ( State state, restStates )
+             -> List (Subcontrol delta)
+            )
 tag4 label_ tag control1 control2 control3 control4 =
     tagHelper
         label_
@@ -4003,6 +6290,340 @@ tag4 label_ tag control1 control2 control3 control4 =
 
 {-| Add a tag with five arguments to a custom type.
 -}
+tag5 :
+    String
+    -> (output14 -> output13 -> output12 -> output11 -> output10 -> output9)
+    -> AdvancedControl context9 output14 state13 delta17 output14
+    -> AdvancedControl context9 output13 state12 delta16 output13
+    -> AdvancedControl context9 output12 state11 delta15 output12
+    -> AdvancedControl context9 output11 state10 delta14 output11
+    -> AdvancedControl context9 output10 state9 delta13 output10
+    ->
+        CustomTypeBuilder
+            (a23
+             -> destructor1
+             -> restInputToStateConverters
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22 -> List Alert -> restFns7 -> restStates8 -> List Alert)
+            a21
+            b1
+            (( Delta delta18, a20 ) -> d7)
+            (( ( Delta delta18, a20 ) -> d7, a19 ) -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> restFns6
+             -> restStates7
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> restFns5
+             -> context6
+             -> restStates6
+             -> List Alert
+            )
+            (Path.Path
+             ->
+                ( ControlFns
+                    context9
+                    ( output14
+                    , ( output13, ( output12, ( output11, ( output10, b2 ) ) ) )
+                    )
+                    ( State state13
+                    , ( State state12
+                      , ( State state11, ( State state10, ( State state9, End ) ) )
+                      )
+                    )
+                    ( Delta delta17
+                    , ( Delta delta16
+                      , ( Delta delta15, ( Delta delta14, ( Delta delta13, End ) ) )
+                      )
+                    )
+                    output9
+                , a16
+                )
+             -> d5
+            )
+            (a15 -> Int -> restFns4 -> restStates5 -> restStates5)
+            (Path.Path
+             ->
+                ( Cmd
+                    (Delta
+                        ( Delta delta17
+                        , ( Delta delta16
+                          , ( Delta delta15
+                            , ( Delta delta14, ( Delta delta13, End ) )
+                            )
+                          )
+                        )
+                    )
+                , a14
+                )
+             -> d4
+            )
+            (Path.Path
+             ->
+                ( State
+                    ( State state13
+                    , ( State state12
+                      , ( State state11, ( State state10, ( State state9, End ) ) )
+                      )
+                    )
+                , a13
+                )
+             -> d3
+            )
+            (a12
+             -> List (Cmd delta1_2)
+             -> restDeltaSetters5
+             -> restDeltas1
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : afters
+                , befores : befores
+                , output : restDeltaSetters4 -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns : restControlFns
+                , deltaSetters : restDeltaSetters3
+                , finalTagStates : nextFinalTagState -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers : restInputTuplizers
+                , maybeOverridesAfter : restMaybeOverridesAfter
+                , maybeOverridesBefore : restMaybeOverridesBefore
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> restFns3
+             -> context3
+             -> restStates3
+             -> Result (List Feedback) output3
+            )
+            a7
+            b
+            (( Maybe a24, a6 ) -> d2)
+            (( ( Maybe a24, a6 ) -> d2, a5 ) -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (restArgStates -> tagStates)
+             -> restMaybeArgStates
+             -> restArgStates
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> restDeltaSetters2
+             -> restFns2
+             -> context2
+             -> restStates2
+             -> List (Sub delta1_1)
+            )
+            (( (( c, ( f, ( g, ( h, ( i, End ) ) ) ) ) -> j)
+               -> c
+               -> f
+               -> g
+               -> h
+               -> i
+               -> j
+             , a2
+             )
+             -> d
+            )
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : restStates1 -> recordState0
+                }
+             -> restFns1
+             -> restDeltaSetters1
+             -> restDeltas
+             -> context1
+             -> restStates1
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> restFns
+             -> restDeltaSetters
+             -> context
+             -> restStates
+             -> List (Subcontrol delta)
+            )
+    ->
+        CustomTypeBuilder
+            (a23
+             -> (inputToStateConverter -> destructor1)
+             -> ( inputToStateConverter, restInputToStateConverters )
+             -> tag
+             -> ( State tagStates2, Cmd delta12 )
+            )
+            (a22
+             -> List Alert
+             -> ( ControlFns context8 input8 state8 delta11 output8, restFns7 )
+             -> ( State state8, restStates8 )
+             -> List Alert
+            )
+            ( Delta delta10, a21 )
+            ( a21, b1 )
+            (a20 -> d7)
+            (a19 -> d6)
+            destructor
+            (a18
+             -> List Alert
+             -> List Feedback
+             -> ( ControlFns context7 input7 state7 delta9 output7, restFns6 )
+             -> ( State state7, restStates7 )
+             -> List Feedback
+            )
+            (a17
+             -> List Alert
+             -> Int
+             -> ( ControlFns context6 input6 state6 delta8 output6, restFns5 )
+             -> context6
+             -> ( State state6, restStates6 )
+             -> List Alert
+            )
+            (Path.Path -> a16 -> d5)
+            (a15
+             -> Int
+             -> ( ControlFns context5 input5 state5 delta7 output5, restFns4 )
+             -> ( State state5, restStates5 )
+             -> ( State state5, restStates5 )
+            )
+            (Path.Path -> a14 -> d4)
+            (Path.Path -> a13 -> d3)
+            (a12
+             -> List (Cmd delta1_2)
+             -> ( delta6 -> delta1_2, restDeltaSetters5 )
+             -> ( Cmd delta6, restDeltas1 )
+             -> List (Cmd delta1_2)
+            )
+            (a11
+             ->
+                { afters : ( after, afters )
+                , befores : ( ( value, after ) -> delta5, befores )
+                , output : ( value -> delta5, restDeltaSetters4 ) -> deltaSetters
+                }
+             -> deltaSetters
+            )
+            (a10
+             ->
+                { controlFns :
+                    ( ControlFns context4 input4 state1_1 delta4 output4
+                    , restControlFns
+                    )
+                , deltaSetters : ( Delta delta4 -> tagDelta, restDeltaSetters3 )
+                , finalTagStates :
+                    ( finalTagState, nextFinalTagState ) -> restFinalTagStates
+                , initialTagStates : ( State state4, restStates4 )
+                , inputTuplizers :
+                    ( (input4 -> ( State tagStates1, Cmd (Delta tagDelta) ))
+                      -> finalTagState
+                    , restInputTuplizers
+                    )
+                , maybeOverridesAfter :
+                    ( maybeOverrideAfter, restMaybeOverridesAfter )
+                , maybeOverridesBefore :
+                    ( ( Maybe (State state1_1), maybeOverrideAfter )
+                      -> ( Maybe (State state4), restMaybeStates )
+                    , restMaybeOverridesBefore
+                    )
+                , tagStateOverrider :
+                    (Int
+                     -> Int
+                     -> (End -> tagStates1)
+                     -> End
+                     -> End
+                     -> State tagStates1
+                    )
+                    -> Int
+                    -> Int
+                    -> (identity -> identity)
+                    -> ( Maybe (State state4), restMaybeStates )
+                    -> ( State state4, restStates4 )
+                    -> State tagStates1
+                }
+             -> toFinalTagStates
+            )
+            (a9
+             -> Result (List Feedback) output3
+             -> Int
+             -> ( ControlFns context3 input3 state3 delta3 output3, restFns3 )
+             -> context3
+             -> ( State state3, restStates3 )
+             -> Result (List Feedback) output3
+            )
+            ( Maybe a8, a7 )
+            ( a7, b )
+            (a6 -> d2)
+            (a5 -> d1)
+            (a4
+             -> Int
+             -> Int
+             -> (( State argState, restArgStates ) -> tagStates)
+             -> ( Maybe (State argState), restMaybeArgStates )
+             -> ( State argState, restArgStates )
+             -> State tagStates
+            )
+            (a3
+             -> List (Sub delta1_1)
+             -> ( Delta delta2 -> delta1_1, restDeltaSetters2 )
+             -> ( ControlFns context2 input2 state2 delta2 output2, restFns2 )
+             -> context2
+             -> ( State state2, restStates2 )
+             -> List (Sub delta1_1)
+            )
+            (a2 -> d)
+            (a1
+             ->
+                { newCmds : List (Cmd recordDelta)
+                , newStates : ( State state1, restStates1 ) -> recordState0
+                }
+             -> ( ControlFns context1 input1 state1 delta1 output1, restFns1 )
+             -> ( Delta delta1 -> recordDelta, restDeltaSetters1 )
+             -> ( Delta delta1, restDeltas )
+             -> context1
+             -> ( State state1, restStates1 )
+             -> { newCmds : List (Cmd recordDelta), newStates : recordState }
+            )
+            (a
+             -> List (Subcontrol delta)
+             -> List Alert
+             -> ( ControlFns context input state e output, restFns )
+             -> ( Delta e -> delta, restDeltaSetters )
+             -> context
+             -> ( State state, restStates )
+             -> List (Subcontrol delta)
+            )
 tag5 label_ tag control1 control2 control3 control4 control5 =
     tagHelper
         label_
