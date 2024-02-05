@@ -3124,16 +3124,19 @@ recordDeltaInitialiser next { cmds, deltaSetters, fieldDeltas } =
 
 
 validateRecordStates :
-    ((Result (List Feedback) output2
-      -> End
-      -> context
-      -> End
+    (({ toOutputResult : Result (List Feedback) output2
+      , context : context
+      , fns : End
+      , states : End
+      }
       -> Result (List Feedback) output2
      )
-     -> Result (List Feedback) output1
-     -> ( RecordFns context input state delta output recordOutput, restFns )
-     -> context
-     -> ( State state, restStates )
+     ->
+        { toOutputResult : Result error output1
+        , context : context
+        , fns : ( RecordFns context input state delta output recordOutput, restFns )
+        , states : ( State state, restStates )
+        }
      -> Result (List Feedback) output2
     )
     -> output1
@@ -3141,44 +3144,59 @@ validateRecordStates :
     -> context
     -> ( State state, restStates )
     -> Result (List Feedback) output2
-validateRecordStates parser toOutput fns ctx states =
-    parser (\output End _ End -> output) (Ok toOutput) fns ctx states
+validateRecordStates parser toOutput fns context states =
+    parser (\{ toOutputResult } -> toOutputResult)
+        { toOutputResult = Ok toOutput
+        , fns = fns
+        , context = context
+        , states = states
+        }
 
 
 recordStateValidator :
-    (Result (List Feedback) output1
-     -> restFns
-     -> context
-     -> restStates
+    ({ toOutputResult : Result (List Feedback) output1
+     , context : context
+     , fns : restFns
+     , states : restStates
+     }
      -> Result (List Feedback) output2
     )
-    -> Result (List Feedback) (output0 -> output1)
-    -> ( RecordFns context input state delta output0 recordOutput, restFns )
-    -> context
-    -> ( State state, restStates )
+    ->
+        { toOutputResult : Result (List Feedback) (output0 -> output1)
+        , context : context
+        , fns : ( RecordFns context input state delta output0 recordOutput, restFns )
+        , states : ( State state, restStates )
+        }
     -> Result (List Feedback) output2
-recordStateValidator next toOutputResult ( RecordFns fns, restFns ) ctx ( state, restStates ) =
+recordStateValidator next { toOutputResult, fns, context, states } =
     let
+        ( RecordFns recordFns, restFns ) =
+            fns
+
         (ControlFns controlFns) =
-            fns.controlFns
+            recordFns.controlFns
+
+        ( state, restStates ) =
+            states
     in
     next
-        (case ( toOutputResult, controlFns.parse ctx state ) of
-            ( Ok toOutput, Ok parsed ) ->
-                Ok (toOutput parsed)
+        { toOutputResult =
+            case ( toOutputResult, controlFns.parse context state ) of
+                ( Ok toOutput, Ok parsed ) ->
+                    Ok (toOutput parsed)
 
-            ( Ok _, Err es ) ->
-                Err es
+                ( Ok _, Err es ) ->
+                    Err es
 
-            ( Err es, Ok _ ) ->
-                Err es
+                ( Err es, Ok _ ) ->
+                    Err es
 
-            ( Err es, Err es2 ) ->
-                Err (es ++ es2)
-        )
-        restFns
-        ctx
-        restStates
+                ( Err es, Err es2 ) ->
+                    Err (es ++ es2)
+        , fns = restFns
+        , context = context
+        , states = restStates
+        }
 
 
 setAllRecordStatesToIdle :
