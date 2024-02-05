@@ -3132,7 +3132,7 @@ validateRecordStates :
       -> Result (List Feedback) output2
      )
      ->
-        { toOutputResult : Result error output1
+        { toOutputResult : Result (List Feedback) output1
         , context : context
         , fns : ( RecordFns context input state delta output recordOutput, restFns )
         , states : ( State state, restStates )
