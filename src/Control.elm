@@ -3384,32 +3384,6 @@ getStatus parse collectErrors alerts ctx ((State internalState _) as state) =
             Idle (parsedErrors ++ flaggedErrors)
 
 
-
--- updateRecordStates :
---     (({ newStates : End -> states, newCmds : List (Cmd msg) }
---       -> End
---       -> End
---       -> context
---       -> End
---       -> End
---       -> { newStates : End -> states, newCmds : List (Cmd msg) }
---      )
---      -> { newStates : states -> states, newCmds : List (Cmd msg) }
---      -> ( RecordFns context input state delta output recordOutput, restFns )
---      -> ( setter, restDeltaSetters )
---      -> context
---      -> ( Delta delta, restDeltas )
---      -> ( State state, restStates )
---      -> { newStates : End -> states, newCmds : List (Cmd msg) }
---     )
---     -> ( RecordFns context input state delta output recordOutput, restFns )
---     -> ( setter, restDeltaSetters )
---     -> context
---     -> ( Delta delta, restDeltas )
---     -> ( State state, restStates )
---     -> ( states, Cmd msg )
-
-
 updateRecordStates :
     (({ newStates : End -> finalRecordStates
       , newCmds : List (Cmd recordDelta)
