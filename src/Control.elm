@@ -316,6 +316,30 @@ type ControlFns context input state delta output
         }
 
 
+type alias Bifunctor bifunctor first rest =
+    { wrap : first -> rest -> bifunctor
+    , unwrap : bifunctor -> ( first, rest )
+    }
+
+
+bTuple : Bifunctor ( first, rest ) first rest
+bTuple =
+    { wrap = Tuple.pair
+    , unwrap = identity
+    }
+
+
+type Field state restFields
+    = Field state restFields
+
+
+bField : Bifunctor (Field state restFields) state restFields
+bField =
+    { wrap = Field
+    , unwrap = \(Field state restFields) -> ( state, restFields )
+    }
+
+
 {-| Data used by the `layout` function to render a subcontrol of a combinator.
 -}
 type alias Subcontrol delta =
