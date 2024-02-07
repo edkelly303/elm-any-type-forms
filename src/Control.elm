@@ -715,14 +715,14 @@ formWithContext { control, onUpdate, view } =
             fns2.initBlank
                 |> Tuple.mapSecond (Cmd.map onUpdate)
     , update =
-        \ctx msg state ->
-            fns.update ctx msg state
+        \context msg state ->
+            fns.update context msg state
                 |> Tuple.mapSecond (Cmd.map onUpdate)
     , view =
-        \ctx ((State internalState state) as s) ->
+        \context ((State internalState state) as s) ->
             let
                 emittedAlerts =
-                    fns.emitAlerts ctx s
+                    fns.emitAlerts context s
 
                 debouncingReceivers =
                     fns.collectDebouncingReceivers s
@@ -731,10 +731,10 @@ formWithContext { control, onUpdate, view } =
                     List.filter (\emittedAlert -> not <| List.member emittedAlert debouncingReceivers) emittedAlerts
 
                 status =
-                    getStatus fns.parse fns.collectFeedback alerts ctx s
+                    getStatus fns.parse fns.collectFeedback alerts context s
             in
             view
-                (fns.view ctx
+                (fns.view context
                     { id = Maybe.withDefault ("control-" ++ Path.toString path) fns.id
                     , name = Maybe.withDefault ("control-" ++ Path.toString path) fns.name
                     , label = fns.label
@@ -747,13 +747,13 @@ formWithContext { control, onUpdate, view } =
                     |> List.map (H.map onUpdate)
                 )
     , submit =
-        \ctx state ->
+        \context state ->
             let
                 parsingResult =
-                    fns.parse ctx state
+                    fns.parse context state
 
                 validationErrors =
-                    fns.emitAlerts ctx state
+                    fns.emitAlerts context state
                         |> fns.collectFeedback state
                         |> List.filter .fail
             in
@@ -769,8 +769,8 @@ formWithContext { control, onUpdate, view } =
                     Err (pErrs ++ vErrs)
             )
     , subscriptions =
-        \ctx state ->
-            fns.subscriptions ctx state
+        \context state ->
+            fns.subscriptions context state
                 |> Sub.map onUpdate
     }
 
@@ -1027,8 +1027,8 @@ defineWithContext definition =
                     wrapUpdate definition.update
 
                 parse =
-                    \ctx (State _ state) ->
-                        definition.parse ctx state
+                    \context (State _ state) ->
+                        definition.parse context state
                             |> Result.mapError
                                 (List.map
                                     (\message ->
@@ -1056,8 +1056,8 @@ defineWithContext definition =
                 , update = preUpdate 0
                 , subControlViews = \_ _ -> []
                 , view =
-                    \ctx viewConfig ->
-                        [ definition.view ctx
+                    \context viewConfig ->
+                        [ definition.view context
                             { state = viewConfig.state
                             , label = viewConfig.label
                             , id = viewConfig.id
@@ -1078,8 +1078,8 @@ defineWithContext definition =
                 , name = Nothing
                 , class = []
                 , subscriptions =
-                    \ctx (State _ s) ->
-                        definition.subscriptions ctx s
+                    \context (State _ s) ->
+                        definition.subscriptions context s
                             |> Sub.map StateChangedInternally
                 }
         )
@@ -1092,7 +1092,7 @@ wrapUpdate :
     -> Delta delta
     -> State state
     -> ( State state, Cmd (Delta delta) )
-wrapUpdate innerUpdate debounce_ ctx wrappedDelta (State internalState state) =
+wrapUpdate innerUpdate debounce_ context wrappedDelta (State internalState state) =
     case wrappedDelta of
         NoDelta ->
             ( State internalState state
@@ -1102,7 +1102,7 @@ wrapUpdate innerUpdate debounce_ ctx wrappedDelta (State internalState state) =
         StateChangedInternally delta ->
             let
                 ( newState, cmd ) =
-                    innerUpdate ctx delta state
+                    innerUpdate context delta state
             in
             ( State internalState newState
             , Cmd.map StateChangedInternally cmd
@@ -1111,7 +1111,7 @@ wrapUpdate innerUpdate debounce_ ctx wrappedDelta (State internalState state) =
         StateChangedByInput delta ->
             let
                 ( newState, cmd ) =
-                    innerUpdate ctx delta state
+                    innerUpdate context delta state
             in
             if debounce_ > 0 then
                 ( State internalState newState
@@ -1189,15 +1189,15 @@ alertEmitter check alert (ControlFns ctrl) =
     ControlFns
         { ctrl
             | emitAlerts =
-                \ctx state ->
+                \context state ->
                     let
                         oldAlerts =
-                            ctrl.emitAlerts ctx state
+                            ctrl.emitAlerts context state
 
                         newAlerts =
-                            case ctrl.parse ctx state of
+                            case ctrl.parse context state of
                                 Ok output ->
-                                    if check ctx output then
+                                    if check context output then
                                         [ alert ]
 
                                     else
@@ -1312,15 +1312,15 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
     ControlFns
         { ctrl
             | emitAlerts =
-                \ctx state ->
+                \context state ->
                     let
                         oldAlerts =
-                            ctrl.emitAlerts ctx state
+                            ctrl.emitAlerts context state
 
                         newAlerts =
-                            case ctrl.parse ctx state of
+                            case ctrl.parse context state of
                                 Ok output ->
-                                    [ AlertList ctrl.path alertLabel (check ctx output) ]
+                                    [ AlertList ctrl.path alertLabel (check context output) ]
 
                                 Err _ ->
                                     []
@@ -1507,8 +1507,8 @@ label label_ (Control control) =
                 { i
                     | label = label_
                     , parse =
-                        \ctx state ->
-                            i.parse ctx state
+                        \context state ->
+                            i.parse context state
                                 |> Result.mapError
                                     (\fs ->
                                         List.map
@@ -1686,7 +1686,7 @@ layout view (Control control) =
             ControlFns
                 { fns
                     | view =
-                        \ctx internalViewConfig ->
+                        \context internalViewConfig ->
                             let
                                 layoutConfig =
                                     { class = String.join " " internalViewConfig.class
@@ -1697,7 +1697,7 @@ layout view (Control control) =
                                     }
 
                                 subcontrols =
-                                    fns.subControlViews ctx internalViewConfig
+                                    fns.subControlViews context internalViewConfig
                             in
                             view layoutConfig subcontrols
                 }
@@ -1733,8 +1733,8 @@ wrapView wrapper (Control control) =
             ControlFns
                 { i
                     | view =
-                        \ctx config ->
-                            wrapper (i.view ctx config)
+                        \context config ->
+                            wrapper (i.view context config)
                 }
     in
     Control (control >> viewer)
@@ -2216,7 +2216,7 @@ list (Control ctrl) =
                 update =
                     wrapUpdate listUpdate
 
-                listUpdate ctx delta state =
+                listUpdate context delta state =
                     case delta of
                         ItemInserted idx ->
                             let
@@ -2247,7 +2247,7 @@ list (Control ctrl) =
                                                         ctrl (Path.add idx path)
 
                                                     ( newItem, newCmd ) =
-                                                        itemControl.update ctx itemDelta item
+                                                        itemControl.update context itemDelta item
                                                 in
                                                 ( newItem :: items, newCmd )
 
@@ -2264,7 +2264,7 @@ list (Control ctrl) =
                         ItemDeleted idx ->
                             ( List.Extra.removeAt idx state, Cmd.none )
 
-                parse ctx (State _ state) =
+                parse context (State _ state) =
                     List.foldr
                         (\( idx, item ) res ->
                             let
@@ -2273,7 +2273,7 @@ list (Control ctrl) =
                             in
                             case res of
                                 Ok outputs ->
-                                    case itemControl.parse ctx item of
+                                    case itemControl.parse context item of
                                         Ok output ->
                                             Ok (output :: outputs)
 
@@ -2281,7 +2281,7 @@ list (Control ctrl) =
                                             Err errs
 
                                 Err errs ->
-                                    case itemControl.parse ctx item of
+                                    case itemControl.parse context item of
                                         Ok _ ->
                                             Err errs
 
@@ -2337,13 +2337,13 @@ list (Control ctrl) =
                 , update = update 0
                 , subControlViews = \_ _ -> []
                 , view =
-                    \ctx config ->
+                    \context config ->
                         let
                             debouncingReceivers =
                                 -- this is a total hack!
                                 collectDebouncingReceivers (State { status = Intact_, selected = config.selected } config.state)
                         in
-                        listView path ctx config debouncingReceivers ctrl
+                        listView path context config debouncingReceivers ctrl
                 , parse = parse
                 , setAllIdle =
                     \(State i s) ->
@@ -2359,14 +2359,14 @@ list (Control ctrl) =
                                 s
                             )
                 , emitAlerts =
-                    \ctx (State _ s) ->
+                    \context (State _ s) ->
                         List.indexedMap
                             (\idx item ->
                                 let
                                     (ControlFns itemControl) =
                                         ctrl (Path.add idx path)
                                 in
-                                itemControl.emitAlerts ctx item
+                                itemControl.emitAlerts context item
                             )
                             s
                             |> List.concat
@@ -2409,14 +2409,14 @@ list (Control ctrl) =
                 , name = Nothing
                 , class = []
                 , subscriptions =
-                    \ctx (State _ listState) ->
+                    \context (State _ listState) ->
                         List.indexedMap
                             (\idx itemState ->
                                 let
                                     (ControlFns itemControl) =
                                         ctrl (Path.add idx path)
                                 in
-                                itemControl.subscriptions ctx itemState
+                                itemControl.subscriptions context itemState
                                     |> Sub.map (ItemUpdated idx)
                             )
                             listState
@@ -2461,10 +2461,10 @@ dict keyControl valueControl =
             |> layout (\_ subcontrols -> List.concatMap .html subcontrols)
         )
         |> alertAtIndexesWithContext
-            (\ctx output ->
+            (\context output ->
                 output
                     |> List.map Tuple.first
-                    |> nonUniqueIndexes ctx
+                    |> nonUniqueIndexes context
             )
             "@@dict-unique-keys"
         |> label "Dict"
@@ -2472,7 +2472,7 @@ dict keyControl valueControl =
 
 
 nonUniqueIndexes : context -> List comparable -> List Int
-nonUniqueIndexes ctx listState =
+nonUniqueIndexes context listState =
     let
         duplicates =
             List.Extra.frequencies listState
@@ -3255,7 +3255,7 @@ endRecord (RecordBuilder builder) =
                 deltaSetters =
                     makeDeltaSetters builder.makeSetters builder.befores builder.afters
 
-                update ctx delta (State s state) =
+                update context delta (State s state) =
                     case delta of
                         NoDelta ->
                             ( State s state, Cmd.none )
@@ -3263,7 +3263,7 @@ endRecord (RecordBuilder builder) =
                         StateChangedByInput deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater ctx fns deltaSetters deltas state
+                                    updateRecordStates builder.updater context fns deltaSetters deltas state
                             in
                             ( State s newState
                             , Cmd.map StateChangedByInput cmd
@@ -3272,7 +3272,7 @@ endRecord (RecordBuilder builder) =
                         StateChangedInternally deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater ctx fns deltaSetters deltas state
+                                    updateRecordStates builder.updater context fns deltaSetters deltas state
                             in
                             ( State s newState
                             , Cmd.map StateChangedInternally cmd
@@ -3286,21 +3286,21 @@ endRecord (RecordBuilder builder) =
                         _ ->
                             ( State s state, Cmd.none )
 
-                subcontrolViews ctx config =
-                    viewRecordStates builder.viewer ctx fns deltaSetters config
+                subcontrolViews context config =
+                    viewRecordStates builder.viewer context fns deltaSetters config
 
-                view ctx config =
-                    viewRecordStates builder.viewer ctx fns deltaSetters config
+                view context config =
+                    viewRecordStates builder.viewer context fns deltaSetters config
                         |> List.concatMap .html
 
-                parse ctx (State _ state) =
-                    validateRecordStates builder.parser builder.toOutput fns ctx state
+                parse context (State _ state) =
+                    validateRecordStates builder.parser builder.toOutput fns context state
 
                 setAllIdle (State i state) =
                     State { i | status = Idle_ } (setAllRecordStatesToIdle builder.idleSetter fns state)
 
-                emitAlerts ctx (State _ state) =
-                    emitAlertsForRecord builder.alertEmitter fns ctx state
+                emitAlerts context (State _ state) =
+                    emitAlertsForRecord builder.alertEmitter fns context state
             in
             ControlFns
                 { path = path
@@ -3324,7 +3324,7 @@ endRecord (RecordBuilder builder) =
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \ctx (State _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns ctx states
+                , subscriptions = \context (State _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns context states
                 }
         )
 
@@ -3363,8 +3363,8 @@ collectRecordSubscriptions :
     -> context
     -> ( State state, restStates )
     -> Sub (Delta msg)
-collectRecordSubscriptions collector setters fns ctx states =
-    collector (\{ listSubs } -> listSubs) { listSubs = [], setters = setters, fns = fns, context = ctx, states = states }
+collectRecordSubscriptions collector setters fns context states =
+    collector (\{ listSubs } -> listSubs) { listSubs = [], setters = setters, fns = fns, context = context, states = states }
         |> Sub.batch
         |> Sub.map StateChangedInternally
 
@@ -3548,11 +3548,11 @@ emitAlertsForRecord :
     -> context
     -> ( State state, restStates )
     -> List Alert
-emitAlertsForRecord alertEmitter_ fns ctx states =
+emitAlertsForRecord alertEmitter_ fns context states =
     alertEmitter_ (\{ alerts } -> alerts)
         { alerts = []
         , fns = fns
-        , context = ctx
+        , context = context
         , states = states
         }
 
@@ -4040,7 +4040,7 @@ getStatus :
     -> context
     -> State state
     -> Status
-getStatus parse collectErrors alerts ctx ((State internalState _) as state) =
+getStatus parse collectErrors alerts context ((State internalState _) as state) =
     case internalState.status of
         Intact_ ->
             Intact
@@ -4051,7 +4051,7 @@ getStatus parse collectErrors alerts ctx ((State internalState _) as state) =
         Idle_ ->
             let
                 parsedErrors =
-                    case parse ctx state of
+                    case parse context state of
                         Ok _ ->
                             []
 
@@ -4598,7 +4598,7 @@ endCustomType (CustomTypeBuilder builder) =
                         deltaSetters
 
                 update =
-                    \ctx delta (State internalState state) ->
+                    \context delta (State internalState state) ->
                         case delta of
                             NoDelta ->
                                 ( State internalState state, Cmd.none )
@@ -4609,7 +4609,7 @@ endCustomType (CustomTypeBuilder builder) =
                             StateChangedByInput tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta ctx state
+                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta context state
                                 in
                                 ( State internalState newTagStates
                                 , Cmd.map StateChangedByInput cmd
@@ -4618,7 +4618,7 @@ endCustomType (CustomTypeBuilder builder) =
                             StateChangedInternally tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta ctx state
+                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta context state
                                 in
                                 ( State internalState newTagStates
                                 , Cmd.map StateChangedInternally cmd
@@ -4627,14 +4627,14 @@ endCustomType (CustomTypeBuilder builder) =
                             _ ->
                                 ( State internalState state, Cmd.none )
 
-                subcontrolView ctx config =
-                    viewSelectedTagState builder.viewer fns deltaSetters ctx config
+                subcontrolView context config =
+                    viewSelectedTagState builder.viewer fns deltaSetters context config
 
-                view ctx config =
-                    customTypeView ctx config subcontrolView
+                view context config =
+                    customTypeView context config subcontrolView
 
-                parse ctx (State internalState state) =
-                    validateSelectedTagState builder.parser internalState.selected fns ctx state
+                parse context (State internalState state) =
+                    validateSelectedTagState builder.parser internalState.selected fns context state
 
                 setAllIdle =
                     \(State internalState state) ->
@@ -4642,8 +4642,8 @@ endCustomType (CustomTypeBuilder builder) =
                             { internalState | status = Idle_ }
                             (setSelectedTagStateIdle builder.idleSetter internalState.selected fns state)
 
-                emitAlerts ctx (State internalState state) =
-                    emitAlertsForCustomType builder.alertEmitter internalState.selected fns ctx state
+                emitAlerts context (State internalState state) =
+                    emitAlertsForCustomType builder.alertEmitter internalState.selected fns context state
             in
             ControlFns
                 { path = path
@@ -4689,7 +4689,7 @@ endCustomType (CustomTypeBuilder builder) =
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \ctx (State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns ctx states
+                , subscriptions = \context (State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns context states
                 }
         )
 
@@ -6695,8 +6695,8 @@ collectCustomTypeSubscriptions :
     -> context
     -> states
     -> Sub (Delta delta)
-collectCustomTypeSubscriptions collector setters fns ctx states =
-    collector (\listSubs End End _ End -> listSubs) [] setters fns ctx states
+collectCustomTypeSubscriptions collector setters fns context states =
+    collector (\listSubs End End _ End -> listSubs) [] setters fns context states
         |> Sub.batch
         |> Sub.map StateChangedInternally
 
@@ -6709,8 +6709,8 @@ customTypeSubscriptionCollector :
     -> context
     -> ( State state, restStates )
     -> List (Sub delta1)
-customTypeSubscriptionCollector next listSubs ( setter, restDeltaSetters ) ( ControlFns fns, restFns ) ctx ( state, restStates ) =
-    next ((fns.subscriptions ctx state |> Sub.map setter) :: listSubs) restDeltaSetters restFns ctx restStates
+customTypeSubscriptionCollector next listSubs ( setter, restDeltaSetters ) ( ControlFns fns, restFns ) context ( state, restStates ) =
+    next ((fns.subscriptions context state |> Sub.map setter) :: listSubs) restDeltaSetters restFns context restStates
 
 
 collectDebouncingReceiversForCustomType :
@@ -6768,7 +6768,7 @@ updateCustomTypeStates :
     -> context
     -> ( State state, restStates )
     -> ( states, Cmd msg )
-updateCustomTypeStates updater fns setters deltas ctx states =
+updateCustomTypeStates updater fns setters deltas context states =
     let
         { newStates, newCmds } =
             updater
@@ -6777,7 +6777,7 @@ updateCustomTypeStates updater fns setters deltas ctx states =
                 fns
                 setters
                 deltas
-                ctx
+                context
                 states
     in
     ( newStates End, Cmd.batch newCmds )
@@ -6799,10 +6799,10 @@ customTypeStateUpdater :
     -> context
     -> ( State state, restStates )
     -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
-customTypeStateUpdater next { newStates, newCmds } ( ControlFns fns, restFns ) ( deltaSetter, restDeltaSetters ) ( delta, restDeltas ) ctx ( state, restStates ) =
+customTypeStateUpdater next { newStates, newCmds } ( ControlFns fns, restFns ) ( deltaSetter, restDeltaSetters ) ( delta, restDeltas ) context ( state, restStates ) =
     let
         ( newState, newCmd ) =
-            fns.update ctx delta state
+            fns.update context delta state
     in
     next
         { newStates = nestForwards Tuple.pair newStates newState
@@ -6811,7 +6811,7 @@ customTypeStateUpdater next { newStates, newCmds } ( ControlFns fns, restFns ) (
         restFns
         restDeltaSetters
         restDeltas
-        ctx
+        context
         restStates
 
 
@@ -7106,8 +7106,8 @@ emitAlertsForCustomType :
     -> context
     -> ( State state, restStates )
     -> List Alert
-emitAlertsForCustomType alertEmitter_ selectedTag fns ctx tagStates =
-    alertEmitter_ (\alerts _ End _ End -> alerts) [] selectedTag fns ctx tagStates
+emitAlertsForCustomType alertEmitter_ selectedTag fns context tagStates =
+    alertEmitter_ (\alerts _ End _ End -> alerts) [] selectedTag fns context tagStates
 
 
 customTypeAlertEmitter :
@@ -7124,16 +7124,16 @@ customTypeAlertEmitter :
     -> context
     -> ( State state, restStates )
     -> List Alert
-customTypeAlertEmitter next alerts selectedTag ( ControlFns fns, restFns ) ctx ( tagState, restTagStates ) =
+customTypeAlertEmitter next alerts selectedTag ( ControlFns fns, restFns ) context ( tagState, restTagStates ) =
     let
         newAlerts =
             if fns.index == selectedTag then
-                fns.emitAlerts ctx tagState
+                fns.emitAlerts context tagState
 
             else
                 []
     in
-    next (alerts ++ newAlerts) selectedTag restFns ctx restTagStates
+    next (alerts ++ newAlerts) selectedTag restFns context restTagStates
 
 
 setSelectedTagStateIdle :
@@ -7199,13 +7199,13 @@ validateSelectedTagState :
     -> context
     -> states
     -> e
-validateSelectedTagState parser selectedTag fns ctx states =
+validateSelectedTagState parser selectedTag fns context states =
     parser
         (\result_ _ End _ End -> result_)
         (Err [ { path = Path.root, label = "FATAL ERROR", message = "tag index " ++ String.fromInt selectedTag ++ " not found", fail = True } ])
         selectedTag
         fns
-        ctx
+        context
         states
 
 
@@ -7223,17 +7223,17 @@ selectedTagParser :
     -> context
     -> ( State state, restStates )
     -> Result (List Feedback) output
-selectedTagParser next result_ selectedTag ( ControlFns fns, restFns ) ctx ( state, restStates ) =
+selectedTagParser next result_ selectedTag ( ControlFns fns, restFns ) context ( state, restStates ) =
     next
         (if fns.index == selectedTag then
-            fns.parse ctx state
+            fns.parse context state
 
          else
             result_
         )
         selectedTag
         restFns
-        ctx
+        context
         restStates
 
 
@@ -7259,8 +7259,8 @@ viewSelectedTagState :
     -> context
     -> InternalViewConfig state
     -> List (Subcontrol delta)
-viewSelectedTagState viewer fns setters ctx config =
-    viewer (\listSubcontrol _ End End _ End -> listSubcontrol) [] config.alerts fns setters ctx config.state
+viewSelectedTagState viewer fns setters context config =
+    viewer (\listSubcontrol _ End End _ End -> listSubcontrol) [] config.alerts fns setters context config.state
 
 
 selectedTagViewer :
@@ -7279,11 +7279,11 @@ selectedTagViewer :
     -> context
     -> ( State state, restStates )
     -> List (Subcontrol delta)
-selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( setter, restDeltaSetters ) ctx ( State internalState state, restStates ) =
+selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( setter, restDeltaSetters ) context ( State internalState state, restStates ) =
     next
         (listSubcontrol
             ++ [ { html =
-                    fns.view ctx
+                    fns.view context
                         { id = Maybe.withDefault ("control-" ++ Path.toString fns.path) fns.id
                         , name = Maybe.withDefault ("control-" ++ Path.toString fns.path) fns.name
                         , label = fns.label
@@ -7302,7 +7302,7 @@ selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( sette
         alerts
         restFns
         restDeltaSetters
-        ctx
+        context
         restStates
 
 
@@ -7374,10 +7374,10 @@ customTypeView :
     -> InternalViewConfig state
     -> (context -> InternalViewConfig state -> List (Subcontrol delta))
     -> List (Html (Delta delta))
-customTypeView ctx config toSubcontrols =
+customTypeView context config toSubcontrols =
     let
         subcontrols =
-            toSubcontrols ctx config
+            toSubcontrols context config
 
         subcontrolView =
             List.filterMap
@@ -7422,7 +7422,7 @@ listView :
     -> List Alert
     -> (Path -> ControlFns context input state delta output)
     -> List (Html (Delta (ListDelta delta)))
-listView path ctx config debouncingReceivers subcontrol =
+listView path context config debouncingReceivers subcontrol =
     let
         view_ =
             H.div
@@ -7471,13 +7471,13 @@ listView path ctx config debouncingReceivers subcontrol =
                                 in
                                 H.li []
                                     [ H.div []
-                                        (itemFns.view ctx
+                                        (itemFns.view context
                                             { id = Maybe.withDefault ("control-" ++ Path.toString itemPath) itemFns.id
                                             , name = Maybe.withDefault ("control-" ++ Path.toString itemPath) itemFns.name
                                             , label = itemFns.label
                                             , class = itemFns.class
                                             , state = state
-                                            , status = getStatus itemFns.parse itemFns.collectFeedback filteredAlerts2 ctx (State internalState state)
+                                            , status = getStatus itemFns.parse itemFns.collectFeedback filteredAlerts2 context (State internalState state)
                                             , alerts = filteredAlerts2
                                             , selected = internalState.selected
                                             }
