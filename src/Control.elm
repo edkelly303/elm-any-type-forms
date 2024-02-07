@@ -4441,7 +4441,7 @@ endCustomType (CustomTypeBuilder builder) =
                             StateChangedByInput tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta context state
+                                        updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
                                 ( State internalState newTagStates
                                 , Cmd.map StateChangedByInput cmd
@@ -4450,7 +4450,7 @@ endCustomType (CustomTypeBuilder builder) =
                             StateChangedInternally tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
-                                        updateCustomTypeStates builder.updater fns deltaSetters tagDelta context state
+                                        updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
                                 ( State internalState newTagStates
                                 , Cmd.map StateChangedInternally cmd
@@ -4708,26 +4708,6 @@ tag5 label_ tag control1 control2 control3 control4 control5 =
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
--- collectCustomTypeSubscriptions :
---     ((List (Sub delta)
---       -> End
---       -> End
---       -> context
---       -> End
---       -> List (Sub delta)
---      )
---      -> List (Sub delta)
---      -> setters
---      -> fns
---      -> context
---      -> states
---      -> List (Sub delta)
---     )
---     -> setters
---     -> fns
---     -> context
---     -> states
---     -> Sub (Delta delta)
 
 
 collectCustomTypeSubscriptions :
@@ -4856,73 +4836,110 @@ customTypeDebouncingReceiverCollector next { receivers, fns, states } =
 
 
 updateCustomTypeStates :
-    (({ newStates : End -> states, newCmds : List (Cmd msg) }
-      -> End
-      -> End
-      -> End
-      -> context
-      -> End
-      -> { newStates : End -> states, newCmds : List (Cmd msg) }
+    (({ newStates : End -> finalCustomTypeStates
+      , newCmds : List (Cmd customTypeDelta)
+      , context : context
+      , fns : End
+      , deltaSetters : End
+      , deltas : End
+      , states : End
+      }
+      ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
      )
-     -> { newStates : states -> states, newCmds : List (Cmd msg) }
-     -> ( ControlFns context input state delta output, restFns )
-     -> ( setter, restDeltaSetters )
-     -> ( Delta delta, restDeltas )
-     -> context
-     -> ( State state, restStates )
-     -> { newStates : End -> states, newCmds : List (Cmd msg) }
+     ->
+        { newStates : identity -> identity
+        , newCmds : List (Cmd customTypeDelta)
+        , context : context
+        , fns : ( ControlFns context input state delta output, restFns )
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Delta delta, restDeltas )
+        , states : ( State state, restStates )
+        }
+     ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
     )
-    -> ( ControlFns context input state delta output, restFns )
-    -> ( setter, restDeltaSetters )
-    -> ( Delta delta, restDeltas )
     -> context
+    -> ( ControlFns context input state delta output, restFns )
+    -> ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+    -> ( Delta delta, restDeltas )
     -> ( State state, restStates )
-    -> ( states, Cmd msg )
-updateCustomTypeStates updater fns setters deltas context states =
+    -> ( finalCustomTypeStates, Cmd customTypeDelta )
+updateCustomTypeStates updater context fns deltaSetters deltas states =
     let
         { newStates, newCmds } =
             updater
-                (\output End End End _ End -> output)
-                { newStates = identity, newCmds = [] }
-                fns
-                setters
-                deltas
-                context
-                states
+                (\output ->
+                    { newStates = output.newStates
+                    , newCmds = output.newCmds
+                    }
+                )
+                { newStates = identity
+                , newCmds = []
+                , fns = fns
+                , deltaSetters = deltaSetters
+                , deltas = deltas
+                , context = context
+                , states = states
+                }
     in
     ( newStates End, Cmd.batch newCmds )
 
 
 customTypeStateUpdater :
-    ({ newStates : restStates -> recordState0, newCmds : List (Cmd recordDelta) }
-     -> restFns
-     -> restDeltaSetters
-     -> restDeltas
-     -> context
-     -> restStates
-     -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
+    ({ newStates : restStates -> intermediateCustomTypeStates
+     , newCmds : List (Cmd customTypeDelta)
+     , context : context
+     , fns : restFns
+     , deltaSetters : restDeltaSetters
+     , deltas : restDeltas
+     , states : restStates
+     }
+     ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
     )
-    -> { newStates : ( State state, restStates ) -> recordState0, newCmds : List (Cmd recordDelta) }
-    -> ( ControlFns context input state delta output, restFns )
-    -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> ( Delta delta, restDeltas )
-    -> context
-    -> ( State state, restStates )
-    -> { newStates : recordState, newCmds : List (Cmd recordDelta) }
-customTypeStateUpdater next { newStates, newCmds } ( ControlFns fns, restFns ) ( deltaSetter, restDeltaSetters ) ( delta, restDeltas ) context ( state, restStates ) =
+    ->
+        { newStates : ( State state, restStates ) -> intermediateCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        , context : context
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Delta tagDelta, restDeltas )
+        , states : ( State state, restStates )
+        }
+    -> { newStates : End -> finalCustomTypeStates, newCmds : List (Cmd customTypeDelta) }
+customTypeStateUpdater next { newStates, newCmds, context, fns, deltaSetters, deltas, states } =
     let
+        ( ControlFns controlFns, restFns ) =
+            fns
+
+        ( deltaSetter, restDeltaSetters ) =
+            deltaSetters
+
+        ( delta, restDeltas ) =
+            deltas
+
+        ( state, restStates ) =
+            states
+
         ( newState, newCmd ) =
-            fns.update context delta state
+            controlFns.update context delta state
     in
     next
         { newStates = nestForwards Tuple.pair newStates newState
         , newCmds = Cmd.map deltaSetter newCmd :: newCmds
+        , context = context
+        , fns = restFns
+        , deltaSetters = restDeltaSetters
+        , deltas = restDeltas
+        , states = restStates
         }
-        restFns
-        restDeltaSetters
-        restDeltas
-        context
-        restStates
 
 
 initialiseCustomTypeDeltas :
