@@ -4803,35 +4803,56 @@ customTypeSubscriptionCollector next { subs, deltaSetters, fns, context, states 
 
 
 collectDebouncingReceiversForCustomType :
-    ((List Alert
-      -> End
-      -> End
+    (({ receivers : List Alert
+      , fns : End
+      , states : End
+      }
       -> List Alert
      )
-     -> List Alert
-     -> ( ControlFns context input state delta output, restFns )
-     -> ( State state, restStates )
+     ->
+        { receivers : List Alert
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
      -> List Alert
     )
     -> ( ControlFns context input state delta output, restFns )
     -> ( State state, restStates )
     -> List Alert
 collectDebouncingReceiversForCustomType debouncingReceiverCollector_ fns states =
-    debouncingReceiverCollector_ (\receivers End End -> receivers) [] fns states
+    debouncingReceiverCollector_ (\{ receivers } -> receivers)
+        { receivers = []
+        , fns = fns
+        , states = states
+        }
 
 
 customTypeDebouncingReceiverCollector :
-    (List Alert
-     -> restFns
-     -> restStates
+    ({ receivers : List Alert
+     , fns : restFns
+     , states : restStates
+     }
      -> List Alert
     )
+    ->
+        { receivers : List Alert
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
     -> List Alert
-    -> ( ControlFns context input state delta output, restFns )
-    -> ( State state, restStates )
-    -> List Alert
-customTypeDebouncingReceiverCollector next receivers ( ControlFns fns, restFns ) ( state, restStates ) =
-    next (receivers ++ fns.collectDebouncingReceivers state) restFns restStates
+customTypeDebouncingReceiverCollector next { receivers, fns, states } =
+    let
+        ( ControlFns controlFns, restFns ) =
+            fns
+
+        ( state, restStates ) =
+            states
+    in
+    next
+        { receivers = receivers ++ controlFns.collectDebouncingReceivers state
+        , fns = restFns
+        , states = restStates
+        }
 
 
 updateCustomTypeStates :
