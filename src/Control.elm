@@ -4399,7 +4399,6 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
             |> endCustomType
 
 -}
-
 endCustomType (CustomTypeBuilder builder) =
     Control
         (\path ->
@@ -4522,7 +4521,7 @@ endCustomType (CustomTypeBuilder builder) =
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \context (State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector deltaSetters fns context states
+                , subscriptions = \context (State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector context deltaSetters fns states
                 }
         )
 
@@ -4554,7 +4553,6 @@ endCustomType (CustomTypeBuilder builder) =
             |> endCustomType
 
 -}
-
 tag0 label_ tag =
     tagHelper
         label_
@@ -4597,7 +4595,6 @@ null tag =
             |> endCustomType
 
 -}
-
 tag1 label_ tag control =
     tagHelper
         label_
@@ -4625,7 +4622,6 @@ tag1 label_ tag control =
             |> tag2 "Point" Point float float
 
 -}
-
 tag2 label_ tag control1 control2 =
     tagHelper
         label_
@@ -4654,7 +4650,6 @@ tag2 label_ tag control1 control2 =
             |> tag3 "Point3D" Point3D float float float
 
 -}
-
 tag3 label_ tag control1 control2 control3 =
     tagHelper
         label_
@@ -4671,7 +4666,6 @@ tag3 label_ tag control1 control2 control3 =
 
 {-| Add a tag with four arguments to a custom type.
 -}
-
 tag4 label_ tag control1 control2 control3 control4 =
     tagHelper
         label_
@@ -4689,7 +4683,6 @@ tag4 label_ tag control1 control2 control3 control4 =
 
 {-| Add a tag with five arguments to a custom type.
 -}
-
 tag5 label_ tag control1 control2 control3 control4 control5 =
     tagHelper
         label_
@@ -4715,44 +4708,98 @@ tag5 label_ tag control1 control2 control3 control4 control5 =
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
+-- collectCustomTypeSubscriptions :
+--     ((List (Sub delta)
+--       -> End
+--       -> End
+--       -> context
+--       -> End
+--       -> List (Sub delta)
+--      )
+--      -> List (Sub delta)
+--      -> setters
+--      -> fns
+--      -> context
+--      -> states
+--      -> List (Sub delta)
+--     )
+--     -> setters
+--     -> fns
+--     -> context
+--     -> states
+--     -> Sub (Delta delta)
 
 
 collectCustomTypeSubscriptions :
-    ((List (Sub delta)
-      -> End
-      -> End
-      -> context
-      -> End
-      -> List (Sub delta)
+    (({ subs : List (Sub customTypeDelta)
+      , context : context
+      , deltaSetters : End
+      , fns : End
+      , states : End
+      }
+      -> List (Sub customTypeDelta)
      )
-     -> List (Sub delta)
-     -> setters
-     -> fns
-     -> context
-     -> states
-     -> List (Sub delta)
+     ->
+        { subs : List (Sub customTypeDelta)
+        , context : context
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , states : ( State state, restStates )
+        }
+     -> List (Sub customTypeDelta)
     )
-    -> setters
-    -> fns
     -> context
-    -> states
-    -> Sub (Delta delta)
-collectCustomTypeSubscriptions collector setters fns context states =
-    collector (\listSubs End End _ End -> listSubs) [] setters fns context states
+    -> ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+    -> ( ControlFns context input state tagDelta output, restFns )
+    -> ( State state, restStates )
+    -> Sub (Delta customTypeDelta)
+collectCustomTypeSubscriptions collector context setters fns states =
+    collector (\{ subs } -> subs)
+        { subs = []
+        , deltaSetters = setters
+        , fns = fns
+        , context = context
+        , states = states
+        }
         |> Sub.batch
         |> Sub.map StateChangedInternally
 
 
 customTypeSubscriptionCollector :
-    (List (Sub delta1) -> restDeltaSetters -> restFns -> context -> restStates -> List (Sub delta1))
-    -> List (Sub delta1)
-    -> ( Delta delta -> delta1, restDeltaSetters )
-    -> ( ControlFns context input state delta output, restFns )
-    -> context
-    -> ( State state, restStates )
-    -> List (Sub delta1)
-customTypeSubscriptionCollector next listSubs ( setter, restDeltaSetters ) ( ControlFns fns, restFns ) context ( state, restStates ) =
-    next ((fns.subscriptions context state |> Sub.map setter) :: listSubs) restDeltaSetters restFns context restStates
+    ({ subs : List (Sub customTypeDelta)
+     , context : context
+     , deltaSetters : restDeltaSetters
+     , fns : restFns
+     , states : restStates
+     }
+     -> List (Sub customTypeDelta)
+    )
+    ->
+        { subs : List (Sub customTypeDelta)
+        , context : context
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , states : ( State state, restStates )
+        }
+    -> List (Sub customTypeDelta)
+customTypeSubscriptionCollector next { subs, deltaSetters, fns, context, states } =
+    let
+        ( setter, restDeltaSetters ) =
+            deltaSetters
+
+        ( ControlFns controlFns, restFns ) =
+            fns
+
+        ( state, restStates ) =
+            states
+    in
+    next
+        { subs = (controlFns.subscriptions context state |> Sub.map setter) :: subs
+        , context = context
+        , deltaSetters = restDeltaSetters
+        , fns = restFns
+        , states = restStates
+        }
 
 
 collectDebouncingReceiversForCustomType :
