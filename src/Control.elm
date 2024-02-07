@@ -3239,21 +3239,21 @@ endRecord :
             ( State state, restStates )
             ( Delta delta, restDeltas )
             output
-endRecord (RecordBuilder rec) =
+endRecord (RecordBuilder builder) =
     Control
         (\path ->
             let
                 fns =
-                    rec.fns path End
+                    builder.fns path End
 
                 initialStates =
-                    rec.initialStates path End
+                    builder.initialStates path End
 
                 initialDeltas =
-                    rec.initialDeltas path End
+                    builder.initialDeltas path End
 
                 deltaSetters =
-                    makeDeltaSetters rec.makeSetters rec.befores rec.afters
+                    makeDeltaSetters builder.makeSetters builder.befores builder.afters
 
                 update ctx delta (State s state) =
                     case delta of
@@ -3263,7 +3263,7 @@ endRecord (RecordBuilder rec) =
                         StateChangedByInput deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates rec.updater ctx fns deltaSetters deltas state
+                                    updateRecordStates builder.updater ctx fns deltaSetters deltas state
                             in
                             ( State s newState
                             , Cmd.map StateChangedByInput cmd
@@ -3272,7 +3272,7 @@ endRecord (RecordBuilder rec) =
                         StateChangedInternally deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates rec.updater ctx fns deltaSetters deltas state
+                                    updateRecordStates builder.updater ctx fns deltaSetters deltas state
                             in
                             ( State s newState
                             , Cmd.map StateChangedInternally cmd
@@ -3287,29 +3287,29 @@ endRecord (RecordBuilder rec) =
                             ( State s state, Cmd.none )
 
                 subcontrolViews ctx config =
-                    viewRecordStates rec.viewer ctx fns deltaSetters config
+                    viewRecordStates builder.viewer ctx fns deltaSetters config
 
                 view ctx config =
-                    viewRecordStates rec.viewer ctx fns deltaSetters config
+                    viewRecordStates builder.viewer ctx fns deltaSetters config
                         |> List.concatMap .html
 
                 parse ctx (State _ state) =
-                    validateRecordStates rec.parser rec.toOutput fns ctx state
+                    validateRecordStates builder.parser builder.toOutput fns ctx state
 
                 setAllIdle (State i state) =
-                    State { i | status = Idle_ } (setAllRecordStatesToIdle rec.idleSetter fns state)
+                    State { i | status = Idle_ } (setAllRecordStatesToIdle builder.idleSetter fns state)
 
                 emitAlerts ctx (State _ state) =
-                    emitAlertsForRecord rec.alertEmitter fns ctx state
+                    emitAlertsForRecord builder.alertEmitter fns ctx state
             in
             ControlFns
                 { path = path
                 , index = 0
                 , initBlank =
                     ( State { status = Intact_, selected = 1 } initialStates
-                    , initialiseRecordDeltas rec.deltaInitialiser deltaSetters initialDeltas
+                    , initialiseRecordDeltas builder.deltaInitialiser deltaSetters initialDeltas
                     )
-                , initPrefilled = \output -> initialiseRecordStates rec.initialiser output fns deltaSetters
+                , initPrefilled = \output -> initialiseRecordStates builder.initialiser output fns deltaSetters
                 , baseUpdate = \_ -> update
                 , update = update
                 , subControlViews = subcontrolViews
@@ -3317,14 +3317,14 @@ endRecord (RecordBuilder rec) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(State _ states) alerts -> collectFeedbackForRecord rec.errorCollector alerts fns states
+                , collectFeedback = \(State _ states) alerts -> collectFeedbackForRecord builder.errorCollector alerts fns states
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord rec.debouncingReceiverCollector fns states
+                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord builder.debouncingReceiverCollector fns states
                 , label = "Record"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \ctx (State _ states) -> collectRecordSubscriptions rec.subscriptionCollector deltaSetters fns ctx states
+                , subscriptions = \ctx (State _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns ctx states
                 }
         )
 
