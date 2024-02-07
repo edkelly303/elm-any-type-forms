@@ -4913,7 +4913,10 @@ customTypeStateUpdater :
         , deltas : ( Delta tagDelta, restDeltas )
         , states : ( State state, restStates )
         }
-    -> { newStates : End -> finalCustomTypeStates, newCmds : List (Cmd customTypeDelta) }
+    ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
 customTypeStateUpdater next { newStates, newCmds, context, fns, deltaSetters, deltas, states } =
     let
         ( ControlFns controlFns, restFns ) =
