@@ -4943,29 +4943,59 @@ customTypeStateUpdater next { newStates, newCmds, context, fns, deltaSetters, de
 
 
 initialiseCustomTypeDeltas :
-    ((List (Cmd delta) -> End -> End -> List (Cmd delta))
-     -> List (Cmd delta)
-     -> deltaSetters
-     -> deltas
-     -> List (Cmd delta)
+    (({ cmds : List (Cmd customTypeDelta)
+      , deltaSetters : End
+      , deltas : End
+      }
+      -> List (Cmd customTypeDelta)
+     )
+     ->
+        { cmds : List (Cmd customTypeDelta)
+        , deltaSetters : ( tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Cmd tagDelta, restDeltas )
+        }
+     -> List (Cmd customTypeDelta)
     )
-    -> deltaSetters
-    -> deltas
-    -> List (Cmd (Delta delta))
+    -> ( tagDelta -> customTypeDelta, restDeltaSetters )
+    -> ( Cmd tagDelta, restDeltas )
+    -> List (Cmd (Delta customTypeDelta))
 initialiseCustomTypeDeltas deltaInitialiser_ deltaSetters deltas =
-    deltaInitialiser_ (\cmdList End End -> cmdList) [] deltaSetters deltas
+    deltaInitialiser_
+        (\{ cmds } -> cmds)
+        { cmds = []
+        , deltaSetters = deltaSetters
+        , deltas = deltas
+        }
         |> List.reverse
         |> List.map (Cmd.map StateChangedInternally)
 
 
 customTypeDeltaInitialiser :
-    (List (Cmd delta1) -> restDeltaSetters -> restDeltas -> List (Cmd delta1))
-    -> List (Cmd delta1)
-    -> ( delta -> delta1, restDeltaSetters )
-    -> ( Cmd delta, restDeltas )
-    -> List (Cmd delta1)
-customTypeDeltaInitialiser next cmdList ( setter, restDeltaSetters ) ( delta, restDeltas ) =
-    next (Cmd.map setter delta :: cmdList) restDeltaSetters restDeltas
+    ({ cmds : List (Cmd customTypeDelta)
+     , deltaSetters : restDeltaSetters
+     , deltas : restDeltas
+     }
+     -> List (Cmd customTypeDelta)
+    )
+    ->
+        { cmds : List (Cmd customTypeDelta)
+        , deltaSetters : ( tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Cmd tagDelta, restDeltas )
+        }
+    -> List (Cmd customTypeDelta)
+customTypeDeltaInitialiser next { cmds, deltaSetters, deltas } =
+    let
+        ( setter, restDeltaSetters ) =
+            deltaSetters
+
+        ( delta, restDeltas ) =
+            deltas
+    in
+    next
+        { cmds = Cmd.map setter delta :: cmds
+        , deltaSetters = restDeltaSetters
+        , deltas = restDeltas
+        }
 
 
 applyInputToStateConvertersToDestructor :
