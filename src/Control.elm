@@ -5002,12 +5002,15 @@ customTypeDeltaInitialiser next { cmds, deltaSetters, deltas } =
 
 
 applyInputToStateConvertersToDestructor :
-    (((tag -> ( State tagStates, Cmd delta ))
-      -> End
+    (({ destructor : tag -> ( State tagStates, Cmd delta )
+      , inputToStateConverters : End
+      }
       -> (tag -> ( State tagStates, Cmd delta ))
      )
-     -> (inputToStateConverter -> destructor)
-     -> ( inputToStateConverter, restInputToStateConverters )
+     ->
+        { destructor : inputToStateConverter -> destructor
+        , inputToStateConverters : ( inputToStateConverter, restInputToStateConverters )
+        }
      -> (tag -> ( State tagStates, Cmd delta ))
     )
     -> (inputToStateConverter -> destructor)
@@ -5015,21 +5018,32 @@ applyInputToStateConvertersToDestructor :
     -> (tag -> ( State tagStates, Cmd delta ))
 applyInputToStateConvertersToDestructor inputToStateConverterToDestructorApplier_ destructor inputToStateConverters =
     inputToStateConverterToDestructorApplier_
-        (\finalDestructor End -> finalDestructor)
-        destructor
-        inputToStateConverters
+        .destructor
+        { destructor = destructor
+        , inputToStateConverters = inputToStateConverters
+        }
 
 
 inputToStateConverterToDestructorApplier :
-    (destructor
-     -> restInputToStateConverters
+    ({ destructor : destructor
+     , inputToStateConverters : restInputToStateConverters
+     }
      -> (tag -> ( State tagStates, Cmd delta ))
     )
-    -> (inputToStateConverter -> destructor)
-    -> ( inputToStateConverter, restInputToStateConverters )
+    ->
+        { destructor : inputToStateConverter -> destructor
+        , inputToStateConverters : ( inputToStateConverter, restInputToStateConverters )
+        }
     -> (tag -> ( State tagStates, Cmd delta ))
-inputToStateConverterToDestructorApplier next destructor ( inputToStateConverter, restInputToStateConverters ) =
-    next (destructor inputToStateConverter) restInputToStateConverters
+inputToStateConverterToDestructorApplier next { destructor, inputToStateConverters } =
+    let
+        ( inputToStateConverter, restInputToStateConverters ) =
+            inputToStateConverters
+    in
+    next
+        { destructor = destructor inputToStateConverter
+        , inputToStateConverters = restInputToStateConverters
+        }
 
 
 makeInputToStateConverters :
