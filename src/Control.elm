@@ -5047,27 +5047,27 @@ inputToStateConverterToDestructorApplier next { destructor, inputToStateConverte
 
 
 makeInputToStateConverters :
-    (({ c | finalTagStates : End -> b } -> b)
+    (({ c | finalTagStates : End -> ( toFinalTagState, restToFinalTagStates ) } -> ( toFinalTagState, restToFinalTagStates ))
      ->
-        { controlFns : d
-        , deltaSetters : e
+        { controlFns : ( ControlFns context input state1 delta output, restControlFns )
+        , deltaSetters : ( Delta delta -> tagDelta, restDeltaSetters )
         , finalTagStates : a -> a
-        , initialTagStates : f
-        , inputTuplizers : g
-        , maybeOverridesAfter : h
-        , maybeOverridesBefore : i
-        , tagStateOverrider : j
+        , initialTagStates : ( State state, restStates )
+        , inputTuplizers : inputTuplizers
+        , maybeOverridesAfter : maybeOverridesAfter
+        , maybeOverridesBefore : maybeOverridesBefore
+        , tagStateOverrider : tagStateOverrider
         }
-     -> k
+     -> ( toFinalTagState, restToFinalTagStates )
     )
-    -> j
-    -> f
-    -> d
-    -> (End -> g)
-    -> (End -> i)
-    -> h
-    -> e
-    -> k
+    -> tagStateOverrider
+    -> ( State state, restStates )
+    -> ( ControlFns context input state1 delta output, restControlFns )
+    -> (End -> inputTuplizers)
+    -> (End -> maybeOverridesBefore)
+    -> maybeOverridesAfter
+    -> ( Delta delta -> tagDelta, restDeltaSetters )
+    -> ( toFinalTagState, restToFinalTagStates )
 makeInputToStateConverters inputToStateConverters_ initialStateOverrider_ initialTagStates fns inputTuplizers maybeOverridesBefore maybeOverridesAfter deltaSetters =
     inputToStateConverters_
         (\{ finalTagStates } -> finalTagStates End)
@@ -5099,7 +5099,7 @@ convertInputToState :
         -> ( State state, restStates )
         -> State tagStates
      }
-     -> toFinalTagStates
+     -> ( toFinalTagState, restToFinalTagStates )
     )
     ->
         { controlFns : ( ControlFns context input state1 delta output, restControlFns )
@@ -5123,7 +5123,7 @@ convertInputToState :
             -> ( State state, restStates )
             -> State tagStates
         }
-    -> toFinalTagStates
+    -> ( toFinalTagState, restToFinalTagStates )
 convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, controlFns, inputTuplizers, maybeOverridesBefore, maybeOverridesAfter, deltaSetters } =
     let
         ( ControlFns fns, restFns ) =
