@@ -4373,7 +4373,7 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
         , initialStateOverrider = builder.initialStateOverrider >> initialStateOverrider
         , applyInputs = builder.applyInputs >> inputToStateConverterToDestructorApplier
         , alertEmitter = builder.alertEmitter >> customTypeAlertEmitter
-        , errorCollector = builder.errorCollector >> customTypeErrorCollector
+        , errorCollector = builder.errorCollector >> customTypeFeedbackCollector
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> customTypeSubscriptionCollector
         , destructor = builder.destructor
@@ -4514,7 +4514,7 @@ endCustomType (CustomTypeBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(State _ states) alerts -> collectErrorsForCustomType builder.errorCollector alerts fns states
+                , collectFeedback = \(State _ states) alerts -> collectFeedbackForCustomType builder.errorCollector alerts fns states
                 , receiverCount = 0
                 , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns states
                 , label = "Custom Type"
@@ -5051,7 +5051,7 @@ makeInputToStateConverters :
      ->
         { controlFns : ( ControlFns context input state1 delta output, restControlFns )
         , deltaSetters : ( Delta delta -> tagDelta, restDeltaSetters )
-        , finalTagStates : a -> a
+        , finalTagStates : identity -> identity
         , initialTagStates : ( State state, restStates )
         , inputTuplizers : inputTuplizers
         , maybeOverridesAfter : maybeOverridesAfter
@@ -5083,45 +5083,58 @@ makeInputToStateConverters inputToStateConverters_ initialStateOverrider_ initia
 
 
 convertInputToState :
-    ({ controlFns : restControlFns
-     , deltaSetters : restDeltaSetters
-     , finalTagStates : nextFinalTagState -> restFinalTagStates
-     , initialTagStates : ( State state, restStates )
-     , inputTuplizers : restInputTuplizers
-     , maybeOverridesAfter : restMaybeOverridesAfter
-     , maybeOverridesBefore : restMaybeOverridesBefore
+    ({ finalTagStates : b -> ( toFinalTagState, restToFinalTagStates )
      , tagStateOverrider :
-        (Int -> Int -> (End -> tagStates) -> End -> End -> State tagStates)
-        -> Int
-        -> Int
-        -> (identity -> identity)
-        -> ( Maybe (State state), restMaybeStates )
-        -> ( State state, restStates )
+        ({ thisTagIndex : Int
+         , selectedTagIndex : Int
+         , toTagStates : End -> tagStates
+         , maybeOverrides : End
+         , initialTagStates : End
+         }
+         -> State tagStates
+        )
+        ->
+            { thisTagIndex : Int
+            , selectedTagIndex : Int
+            , toTagStates : identity -> identity
+            , maybeOverrides : ( Maybe (State argState), restMaybeOverrides )
+            , initialTagStates : ( State argState, restArgStates )
+            }
         -> State tagStates
+     , initialTagStates : ( State argState, restArgStates )
+     , controlFns : restControlFns
+     , inputTuplizers : restInputTuplizers
+     , maybeOverridesBefore : restMaybeOverridesBefore
+     , maybeOverridesAfter : restMaybeOverridesAfter
+     , deltaSetters : restDeltaSetters
      }
      -> ( toFinalTagState, restToFinalTagStates )
     )
     ->
-        { controlFns : ( ControlFns context input state1 delta output, restControlFns )
-        , deltaSetters : ( Delta delta -> tagDelta, restDeltaSetters )
-        , finalTagStates : ( finalTagState, nextFinalTagState ) -> restFinalTagStates
-        , initialTagStates : ( State state, restStates )
-        , inputTuplizers :
-            ( (input -> ( State tagStates, Cmd (Delta tagDelta) )) -> finalTagState, restInputTuplizers )
-        , maybeOverridesAfter : ( maybeOverrideAfter, restMaybeOverridesAfter )
-        , maybeOverridesBefore :
-            ( ( Maybe (State state1), maybeOverrideAfter )
-              -> ( Maybe (State state), restMaybeStates )
-            , restMaybeOverridesBefore
-            )
+        { finalTagStates : ( k, b ) -> ( toFinalTagState, restToFinalTagStates )
         , tagStateOverrider :
-            (Int -> Int -> (End -> tagStates) -> End -> End -> State tagStates)
-            -> Int
-            -> Int
-            -> (identity -> identity)
-            -> ( Maybe (State state), restMaybeStates )
-            -> ( State state, restStates )
+            ({ thisTagIndex : Int
+             , selectedTagIndex : Int
+             , toTagStates : End -> tagStates
+             , maybeOverrides : End
+             , initialTagStates : End
+             }
+             -> State tagStates
+            )
+            ->
+                { thisTagIndex : Int
+                , selectedTagIndex : Int
+                , toTagStates : identity -> identity
+                , maybeOverrides : ( Maybe (State argState), restMaybeOverrides )
+                , initialTagStates : ( State argState, restArgStates )
+                }
             -> State tagStates
+        , initialTagStates : ( State argState, restArgStates )
+        , controlFns : ( ControlFns context input state argDelta output, restControlFns )
+        , inputTuplizers : ( (input -> ( State tagStates, Cmd (Delta tagDelta) )) -> k, restInputTuplizers )
+        , maybeOverridesBefore : ( ( Maybe (State state), maybeOverrideAfter ) -> ( Maybe (State argState), restMaybeOverrides ), restMaybeOverridesBefore )
+        , maybeOverridesAfter : ( maybeOverrideAfter, restMaybeOverridesAfter )
+        , deltaSetters : ( Delta argDelta -> tagDelta, restDeltaSetters )
         }
     -> ( toFinalTagState, restToFinalTagStates )
 convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, controlFns, inputTuplizers, maybeOverridesBefore, maybeOverridesAfter, deltaSetters } =
@@ -5169,95 +5182,137 @@ convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, 
 
 
 overrideInitialStates :
-    ((Int
-      -> Int
-      -> (End -> tagStates)
-      -> End
-      -> End
+    (({ thisTagIndex : Int
+      , selectedTagIndex : Int
+      , toTagStates : End -> tagStates
+      , maybeOverrides : End
+      , initialTagStates : End
+      }
       -> State tagStates
      )
-     -> Int
-     -> Int
-     -> (c -> c)
-     -> ( Maybe (State state), restMaybeStates )
-     -> ( State state, restStates )
+     ->
+        { thisTagIndex : Int
+        , selectedTagIndex : Int
+        , toTagStates : c -> c
+        , maybeOverrides : ( Maybe (State state), restMaybeOverrides )
+        , initialTagStates : ( State state, restStates )
+        }
      -> State tagStates
     )
-    -> ( Maybe (State state), restMaybeStates )
+    -> ( Maybe (State state), restMaybeOverrides )
     -> ( State state, restStates )
     -> State tagStates
 overrideInitialStates initialStateOverrider_ maybeOverrides initialTagStates =
     initialStateOverrider_
-        (\_ selectedTag finalTagStates End End -> State { status = Intact_, selected = selectedTag } (finalTagStates End))
-        1
-        1
-        identity
-        maybeOverrides
-        initialTagStates
+        (\{ selectedTagIndex, toTagStates } -> State { status = Intact_, selected = selectedTagIndex } (toTagStates End))
+        { thisTagIndex = 1
+        , selectedTagIndex = 1
+        , toTagStates = identity
+        , maybeOverrides = maybeOverrides
+        , initialTagStates = initialTagStates
+        }
 
 
 initialStateOverrider :
-    (Int
-     -> Int
-     -> (restArgStates -> tagStates)
-     -> restMaybeArgStates
-     -> restArgStates
+    ({ thisTagIndex : Int
+     , selectedTagIndex : Int
+     , toTagStates : restArgStates -> tagStates
+     , maybeOverrides : restMaybeOverrides
+     , initialTagStates : restArgStates
+     }
      -> State tagStates
     )
-    -> Int
-    -> Int
-    -> (( State argState, restArgStates ) -> tagStates)
-    -> ( Maybe (State argState), restMaybeArgStates )
-    -> ( State argState, restArgStates )
+    ->
+        { thisTagIndex : Int
+        , selectedTagIndex : Int
+        , maybeOverrides : ( Maybe (State argState), restMaybeOverrides )
+        , initialTagStates : ( State argState, restArgStates )
+        , toTagStates : ( State argState, restArgStates ) -> tagStates
+        }
     -> State tagStates
-initialStateOverrider next thisTagIndex currentlySelectedTagIndex tagStates ( thisMaybeOverride, restMaybeOverrides ) ( initialTagState, restInitialTagStates ) =
+initialStateOverrider next { thisTagIndex, selectedTagIndex, maybeOverrides, initialTagStates, toTagStates } =
     let
-        ( selectedTag, tagArgState ) =
-            case thisMaybeOverride of
+        ( maybeOverride, restMaybeOverrides ) =
+            maybeOverrides
+
+        ( initialTagState, restInitialTagStates ) =
+            initialTagStates
+
+        ( newSelectedTagIndex, tagArgState ) =
+            case maybeOverride of
                 Just override ->
                     ( thisTagIndex, override )
 
                 Nothing ->
-                    ( currentlySelectedTagIndex, initialTagState )
+                    ( selectedTagIndex, initialTagState )
     in
-    next (thisTagIndex + 1) selectedTag (nestForwards Tuple.pair tagStates tagArgState) restMaybeOverrides restInitialTagStates
+    next
+        { thisTagIndex = thisTagIndex + 1
+        , selectedTagIndex = newSelectedTagIndex
+        , toTagStates = nestForwards Tuple.pair toTagStates tagArgState
+        , maybeOverrides = restMaybeOverrides
+        , initialTagStates = restInitialTagStates
+        }
 
 
-collectErrorsForCustomType :
-    ((List Alert
-      -> List Feedback
-      -> End
-      -> End
+collectFeedbackForCustomType :
+    (({ alerts : List Alert
+      , feedback : List Feedback
+      , fns : End
+      , states : End
+      }
       -> List Feedback
      )
-     -> List Alert
-     -> List Feedback
-     -> ( ControlFns context input state delta output, restFns )
-     -> ( State state, restStates )
+     ->
+        { alerts : List Alert
+        , feedback : List Feedback
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
      -> List Feedback
     )
     -> List Alert
     -> ( ControlFns context input state delta output, restFns )
     -> ( State state, restStates )
     -> List Feedback
-collectErrorsForCustomType errorCollector_ alerts fns states =
-    errorCollector_ (\_ errors End End -> errors) alerts [] fns states
+collectFeedbackForCustomType feedbackCollector_ alerts fns states =
+    feedbackCollector_ .feedback
+        { alerts = alerts
+        , feedback = []
+        , fns = fns
+        , states = states
+        }
 
 
-customTypeErrorCollector :
-    (List Alert
-     -> List Feedback
-     -> restFns
-     -> restStates
+customTypeFeedbackCollector :
+    ({ alerts : List Alert
+     , feedback : List Feedback
+     , fns : restFns
+     , states : restStates
+     }
      -> List Feedback
     )
-    -> List Alert
+    ->
+        { alerts : List Alert
+        , feedback : List Feedback
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
     -> List Feedback
-    -> ( ControlFns context input state delta output, restFns )
-    -> ( State state, restStates )
-    -> List Feedback
-customTypeErrorCollector next alerts errors ( ControlFns fns, restFns ) ( state, restStates ) =
-    next alerts (errors ++ fns.collectFeedback state alerts) restFns restStates
+customTypeFeedbackCollector next { alerts, feedback, fns, states } =
+    let
+        ( ControlFns controlFns, restFns ) =
+            fns
+
+        ( state, restStates ) =
+            states
+    in
+    next
+        { alerts = alerts
+        , feedback = feedback ++ controlFns.collectFeedback state alerts
+        , fns = restFns
+        , states = restStates
+        }
 
 
 emitAlertsForCustomType :
