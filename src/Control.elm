@@ -4466,7 +4466,7 @@ endCustomType (CustomTypeBuilder builder) =
                     customTypeView context config subcontrolView
 
                 parse context (State internalState state) =
-                    validateSelectedTagState builder.parser internalState.selected fns context state
+                    validateSelectedTagState builder.parser internalState.selected context fns state
 
                 setAllIdle =
                     \(State internalState state) ->
@@ -5458,61 +5458,83 @@ selectedTagIdleSetter next { selectedTag, fns, initialStates, toFinalStates } =
 
 
 validateSelectedTagState :
-    ((a
-      -> b
-      -> End
-      -> context
-      -> End
-      -> a
+    (({ parsedResult : Result (List Feedback) output
+      , selectedTag : Int
+      , context : context
+      , fns : End
+      , states : End
+      }
+      -> Result (List Feedback) output
      )
-     -> Result (List Feedback) value
-     -> Int
-     -> ( ControlFns context x y z w, restFns )
-     -> context
-     -> states
-     -> e
+     ->
+        { parsedResult : Result (List Feedback) output
+        , selectedTag : Int
+        , context : context
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
+     -> Result (List Feedback) output
     )
     -> Int
-    -> ( ControlFns context x y z w, restFns )
     -> context
-    -> states
-    -> e
-validateSelectedTagState parser selectedTag fns context states =
+    -> ( ControlFns context input state delta output, restFns )
+    -> ( State state, restStates )
+    -> Result (List Feedback) output
+validateSelectedTagState parser selectedTag context fns states =
     parser
-        (\result_ _ End _ End -> result_)
-        (Err [ { path = Path.root, label = "FATAL ERROR", message = "tag index " ++ String.fromInt selectedTag ++ " not found", fail = True } ])
-        selectedTag
-        fns
-        context
-        states
+        .parsedResult
+        { parsedResult =
+            Err
+                [ { path = Path.root
+                  , label = "FATAL ERROR"
+                  , message = "tag index " ++ String.fromInt selectedTag ++ " not found"
+                  , fail = True
+                  }
+                ]
+        , selectedTag = selectedTag
+        , fns = fns
+        , context = context
+        , states = states
+        }
 
 
 selectedTagParser :
-    (Result (List Feedback) output
-     -> Int
-     -> restFns
-     -> context
-     -> restStates
+    ({ parsedResult : Result (List Feedback) output
+     , selectedTag : Int
+     , fns : restFns
+     , context : context
+     , states : restStates
+     }
      -> Result (List Feedback) output
     )
+    ->
+        { parsedResult : Result (List Feedback) output
+        , selectedTag : Int
+        , context : context
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
     -> Result (List Feedback) output
-    -> Int
-    -> ( ControlFns context input state delta output, restFns )
-    -> context
-    -> ( State state, restStates )
-    -> Result (List Feedback) output
-selectedTagParser next result_ selectedTag ( ControlFns fns, restFns ) context ( state, restStates ) =
-    next
-        (if fns.index == selectedTag then
-            fns.parse context state
+selectedTagParser next { parsedResult, selectedTag, context, fns, states } =
+    let
+        ( ControlFns controlFns, restFns ) =
+            fns
 
-         else
-            result_
-        )
-        selectedTag
-        restFns
-        context
-        restStates
+        ( state, restStates ) =
+            states
+    in
+    next
+        { parsedResult =
+            if controlFns.index == selectedTag then
+                controlFns.parse context state
+
+            else
+                parsedResult
+        , selectedTag = selectedTag
+        , fns = restFns
+        , context = context
+        , states = restStates
+        }
 
 
 viewSelectedTagState :
