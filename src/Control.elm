@@ -4475,7 +4475,7 @@ endCustomType (CustomTypeBuilder builder) =
                             (setSelectedTagStateIdle builder.idleSetter internalState.selected fns state)
 
                 emitAlerts context (State internalState state) =
-                    emitAlertsForCustomType builder.alertEmitter internalState.selected fns context state
+                    emitAlertsForCustomType builder.alertEmitter context internalState.selected fns state
             in
             ControlFns
                 { path = path
@@ -5316,53 +5316,77 @@ customTypeFeedbackCollector next { alerts, feedback, fns, states } =
 
 
 emitAlertsForCustomType :
-    ((List Alert
-      -> Int
-      -> End
-      -> context
-      -> End
+    (({ alerts : List Alert
+      , context : context
+      , selectedTag : Int
+      , fns : End
+      , states : End
+      }
       -> List Alert
      )
-     -> List Alert
-     -> Int
-     -> ( ControlFns context input state delta output, restFns )
-     -> context
-     -> ( State state, restStates )
+     ->
+        { alerts : List Alert
+        , context : context
+        , selectedTag : Int
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
      -> List Alert
     )
+    -> context
     -> Int
     -> ( ControlFns context input state delta output, restFns )
-    -> context
     -> ( State state, restStates )
     -> List Alert
-emitAlertsForCustomType alertEmitter_ selectedTag fns context tagStates =
-    alertEmitter_ (\alerts _ End _ End -> alerts) [] selectedTag fns context tagStates
+emitAlertsForCustomType alertEmitter_ context selectedTag fns tagStates =
+    alertEmitter_ .alerts
+        { alerts = []
+        , context = context
+        , selectedTag = selectedTag
+        , fns = fns
+        , states = tagStates
+        }
 
 
 customTypeAlertEmitter :
-    (List Alert
-     -> Int
-     -> restFns
-     -> context
-     -> restStates
+    ({ alerts : List Alert
+     , context : context
+     , selectedTag : Int
+     , fns : restFns
+     , states : restStates
+     }
      -> List Alert
     )
+    ->
+        { alerts : List Alert
+        , context : context
+        , selectedTag : Int
+        , fns : ( ControlFns context input state delta output, restFns )
+        , states : ( State state, restStates )
+        }
     -> List Alert
-    -> Int
-    -> ( ControlFns context input state delta output, restFns )
-    -> context
-    -> ( State state, restStates )
-    -> List Alert
-customTypeAlertEmitter next alerts selectedTag ( ControlFns fns, restFns ) context ( tagState, restTagStates ) =
+customTypeAlertEmitter next { alerts, context, selectedTag, fns, states } =
     let
+        ( ControlFns controlFns, restFns ) =
+            fns
+
+        ( tagState, restTagStates ) =
+            states
+
         newAlerts =
-            if fns.index == selectedTag then
-                fns.emitAlerts context tagState
+            if controlFns.index == selectedTag then
+                controlFns.emitAlerts context tagState
 
             else
                 []
     in
-    next (alerts ++ newAlerts) selectedTag restFns context restTagStates
+    next
+        { alerts = alerts ++ newAlerts
+        , context = context
+        , selectedTag = selectedTag
+        , fns = restFns
+        , states = restTagStates
+        }
 
 
 setSelectedTagStateIdle :
