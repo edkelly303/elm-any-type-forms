@@ -4460,7 +4460,7 @@ endCustomType (CustomTypeBuilder builder) =
                                 ( State internalState state, Cmd.none )
 
                 subcontrolView context config =
-                    viewSelectedTagState builder.viewer fns deltaSetters context config
+                    viewSelectedTagState builder.viewer context fns deltaSetters config
 
                 view context config =
                     customTypeView context config subcontrolView
@@ -5538,72 +5538,96 @@ selectedTagParser next { parsedResult, selectedTag, context, fns, states } =
 
 
 viewSelectedTagState :
-    ((List (Subcontrol delta)
-      -> b
-      -> End
-      -> End
-      -> context
-      -> End
-      -> List (Subcontrol delta)
+    (({ subcontrols : List (Subcontrol customTypeDelta)
+      , alerts : List Alert
+      , context : context
+      , fns : End
+      , deltaSetters : End
+      , states : End
+      }
+      -> List (Subcontrol customTypeDelta)
      )
-     -> List (Subcontrol delta)
-     -> List Alert
-     -> fns
-     -> setters
-     -> context
-     -> state
-     -> List (Subcontrol delta)
+     ->
+        { subcontrols : List (Subcontrol customTypeDelta)
+        , alerts : List Alert
+        , context : context
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , states : ( State state, restStates )
+        }
+     -> List (Subcontrol customTypeDelta)
     )
-    -> fns
-    -> setters
     -> context
-    -> InternalViewConfig state
-    -> List (Subcontrol delta)
-viewSelectedTagState viewer fns setters context config =
-    viewer (\listSubcontrol _ End End _ End -> listSubcontrol) [] config.alerts fns setters context config.state
+    -> ( ControlFns context input state tagDelta output, restFns )
+    -> ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+    -> InternalViewConfig ( State state, restStates )
+    -> List (Subcontrol customTypeDelta)
+viewSelectedTagState viewer context fns deltaSetters config =
+    viewer .subcontrols
+        { subcontrols = []
+        , alerts = config.alerts
+        , fns = fns
+        , deltaSetters = deltaSetters
+        , context = context
+        , states = config.state
+        }
 
 
 selectedTagViewer :
-    (List (Subcontrol delta)
-     -> List Alert
-     -> restFns
-     -> restDeltaSetters
-     -> context
-     -> restStates
-     -> List (Subcontrol delta)
+    ({ subcontrols : List (Subcontrol customTypeDelta)
+     , alerts : List Alert
+     , context : context
+     , fns : restFns
+     , deltaSetters : restDeltaSetters
+     , states : restStates
+     }
+     -> List (Subcontrol customTypeDelta)
     )
-    -> List (Subcontrol delta)
-    -> List Alert
-    -> ( ControlFns context input state e output, restFns )
-    -> ( Delta e -> delta, restDeltaSetters )
-    -> context
-    -> ( State state, restStates )
-    -> List (Subcontrol delta)
-selectedTagViewer next listSubcontrol alerts ( ControlFns fns, restFns ) ( setter, restDeltaSetters ) context ( State internalState state, restStates ) =
+    ->
+        { subcontrols : List (Subcontrol customTypeDelta)
+        , alerts : List Alert
+        , context : context
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , states : ( State state, restStates )
+        }
+    -> List (Subcontrol customTypeDelta)
+selectedTagViewer next { subcontrols, context, alerts, fns, deltaSetters, states } =
+    let
+        ( ControlFns controlFns, restFns ) =
+            fns
+
+        ( setter, restDeltaSetters ) =
+            deltaSetters
+
+        ( State internalState state, restStates ) =
+            states
+    in
     next
-        (listSubcontrol
-            ++ [ { html =
-                    fns.view context
-                        { id = Maybe.withDefault ("control-" ++ Path.toString fns.path) fns.id
-                        , name = Maybe.withDefault ("control-" ++ Path.toString fns.path) fns.name
-                        , label = fns.label
-                        , class = fns.class
-                        , state = state
-                        , status = Intact
-                        , alerts = alerts
-                        , selected = internalState.selected
-                        }
-                        |> List.map (H.map (setter >> StateChangedByInput))
-                 , label = fns.label
-                 , index = fns.index
-                 }
-               ]
-        )
-        alerts
-        restFns
-        restDeltaSetters
-        context
-        restStates
+        { subcontrols =
+            subcontrols
+                ++ [ { html =
+                        controlFns.view context
+                            { id = Maybe.withDefault ("control-" ++ Path.toString controlFns.path) controlFns.id
+                            , name = Maybe.withDefault ("control-" ++ Path.toString controlFns.path) controlFns.name
+                            , label = controlFns.label
+                            , class = controlFns.class
+                            , state = state
+                            , status = Intact
+                            , alerts = alerts
+                            , selected = internalState.selected
+                            }
+                            |> List.map (H.map (setter >> StateChangedByInput))
+                     , label = controlFns.label
+                     , index = controlFns.index
+                     }
+                   ]
+        , alerts = alerts
+        , context = context
+        , fns = restFns
+        , deltaSetters = restDeltaSetters
+        , states = restStates
+        }
 
 
 
