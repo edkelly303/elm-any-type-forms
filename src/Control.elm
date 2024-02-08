@@ -5390,46 +5390,71 @@ customTypeAlertEmitter next { alerts, context, selectedTag, fns, states } =
 
 
 setSelectedTagStateIdle :
-    ((Int
-      -> End
-      -> End
-      -> End
+    (({ selectedTag : Int
+      , fns : End
+      , initialStates : End
+      , toFinalStates : End -> ( State finalState, restFinalStates )
+      }
+      -> ( State finalState, restFinalStates )
      )
-     -> Int
-     -> ( ControlFns context input state delta output, restFns )
-     -> ( State state, restStates )
-     -> ( State state, restStates )
+     ->
+        { selectedTag : Int
+        , fns : ( ControlFns context input state delta output, restFns )
+        , initialStates : ( State initialState, restInitialStates )
+        , toFinalStates : identity -> identity
+        }
+     -> ( State finalState, restFinalStates )
     )
     -> Int
     -> ( ControlFns context input state delta output, restFns )
-    -> ( State state, restStates )
-    -> ( State state, restStates )
+    -> ( State initialState, restInitialStates )
+    -> ( State finalState, restFinalStates )
 setSelectedTagStateIdle idleSetter_ selectedTag fns tagStates =
     idleSetter_
-        (\_ End End -> End)
-        selectedTag
-        fns
-        tagStates
+        (\{ toFinalStates } -> toFinalStates End)
+        { selectedTag = selectedTag
+        , fns = fns
+        , initialStates = tagStates
+        , toFinalStates = identity
+        }
 
 
 selectedTagIdleSetter :
-    (Int
-     -> restFns
-     -> restStates
-     -> restStates
+    ({ initialStates : restInitialStates
+     , toFinalStates : restInitialStates -> ( State finalState, restFinalStates )
+     , selectedTag : Int
+     , fns : restFns
+     }
+     -> ( State finalState, restFinalStates )
     )
-    -> Int
-    -> ( ControlFns context input state delta output, restFns )
-    -> ( State state, restStates )
-    -> ( State state, restStates )
-selectedTagIdleSetter next selectedTag ( ControlFns fns, restFns ) ( state, restStates ) =
-    ( if fns.index == selectedTag then
-        fns.setAllIdle state
+    ->
+        { selectedTag : Int
+        , fns : ( ControlFns context input initialState delta output, restFns )
+        , initialStates : ( State initialState, restInitialStates )
+        , toFinalStates : ( State initialState, restInitialStates ) -> ( State finalState, restFinalStates )
+        }
+    -> ( State finalState, restFinalStates )
+selectedTagIdleSetter next { selectedTag, fns, initialStates, toFinalStates } =
+    let
+        ( ControlFns controlFns, restFns ) =
+            fns
 
-      else
-        state
-    , next selectedTag restFns restStates
-    )
+        ( state, restInitialStates ) =
+            initialStates
+
+        newState =
+            if controlFns.index == selectedTag then
+                controlFns.setAllIdle state
+
+            else
+                state
+    in
+    next
+        { initialStates = restInitialStates
+        , toFinalStates = nestForwards Tuple.pair toFinalStates newState
+        , selectedTag = selectedTag
+        , fns = restFns
+        }
 
 
 validateSelectedTagState :
