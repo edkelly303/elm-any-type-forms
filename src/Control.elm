@@ -12,7 +12,6 @@ module Control exposing
     , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
     , State, Delta, ListDelta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
-    , example
     )
 
 {-|
@@ -325,12 +324,22 @@ bTuple =
     }
 
 
+
+{- d8888b. d888888b d88888b db    db d8b   db  .o88b. d888888b  .d88b.  d8888b. .d8888.
+   88  `8D   `88'   88'     88    88 888o  88 d8P  Y8 `~~88~~' .8P  Y8. 88  `8D 88'  YP
+   88oooY'    88    88ooo   88    88 88V8o 88 8P         88    88    88 88oobY' `8bo.
+   88~~~b.    88    88~~~   88    88 88 V8o88 8b         88    88    88 88`8b     `Y8b.
+   88   8D   .88.   88      88b  d88 88  V888 Y8b  d8    88    `8b  d8' 88 `88. db   8D
+   Y8888P' Y888888P YP      ~Y8888P' VP   V8P  `Y88P'    YP     `Y88P'  88   YD `8888Y'
+-}
+
+
 type Record record
     = Record record
 
 
 type Field field restFields
-    = Field field restFields
+    = Field (State field) restFields
 
 
 type EndRecord
@@ -338,13 +347,10 @@ type EndRecord
 
 
 recordBifunctor :
-    { wrap :
-        ((End -> EndRecord) -> states -> record)
-        -> states
-        -> Record record
-    , wrapper : (restStates -> restFields) -> ( field, restStates ) -> Field field restFields
-    , unwrap : ((EndRecord -> End) -> record -> states) -> Record record -> states
-    , unwrapper : (restFields -> restStates) -> Field field restFields -> ( field, restStates )
+    { wrap : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
+    , wrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
+    , unwrap : ((EndRecord -> End) -> record -> tuple) -> Record record -> tuple
+    , unwrapper : (restFields -> restTuples) -> Field state restFields -> ( State state, restTuples )
     }
 recordBifunctor =
     { wrap = \wrapper_ tup -> Record (wrapper_ (\End -> EndRecord) tup)
@@ -354,32 +360,53 @@ recordBifunctor =
     }
 
 
-rec =
-    { makeState = identity
-    , wrapper = identity
-    , unwrapper = identity
+type Tuple tuple
+    = Tuple tuple
+
+
+type Element state restElements
+    = Element (State state) restElements
+
+
+type EndTuple
+    = EndTuple
+
+
+tupleBifunctor :
+    { wrap : ((End -> EndTuple) -> realTuple -> tuple) -> realTuple -> Tuple tuple
+    , wrapper : (restTuples -> restElements) -> ( State state, restTuples ) -> Element state restElements
+    , unwrap : ((EndTuple -> End) -> tuple -> realTuple) -> Tuple tuple -> realTuple
+    , unwrapper : (restElements -> restTuples) -> Element state restElements -> ( State state, restTuples )
+    }
+tupleBifunctor =
+    { wrap = \wrapper_ tup -> Tuple (wrapper_ (\End -> EndTuple) tup)
+    , wrapper = \next ( this, rest ) -> Element this (next rest)
+    , unwrap = \unwrapper_ (Tuple fields) -> unwrapper_ (\EndTuple -> End) fields
+    , unwrapper = \next (Element this rest) -> ( this, next rest )
     }
 
 
-fld bifunctor state builder =
-    { makeState = nestForwards Tuple.pair builder.makeState state
-    , wrapper = builder.wrapper >> bifunctor.wrapper
-    , unwrapper = builder.unwrapper >> bifunctor.unwrapper
-    }
 
-
-end bifunctor builder =
-    { state = builder.makeState End
-    , wrap = bifunctor.wrap builder.wrapper
-    , unwrap = bifunctor.unwrap builder.unwrapper
-    }
-
-
-example =
-    rec
-        |> fld recordBifunctor 1
-        |> fld recordBifunctor "hello"
-        |> end recordBifunctor
+-- rec =
+--     { makeState = identity
+--     , wrapper = identity
+--     , unwrapper = identity
+--     }
+-- fld bifunctor state builder =
+--     { makeState = nestForwards Tuple.pair builder.makeState state
+--     , wrapper = builder.wrapper >> bifunctor.wrapper
+--     , unwrapper = builder.unwrapper >> bifunctor.unwrapper
+--     }
+-- end bifunctor builder =
+--     { state = builder.makeState End
+--     , wrap = bifunctor.wrap builder.wrapper
+--     , unwrap = bifunctor.unwrap builder.unwrapper
+--     }
+-- example =
+--     rec
+--         |> fld recordBifunctor 1
+--         |> fld recordBifunctor "hello"
+--         |> end recordBifunctor
 
 
 {-| Data used by the `layout` function to render a subcontrol of a combinator.
@@ -2060,7 +2087,12 @@ however, we need to supply two functions that will allow us to both `convert` th
 map :
     { convert : a -> b, revert : b -> a }
     -> Control context state delta a
-    -> Control context ( State state, End ) ( Delta delta, End ) b
+    ->
+        Control
+            context
+            (Record (Field state EndRecord))
+            ( Delta delta, End )
+            b
 map config control =
     Control
         (\path ->
@@ -2096,7 +2128,7 @@ maybe :
     ->
         Control
             context
-            ( State (), ( State ( State state, End ), End ) )
+            ( State (), ( State (Record (Field state EndRecord)), End ) )
             ( Delta (), ( Delta ( Delta delta, End ), End ) )
             (Maybe output)
 maybe control =
@@ -2139,7 +2171,7 @@ result :
     ->
         Control
             context
-            ( State ( State failureState, End ), ( State ( State successState, End ), End ) )
+            ( State (Record (Field failureState EndRecord)), ( State (Record (Field successState EndRecord)), End ) )
             ( Delta ( Delta failureDelta, End ), ( Delta ( Delta successDelta, End ), End ) )
             (Result failureOutput successOutput)
 result failureControl successControl =
@@ -2178,12 +2210,17 @@ result failureControl successControl =
 tuple :
     Control context state1 delta1 output1
     -> Control context state2 delta2 output2
-    -> Control context ( State state1, ( State state2, End ) ) ( Delta delta1, ( Delta delta2, End ) ) ( output1, output2 )
+    ->
+        Control
+            context
+            (Tuple (Element state1 (Element state2 EndTuple)))
+            ( Delta delta1, ( Delta delta2, End ) )
+            ( output1, output2 )
 tuple first second =
-    record Tuple.pair
-        |> field Tuple.first first
-        |> field Tuple.second second
-        |> endRecord
+    product Tuple.pair
+        |> object tupleBifunctor Tuple.first first
+        |> object tupleBifunctor Tuple.second second
+        |> endProduct tupleBifunctor
         |> label "Tuple"
         |> layout
             (\config subcontrols ->
@@ -2215,7 +2252,7 @@ triple :
     ->
         Control
             context
-            ( State state1, ( State state2, ( State state3, End ) ) )
+            (Record (Field state1 (Field state2 (Field state3 EndRecord))))
             ( Delta delta1, ( Delta delta2, ( Delta delta3, End ) ) )
             ( output1, output2, output3 )
 triple first second third =
@@ -2492,7 +2529,7 @@ dict :
     ->
         Control
             context
-            ( State (List (State ( State keyState, ( State valueState, End ) ))), End )
+            (Record (Field (List (State (Tuple (Element keyState (Element valueState EndTuple))))) EndRecord))
             ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
             (Dict.Dict comparable value)
 dict keyControl valueControl =
@@ -2559,7 +2596,12 @@ types. The member type must be `comparable`.
 -}
 set :
     Control context state delta comparable
-    -> Control context ( State (List (State state)), End ) ( Delta (ListDelta delta), End ) (Set.Set comparable)
+    ->
+        Control
+            context
+            (Record (Field (List (State state)) EndRecord))
+            ( Delta (ListDelta delta), End )
+            (Set.Set comparable)
 set memberControl =
     list
         (memberControl |> respond { alert = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
@@ -2590,7 +2632,7 @@ array :
     ->
         Control
             context
-            ( State (List (State state)), End )
+            (Record (Field (List (State state)) EndRecord))
             ( Delta (ListDelta delta), End )
             (Array.Array output)
 array itemControl =
@@ -2623,7 +2665,7 @@ nestBackwards mkBifunctor this =
 
 {-| A data structure used to build records
 -}
-type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer
+type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer wrapper unwrapper
     = RecordBuilder
         { after : after
         , afters : afters
@@ -2645,6 +2687,8 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         , toOutput : toOutput
         , updater : updater
         , viewer : viewer
+        , wrapper : wrapper
+        , unwrapper : unwrapper
         }
 
 
@@ -2669,8 +2713,17 @@ this library is built using the `record` combinator).
             |> endRecord
 
 -}
-record : a -> RecordBuilder End End (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> i -> i) (j -> j) (k -> l -> l) (m -> n -> n) (o -> o) (p -> p) (q -> q) (r -> r) a (s -> s) (t -> t)
-record toOutput =
+
+
+
+-- record : a -> RecordBuilder End End (b -> b) (c -> c) (d -> d) (e -> e) (f -> f) (g -> g) (h -> i -> i) (j -> j) (k -> l -> l) (m -> n -> n) (o -> o) (p -> p) (q -> q) (r -> r) a (s -> s) (t -> t)
+
+
+record =
+    product
+
+
+product toOutput =
     RecordBuilder
         { index = 0
         , toOutput = toOutput
@@ -2692,6 +2745,8 @@ record toOutput =
         , errorCollector = identity
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
+        , wrapper = identity
+        , unwrapper = identity
         }
 
 
@@ -2706,274 +2761,17 @@ record toOutput =
             |> endRecord
 
 -}
-field :
-    (recordOutput9 -> output7)
-    -> AdvancedControl context9 input9 state8 delta10 output7
-    ->
-        RecordBuilder
-            a16
-            b
-            (( Delta delta11, a15 ) -> d4)
-            (( ( Delta delta11, a15 ) -> d4, a14 ) -> d3)
-            (a13
-             -> { alerts : List Alert, fns : restFns7, states : restStates6 }
-             -> List Alert
-            )
-            (a12
-             ->
-                { cmds : List (Cmd recordDelta2)
-                , deltaSetters : restDeltaSetters3
-                , fieldDeltas : restDeltas2
-                }
-             -> List (Cmd recordDelta2)
-            )
-            (a11
-             ->
-                { alerts : List Alert
-                , feedback : List Feedback
-                , fns : restFns6
-                , states : restStates5
-                }
-             -> List Feedback
-            )
-            (a10
-             ->
-                { alerts : List Alert
-                , context : context6
-                , fns : restFns5
-                , states : restStates4
-                }
-             -> List Alert
-            )
-            (Path.Path
-             -> ( RecordFns context9 input9 state8 delta10 output7 recordOutput9, a9 )
-             -> d2
-            )
-            (a8
-             ->
-                { fns : restFns4
-                , inputStates : restInputStates
-                , outputStates : restInputStates -> outputStates
-                }
-             -> outputStates
-            )
-            (Path.Path -> ( Cmd (Delta delta10), a7 ) -> d1)
-            (Path.Path -> ( State state8, a6 ) -> d)
-            (a5
-             ->
-                { deltaSetters : deltaSetters1
-                , deltas : List (Cmd msg1)
-                , fns : fns
-                , recordInput : recordOutput4
-                , states : nextState -> states
-                }
-             -> statesAndDeltas
-            )
-            (a4
-             ->
-                { afters : afters
-                , befores : befores
-                , output : restDeltaSetters2 -> deltaSetters
-                }
-             -> deltaSetters
-            )
-            (a3
-             ->
-                { context : context3
-                , fns : restFns3
-                , states : restStates3
-                , toOutputResult : Result (List Feedback) output1_1
-                }
-             -> Result (List Feedback) output2_1
-            )
-            (a2
-             ->
-                { context : context2
-                , fns : restFns2
-                , listSubs : List (Sub msg)
-                , setters : restDeltas1
-                , states : restStates2
-                }
-             -> List (Sub msg)
-            )
-            toOutput
-            (a1
-             ->
-                { context : context1
-                , deltaSetters : restDeltaSetters1
-                , deltas : restDeltas
-                , fns : restFns1
-                , newCmds : List (Cmd recordDelta1)
-                , newStates : restStates1 -> intermediateRecordStates
-                , states : restStates1
-                }
-             -> { newCmds : List (Cmd recordDelta1), newStates : finalRecordStates }
-            )
-            (a
-             ->
-                { alerts : List Alert
-                , context : context
-                , deltaSetters : restDeltaSetters
-                , fns : restFns
-                , states : restStates
-                , views : List (Subcontrol recordDelta)
-                }
-             -> List (Subcontrol recordDelta)
-            )
-    ->
-        RecordBuilder
-            ( Delta delta9, a16 )
-            ( a16, b )
-            (a15 -> d4)
-            (a14 -> d3)
-            (a13
-             ->
-                { alerts : List Alert
-                , fns :
-                    ( RecordFns context8 input8 state7 delta8 output6 recordOutput8
-                    , restFns7
-                    )
-                , states : ( State state7, restStates6 )
-                }
-             -> List Alert
-            )
-            (a12
-             ->
-                { cmds : List (Cmd recordDelta2)
-                , deltaSetters : ( fieldDelta1 -> recordDelta2, restDeltaSetters3 )
-                , fieldDeltas : ( Cmd fieldDelta1, restDeltas2 )
-                }
-             -> List (Cmd recordDelta2)
-            )
-            (a11
-             ->
-                { alerts : List Alert
-                , feedback : List Feedback
-                , fns :
-                    ( RecordFns context7 input7 state6 delta7 output5 recordOutput7
-                    , restFns6
-                    )
-                , states : ( State state6, restStates5 )
-                }
-             -> List Feedback
-            )
-            (a10
-             ->
-                { alerts : List Alert
-                , context : context6
-                , fns :
-                    ( RecordFns context6 input6 state5 delta6 output4 recordOutput6
-                    , restFns5
-                    )
-                , states : ( State state5, restStates4 )
-                }
-             -> List Alert
-            )
-            (Path.Path -> a9 -> d2)
-            (a8
-             ->
-                { fns :
-                    ( RecordFns
-                        context5
-                        input5
-                        inputState
-                        delta5
-                        output3
-                        recordOutput5
-                    , restFns4
-                    )
-                , inputStates : ( State inputState, restInputStates )
-                , outputStates : ( State inputState, restInputStates ) -> outputStates
-                }
-             -> outputStates
-            )
-            (Path.Path -> a7 -> d1)
-            (Path.Path -> a6 -> d)
-            (a5
-             ->
-                { deltaSetters : ( Delta delta4 -> msg1, deltaSetters1 )
-                , deltas : List (Cmd msg1)
-                , fns :
-                    ( RecordFns context4 input4 state4 delta4 input4 recordOutput4
-                    , fns
-                    )
-                , recordInput : recordOutput4
-                , states : ( State state4, nextState ) -> states
-                }
-             -> statesAndDeltas
-            )
-            (a4
-             ->
-                { afters : ( after, afters )
-                , befores : ( ( value, after ) -> delta3, befores )
-                , output : ( value -> delta3, restDeltaSetters2 ) -> deltaSetters
-                }
-             -> deltaSetters
-            )
-            (a3
-             ->
-                { context : context3
-                , fns :
-                    ( RecordFns context3 input3 state3 delta2 output0 recordOutput3
-                    , restFns3
-                    )
-                , states : ( State state3, restStates3 )
-                , toOutputResult : Result (List Feedback) (output0 -> output1_1)
-                }
-             -> Result (List Feedback) output2_1
-            )
-            (a2
-             ->
-                { context : context2
-                , fns :
-                    ( RecordFns context2 input2 state2 delta1 output2 recordOutput2
-                    , restFns2
-                    )
-                , listSubs : List (Sub msg)
-                , setters : ( Delta delta1 -> msg, restDeltas1 )
-                , states : ( State state2, restStates2 )
-                }
-             -> List (Sub msg)
-            )
-            toOutput
-            (a1
-             ->
-                { context : context1
-                , deltaSetters :
-                    ( Delta fieldDelta -> recordDelta1, restDeltaSetters1 )
-                , deltas : ( Delta fieldDelta, restDeltas )
-                , fns :
-                    ( RecordFns
-                        context1
-                        input1
-                        state1
-                        fieldDelta
-                        output1
-                        recordOutput1
-                    , restFns1
-                    )
-                , newCmds : List (Cmd recordDelta1)
-                , newStates :
-                    ( State state1, restStates1 ) -> intermediateRecordStates
-                , states : ( State state1, restStates1 )
-                }
-             -> { newCmds : List (Cmd recordDelta1), newStates : finalRecordStates }
-            )
-            (a
-             ->
-                { alerts : List Alert
-                , context : context
-                , deltaSetters : ( Delta delta -> recordDelta, restDeltaSetters )
-                , fns :
-                    ( RecordFns context input state delta output recordOutput
-                    , restFns
-                    )
-                , states : ( State state, restStates )
-                , views : List (Subcontrol recordDelta)
-                }
-             -> List (Subcontrol recordDelta)
-            )
-field fromInput (Control control) (RecordBuilder builder) =
+
+
+
+--
+
+
+field =
+    object recordBifunctor
+
+
+object bifunctor fromInput (Control control) (RecordBuilder builder) =
     let
         newIndex =
             builder.index + 1
@@ -3047,6 +2845,8 @@ field fromInput (Control control) (RecordBuilder builder) =
         , errorCollector = builder.errorCollector >> recordFeedbackCollector
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> recordDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> recordSubscriptionCollector
+        , wrapper = builder.wrapper >> bifunctor.wrapper
+        , unwrapper = builder.unwrapper >> bifunctor.unwrapper
         }
 
 
@@ -3061,235 +2861,26 @@ field fromInput (Control control) (RecordBuilder builder) =
             |> endRecord
 
 -}
-endRecord :
-    RecordBuilder
-        after
-        afters
-        before
-        (End -> befores)
-        (({ alerts : List Alert, fns : End, states : End } -> List Alert)
-         ->
-            { alerts : List Alert
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , states : ( State state, restStates )
-            }
-         -> List Alert
-        )
-        (({ cmds : List (Cmd ( Delta delta, restDeltas ))
-          , deltaSetters : End
-          , fieldDeltas : End
-          }
-          -> List (Cmd ( Delta delta, restDeltas ))
-         )
-         ->
-            { cmds : List (Cmd ( Delta delta, restDeltas ))
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-            , fieldDeltas : fieldDeltas
-            }
-         -> List (Cmd ( Delta delta, restDeltas ))
-        )
-        (({ alerts : List Alert, feedback : List Feedback, fns : End, states : End }
-          -> List Feedback
-         )
-         ->
-            { alerts : List Alert
-            , feedback : List Feedback
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , states : ( State state, restStates )
-            }
-         -> List Feedback
-        )
-        (({ alerts : List Alert, context : context, fns : End, states : End }
-          -> List Alert
-         )
-         ->
-            { alerts : List Alert
-            , context : context
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , states : ( State state, restStates )
-            }
-         -> List Alert
-        )
-        (Path
-         -> End
-         -> ( RecordFns context input1 state delta output1 recordInput, restFns )
-        )
-        (({ fns : End
-          , inputStates : End
-          , outputStates : End -> ( State state, restStates )
-          }
-          -> ( State state, restStates )
-         )
-         ->
-            { fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , inputStates : ( State state, restStates )
-            , outputStates : identity2 -> identity2
-            }
-         -> ( State state, restStates )
-        )
-        (Path -> End -> fieldDeltas)
-        (Path -> End -> ( State state, restStates ))
-        (({ deltaSetters : End
-          , deltas : List (Cmd ( Delta delta, restDeltas ))
-          , fns : End
-          , recordInput : input
-          , states : End -> ( State state, restStates )
-          }
-          ->
-            ( State ( State state, restStates )
-            , Cmd (Delta ( Delta delta, restDeltas ))
-            )
-         )
-         ->
-            { deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-            , deltas : List (Cmd ( Delta delta, restDeltas ))
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , recordInput : input
-            , states : identity1 -> identity1
-            }
-         ->
-            ( State ( State state, restStates )
-            , Cmd (Delta ( Delta delta, restDeltas ))
-            )
-        )
-        (({ afters : End
-          , befores : End
-          , output :
-                End
-                -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-          }
-          -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-         )
-         -> { afters : afters, befores : befores, output : identity -> identity }
-         -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-        )
-        (({ context : context
-          , fns : End
-          , states : End
-          , toOutputResult : Result (List Feedback) output
-          }
-          -> Result (List Feedback) output
-         )
-         ->
-            { context : context
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , states : ( State state, restStates )
-            , toOutputResult : Result (List Feedback) output1_1
-            }
-         -> Result (List Feedback) output
-        )
-        (({ context : context
-          , fns : End
-          , listSubs : List (Sub ( Delta delta, restDeltas ))
-          , setters : End
-          , states : End
-          }
-          -> List (Sub ( Delta delta, restDeltas ))
-         )
-         ->
-            { context : context
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , listSubs : List (Sub ( Delta delta, restDeltas ))
-            , setters :
-                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-            , states : ( State state, restStates )
-            }
-         -> List (Sub ( Delta delta, restDeltas ))
-        )
-        output1_1
-        (({ context : context
-          , deltaSetters : End
-          , deltas : End
-          , fns : End
-          , newCmds : List (Cmd ( Delta delta, restDeltas ))
-          , newStates : End -> ( State state, restStates )
-          , states : End
-          }
-          ->
-            { newCmds : List (Cmd ( Delta delta, restDeltas ))
-            , newStates : End -> ( State state, restStates )
-            }
-         )
-         ->
-            { context : context
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-            , deltas : ( Delta delta, restDeltas )
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , newCmds : List e
-            , newStates : d -> d
-            , states : ( State state, restStates )
-            }
-         ->
-            { newCmds : List (Cmd ( Delta delta, restDeltas ))
-            , newStates : End -> ( State state, restStates )
-            }
-        )
-        (({ alerts : List Alert
-          , context : context
-          , deltaSetters : End
-          , fns : End
-          , states : End
-          , views : List (Subcontrol ( Delta delta, restDeltas ))
-          }
-          -> List (Subcontrol ( Delta delta, restDeltas ))
-         )
-         ->
-            { alerts : List Alert
-            , context : context
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-            , fns :
-                ( RecordFns context input1 state delta output1 recordInput
-                , restFns
-                )
-            , states : ( State state, restStates )
-            , views : List (Subcontrol ( Delta delta, restDeltas ))
-            }
-         -> List (Subcontrol ( Delta delta, restDeltas ))
-        )
-    ->
-        AdvancedControl
-            context
-            input
-            ( State state, restStates )
-            ( Delta delta, restDeltas )
-            output
-endRecord (RecordBuilder builder) =
+endRecord =
+    endProduct recordBifunctor
+
+
+endProduct bifunctor (RecordBuilder builder) =
     Control
         (\path ->
             let
                 fns =
                     builder.fns path End
 
+                wrap =
+                    bifunctor.wrap builder.wrapper
+
+                unwrap =
+                    bifunctor.unwrap builder.unwrapper
+
                 initialStates =
                     builder.initialStates path End
+                        |> wrap
 
                 initialDeltas =
                     builder.initialDeltas path End
@@ -3297,52 +2888,64 @@ endRecord (RecordBuilder builder) =
                 deltaSetters =
                     makeDeltaSetters builder.makeSetters builder.befores builder.afters
 
-                update context delta (State s state) =
+                update context delta (State internalState states) =
                     case delta of
                         NoDelta ->
-                            ( State s state, Cmd.none )
+                            ( State internalState states, Cmd.none )
 
                         StateChangedByInput deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater context fns deltaSetters deltas state
+                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrap states)
                             in
-                            ( State s newState
+                            ( State internalState (wrap newState)
                             , Cmd.map StateChangedByInput cmd
                             )
 
                         StateChangedInternally deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater context fns deltaSetters deltas state
+                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrap states)
                             in
-                            ( State s newState
+                            ( State internalState (wrap newState)
                             , Cmd.map StateChangedInternally cmd
                             )
 
                         TagSelected index ->
-                            ( State { s | selected = index } state
+                            ( State { internalState | selected = index } states
                             , Cmd.none
                             )
 
                         _ ->
-                            ( State s state, Cmd.none )
+                            ( State internalState states, Cmd.none )
 
                 subcontrolViews context config =
-                    viewRecordStates builder.viewer context fns deltaSetters config
+                    let
+                        unwrappedConfig =
+                            { state = unwrap config.state
+                            , alerts = config.alerts
+                            , class = config.class
+                            , id = config.id
+                            , label = config.label
+                            , name = config.name
+                            , selected = config.selected
+                            , status = config.status
+                            }
+                    in
+                    viewRecordStates builder.viewer context fns deltaSetters unwrappedConfig
 
                 view context config =
-                    viewRecordStates builder.viewer context fns deltaSetters config
+                    subcontrolViews context config
                         |> List.concatMap .html
 
                 parse context (State _ state) =
-                    validateRecordStates builder.parser builder.toOutput fns context state
+                    validateRecordStates builder.parser builder.toOutput fns context (unwrap state)
 
                 setAllIdle (State i state) =
-                    State { i | status = Idle_ } (setAllRecordStatesToIdle builder.idleSetter fns state)
+                    State { i | status = Idle_ } (wrap (setAllRecordStatesToIdle builder.idleSetter fns (unwrap state)))
 
                 emitAlerts context (State _ state) =
-                    emitAlertsForRecord builder.alertEmitter fns context state
+                    emitAlertsForRecord builder.alertEmitter fns context (unwrap state)
             in
             ControlFns
                 { path = path
@@ -3351,7 +2954,10 @@ endRecord (RecordBuilder builder) =
                     ( State { status = Intact_, selected = 1 } initialStates
                     , initialiseRecordDeltas builder.deltaInitialiser deltaSetters initialDeltas
                     )
-                , initPrefilled = \output -> initialiseRecordStates builder.initialiser output fns deltaSetters
+                , initPrefilled =
+                    \output ->
+                        initialiseRecordStates builder.initialiser output fns deltaSetters
+                            |> Tuple.mapFirst (\(State i s) -> State i (wrap s))
                 , baseUpdate = \_ -> update
                 , update = update
                 , subControlViews = subcontrolViews
@@ -3359,14 +2965,14 @@ endRecord (RecordBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(State _ states) alerts -> collectFeedbackForRecord builder.errorCollector alerts fns states
+                , collectFeedback = \(State _ states) alerts -> collectFeedbackForRecord builder.errorCollector alerts fns (unwrap states)
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord builder.debouncingReceiverCollector fns states
+                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord builder.debouncingReceiverCollector fns (unwrap states)
                 , label = "Record"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \context (State _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns context states
+                , subscriptions = \context (State _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns context (unwrap states)
                 }
         )
 
@@ -4000,7 +3606,7 @@ viewRecordStates :
     -> context
     -> ( RecordFns context input state delta output recordOutput, restFns )
     -> ( Delta delta -> recordDelta, restDeltaSetters )
-    -> { j | alerts : List Alert, state : ( State state, restStates ) }
+    -> InternalViewConfig ( State state, restStates )
     -> List (Subcontrol recordDelta)
 viewRecordStates viewer context fns setters config =
     viewer (\{ views } -> views)
