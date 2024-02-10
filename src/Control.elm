@@ -337,7 +337,7 @@ type EndRecord
     = EndRecord
 
 
-bRecord :
+recordBifunctor :
     { wrap :
         ((End -> EndRecord) -> states -> record)
         -> states
@@ -346,7 +346,7 @@ bRecord :
     , unwrap : ((EndRecord -> End) -> record -> states) -> Record record -> states
     , unwrapper : (restFields -> restStates) -> Field field restFields -> ( field, restStates )
     }
-bRecord =
+recordBifunctor =
     { wrap = \wrapper_ tup -> Record (wrapper_ (\End -> EndRecord) tup)
     , wrapper = \next ( this, rest ) -> Field this (next rest)
     , unwrap = \unwrapper_ (Record fields) -> unwrapper_ (\EndRecord -> End) fields
@@ -377,9 +377,9 @@ end bifunctor builder =
 
 example =
     start
-        |> fld bRecord 1
-        |> fld bRecord 2
-        |> end bRecord
+        |> fld recordBifunctor 1
+        |> fld recordBifunctor 2
+        |> end recordBifunctor
 
 
 {-| Data used by the `layout` function to render a subcontrol of a combinator.
