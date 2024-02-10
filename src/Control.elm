@@ -12,6 +12,7 @@ module Control exposing
     , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
     , State, Delta, ListDelta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
+    , example
     )
 
 {-|
@@ -316,28 +317,69 @@ type ControlFns context input state delta output
         }
 
 
-type alias Bifunctor bifunctor first rest =
-    { wrap : first -> rest -> bifunctor
-    , unwrap : bifunctor -> ( first, rest )
-    }
-
-
-bTuple : Bifunctor ( first, rest ) first rest
 bTuple =
-    { wrap = Tuple.pair
-    , unwrap = identity
+    { wrap = \wrapper_ tup -> wrapper_ identity tup
+    , wrapper = identity
+    , unwrap = \unwrapper_ bif -> unwrapper_ identity bif
+    , unwrapper = identity
     }
 
 
-type Field state restFields
-    = Field state restFields
+type Record record
+    = Record record
 
 
-bField : Bifunctor (Field state restFields) state restFields
-bField =
-    { wrap = Field
-    , unwrap = \(Field state restFields) -> ( state, restFields )
+type Field field restFields
+    = Field field restFields
+
+
+type EndRecord
+    = EndRecord
+
+
+bRecord :
+    { wrap :
+        ((End -> EndRecord) -> states -> record)
+        -> states
+        -> Record record
+    , wrapper : (restStates -> restFields) -> ( field, restStates ) -> Field field restFields
+    , unwrap : ((EndRecord -> End) -> record -> states) -> Record record -> states
+    , unwrapper : (restFields -> restStates) -> Field field restFields -> ( field, restStates )
     }
+bRecord =
+    { wrap = \wrapper_ tup -> Record (wrapper_ (\End -> EndRecord) tup)
+    , wrapper = \next ( this, rest ) -> Field this (next rest)
+    , unwrap = \unwrapper_ (Record fields) -> unwrapper_ (\EndRecord -> End) fields
+    , unwrapper = \next (Field this rest) -> ( this, next rest )
+    }
+
+
+start =
+    { makeState = identity
+    , wrapper = identity
+    , unwrapper = identity
+    }
+
+
+fld bifunctor state builder =
+    { makeState = nestForwards Tuple.pair builder.makeState state
+    , wrapper = builder.wrapper >> bifunctor.wrapper
+    , unwrapper = builder.unwrapper >> bifunctor.unwrapper
+    }
+
+
+end bifunctor builder =
+    { state = builder.makeState End
+    , wrap = bifunctor.wrap builder.wrapper
+    , unwrap = bifunctor.unwrap builder.unwrapper
+    }
+
+
+example =
+    start
+        |> fld bRecord 1
+        |> fld bRecord 2
+        |> end bRecord
 
 
 {-| Data used by the `layout` function to render a subcontrol of a combinator.
