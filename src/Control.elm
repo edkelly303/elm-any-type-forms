@@ -354,7 +354,7 @@ recordBifunctor =
     }
 
 
-start =
+rec =
     { makeState = identity
     , wrapper = identity
     , unwrapper = identity
@@ -376,9 +376,9 @@ end bifunctor builder =
 
 
 example =
-    start
+    rec
         |> fld recordBifunctor 1
-        |> fld recordBifunctor 2
+        |> fld recordBifunctor "hello"
         |> end recordBifunctor
 
 
