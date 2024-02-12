@@ -2409,8 +2409,11 @@ list (Control ctrl) =
                                                         else
                                                             Just alert
 
-                                                    _ ->
-                                                        Just alert
+                                                    AlertLabel label_ ->
+                                                        Just (AlertLabel label_)
+
+                                                    AlertPath path_ number ->
+                                                        Just (AlertPath path_ number)
                                             )
                                             alerts
                                 in
@@ -5610,8 +5613,11 @@ listView path context config debouncingReceivers subcontrol =
                                                         else
                                                             Just alert
 
-                                                    _ ->
-                                                        Just alert
+                                                    AlertLabel label_ ->
+                                                        Just (AlertLabel label_)
+
+                                                    AlertPath path_ number ->
+                                                        Just (AlertPath path_ number)
                                             )
                                             config.alerts
 
