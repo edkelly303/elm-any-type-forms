@@ -2164,6 +2164,18 @@ tuple first second =
 -}
 
 
+type Triple a b c
+    = Triple (State a) (State b) (State c)
+
+
+tripleBifunctor =
+    { wrap = \_ ( a, ( b, ( c, End ) ) ) -> Triple a b c
+    , wrapper = \_ _ -> identity
+    , unwrap = \_ (Triple a b c) -> ( a, ( b, ( c, End ) ) )
+    , unwrapper = \_ _ -> identity
+    }
+
+
 {-| A combinator that produces a triple of three controls of given types.
 
     myTripleControl =
@@ -2177,15 +2189,15 @@ triple :
     ->
         Control
             context
-            (Record (Field state1 (Field state2 (Field state3 EndRecord))))
+            (Triple state1 state2 state3)
             ( Delta delta1, ( Delta delta2, ( Delta delta3, End ) ) )
             ( output1, output2, output3 )
 triple first second third =
-    record (\a b c -> ( a, b, c ))
-        |> field (\( a, _, _ ) -> a) first
-        |> field (\( _, b, _ ) -> b) second
-        |> field (\( _, _, c ) -> c) third
-        |> endRecord
+    product (\a b c -> ( a, b, c ))
+        |> object tripleBifunctor (\( a, _, _ ) -> a) first
+        |> object tripleBifunctor (\( _, b, _ ) -> b) second
+        |> object tripleBifunctor (\( _, _, c ) -> c) third
+        |> endProduct tripleBifunctor
         |> label "Triple"
         |> layout
             (\config subcontrols ->
