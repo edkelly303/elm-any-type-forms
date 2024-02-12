@@ -2108,6 +2108,24 @@ result failureControl successControl =
 -}
 
 
+type Tuple fst snd
+    = Tuple (State fst) (State snd)
+
+
+tupleBifunctor :
+    { wrap : (d -> e -> f -> f) -> ( State fst, ( State snd, End ) ) -> Tuple fst snd
+    , wrapper : d -> e -> f -> f
+    , unwrap : (j -> k -> l -> l) -> Tuple fst snd -> ( State fst, ( State snd, End ) )
+    , unwrapper : j -> k -> l -> l
+    }
+tupleBifunctor =
+    { wrap = \_ ( fst, ( snd, End ) ) -> Tuple fst snd
+    , wrapper = \_ _ -> identity
+    , unwrap = \_ (Tuple fst snd) -> ( fst, ( snd, End ) )
+    , unwrapper = \_ _ -> identity
+    }
+
+
 {-| A combinator that produces a tuple of two controls of given types.
 
     myTupleControl =
@@ -2120,7 +2138,7 @@ tuple :
     ->
         Control
             context
-            (Tuple (Element state1 (Element state2 EndTuple)))
+            (Tuple state1 state2)
             ( Delta delta1, ( Delta delta2, End ) )
             ( output1, output2 )
 tuple first second =
