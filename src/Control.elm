@@ -2469,7 +2469,7 @@ dict :
     ->
         Control
             context
-            (Record (Field (List (State (Tuple (Element keyState (Element valueState EndTuple))))) EndRecord))
+            (Record (Field (List (State (Tuple keyState valueState))) EndRecord))
             ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
             (Dict.Dict comparable value)
 dict keyControl valueControl =
