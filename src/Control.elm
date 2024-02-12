@@ -5598,7 +5598,7 @@ listView path context config debouncingReceivers subcontrol =
                                     (ControlFns itemFns) =
                                         subcontrol itemPath
 
-                                    filteredAlerts1 =
+                                    relevantAlerts =
                                         List.filterMap
                                             (\alert ->
                                                 case alert of
@@ -5621,8 +5621,8 @@ listView path context config debouncingReceivers subcontrol =
                                             )
                                             config.alerts
 
-                                    filteredAlerts2 =
-                                        List.filter (\f -> not <| List.member f debouncingReceivers) filteredAlerts1
+                                    relevantNonDebouncedAlerts =
+                                        List.filter (\f -> not <| List.member f debouncingReceivers) relevantAlerts
                                 in
                                 H.li []
                                     [ H.div []
@@ -5632,8 +5632,8 @@ listView path context config debouncingReceivers subcontrol =
                                             , label = itemFns.label
                                             , class = itemFns.class
                                             , state = state
-                                            , status = getStatus itemFns.parse itemFns.collectFeedback filteredAlerts2 context (State internalState state)
-                                            , alerts = filteredAlerts2
+                                            , status = getStatus itemFns.parse itemFns.collectFeedback relevantNonDebouncedAlerts context (MkState meta state)
+                                            , alerts = relevantNonDebouncedAlerts
                                             , selected = internalState.selected
                                             }
                                         )
