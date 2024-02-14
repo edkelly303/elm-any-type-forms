@@ -2475,23 +2475,29 @@ dict :
 dict keyControl valueControl =
     list
         (tuple
-            (keyControl |> respond { alert = "@@dict-unique-keys", fail = True, message = "Keys must be unique" })
+            (keyControl
+                |> respond
+                    { alert = "@@dict-unique-keys"
+                    , fail = True
+                    , message = "Keys must be unique"
+                    }
+            )
             valueControl
             |> layout (\_ subcontrols -> List.concatMap .html subcontrols)
         )
-        |> alertAtIndexesWithContext
-            (\context output ->
+        |> alertAtIndexes
+            (\output ->
                 output
                     |> List.map Tuple.first
-                    |> nonUniqueIndexes context
+                    |> nonUniqueIndexes 
             )
             "@@dict-unique-keys"
         |> label "Dict"
         |> map { convert = Dict.fromList, revert = Dict.toList }
 
 
-nonUniqueIndexes : context -> List comparable -> List Int
-nonUniqueIndexes _ listState =
+nonUniqueIndexes : List comparable -> List Int
+nonUniqueIndexes listState =
     let
         duplicates =
             List.Extra.frequencies listState
@@ -2545,7 +2551,7 @@ set :
 set memberControl =
     list
         (memberControl |> respond { alert = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
-        |> alertAtIndexesWithContext nonUniqueIndexes "@@set-unique-keys"
+        |> alertAtIndexes nonUniqueIndexes "@@set-unique-keys"
         |> label "Set"
         |> map { convert = Set.fromList, revert = Set.toList }
 
