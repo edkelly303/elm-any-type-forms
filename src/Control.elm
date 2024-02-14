@@ -2035,7 +2035,7 @@ maybe :
     ->
         Control
             context
-            (CustomType (Tag () (Tag (Record (Field state EndRecord)) EndCustomType)))
+            (CustomType (Tag EndTag (Tag (Arg state EndTag) EndCustomType)))
             ( Delta (), ( Delta ( Delta delta, End ), End ) )
             (Maybe output)
 maybe control =
@@ -2078,7 +2078,7 @@ result :
     ->
         Control
             context
-            (CustomType (Tag (Record (Field failureState EndRecord)) (Tag (Record (Field successState EndRecord)) EndCustomType)))
+            (CustomType (Tag (Arg failureState EndTag) (Tag (Arg successState EndTag) EndCustomType)))
             ( Delta ( Delta failureDelta, End ), ( Delta ( Delta successDelta, End ), End ) )
             (Result failureOutput successOutput)
 result failureControl successControl =
@@ -4217,6 +4217,28 @@ endCustomType (CustomTypeBuilder builder) =
 -}
 
 
+type Arg arg restArgs
+    = Arg (State arg) restArgs
+
+
+type EndTag
+    = EndTag
+
+
+argWrapper :
+    { wrap : ((End -> EndTag) -> tuple -> args) -> tuple -> args
+    , wrapper : (restTuples -> restArgs) -> ( State arg, restTuples ) -> Arg arg restArgs
+    , unwrap : ((EndTag -> End) -> args -> tuple) -> args -> tuple
+    , unwrapper : (restArgs -> restTuples) -> Arg arg restArgs -> ( State arg, restTuples )
+    }
+argWrapper =
+    { wrap = \wrapper_ tup -> wrapper_ (\End -> EndTag) tup
+    , wrapper = \next ( arg, restArgs ) -> Arg arg (next restArgs)
+    , unwrap = \unwrapper_ args -> unwrapper_ (\EndTag -> End) args
+    , unwrapper = \next (Arg arg restArgs) -> ( arg, next restArgs )
+    }
+
+
 {-| Add a tag with no arguments to a custom type.
 
     type Unit
@@ -4242,15 +4264,15 @@ tag0 label_ tag =
         )
 
 
-null : tag -> Control context () () tag
+null : tag -> Control context EndTag () tag
 null tag =
     define
-        { blank = ( (), Cmd.none )
-        , prefill = \_ -> ( (), Cmd.none )
-        , update = \() () -> ( (), Cmd.none )
+        { blank = ( EndTag, Cmd.none )
+        , prefill = \_ -> ( EndTag, Cmd.none )
         , view = \_ -> []
-        , parse = \() -> Ok tag
-        , subscriptions = \() -> Sub.none
+        , update = \_ EndTag -> ( EndTag, Cmd.none )
+        , parse = \EndTag -> Ok tag
+        , subscriptions = \EndTag -> Sub.none
         , label = ""
         }
 
@@ -4278,9 +4300,9 @@ null tag =
 tag1 label_ tag control =
     tagHelper
         label_
-        (record tag
-            |> field Tuple.first control
-            |> endRecord
+        (product tag
+            |> object argWrapper Tuple.first control
+            |> endProduct argWrapper
         )
         (\insertArgStateIntoTagStates arg1 ->
             insertArgStateIntoTagStates ( arg1, End )
@@ -4305,10 +4327,10 @@ tag1 label_ tag control =
 tag2 label_ tag control1 control2 =
     tagHelper
         label_
-        (record tag
-            |> field Tuple.first control1
-            |> field (Tuple.second >> Tuple.first) control2
-            |> endRecord
+        (product tag
+            |> object argWrapper Tuple.first control1
+            |> object argWrapper (Tuple.second >> Tuple.first) control2
+            |> endProduct argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, End ) )
@@ -4333,11 +4355,11 @@ tag2 label_ tag control1 control2 =
 tag3 label_ tag control1 control2 control3 =
     tagHelper
         label_
-        (record tag
-            |> field Tuple.first control1
-            |> field (Tuple.second >> Tuple.first) control2
-            |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> endRecord
+        (product tag
+            |> object argWrapper Tuple.first control1
+            |> object argWrapper (Tuple.second >> Tuple.first) control2
+            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> endProduct argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, End ) ) )
@@ -4349,12 +4371,12 @@ tag3 label_ tag control1 control2 control3 =
 tag4 label_ tag control1 control2 control3 control4 =
     tagHelper
         label_
-        (record tag
-            |> field Tuple.first control1
-            |> field (Tuple.second >> Tuple.first) control2
-            |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
-            |> endRecord
+        (product tag
+            |> object argWrapper Tuple.first control1
+            |> object argWrapper (Tuple.second >> Tuple.first) control2
+            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> endProduct argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, End ) ) ) )
@@ -4366,13 +4388,13 @@ tag4 label_ tag control1 control2 control3 control4 =
 tag5 label_ tag control1 control2 control3 control4 control5 =
     tagHelper
         label_
-        (record tag
-            |> field Tuple.first control1
-            |> field (Tuple.second >> Tuple.first) control2
-            |> field (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
-            |> field (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
-            |> endRecord
+        (product tag
+            |> object argWrapper Tuple.first control1
+            |> object argWrapper (Tuple.second >> Tuple.first) control2
+            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
+            |> endProduct argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 arg5 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, ( arg5, End ) ) ) ) )
