@@ -2491,7 +2491,7 @@ dict keyControl valueControl =
 
 
 nonUniqueIndexes : context -> List comparable -> List Int
-nonUniqueIndexes context listState =
+nonUniqueIndexes _ listState =
     let
         duplicates =
             List.Extra.frequencies listState
