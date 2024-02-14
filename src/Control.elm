@@ -2035,7 +2035,7 @@ maybe :
     ->
         Control
             context
-            ( State (), ( State (Record (Field state EndRecord)), End ) )
+            (CustomType (Tag () (Tag (Record (Field state EndRecord)) EndCustomType)))
             ( Delta (), ( Delta ( Delta delta, End ), End ) )
             (Maybe output)
 maybe control =
@@ -2078,7 +2078,7 @@ result :
     ->
         Control
             context
-            ( State (Record (Field failureState EndRecord)), ( State (Record (Field successState EndRecord)), End ) )
+            (CustomType (Tag (Record (Field failureState EndRecord)) (Tag (Record (Field successState EndRecord)) EndCustomType)))
             ( Delta ( Delta failureDelta, End ), ( Delta ( Delta successDelta, End ), End ) )
             (Result failureOutput successOutput)
 result failureControl successControl =
@@ -2489,7 +2489,7 @@ dict keyControl valueControl =
             (\output ->
                 output
                     |> List.map Tuple.first
-                    |> nonUniqueIndexes 
+                    |> nonUniqueIndexes
             )
             "@@dict-unique-keys"
         |> label "Dict"
@@ -4030,7 +4030,7 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
         , subscriptionCollector = builder.subscriptionCollector >> customTypeSubscriptionCollector
         , destructor = builder.destructor
         , wrapper = builder.wrapper >> customTypeWrapper.wrapper
-        , unwrapper = builder.wrapper >> customTypeWrapper.unwrapper
+        , unwrapper = builder.unwrapper >> customTypeWrapper.unwrapper
         }
 
 
@@ -4057,11 +4057,18 @@ endCustomType (CustomTypeBuilder builder) =
     Control
         (\path ->
             let
+                wrap =
+                    customTypeWrapper.wrap builder.wrapper
+
+                unwrap =
+                    customTypeWrapper.unwrap builder.unwrapper
+
                 fns =
                     builder.fns path End
 
                 initialStates =
                     builder.initialStates path End
+                        |> wrap
 
                 initialDeltas =
                     builder.initialDeltas path End
@@ -4076,7 +4083,7 @@ endCustomType (CustomTypeBuilder builder) =
                     makeInputToStateConverters
                         builder.inputToStateConverters
                         builder.initialStateOverrider
-                        initialStates
+                        (unwrap initialStates)
                         fns
                         builder.toArgStates
                         builder.stateBefores
@@ -4084,20 +4091,24 @@ endCustomType (CustomTypeBuilder builder) =
                         deltaSetters
 
                 update =
-                    \context delta (MkState meta state) ->
+                    \context delta (MkState meta wrappedState) ->
+                        let
+                            state =
+                                unwrap wrappedState
+                        in
                         case delta of
                             NoDelta ->
-                                ( MkState meta state, Cmd.none )
+                                ( MkState meta wrappedState, Cmd.none )
 
                             TagSelected idx ->
-                                ( MkState { meta | selected = idx } state, Cmd.none )
+                                ( MkState { meta | selected = idx } wrappedState, Cmd.none )
 
                             StateChangedByInput tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
-                                ( MkState meta newTagStates
+                                ( MkState meta (wrap newTagStates)
                                 , Cmd.map StateChangedByInput cmd
                                 )
 
@@ -4106,30 +4117,42 @@ endCustomType (CustomTypeBuilder builder) =
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
-                                ( MkState meta newTagStates
+                                ( MkState meta (wrap newTagStates)
                                 , Cmd.map StateChangedInternally cmd
                                 )
 
                             _ ->
-                                ( MkState meta state, Cmd.none )
+                                ( MkState meta wrappedState, Cmd.none )
 
                 subcontrolView context config =
-                    viewSelectedTagState builder.viewer context fns deltaSetters config
+                    let
+                        unwrappedConfig =
+                            { state = unwrap config.state
+                            , alerts = config.alerts
+                            , class = config.class
+                            , id = config.id
+                            , label = config.label
+                            , name = config.name
+                            , selected = config.selected
+                            , status = config.status
+                            }
+                    in
+                    viewSelectedTagState builder.viewer context fns deltaSetters unwrappedConfig
 
                 view context config =
                     customTypeView context config subcontrolView
 
                 parse context (MkState meta state) =
-                    validateSelectedTagState builder.parser meta.selected context fns state
+                    validateSelectedTagState builder.parser meta.selected context fns (unwrap state)
 
                 setAllIdle =
                     \(MkState meta state) ->
                         MkState
                             { meta | status = Idle_ }
-                            (setSelectedTagStateIdle builder.idleSetter meta.selected fns state)
+                            (wrap (setSelectedTagStateIdle builder.idleSetter meta.selected fns (unwrap state)))
 
                 emitAlerts context (MkState meta state) =
-                    emitAlertsForCustomType builder.alertEmitter context meta.selected fns state
+                    emitAlertsForCustomType builder.alertEmitter context meta.selected fns (unwrap state)
             in
             ControlFns
                 { path = path
@@ -4144,14 +4167,17 @@ endCustomType (CustomTypeBuilder builder) =
                             destructor =
                                 applyInputToStateConvertersToDestructor builder.applyInputs builder.destructor stateSetters
 
-                            ( (MkState { selected } _) as initPrefilledState, initPrefilledDelta ) =
+                            ( MkState meta states, initPrefilledDelta ) =
                                 destructor tag
+
+                            initPrefilledState =
+                                MkState meta (wrap states)
 
                             deltas =
                                 initialiseCustomTypeDeltas builder.initialiseDeltas deltaSetters initialDeltas
                                     |> List.indexedMap
                                         (\idx initDelta ->
-                                            if (idx + 1) == selected then
+                                            if (idx + 1) == meta.selected then
                                                 initPrefilledDelta
 
                                             else
@@ -4168,14 +4194,14 @@ endCustomType (CustomTypeBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForCustomType builder.errorCollector alerts fns states
+                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForCustomType builder.errorCollector alerts fns (unwrap states)
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns states
+                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns (unwrap states)
                 , label = "Custom Type"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \context (MkState _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector context deltaSetters fns states
+                , subscriptions = \context (MkState _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector context deltaSetters fns (unwrap states)
                 }
         )
 
