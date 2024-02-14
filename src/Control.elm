@@ -2593,6 +2593,32 @@ array itemControl =
 -}
 
 
+type Record record
+    = Record record
+
+
+type Field field restFields
+    = Field (State field) restFields
+
+
+type EndRecord
+    = EndRecord
+
+
+recordWrapper :
+    { wrap : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
+    , wrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
+    , unwrap : ((EndRecord -> End) -> record -> tuple) -> Record record -> tuple
+    , unwrapper : (restFields -> restTuples) -> Field state restFields -> ( State state, restTuples )
+    }
+recordWrapper =
+    { wrap = \wrapper_ tup -> Record (wrapper_ (\End -> EndRecord) tup)
+    , wrapper = \next ( this, rest ) -> Field this (next rest)
+    , unwrap = \unwrapper_ (Record fields) -> unwrapper_ (\EndRecord -> End) fields
+    , unwrapper = \next (Field this rest) -> ( this, next rest )
+    }
+
+
 nestForwards : (c -> a -> b) -> (b -> d) -> c -> a -> d
 nestForwards mkBifunctor previous this =
     \next -> previous (mkBifunctor this next)
@@ -2708,7 +2734,7 @@ product toOutput =
 
 
 field =
-    object recordBifunctor
+    object recordWrapper
 
 
 object bifunctor fromInput (Control control) (RecordBuilder builder) =
@@ -2802,7 +2828,7 @@ object bifunctor fromInput (Control control) (RecordBuilder builder) =
 
 -}
 endRecord =
-    endProduct recordBifunctor
+    endProduct recordWrapper
 
 
 endProduct bifunctor (RecordBuilder builder) =
@@ -3782,6 +3808,32 @@ recordStateUpdater next { newStates, newCmds, context, fns, deltaSetters, deltas
 -}
 
 
+type CustomType customType
+    = CustomType customType
+
+
+type Tag args restTags
+    = Tag (State args) restTags
+
+
+type EndCustomType
+    = EndCustomType
+
+
+customTypeWrapper :
+    { wrap : ((End -> EndCustomType) -> tuple -> customType) -> tuple -> CustomType customType
+    , wrapper : (restTuples -> restTags) -> ( State state, restTuples ) -> Tag state restTags
+    , unwrap : ((EndCustomType -> End) -> customType -> tuple) -> CustomType customType -> tuple
+    , unwrapper : (restTags -> restTuples) -> Tag state restTags -> ( State state, restTuples )
+    }
+customTypeWrapper =
+    { wrap = \wrapper_ tup -> CustomType (wrapper_ (\End -> EndCustomType) tup)
+    , wrapper = \next ( args, restTags ) -> Tag args (next restTags)
+    , unwrap = \unwrapper_ (CustomType tags) -> unwrapper_ (\EndCustomType -> End) tags
+    , unwrapper = \next (Tag args restTags) -> ( args, next restTags )
+    }
+
+
 {-| A data structure used to build custom types
 -}
 type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer
@@ -3813,6 +3865,8 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
         , toArgStates : toArgStates
         , updater : updater
         , viewer : viewer
+        , wrapper : wrapper
+        , unwrapper : unwrapper
         }
 
 
@@ -3872,6 +3926,8 @@ customType :
             (toArgStates -> toArgStates)
             (updater -> updater)
             (viewer -> viewer)
+            (wrapper -> wrapper)
+            (unwrapper -> unwrapper)
 customType destructor =
     CustomTypeBuilder
         { index = 0
@@ -3901,6 +3957,8 @@ customType destructor =
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
         , destructor = destructor
+        , wrapper = identity
+        , unwrapper = identity
         }
 
 
@@ -3965,6 +4023,8 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> customTypeSubscriptionCollector
         , destructor = builder.destructor
+        , wrapper = builder.wrapper >> customTypeWrapper.wrapper
+        , unwrapper = builder.wrapper >> customTypeWrapper.unwrapper
         }
 
 
@@ -3987,246 +4047,6 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
             |> endCustomType
 
 -}
-endCustomType :
-    CustomTypeBuilder
-        (({ destructor :
-                input
-                ->
-                    ( State ( State state, restStates )
-                    , Cmd (Delta ( Delta delta, restDeltas ))
-                    )
-          , inputToStateConverters : End
-          }
-          -> input
-          ->
-            ( State ( State state, restStates )
-            , Cmd (Delta ( Delta delta, restDeltas ))
-            )
-         )
-         ->
-            { destructor : inputToStateConverter -> destructor
-            , inputToStateConverters :
-                ( inputToStateConverter, restInputToStateConverters )
-            }
-         -> input
-         ->
-            ( State ( State state, restStates )
-            , Cmd (Delta ( Delta delta, restDeltas ))
-            )
-        )
-        (({ fns : End, receivers : List Alert, states : End } -> List Alert)
-         ->
-            { fns : ( ControlFns context input1 state delta output, restFns )
-            , receivers : List Alert
-            , states : ( State state, restStates )
-            }
-         -> List Alert
-        )
-        deltaAfter
-        afters
-        deltaBefore
-        (End -> befores)
-        (inputToStateConverter -> destructor)
-        (({ alerts : List Alert, feedback : List Feedback, fns : End, states : End }
-          -> List Feedback
-         )
-         ->
-            { alerts : List Alert
-            , feedback : List Feedback
-            , fns : ( ControlFns context input1 state delta output, restFns )
-            , states : ( State state, restStates )
-            }
-         -> List Feedback
-        )
-        (({ alerts : List Alert
-          , context : context
-          , fns : End
-          , selectedTag : Int
-          , states : End
-          }
-          -> List Alert
-         )
-         ->
-            { alerts : List Alert
-            , context : context
-            , fns : ( ControlFns context input1 state delta output, restFns )
-            , selectedTag : Int
-            , states : ( State state, restStates )
-            }
-         -> List Alert
-        )
-        (Path -> End -> ( ControlFns context input1 state delta output, restFns ))
-        (({ fns : End
-          , initialStates : End
-          , selectedTag : Int
-          , toFinalStates : End -> ( State state, restStates )
-          }
-          -> ( State state, restStates )
-         )
-         ->
-            { fns : ( ControlFns context input1 state delta output, restFns )
-            , initialStates : ( State state, restStates )
-            , selectedTag : Int
-            , toFinalStates : identity3 -> identity3
-            }
-         -> ( State state, restStates )
-        )
-        (Path -> End -> ( Cmd (Delta delta), restDeltas1 ))
-        (Path -> End -> ( State state, restStates ))
-        (({ cmds : List (Cmd ( Delta delta, restDeltas ))
-          , deltaSetters : End
-          , deltas : End
-          }
-          -> List (Cmd ( Delta delta, restDeltas ))
-         )
-         ->
-            { cmds : List (Cmd ( Delta delta, restDeltas ))
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas )
-                , restDeltaSetters
-                )
-            , deltas : ( Cmd (Delta delta), restDeltas1 )
-            }
-         -> List (Cmd ( Delta delta, restDeltas ))
-        )
-        (({ afters : End
-          , befores : End
-          , output :
-                End
-                ->
-                    ( Delta delta -> ( Delta delta, restDeltas )
-                    , restDeltaSetters
-                    )
-          }
-          -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-         )
-         -> { afters : afters, befores : befores, output : identity2 -> identity2 }
-         -> ( Delta delta -> ( Delta delta, restDeltas ), restDeltaSetters )
-        )
-        (({ c
-            | finalTagStates :
-                End -> ( inputToStateConverter, restInputToStateConverters )
-          }
-          -> ( inputToStateConverter, restInputToStateConverters )
-         )
-         ->
-            { controlFns :
-                ( ControlFns context input1 state delta output, restFns )
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas )
-                , restDeltaSetters
-                )
-            , finalTagStates : identity1 -> identity1
-            , initialTagStates : ( State state, restStates )
-            , inputTuplizers : inputTuplizers
-            , maybeOverridesAfter : maybeOverridesAfter
-            , maybeOverridesBefore : maybeOverridesBefore
-            , tagStateOverrider : tagStateOverrider
-            }
-         -> ( inputToStateConverter, restInputToStateConverters )
-        )
-        (({ context : context
-          , fns : End
-          , parsedResult : Result (List Feedback) output
-          , selectedTag : Int
-          , states : End
-          }
-          -> Result (List Feedback) output
-         )
-         ->
-            { context : context
-            , fns : ( ControlFns context input1 state delta output, restFns )
-            , parsedResult : Result (List Feedback) output
-            , selectedTag : Int
-            , states : ( State state, restStates )
-            }
-         -> Result (List Feedback) output
-        )
-        stateAfter
-        maybeOverridesAfter
-        stateBefore
-        (End -> maybeOverridesBefore)
-        tagStateOverrider
-        (({ context : context
-          , deltaSetters : End
-          , fns : End
-          , states : End
-          , subs : List (Sub ( Delta delta, restDeltas ))
-          }
-          -> List (Sub ( Delta delta, restDeltas ))
-         )
-         ->
-            { context : context
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas )
-                , restDeltaSetters
-                )
-            , fns : ( ControlFns context input1 state delta output, restFns )
-            , states : ( State state, restStates )
-            , subs : List (Sub ( Delta delta, restDeltas ))
-            }
-         -> List (Sub ( Delta delta, restDeltas ))
-        )
-        (End -> inputTuplizers)
-        (({ context : context
-          , deltaSetters : End
-          , deltas : End
-          , fns : End
-          , newCmds : List (Cmd ( Delta delta, restDeltas ))
-          , newStates : End -> ( State state, restStates )
-          , states : End
-          }
-          ->
-            { newCmds : List (Cmd ( Delta delta, restDeltas ))
-            , newStates : End -> ( State state, restStates )
-            }
-         )
-         ->
-            { context : context
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas )
-                , restDeltaSetters
-                )
-            , deltas : ( Delta delta, restDeltas )
-            , fns : ( ControlFns context input1 state delta output, restFns )
-            , newCmds : List (Cmd ( Delta delta, restDeltas ))
-            , newStates : identity -> identity
-            , states : ( State state, restStates )
-            }
-         ->
-            { newCmds : List (Cmd ( Delta delta, restDeltas ))
-            , newStates : End -> ( State state, restStates )
-            }
-        )
-        (({ alerts : List Alert
-          , context : context
-          , deltaSetters : End
-          , fns : End
-          , states : End
-          , subcontrols : List (Subcontrol ( Delta delta, restDeltas ))
-          }
-          -> List (Subcontrol ( Delta delta, restDeltas ))
-         )
-         ->
-            { alerts : List Alert
-            , context : context
-            , deltaSetters :
-                ( Delta delta -> ( Delta delta, restDeltas )
-                , restDeltaSetters
-                )
-            , fns : ( ControlFns context input1 state delta output, restFns )
-            , states : ( State state, restStates )
-            , subcontrols : List (Subcontrol ( Delta delta, restDeltas ))
-            }
-         -> List (Subcontrol ( Delta delta, restDeltas ))
-        )
-    ->
-        AdvancedControl
-            context
-            input
-            ( State state, restStates )
-            ( Delta delta, restDeltas )
-            output
 endCustomType (CustomTypeBuilder builder) =
     Control
         (\path ->
