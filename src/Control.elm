@@ -398,7 +398,7 @@ type alias Path =
 used to manage the form's internal state.
 -}
 type State state
-    = State InternalState state
+    = MkState InternalState state
 
 
 type alias InternalState =
@@ -607,7 +607,7 @@ form { control, onUpdate, view } =
             fns.update () msg state
                 |> Tuple.mapSecond (Cmd.map onUpdate)
     , view =
-        \((State internalState state) as s) ->
+        \((MkState meta state) as s) ->
             let
                 emittedAlerts =
                     fns.emitAlerts () s
@@ -630,7 +630,7 @@ form { control, onUpdate, view } =
                     , state = state
                     , status = status
                     , alerts = alerts
-                    , selected = internalState.selected
+                    , selected = meta.selected
                     }
                     |> List.map (H.map onUpdate)
                 )
@@ -695,7 +695,7 @@ formWithContext { control, onUpdate, view } =
             fns.update context msg state
                 |> Tuple.mapSecond (Cmd.map onUpdate)
     , view =
-        \context ((State internalState state) as s) ->
+        \context ((MkState meta state) as s) ->
             let
                 emittedAlerts =
                     fns.emitAlerts context s
@@ -718,7 +718,7 @@ formWithContext { control, onUpdate, view } =
                     , state = state
                     , status = status
                     , alerts = alerts
-                    , selected = internalState.selected
+                    , selected = meta.selected
                     }
                     |> List.map (H.map onUpdate)
                 )
@@ -807,7 +807,7 @@ sandboxWithContext { outputToString, control, context } =
             \msg state ->
                 fns.update context msg state
         , view =
-            \((State internalState state) as s) ->
+            \((MkState meta state) as s) ->
                 let
                     emittedAlerts =
                         fns.emitAlerts context s
@@ -841,9 +841,9 @@ sandboxWithContext { outputToString, control, context } =
                             , label = fns.label
                             , class = fns.class
                             , state = state
-                            , status = getStatus fns.parse fns.collectFeedback alerts context (State internalState state)
+                            , status = getStatus fns.parse fns.collectFeedback alerts context (MkState meta state)
                             , alerts = alerts
-                            , selected = internalState.selected
+                            , selected = meta.selected
                             }
                         )
                     , H.h2 [] [ H.text "Output" ]
@@ -935,7 +935,7 @@ define definition =
                     wrapUpdate (\_ -> definition.update)
 
                 parse =
-                    \_ (State _ state) ->
+                    \_ (MkState _ state) ->
                         definition.parse state
                             |> Result.mapError
                                 (List.map
@@ -953,12 +953,12 @@ define definition =
                 , index = 0
                 , initBlank =
                     definition.blank
-                        |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
+                        |> Tuple.mapFirst (MkState { status = Intact_, selected = 1 })
                         |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , initPrefilled =
                     \input ->
                         definition.prefill input
-                            |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
+                            |> Tuple.mapFirst (MkState { status = Intact_, selected = 1 })
                             |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , baseUpdate = preUpdate
                 , update = preUpdate 0
@@ -976,7 +976,7 @@ define definition =
                             |> H.map StateChangedByInput
                         ]
                 , parse = parse
-                , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
+                , setAllIdle = \(MkState i s) -> MkState { i | status = Idle_ } s
                 , emitAlerts = \_ _ -> []
                 , collectDebouncingReceivers = \_ -> []
                 , collectFeedback = \_ _ -> []
@@ -986,7 +986,7 @@ define definition =
                 , name = Nothing
                 , class = []
                 , subscriptions =
-                    \_ (State _ s) ->
+                    \_ (MkState _ s) ->
                         definition.subscriptions s
                             |> Sub.map StateChangedInternally
                 }
@@ -1003,7 +1003,7 @@ defineWithContext definition =
                     wrapUpdate definition.update
 
                 parse =
-                    \context (State _ state) ->
+                    \context (MkState _ state) ->
                         definition.parse context state
                             |> Result.mapError
                                 (List.map
@@ -1021,12 +1021,12 @@ defineWithContext definition =
                 , index = 0
                 , initBlank =
                     definition.blank
-                        |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
+                        |> Tuple.mapFirst (MkState { status = Intact_, selected = 1 })
                         |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , initPrefilled =
                     \input ->
                         definition.prefill input
-                            |> Tuple.mapFirst (State { status = Intact_, selected = 1 })
+                            |> Tuple.mapFirst (MkState { status = Intact_, selected = 1 })
                             |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , baseUpdate = preUpdate
                 , update = preUpdate 0
@@ -1044,7 +1044,7 @@ defineWithContext definition =
                             |> H.map StateChangedByInput
                         ]
                 , parse = parse
-                , setAllIdle = \(State i s) -> State { i | status = Idle_ } s
+                , setAllIdle = \(MkState i s) -> MkState { i | status = Idle_ } s
                 , emitAlerts = \_ _ -> []
                 , collectDebouncingReceivers = \_ -> []
                 , collectFeedback = \_ _ -> []
@@ -1054,7 +1054,7 @@ defineWithContext definition =
                 , name = Nothing
                 , class = []
                 , subscriptions =
-                    \context (State _ s) ->
+                    \context (MkState _ s) ->
                         definition.subscriptions context s
                             |> Sub.map StateChangedInternally
                 }
@@ -1068,10 +1068,10 @@ wrapUpdate :
     -> Delta delta
     -> State state
     -> ( State state, Cmd (Delta delta) )
-wrapUpdate innerUpdate debounce_ context wrappedDelta (State internalState state) =
+wrapUpdate innerUpdate debounce_ context wrappedDelta (MkState meta state) =
     case wrappedDelta of
         NoDelta ->
-            ( State internalState state
+            ( MkState meta state
             , Cmd.none
             )
 
@@ -1080,7 +1080,7 @@ wrapUpdate innerUpdate debounce_ context wrappedDelta (State internalState state
                 ( newState, cmd ) =
                     innerUpdate context delta state
             in
-            ( State internalState newState
+            ( MkState meta newState
             , Cmd.map StateChangedInternally cmd
             )
 
@@ -1090,7 +1090,7 @@ wrapUpdate innerUpdate debounce_ context wrappedDelta (State internalState state
                     innerUpdate context delta state
             in
             if debounce_ > 0 then
-                ( State internalState newState
+                ( MkState meta newState
                 , Cmd.batch
                     [ Task.perform DebounceTimerSet Time.now
                     , Cmd.map StateChangedByInput cmd
@@ -1098,35 +1098,35 @@ wrapUpdate innerUpdate debounce_ context wrappedDelta (State internalState state
                 )
 
             else
-                ( State { internalState | status = Idle_ } newState
+                ( MkState { meta | status = Idle_ } newState
                 , Cmd.map StateChangedByInput cmd
                 )
 
         DebounceTimerSet now ->
-            ( State { internalState | status = DebouncingSince now } state
+            ( MkState { meta | status = DebouncingSince now } state
             , Task.perform (\() -> DebounceTimerExpired now) (Process.sleep debounce_)
             )
 
         DebounceTimerExpired now ->
-            case internalState.status of
+            case meta.status of
                 DebouncingSince startTime ->
                     if now == startTime then
-                        ( State { internalState | status = Idle_ } state
+                        ( MkState { meta | status = Idle_ } state
                         , Cmd.none
                         )
 
                     else
-                        ( State internalState state
+                        ( MkState meta state
                         , Cmd.none
                         )
 
                 _ ->
-                    ( State internalState state
+                    ( MkState meta state
                     , Cmd.none
                     )
 
         TagSelected idx ->
-            ( State { internalState | selected = idx } state
+            ( MkState { meta | selected = idx } state
             , Cmd.none
             )
 
@@ -1222,8 +1222,8 @@ alertReceiver alert fail message (ControlFns ctrl) =
                     List.Extra.unique (oldReceiver ++ newReceiver)
             , receiverCount = ctrl.receiverCount + 1
             , collectDebouncingReceivers =
-                \((State internalState _) as state) ->
-                    case internalState.status of
+                \((MkState meta _) as state) ->
+                    case meta.status of
                         DebouncingSince _ ->
                             alert :: ctrl.collectDebouncingReceivers state
 
@@ -2280,7 +2280,7 @@ list (Control ctrl) =
                         ItemDeleted idx ->
                             ( List.Extra.removeAt idx state, Cmd.none )
 
-                parse context (State _ state) =
+                parse context (MkState _ state) =
                     List.foldr
                         (\( idx, item ) res ->
                             let
@@ -2307,7 +2307,7 @@ list (Control ctrl) =
                         (Ok [])
                         (List.indexedMap Tuple.pair state)
 
-                collectDebouncingReceivers (State _ listState) =
+                collectDebouncingReceivers (MkState _ listState) =
                     List.indexedMap
                         (\idx itemState ->
                             let
@@ -2342,11 +2342,11 @@ list (Control ctrl) =
                                     ( [], [] )
                                     input
                         in
-                        ( State { status = Intact_, selected = 1 } initialState
+                        ( MkState { status = Intact_, selected = 1 } initialState
                         , Cmd.map StateChangedInternally (Cmd.batch initialCmds)
                         )
                 , initBlank =
-                    ( State { status = Intact_, selected = 1 } []
+                    ( MkState { status = Intact_, selected = 1 } []
                     , Cmd.none
                     )
                 , baseUpdate = update
@@ -2357,13 +2357,13 @@ list (Control ctrl) =
                         let
                             debouncingReceivers =
                                 -- this is a total hack!
-                                collectDebouncingReceivers (State { status = Intact_, selected = config.selected } config.state)
+                                collectDebouncingReceivers (MkState { status = Intact_, selected = config.selected } config.state)
                         in
                         listView path context config debouncingReceivers ctrl
                 , parse = parse
                 , setAllIdle =
-                    \(State i s) ->
-                        State { i | status = Idle_ }
+                    \(MkState i s) ->
+                        MkState { i | status = Idle_ }
                             (List.indexedMap
                                 (\idx item ->
                                     let
@@ -2375,7 +2375,7 @@ list (Control ctrl) =
                                 s
                             )
                 , emitAlerts =
-                    \context (State _ s) ->
+                    \context (MkState _ s) ->
                         List.indexedMap
                             (\idx item ->
                                 let
@@ -2387,7 +2387,7 @@ list (Control ctrl) =
                             s
                             |> List.concat
                 , collectFeedback =
-                    \(State _ listState) alerts ->
+                    \(MkState _ listState) alerts ->
                         List.indexedMap
                             (\idx item ->
                                 let
@@ -2428,7 +2428,7 @@ list (Control ctrl) =
                 , name = Nothing
                 , class = []
                 , subscriptions =
-                    \context (State _ listState) ->
+                    \context (MkState _ listState) ->
                         List.indexedMap
                             (\idx itemState ->
                                 let
@@ -2854,17 +2854,17 @@ endProduct bifunctor (RecordBuilder builder) =
                 deltaSetters =
                     makeDeltaSetters builder.makeSetters builder.befores builder.afters
 
-                update context delta (State internalState states) =
+                update context delta (MkState meta states) =
                     case delta of
                         NoDelta ->
-                            ( State internalState states, Cmd.none )
+                            ( MkState meta states, Cmd.none )
 
                         StateChangedByInput deltas ->
                             let
                                 ( newState, cmd ) =
                                     updateRecordStates builder.updater context fns deltaSetters deltas (unwrap states)
                             in
-                            ( State internalState (wrap newState)
+                            ( MkState meta (wrap newState)
                             , Cmd.map StateChangedByInput cmd
                             )
 
@@ -2873,17 +2873,17 @@ endProduct bifunctor (RecordBuilder builder) =
                                 ( newState, cmd ) =
                                     updateRecordStates builder.updater context fns deltaSetters deltas (unwrap states)
                             in
-                            ( State internalState (wrap newState)
+                            ( MkState meta (wrap newState)
                             , Cmd.map StateChangedInternally cmd
                             )
 
                         TagSelected index ->
-                            ( State { internalState | selected = index } states
+                            ( MkState { meta | selected = index } states
                             , Cmd.none
                             )
 
                         _ ->
-                            ( State internalState states, Cmd.none )
+                            ( MkState meta states, Cmd.none )
 
                 subcontrolViews context config =
                     let
@@ -2904,26 +2904,26 @@ endProduct bifunctor (RecordBuilder builder) =
                     subcontrolViews context config
                         |> List.concatMap .html
 
-                parse context (State _ state) =
+                parse context (MkState _ state) =
                     validateRecordStates builder.parser builder.toOutput fns context (unwrap state)
 
-                setAllIdle (State i state) =
-                    State { i | status = Idle_ } (wrap (setAllRecordStatesToIdle builder.idleSetter fns (unwrap state)))
+                setAllIdle (MkState i state) =
+                    MkState { i | status = Idle_ } (wrap (setAllRecordStatesToIdle builder.idleSetter fns (unwrap state)))
 
-                emitAlerts context (State _ state) =
+                emitAlerts context (MkState _ state) =
                     emitAlertsForRecord builder.alertEmitter fns context (unwrap state)
             in
             ControlFns
                 { path = path
                 , index = 0
                 , initBlank =
-                    ( State { status = Intact_, selected = 1 } initialStates
+                    ( MkState { status = Intact_, selected = 1 } initialStates
                     , initialiseRecordDeltas builder.deltaInitialiser deltaSetters initialDeltas
                     )
                 , initPrefilled =
                     \output ->
                         initialiseRecordStates builder.initialiser output fns deltaSetters
-                            |> Tuple.mapFirst (\(State i s) -> State i (wrap s))
+                            |> Tuple.mapFirst (\(MkState i s) -> MkState i (wrap s))
                 , baseUpdate = \_ -> update
                 , update = update
                 , subControlViews = subcontrolViews
@@ -2931,14 +2931,14 @@ endProduct bifunctor (RecordBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(State _ states) alerts -> collectFeedbackForRecord builder.errorCollector alerts fns (unwrap states)
+                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForRecord builder.errorCollector alerts fns (unwrap states)
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForRecord builder.debouncingReceiverCollector fns (unwrap states)
+                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForRecord builder.debouncingReceiverCollector fns (unwrap states)
                 , label = "Record"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \context (State _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns context (unwrap states)
+                , subscriptions = \context (MkState _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns context (unwrap states)
                 }
         )
 
@@ -3308,7 +3308,7 @@ initialiseRecordStates :
 initialiseRecordStates initialiser input fns deltaSetters =
     initialiser
         (\{ states, deltas } ->
-            ( State { status = Intact_, selected = 1 } (states End)
+            ( MkState { status = Intact_, selected = 1 } (states End)
             , Cmd.batch deltas |> Cmd.map StateChangedInternally
             )
         )
@@ -3615,7 +3615,7 @@ recordStateViewer next { views, alerts, deltaSetters, fns, context, states } =
         ( setter, restDeltaSetters ) =
             deltaSetters
 
-        ( State internalState state, restStates ) =
+        ( MkState meta state, restStates ) =
             states
 
         view =
@@ -3625,9 +3625,9 @@ recordStateViewer next { views, alerts, deltaSetters, fns, context, states } =
                 , label = controlFns.label
                 , class = controlFns.class
                 , state = state
-                , status = getStatus controlFns.parse controlFns.collectFeedback alerts context (State internalState state)
+                , status = getStatus controlFns.parse controlFns.collectFeedback alerts context (MkState meta state)
                 , alerts = alerts
-                , selected = internalState.selected
+                , selected = meta.selected
                 }
                 |> List.map (H.map (\delta -> StateChangedByInput (setter delta)))
     in
@@ -3654,8 +3654,8 @@ getStatus :
     -> context
     -> State state
     -> Status
-getStatus parse collectErrors alerts context ((State internalState _) as state) =
-    case internalState.status of
+getStatus parse collectErrors alerts context ((MkState meta _) as state) =
+    case meta.status of
         Intact_ ->
             Intact
 
@@ -3836,7 +3836,7 @@ customTypeWrapper =
 
 {-| A data structure used to build custom types
 -}
-type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer
+type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer wrapper unwrapper
     = CustomTypeBuilder
         { applyInputs : applyInputs
         , debouncingReceiverCollector : debouncingReceiverCollector
@@ -4078,20 +4078,20 @@ endCustomType (CustomTypeBuilder builder) =
                         deltaSetters
 
                 update =
-                    \context delta (State internalState state) ->
+                    \context delta (MkState meta state) ->
                         case delta of
                             NoDelta ->
-                                ( State internalState state, Cmd.none )
+                                ( MkState meta state, Cmd.none )
 
                             TagSelected idx ->
-                                ( State { internalState | selected = idx } state, Cmd.none )
+                                ( MkState { meta | selected = idx } state, Cmd.none )
 
                             StateChangedByInput tagDelta ->
                                 let
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
-                                ( State internalState newTagStates
+                                ( MkState meta newTagStates
                                 , Cmd.map StateChangedByInput cmd
                                 )
 
@@ -4100,12 +4100,12 @@ endCustomType (CustomTypeBuilder builder) =
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
-                                ( State internalState newTagStates
+                                ( MkState meta newTagStates
                                 , Cmd.map StateChangedInternally cmd
                                 )
 
                             _ ->
-                                ( State internalState state, Cmd.none )
+                                ( MkState meta state, Cmd.none )
 
                 subcontrolView context config =
                     viewSelectedTagState builder.viewer context fns deltaSetters config
@@ -4113,23 +4113,23 @@ endCustomType (CustomTypeBuilder builder) =
                 view context config =
                     customTypeView context config subcontrolView
 
-                parse context (State internalState state) =
-                    validateSelectedTagState builder.parser internalState.selected context fns state
+                parse context (MkState meta state) =
+                    validateSelectedTagState builder.parser meta.selected context fns state
 
                 setAllIdle =
-                    \(State internalState state) ->
-                        State
-                            { internalState | status = Idle_ }
-                            (setSelectedTagStateIdle builder.idleSetter internalState.selected fns state)
+                    \(MkState meta state) ->
+                        MkState
+                            { meta | status = Idle_ }
+                            (setSelectedTagStateIdle builder.idleSetter meta.selected fns state)
 
-                emitAlerts context (State internalState state) =
-                    emitAlertsForCustomType builder.alertEmitter context internalState.selected fns state
+                emitAlerts context (MkState meta state) =
+                    emitAlertsForCustomType builder.alertEmitter context meta.selected fns state
             in
             ControlFns
                 { path = path
                 , index = 0
                 , initBlank =
-                    ( State { status = Intact_, selected = 1 } initialStates
+                    ( MkState { status = Intact_, selected = 1 } initialStates
                     , Cmd.batch (initialiseCustomTypeDeltas builder.initialiseDeltas deltaSetters initialDeltas)
                     )
                 , initPrefilled =
@@ -4138,7 +4138,7 @@ endCustomType (CustomTypeBuilder builder) =
                             destructor =
                                 applyInputToStateConvertersToDestructor builder.applyInputs builder.destructor stateSetters
 
-                            ( (State { selected } _) as initPrefilledState, initPrefilledDelta ) =
+                            ( (MkState { selected } _) as initPrefilledState, initPrefilledDelta ) =
                                 destructor tag
 
                             deltas =
@@ -4162,14 +4162,14 @@ endCustomType (CustomTypeBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(State _ states) alerts -> collectFeedbackForCustomType builder.errorCollector alerts fns states
+                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForCustomType builder.errorCollector alerts fns states
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(State _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns states
+                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns states
                 , label = "Custom Type"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \context (State _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector context deltaSetters fns states
+                , subscriptions = \context (MkState _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector context deltaSetters fns states
                 }
         )
 
@@ -4852,7 +4852,7 @@ overrideInitialStates :
     -> State tagStates
 overrideInitialStates initialStateOverrider_ maybeOverrides initialTagStates =
     initialStateOverrider_
-        (\{ selectedTagIndex, toTagStates } -> State { status = Intact_, selected = selectedTagIndex } (toTagStates End))
+        (\{ selectedTagIndex, toTagStates } -> MkState { status = Intact_, selected = selectedTagIndex } (toTagStates End))
         { thisTagIndex = 1
         , selectedTagIndex = 1
         , toTagStates = identity
@@ -5248,7 +5248,7 @@ selectedTagViewer next { subcontrols, context, alerts, fns, deltaSetters, states
         ( setter, restDeltaSetters ) =
             deltaSetters
 
-        ( State internalState state, restStates ) =
+        ( MkState meta state, restStates ) =
             states
     in
     next
@@ -5263,7 +5263,7 @@ selectedTagViewer next { subcontrols, context, alerts, fns, deltaSetters, states
                             , state = state
                             , status = Intact
                             , alerts = alerts
-                            , selected = internalState.selected
+                            , selected = meta.selected
                             }
                             |> List.map (H.map (setter >> StateChangedByInput))
                      , label = controlFns.label
@@ -5410,7 +5410,7 @@ listView path context config debouncingReceivers subcontrol =
                   else
                     H.ol []
                         (List.indexedMap
-                            (\idx (State internalState state) ->
+                            (\idx (MkState meta state) ->
                                 let
                                     itemPath =
                                         Path.add idx path
@@ -5454,7 +5454,7 @@ listView path context config debouncingReceivers subcontrol =
                                             , state = state
                                             , status = getStatus itemFns.parse itemFns.collectFeedback relevantNonDebouncedAlerts context (MkState meta state)
                                             , alerts = relevantNonDebouncedAlerts
-                                            , selected = internalState.selected
+                                            , selected = meta.selected
                                             }
                                         )
                                         |> H.map (ItemUpdated idx)
