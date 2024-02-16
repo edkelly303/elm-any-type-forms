@@ -383,9 +383,154 @@ type alias Path =
     Path.Path
 
 
+
+{-
+   d888888b d8b   db d888888b d88888b d8888b. d8b   db  .d8b.  db      .d8888.
+     `88'   888o  88 `~~88~~' 88'     88  `8D 888o  88 d8' `8b 88      88'  YP
+      88    88V8o 88    88    88ooooo 88oobY' 88V8o 88 88ooo88 88      `8bo.
+      88    88 V8o88    88    88~~~~~ 88`8b   88 V8o88 88~~~88 88        `Y8b.
+     .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
+   Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
+-}
+
+
 type Internals a
     = State_ (State a)
     | Delta_ (Delta a)
+
+
+maybeExtractState : Internals state -> Maybe (State state)
+maybeExtractState internals =
+    case internals of
+        State_ state ->
+            Just state
+
+        Delta_ _ ->
+            Nothing
+
+
+maybeExtractDelta : Internals delta -> Maybe (Delta delta)
+maybeExtractDelta internals =
+    case internals of
+        State_ _ ->
+            Nothing
+
+        Delta_ delta ->
+            Just delta
+
+
+
+{-
+   db   d8b   db d8888b.  .d8b.  d8888b. d8888b. d88888b d8888b. .d8888.
+   88   I8I   88 88  `8D d8' `8b 88  `8D 88  `8D 88'     88  `8D 88'  YP
+   88   I8I   88 88oobY' 88ooo88 88oodD' 88oodD' 88ooooo 88oobY' `8bo.
+   Y8   I8I   88 88`8b   88~~~88 88~~~   88~~~   88~~~~~ 88`8b     `Y8b.
+   `8b d8'8b d8' 88 `88. 88   88 88      88      88.     88 `88. db   8D
+    `8b8' `8d8'  88   YD YP   YP 88      88      Y88888P 88   YD `8888Y'
+-}
+
+
+genericWrap : (a -> b) -> c -> ((End -> c) -> d -> a) -> d -> b
+genericWrap tag end wrapper_ tup =
+    tag (wrapper_ (\End -> end) tup)
+
+
+genericWrapper : (a -> b -> c) -> (d -> a) -> (e -> b) -> ( d, e ) -> c
+genericWrapper tag internalsType next ( this, rest ) =
+    tag (internalsType this) (next rest)
+
+
+genericUnwrap : (d -> a) -> (b -> c) -> ((b -> Maybe c) -> a -> e) -> d -> e
+genericUnwrap untag unend unwrapper_ wrappedThing =
+    unwrapper_ (unend >> Just) (untag wrappedThing)
+
+
+genericUnwrapper : (d -> ( a, b )) -> (a -> Maybe c) -> (b -> Maybe e) -> d -> Maybe ( c, e )
+genericUnwrapper untag maybeExtractor next wrappedThing =
+    let
+        ( this, rest ) =
+            untag wrappedThing
+    in
+    Maybe.map2 Tuple.pair (maybeExtractor this) (next rest)
+
+
+recordWrapper :
+    { wrapState : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
+    , stateWrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
+    , unwrapState : ((EndRecord -> Maybe End) -> record -> Maybe tuple) -> Record record -> Maybe tuple
+    , stateUnwrapper : (restFields -> Maybe restTuples) -> Field state restFields -> Maybe ( State state, restTuples )
+    }
+recordWrapper =
+    { wrapState = genericWrap Record EndRecord
+    , stateWrapper = genericWrapper Field State_
+    , unwrapState = genericUnwrap (\(Record fields) -> fields) (\EndRecord -> End)
+    , stateUnwrapper = genericUnwrapper (\(Field this rest) -> ( this, rest )) maybeExtractState
+    }
+
+
+customTypeWrapper :
+    { wrapState : ((End -> EndCustomType) -> tuple -> customType) -> tuple -> CustomType customType
+    , stateWrapper : (restTuples -> restTags) -> ( State state, restTuples ) -> Tag state restTags
+    , unwrapState : ((EndCustomType -> Maybe End) -> customType -> Maybe tuple) -> CustomType customType -> Maybe tuple
+    , stateUnwrapper : (restTags -> Maybe restTuples) -> Tag state restTags -> Maybe ( State state, restTuples )
+    }
+customTypeWrapper =
+    { wrapState = genericWrap CustomType EndCustomType
+    , stateWrapper = genericWrapper Tag State_
+    , unwrapState = genericUnwrap (\(CustomType tags) -> tags) (\EndCustomType -> End)
+    , stateUnwrapper = genericUnwrapper (\(Tag tag restTags) -> ( tag, restTags )) maybeExtractState
+    }
+
+
+argWrapper :
+    { wrapState : ((End -> EndTag) -> tuple -> args) -> tuple -> args
+    , stateWrapper : (restTuples -> restArgs) -> ( State arg, restTuples ) -> Arg arg restArgs
+    , unwrapState : ((EndTag -> Maybe End) -> args -> Maybe tuple) -> args -> Maybe tuple
+    , stateUnwrapper : (restArgs -> Maybe restTuples) -> Arg arg restArgs -> Maybe ( State arg, restTuples )
+    }
+argWrapper =
+    { wrapState = genericWrap identity EndTag
+    , stateWrapper = genericWrapper Arg State_
+    , unwrapState = genericUnwrap identity (\EndTag -> End)
+    , stateUnwrapper = genericUnwrapper (\(Arg arg restArgs) -> ( arg, restArgs )) maybeExtractState
+    }
+
+
+tupleWrapper :
+    { wrapState : (d -> e -> f -> f) -> ( State fst, ( State snd, End ) ) -> Tuple fst snd
+    , stateWrapper : d -> e -> f -> f
+    , unwrapState : (j -> k -> l -> l) -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
+    , stateUnwrapper : j -> k -> l -> l
+    }
+tupleWrapper =
+    { wrapState = \_ ( fst, ( snd, End ) ) -> Tuple (State_ fst) (State_ snd)
+    , stateWrapper = \_ _ -> identity
+    , unwrapState =
+        \_ (Tuple internalsFst internalsSnd) ->
+            Maybe.map2 (\fst snd -> ( fst, ( snd, End ) ))
+                (maybeExtractState internalsFst)
+                (maybeExtractState internalsSnd)
+    , stateUnwrapper = \_ _ -> identity
+    }
+
+
+tripleWrapper :
+    { wrapState : a -> ( State b, ( State c, ( State d, End ) ) ) -> Triple b c d
+    , stateWrapper : e -> f -> g -> g
+    , unwrapState : h -> Triple i j k -> Maybe ( State i, ( State j, ( State k, End ) ) )
+    , stateUnwrapper : l -> m -> n -> n
+    }
+tripleWrapper =
+    { wrapState = \_ ( a, ( b, ( c, End ) ) ) -> Triple (State_ a) (State_ b) (State_ c)
+    , stateWrapper = \_ _ -> identity
+    , unwrapState =
+        \_ (Triple internalsFst internalsSnd internalsThd) ->
+            Maybe.map3 (\fst snd thd -> ( fst, ( snd, ( thd, End ) ) ))
+                (maybeExtractState internalsFst)
+                (maybeExtractState internalsSnd)
+                (maybeExtractState internalsThd)
+    , stateUnwrapper = \_ _ -> identity
+    }
 
 
 
@@ -2117,47 +2262,6 @@ type Tuple fst snd
     = Tuple (Internals fst) (Internals snd)
 
 
-
--- tupleWrapper :
---     { wrap : (d -> e -> f -> f) -> ( State fst, ( State snd, End ) ) -> Tuple fst snd
---     , wrapper : d -> e -> f -> f
---     , unwrap : (j -> k -> l -> l) -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
---     , unwrapper : j -> k -> l -> l
---     }
-
-
-tupleWrapper =
-    { wrap = \_ ( fst, ( snd, End ) ) -> Tuple (State_ fst) (State_ snd)
-    , wrapper = \_ _ -> identity
-    , unwrap =
-        \_ (Tuple internalsFst internalsSnd) ->
-            Maybe.map2 (\fst snd -> ( fst, ( snd, End ) ))
-                (extractState internalsFst)
-                (extractState internalsSnd)
-    , unwrapper = \_ _ -> identity
-    }
-
-
-extractState : Internals state -> Maybe (State state)
-extractState internals =
-    case internals of
-        State_ s ->
-            Just s
-
-        Delta_ d ->
-            Nothing
-
-
-extractDelta : Internals delta -> Maybe (Delta delta)
-extractDelta internals =
-    case internals of
-        State_ s ->
-            Nothing
-
-        Delta_ d ->
-            Just d
-
-
 {-| A combinator that produces a tuple of two controls of given types.
 
     myTupleControl =
@@ -2198,19 +2302,6 @@ tuple first second =
 
 type Triple a b c
     = Triple (Internals a) (Internals b) (Internals c)
-
-
-tripleWrapper =
-    { wrap = \_ ( a, ( b, ( c, End ) ) ) -> Triple (State_ a) (State_ b) (State_ c)
-    , wrapper = \_ _ -> identity
-    , unwrap =
-        \_ (Triple internalsFst internalsSnd internalsThd) ->
-            Maybe.map3 (\fst snd thd -> ( fst, ( snd, ( thd, End ) ) ))
-                (extractState internalsFst)
-                (extractState internalsSnd)
-                (extractState internalsThd)
-    , unwrapper = \_ _ -> identity
-    }
 
 
 {-| A combinator that produces a triple of three controls of given types.
@@ -2648,43 +2739,19 @@ type EndRecord
     = EndRecord
 
 
-
--- recordWrapper :
---     { wrap : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
---     , wrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
---     , unwrap : ((EndRecord -> End) -> record -> tuple) -> Record record -> Maybe tuple
---     , unwrapper : (restFields -> restTuples) -> Field state restFields -> Maybe ( State state, restTuples )
---     }
-
-
-recordWrapper =
-    { wrap = \wrapper_ tup -> Record (wrapper_ (\End -> EndRecord) tup)
-    , wrapper = \next ( this, rest ) -> Field (State_ this) (next rest)
-    , unwrap = \unwrapper_ (Record fields) -> unwrapper_ (\EndRecord -> Just End) fields
-    , unwrapper =
-        \next (Field this rest) ->
-            case ( extractState this, next rest ) of
-                ( Just thisState, Just restStates ) ->
-                    Just ( thisState, restStates )
-
-                _ ->
-                    Nothing
-    }
-
-
 nestForwards : (c -> a -> b) -> (b -> d) -> c -> a -> d
-nestForwards mkBifunctor previous this =
-    \next -> previous (mkBifunctor this next)
+nestForwards mkTuple previous this =
+    \next -> previous (mkTuple this next)
 
 
 nestBackwards : (a -> b -> c) -> b -> a -> c
-nestBackwards mkBifunctor this =
-    \next -> mkBifunctor next this
+nestBackwards mkTuple this =
+    \next -> mkTuple next this
 
 
 {-| A data structure used to build records
 -}
-type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer wrapper unwrapper
+type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer stateWrapper stateUnwrapper
     = RecordBuilder
         { after : after
         , afters : afters
@@ -2706,8 +2773,8 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         , toOutput : toOutput
         , updater : updater
         , viewer : viewer
-        , wrapper : wrapper
-        , unwrapper : unwrapper
+        , stateWrapper : stateWrapper
+        , stateUnwrapper : stateUnwrapper
         }
 
 
@@ -2764,8 +2831,8 @@ product toOutput =
         , errorCollector = identity
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
-        , wrapper = identity
-        , unwrapper = identity
+        , stateWrapper = identity
+        , stateUnwrapper = identity
         }
 
 
@@ -2864,8 +2931,8 @@ object bifunctor fromInput (Control control) (RecordBuilder builder) =
         , errorCollector = builder.errorCollector >> recordFeedbackCollector
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> recordDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> recordSubscriptionCollector
-        , wrapper = builder.wrapper >> bifunctor.wrapper
-        , unwrapper = builder.unwrapper >> bifunctor.unwrapper
+        , stateWrapper = builder.stateWrapper >> bifunctor.stateWrapper
+        , stateUnwrapper = builder.stateUnwrapper >> bifunctor.stateUnwrapper
         }
 
 
@@ -2892,10 +2959,10 @@ endProduct bifunctor (RecordBuilder builder) =
                     builder.fns path End
 
                 wrap =
-                    bifunctor.wrap builder.wrapper
+                    bifunctor.wrapState builder.stateWrapper
 
                 unwrap wrappedState =
-                    bifunctor.unwrap builder.unwrapper wrappedState
+                    bifunctor.unwrapState builder.stateUnwrapper wrappedState
                         |> Maybe.withDefault initialStates
 
                 initialStates =
@@ -3866,30 +3933,16 @@ type CustomType customType
 
 
 type Tag args restTags
-    = Tag (State args) restTags
+    = Tag (Internals args) restTags
 
 
 type EndCustomType
     = EndCustomType
 
 
-customTypeWrapper :
-    { wrap : ((End -> EndCustomType) -> tuple -> customType) -> tuple -> CustomType customType
-    , wrapper : (restTuples -> restTags) -> ( State state, restTuples ) -> Tag state restTags
-    , unwrap : ((EndCustomType -> End) -> customType -> tuple) -> CustomType customType -> tuple
-    , unwrapper : (restTags -> restTuples) -> Tag state restTags -> ( State state, restTuples )
-    }
-customTypeWrapper =
-    { wrap = \wrapper_ tup -> CustomType (wrapper_ (\End -> EndCustomType) tup)
-    , wrapper = \next ( args, restTags ) -> Tag args (next restTags)
-    , unwrap = \unwrapper_ (CustomType tags) -> unwrapper_ (\EndCustomType -> End) tags
-    , unwrapper = \next (Tag args restTags) -> ( args, next restTags )
-    }
-
-
 {-| A data structure used to build custom types
 -}
-type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer wrapper unwrapper
+type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer stateWrapper stateUnwrapper
     = CustomTypeBuilder
         { applyInputs : applyInputs
         , debouncingReceiverCollector : debouncingReceiverCollector
@@ -3918,8 +3971,8 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
         , toArgStates : toArgStates
         , updater : updater
         , viewer : viewer
-        , wrapper : wrapper
-        , unwrapper : unwrapper
+        , stateWrapper : stateWrapper
+        , stateUnwrapper : stateUnwrapper
         }
 
 
@@ -3979,8 +4032,8 @@ customType :
             (toArgStates -> toArgStates)
             (updater -> updater)
             (viewer -> viewer)
-            (wrapper -> wrapper)
-            (unwrapper -> unwrapper)
+            (stateWrapper -> stateWrapper)
+            (stateUnwrapper -> stateUnwrapper)
 customType destructor =
     CustomTypeBuilder
         { index = 0
@@ -4010,8 +4063,8 @@ customType destructor =
         , debouncingReceiverCollector = identity
         , subscriptionCollector = identity
         , destructor = destructor
-        , wrapper = identity
-        , unwrapper = identity
+        , stateWrapper = identity
+        , stateUnwrapper = identity
         }
 
 
@@ -4076,8 +4129,8 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> customTypeDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> customTypeSubscriptionCollector
         , destructor = builder.destructor
-        , wrapper = builder.wrapper >> customTypeWrapper.wrapper
-        , unwrapper = builder.unwrapper >> customTypeWrapper.unwrapper
+        , stateWrapper = builder.stateWrapper >> customTypeWrapper.stateWrapper
+        , stateUnwrapper = builder.stateUnwrapper >> customTypeWrapper.stateUnwrapper
         }
 
 
@@ -4104,18 +4157,18 @@ endCustomType (CustomTypeBuilder builder) =
     Control
         (\path ->
             let
-                wrap =
-                    customTypeWrapper.wrap builder.wrapper
+                wrapState =
+                    customTypeWrapper.wrapState builder.stateWrapper
 
-                unwrap =
-                    customTypeWrapper.unwrap builder.unwrapper
+                unwrapState wrappedStates =
+                    customTypeWrapper.unwrapState builder.stateUnwrapper wrappedStates
+                        |> Maybe.withDefault initialStates
 
                 fns =
                     builder.fns path End
 
                 initialStates =
                     builder.initialStates path End
-                        |> wrap
 
                 initialDeltas =
                     builder.initialDeltas path End
@@ -4130,7 +4183,7 @@ endCustomType (CustomTypeBuilder builder) =
                     makeInputToStateConverters
                         builder.inputToStateConverters
                         builder.initialStateOverrider
-                        (unwrap initialStates)
+                        initialStates
                         fns
                         builder.toArgStates
                         builder.stateBefores
@@ -4141,7 +4194,7 @@ endCustomType (CustomTypeBuilder builder) =
                     \context delta (MkState meta wrappedState) ->
                         let
                             state =
-                                unwrap wrappedState
+                                unwrapState wrappedState
                         in
                         case delta of
                             NoDelta ->
@@ -4155,7 +4208,7 @@ endCustomType (CustomTypeBuilder builder) =
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
-                                ( MkState meta (wrap newTagStates)
+                                ( MkState meta (wrapState newTagStates)
                                 , Cmd.map StateChangedByInput cmd
                                 )
 
@@ -4164,7 +4217,7 @@ endCustomType (CustomTypeBuilder builder) =
                                     ( newTagStates, cmd ) =
                                         updateCustomTypeStates builder.updater context fns deltaSetters tagDelta state
                                 in
-                                ( MkState meta (wrap newTagStates)
+                                ( MkState meta (wrapState newTagStates)
                                 , Cmd.map StateChangedInternally cmd
                                 )
 
@@ -4174,7 +4227,7 @@ endCustomType (CustomTypeBuilder builder) =
                 subcontrolView context config =
                     let
                         unwrappedConfig =
-                            { state = unwrap config.state
+                            { state = unwrapState config.state
                             , alerts = config.alerts
                             , class = config.class
                             , id = config.id
@@ -4190,22 +4243,22 @@ endCustomType (CustomTypeBuilder builder) =
                     customTypeView context config subcontrolView
 
                 parse context (MkState meta state) =
-                    validateSelectedTagState builder.parser meta.selected context fns (unwrap state)
+                    validateSelectedTagState builder.parser meta.selected context fns (unwrapState state)
 
                 setAllIdle =
                     \(MkState meta state) ->
                         MkState
                             { meta | status = Idle_ }
-                            (wrap (setSelectedTagStateIdle builder.idleSetter meta.selected fns (unwrap state)))
+                            (wrapState (setSelectedTagStateIdle builder.idleSetter meta.selected fns (unwrapState state)))
 
                 emitAlerts context (MkState meta state) =
-                    emitAlertsForCustomType builder.alertEmitter context meta.selected fns (unwrap state)
+                    emitAlertsForCustomType builder.alertEmitter context meta.selected fns (unwrapState state)
             in
             ControlFns
                 { path = path
                 , index = 0
                 , initBlank =
-                    ( MkState { status = Intact_, selected = 1 } initialStates
+                    ( MkState { status = Intact_, selected = 1 } (wrapState initialStates)
                     , Cmd.batch (initialiseCustomTypeDeltas builder.initialiseDeltas deltaSetters initialDeltas)
                     )
                 , initPrefilled =
@@ -4218,7 +4271,7 @@ endCustomType (CustomTypeBuilder builder) =
                                 destructor tag
 
                             initPrefilledState =
-                                MkState meta (wrap states)
+                                MkState meta (wrapState states)
 
                             deltas =
                                 initialiseCustomTypeDeltas builder.initialiseDeltas deltaSetters initialDeltas
@@ -4241,14 +4294,14 @@ endCustomType (CustomTypeBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForCustomType builder.errorCollector alerts fns (unwrap states)
+                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForCustomType builder.errorCollector alerts fns (unwrapState states)
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns (unwrap states)
+                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForCustomType builder.debouncingReceiverCollector fns (unwrapState states)
                 , label = "Custom Type"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \context (MkState _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector context deltaSetters fns (unwrap states)
+                , subscriptions = \context (MkState _ states) -> collectCustomTypeSubscriptions builder.subscriptionCollector context deltaSetters fns (unwrapState states)
                 }
         )
 
@@ -4270,30 +4323,6 @@ type Arg arg restArgs
 
 type EndTag
     = EndTag
-
-
-
--- argWrapper :
---     { wrap : ((End -> EndTag) -> tuple -> args) -> tuple -> args
---     , wrapper : (restTuples -> restArgs) -> ( State arg, restTuples ) -> Arg arg restArgs
---     , unwrap : ((EndTag -> End) -> args -> tuple) -> args -> tuple
---     , unwrapper : (restArgs -> restTuples) -> Arg arg restArgs -> ( State arg, restTuples )
---     }
-
-
-argWrapper =
-    { wrap = \wrapper_ tup -> wrapper_ (\End -> EndTag) tup
-    , wrapper = \next ( arg, restArgs ) -> Arg (State_ arg) (next restArgs)
-    , unwrap = \unwrapper_ args -> unwrapper_ (\EndTag -> Just End) args
-    , unwrapper =
-        \next (Arg arg restArgs) ->
-            case ( extractState arg, next restArgs ) of
-                ( Just state, Just restStates ) ->
-                    Just ( state, restStates )
-
-                _ ->
-                    Nothing
-    }
 
 
 {-| Add a tag with no arguments to a custom type.
