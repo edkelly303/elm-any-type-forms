@@ -383,6 +383,11 @@ type alias Path =
     Path.Path
 
 
+type Internals a
+    = State_ (State a)
+    | Delta_ (Delta a)
+
+
 
 {-
    .d8888. d888888b  .d8b.  d888888b d88888b
@@ -2109,21 +2114,48 @@ result failureControl successControl =
 
 
 type Tuple fst snd
-    = Tuple (State fst) (State snd)
+    = Tuple (Internals fst) (Internals snd)
 
 
-tupleBifunctor :
-    { wrap : (d -> e -> f -> f) -> ( State fst, ( State snd, End ) ) -> Tuple fst snd
-    , wrapper : d -> e -> f -> f
-    , unwrap : (j -> k -> l -> l) -> Tuple fst snd -> ( State fst, ( State snd, End ) )
-    , unwrapper : j -> k -> l -> l
-    }
-tupleBifunctor =
-    { wrap = \_ ( fst, ( snd, End ) ) -> Tuple fst snd
+
+-- tupleWrapper :
+--     { wrap : (d -> e -> f -> f) -> ( State fst, ( State snd, End ) ) -> Tuple fst snd
+--     , wrapper : d -> e -> f -> f
+--     , unwrap : (j -> k -> l -> l) -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
+--     , unwrapper : j -> k -> l -> l
+--     }
+
+
+tupleWrapper =
+    { wrap = \_ ( fst, ( snd, End ) ) -> Tuple (State_ fst) (State_ snd)
     , wrapper = \_ _ -> identity
-    , unwrap = \_ (Tuple fst snd) -> ( fst, ( snd, End ) )
+    , unwrap =
+        \_ (Tuple internalsFst internalsSnd) ->
+            Maybe.map2 (\fst snd -> ( fst, ( snd, End ) ))
+                (extractState internalsFst)
+                (extractState internalsSnd)
     , unwrapper = \_ _ -> identity
     }
+
+
+extractState : Internals state -> Maybe (State state)
+extractState internals =
+    case internals of
+        State_ s ->
+            Just s
+
+        Delta_ d ->
+            Nothing
+
+
+extractDelta : Internals delta -> Maybe (Delta delta)
+extractDelta internals =
+    case internals of
+        State_ s ->
+            Nothing
+
+        Delta_ d ->
+            Just d
 
 
 {-| A combinator that produces a tuple of two controls of given types.
@@ -2143,9 +2175,9 @@ tuple :
             ( output1, output2 )
 tuple first second =
     product Tuple.pair
-        |> object tupleBifunctor Tuple.first first
-        |> object tupleBifunctor Tuple.second second
-        |> endProduct tupleBifunctor
+        |> object tupleWrapper Tuple.first first
+        |> object tupleWrapper Tuple.second second
+        |> endProduct tupleWrapper
         |> label "Tuple"
         |> layout
             (\config subcontrols ->
@@ -2165,13 +2197,18 @@ tuple first second =
 
 
 type Triple a b c
-    = Triple (State a) (State b) (State c)
+    = Triple (Internals a) (Internals b) (Internals c)
 
 
-tripleBifunctor =
-    { wrap = \_ ( a, ( b, ( c, End ) ) ) -> Triple a b c
+tripleWrapper =
+    { wrap = \_ ( a, ( b, ( c, End ) ) ) -> Triple (State_ a) (State_ b) (State_ c)
     , wrapper = \_ _ -> identity
-    , unwrap = \_ (Triple a b c) -> ( a, ( b, ( c, End ) ) )
+    , unwrap =
+        \_ (Triple internalsFst internalsSnd internalsThd) ->
+            Maybe.map3 (\fst snd thd -> ( fst, ( snd, ( thd, End ) ) ))
+                (extractState internalsFst)
+                (extractState internalsSnd)
+                (extractState internalsThd)
     , unwrapper = \_ _ -> identity
     }
 
@@ -2194,10 +2231,10 @@ triple :
             ( output1, output2, output3 )
 triple first second third =
     product (\a b c -> ( a, b, c ))
-        |> object tripleBifunctor (\( a, _, _ ) -> a) first
-        |> object tripleBifunctor (\( _, b, _ ) -> b) second
-        |> object tripleBifunctor (\( _, _, c ) -> c) third
-        |> endProduct tripleBifunctor
+        |> object tripleWrapper (\( a, _, _ ) -> a) first
+        |> object tripleWrapper (\( _, b, _ ) -> b) second
+        |> object tripleWrapper (\( _, _, c ) -> c) third
+        |> endProduct tripleWrapper
         |> label "Triple"
         |> layout
             (\config subcontrols ->
@@ -2604,24 +2641,34 @@ type Record record
 
 
 type Field field restFields
-    = Field (State field) restFields
+    = Field (Internals field) restFields
 
 
 type EndRecord
     = EndRecord
 
 
-recordWrapper :
-    { wrap : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
-    , wrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
-    , unwrap : ((EndRecord -> End) -> record -> tuple) -> Record record -> tuple
-    , unwrapper : (restFields -> restTuples) -> Field state restFields -> ( State state, restTuples )
-    }
+
+-- recordWrapper :
+--     { wrap : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
+--     , wrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
+--     , unwrap : ((EndRecord -> End) -> record -> tuple) -> Record record -> Maybe tuple
+--     , unwrapper : (restFields -> restTuples) -> Field state restFields -> Maybe ( State state, restTuples )
+--     }
+
+
 recordWrapper =
     { wrap = \wrapper_ tup -> Record (wrapper_ (\End -> EndRecord) tup)
-    , wrapper = \next ( this, rest ) -> Field this (next rest)
-    , unwrap = \unwrapper_ (Record fields) -> unwrapper_ (\EndRecord -> End) fields
-    , unwrapper = \next (Field this rest) -> ( this, next rest )
+    , wrapper = \next ( this, rest ) -> Field (State_ this) (next rest)
+    , unwrap = \unwrapper_ (Record fields) -> unwrapper_ (\EndRecord -> Just End) fields
+    , unwrapper =
+        \next (Field this rest) ->
+            case ( extractState this, next rest ) of
+                ( Just thisState, Just restStates ) ->
+                    Just ( thisState, restStates )
+
+                _ ->
+                    Nothing
     }
 
 
@@ -2847,12 +2894,12 @@ endProduct bifunctor (RecordBuilder builder) =
                 wrap =
                     bifunctor.wrap builder.wrapper
 
-                unwrap =
-                    bifunctor.unwrap builder.unwrapper
+                unwrap wrappedState =
+                    bifunctor.unwrap builder.unwrapper wrappedState
+                        |> Maybe.withDefault initialStates
 
                 initialStates =
                     builder.initialStates path End
-                        |> wrap
 
                 initialDeltas =
                     builder.initialDeltas path End
@@ -2923,13 +2970,13 @@ endProduct bifunctor (RecordBuilder builder) =
                 { path = path
                 , index = 0
                 , initBlank =
-                    ( MkState { status = Intact_, selected = 1 } initialStates
+                    ( MkState { status = Intact_, selected = 1 } (wrap initialStates)
                     , initialiseRecordDeltas builder.deltaInitialiser deltaSetters initialDeltas
                     )
                 , initPrefilled =
                     \output ->
                         initialiseRecordStates builder.initialiser output fns deltaSetters
-                            |> Tuple.mapFirst (\(MkState i s) -> MkState i (wrap s))
+                            |> Tuple.mapFirst (\(MkState meta subcontrolStates) -> MkState meta (wrap subcontrolStates))
                 , baseUpdate = \_ -> update
                 , update = update
                 , subControlViews = subcontrolViews
@@ -4218,24 +4265,34 @@ endCustomType (CustomTypeBuilder builder) =
 
 
 type Arg arg restArgs
-    = Arg (State arg) restArgs
+    = Arg (Internals arg) restArgs
 
 
 type EndTag
     = EndTag
 
 
-argWrapper :
-    { wrap : ((End -> EndTag) -> tuple -> args) -> tuple -> args
-    , wrapper : (restTuples -> restArgs) -> ( State arg, restTuples ) -> Arg arg restArgs
-    , unwrap : ((EndTag -> End) -> args -> tuple) -> args -> tuple
-    , unwrapper : (restArgs -> restTuples) -> Arg arg restArgs -> ( State arg, restTuples )
-    }
+
+-- argWrapper :
+--     { wrap : ((End -> EndTag) -> tuple -> args) -> tuple -> args
+--     , wrapper : (restTuples -> restArgs) -> ( State arg, restTuples ) -> Arg arg restArgs
+--     , unwrap : ((EndTag -> End) -> args -> tuple) -> args -> tuple
+--     , unwrapper : (restArgs -> restTuples) -> Arg arg restArgs -> ( State arg, restTuples )
+--     }
+
+
 argWrapper =
     { wrap = \wrapper_ tup -> wrapper_ (\End -> EndTag) tup
-    , wrapper = \next ( arg, restArgs ) -> Arg arg (next restArgs)
-    , unwrap = \unwrapper_ args -> unwrapper_ (\EndTag -> End) args
-    , unwrapper = \next (Arg arg restArgs) -> ( arg, next restArgs )
+    , wrapper = \next ( arg, restArgs ) -> Arg (State_ arg) (next restArgs)
+    , unwrap = \unwrapper_ args -> unwrapper_ (\EndTag -> Just End) args
+    , unwrapper =
+        \next (Arg arg restArgs) ->
+            case ( extractState arg, next restArgs ) of
+                ( Just state, Just restStates ) ->
+                    Just ( state, restStates )
+
+                _ ->
+                    Nothing
     }
 
 
