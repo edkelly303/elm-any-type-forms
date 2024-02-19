@@ -459,12 +459,20 @@ recordWrapper :
     , stateWrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
     , unwrapState : ((EndRecord -> Maybe End) -> record -> Maybe tuple) -> Record record -> Maybe tuple
     , stateUnwrapper : (restFields -> Maybe restTuples) -> Field state restFields -> Maybe ( State state, restTuples )
+    , wrapDelta : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
+    , deltaWrapper : (restTuples -> restFields) -> ( Delta delta, restTuples ) -> Field delta restFields
+    , unwrapDelta : ((EndRecord -> Maybe End) -> record -> Maybe tuple) -> Record record -> Maybe tuple
+    , deltaUnwrapper : (restFields -> Maybe restTuples) -> Field delta restFields -> Maybe ( Delta delta, restTuples )
     }
 recordWrapper =
     { wrapState = genericWrap Record EndRecord
     , stateWrapper = genericWrapper Field State_
     , unwrapState = genericUnwrap (\(Record fields) -> fields) (\EndRecord -> End)
     , stateUnwrapper = genericUnwrapper (\(Field this rest) -> ( this, rest )) maybeExtractState
+    , wrapDelta = genericWrap Record EndRecord
+    , deltaWrapper = genericWrapper Field Delta_
+    , unwrapDelta = genericUnwrap (\(Record fields) -> fields) (\EndRecord -> End)
+    , deltaUnwrapper = genericUnwrapper (\(Field this rest) -> ( this, rest )) maybeExtractDelta
     }
 
 
@@ -473,12 +481,20 @@ customTypeWrapper :
     , stateWrapper : (restTuples -> restTags) -> ( State state, restTuples ) -> Tag state restTags
     , unwrapState : ((EndCustomType -> Maybe End) -> customType -> Maybe tuple) -> CustomType customType -> Maybe tuple
     , stateUnwrapper : (restTags -> Maybe restTuples) -> Tag state restTags -> Maybe ( State state, restTuples )
+    , wrapDelta : ((End -> EndCustomType) -> tuple -> customType) -> tuple -> CustomType customType
+    , deltaWrapper : (restTuples -> restTags) -> ( Delta delta, restTuples ) -> Tag delta restTags
+    , unwrapDelta : ((EndCustomType -> Maybe End) -> customType -> Maybe tuple) -> CustomType customType -> Maybe tuple
+    , deltaUnwrapper : (restTags -> Maybe restTuples) -> Tag delta restTags -> Maybe ( Delta delta, restTuples )
     }
 customTypeWrapper =
     { wrapState = genericWrap CustomType EndCustomType
     , stateWrapper = genericWrapper Tag State_
     , unwrapState = genericUnwrap (\(CustomType tags) -> tags) (\EndCustomType -> End)
     , stateUnwrapper = genericUnwrapper (\(Tag tag restTags) -> ( tag, restTags )) maybeExtractState
+    , wrapDelta = genericWrap CustomType EndCustomType
+    , deltaWrapper = genericWrapper Tag Delta_
+    , unwrapDelta = genericUnwrap (\(CustomType tags) -> tags) (\EndCustomType -> End)
+    , deltaUnwrapper = genericUnwrapper (\(Tag tag restTags) -> ( tag, restTags )) maybeExtractDelta
     }
 
 
@@ -487,20 +503,32 @@ argWrapper :
     , stateWrapper : (restTuples -> restArgs) -> ( State arg, restTuples ) -> Arg arg restArgs
     , unwrapState : ((EndTag -> Maybe End) -> args -> Maybe tuple) -> args -> Maybe tuple
     , stateUnwrapper : (restArgs -> Maybe restTuples) -> Arg arg restArgs -> Maybe ( State arg, restTuples )
+    , wrapDelta : ((End -> EndTag) -> tuple -> args) -> tuple -> args
+    , deltaWrapper : (restTuples -> restArgs) -> ( Delta arg, restTuples ) -> Arg arg restArgs
+    , unwrapDelta : ((EndTag -> Maybe End) -> args -> Maybe tuple) -> args -> Maybe tuple
+    , deltaUnwrapper : (restArgs -> Maybe restTuples) -> Arg arg restArgs -> Maybe ( Delta arg, restTuples )
     }
 argWrapper =
     { wrapState = genericWrap identity EndTag
     , stateWrapper = genericWrapper Arg State_
     , unwrapState = genericUnwrap identity (\EndTag -> End)
     , stateUnwrapper = genericUnwrapper (\(Arg arg restArgs) -> ( arg, restArgs )) maybeExtractState
+    , wrapDelta = genericWrap identity EndTag
+    , deltaWrapper = genericWrapper Arg Delta_
+    , unwrapDelta = genericUnwrap identity (\EndTag -> End)
+    , deltaUnwrapper = genericUnwrapper (\(Arg arg restArgs) -> ( arg, restArgs )) maybeExtractDelta
     }
 
 
 tupleWrapper :
-    { wrapState : (d -> e -> f -> f) -> ( State fst, ( State snd, End ) ) -> Tuple fst snd
+    { wrapState : a -> ( State b, ( State c, End ) ) -> Tuple b c
     , stateWrapper : d -> e -> f -> f
-    , unwrapState : (j -> k -> l -> l) -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
-    , stateUnwrapper : j -> k -> l -> l
+    , unwrapState : g -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
+    , stateUnwrapper : h -> i -> j -> j
+    , wrapDelta : k -> ( Delta l, ( Delta m, End ) ) -> Tuple l m
+    , deltaWrapper : n -> o -> p -> p
+    , unwrapDelta : q -> Tuple r s -> Maybe ( Delta r, ( Delta s, End ) )
+    , deltaUnwrapper : t -> u -> v -> v
     }
 tupleWrapper =
     { wrapState = \_ ( fst, ( snd, End ) ) -> Tuple (State_ fst) (State_ snd)
@@ -511,6 +539,14 @@ tupleWrapper =
                 (maybeExtractState internalsFst)
                 (maybeExtractState internalsSnd)
     , stateUnwrapper = \_ _ -> identity
+    , wrapDelta = \_ ( fst, ( snd, End ) ) -> Tuple (Delta_ fst) (Delta_ snd)
+    , deltaWrapper = \_ _ -> identity
+    , unwrapDelta =
+        \_ (Tuple internalsFst internalsSnd) ->
+            Maybe.map2 (\fst snd -> ( fst, ( snd, End ) ))
+                (maybeExtractDelta internalsFst)
+                (maybeExtractDelta internalsSnd)
+    , deltaUnwrapper = \_ _ -> identity
     }
 
 
@@ -519,6 +555,10 @@ tripleWrapper :
     , stateWrapper : e -> f -> g -> g
     , unwrapState : h -> Triple i j k -> Maybe ( State i, ( State j, ( State k, End ) ) )
     , stateUnwrapper : l -> m -> n -> n
+    , wrapDelta : o -> ( Delta p, ( Delta q, ( Delta r, End ) ) ) -> Triple p q r
+    , deltaWrapper : s -> t -> u -> u
+    , unwrapDelta : v -> Triple w x y -> Maybe ( Delta w, ( Delta x, ( Delta y, End ) ) )
+    , deltaUnwrapper : z -> a1 -> b1 -> b1
     }
 tripleWrapper =
     { wrapState = \_ ( a, ( b, ( c, End ) ) ) -> Triple (State_ a) (State_ b) (State_ c)
@@ -530,6 +570,15 @@ tripleWrapper =
                 (maybeExtractState internalsSnd)
                 (maybeExtractState internalsThd)
     , stateUnwrapper = \_ _ -> identity
+    , wrapDelta = \_ ( a, ( b, ( c, End ) ) ) -> Triple (Delta_ a) (Delta_ b) (Delta_ c)
+    , deltaWrapper = \_ _ -> identity
+    , unwrapDelta =
+        \_ (Triple internalsFst internalsSnd internalsThd) ->
+            Maybe.map3 (\fst snd thd -> ( fst, ( snd, ( thd, End ) ) ))
+                (maybeExtractDelta internalsFst)
+                (maybeExtractDelta internalsSnd)
+                (maybeExtractDelta internalsThd)
+    , deltaUnwrapper = \_ _ -> identity
     }
 
 
