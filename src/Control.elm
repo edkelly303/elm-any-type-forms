@@ -455,14 +455,14 @@ genericUnwrapper untag maybeExtractor next wrappedThing =
 
 
 recordWrapper :
-    { wrapState : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
-    , stateWrapper : (restTuples -> restFields) -> ( State state, restTuples ) -> Field state restFields
-    , unwrapState : ((EndRecord -> Maybe End) -> record -> Maybe tuple) -> Record record -> Maybe tuple
-    , stateUnwrapper : (restFields -> Maybe restTuples) -> Field state restFields -> Maybe ( State state, restTuples )
-    , wrapDelta : ((End -> EndRecord) -> tuple -> record) -> tuple -> Record record
-    , deltaWrapper : (restTuples -> restFields) -> ( Delta delta, restTuples ) -> Field delta restFields
-    , unwrapDelta : ((EndRecord -> Maybe End) -> record -> Maybe tuple) -> Record record -> Maybe tuple
-    , deltaUnwrapper : (restFields -> Maybe restTuples) -> Field delta restFields -> Maybe ( Delta delta, restTuples )
+    { wrapState : ((End -> EndRecord) -> ( State state, restStateTuples ) -> Field state restStateFields) -> ( State state, restStateTuples ) -> Record (Field state restStateFields)
+    , stateWrapper : (restStateTuples -> restStateFields) -> ( State state, restStateTuples ) -> Field state restStateFields
+    , unwrapState : ((EndRecord -> Maybe End) -> Field state restStateFields -> Maybe ( State state, restStateTuples )) -> Record (Field state restStateFields) -> Maybe ( State state, restStateTuples )
+    , stateUnwrapper : (restStateFields -> Maybe restStateTuples) -> Field state restStateFields -> Maybe ( State state, restStateTuples )
+    , wrapDelta : ((End -> EndRecord) -> ( Delta delta, restDeltaTuples ) -> Field delta restDeltaFields) -> ( Delta delta, restDeltaTuples ) -> Record (Field delta restDeltaFields)
+    , deltaWrapper : (restDeltaTuples -> restDeltaFields) -> ( Delta delta, restDeltaTuples ) -> Field delta restDeltaFields
+    , unwrapDelta : ((EndRecord -> Maybe End) -> Field delta restDeltaFields -> Maybe ( Delta delta, restDeltaTuples )) -> Record (Field delta restDeltaFields) -> Maybe ( Delta delta, restDeltaTuples )
+    , deltaUnwrapper : (restDeltaFields -> Maybe restDeltaTuples) -> Field delta restDeltaFields -> Maybe ( Delta delta, restDeltaTuples )
     }
 recordWrapper =
     { wrapState = genericWrap Record EndRecord
@@ -477,14 +477,14 @@ recordWrapper =
 
 
 customTypeWrapper :
-    { wrapState : ((End -> EndCustomType) -> tuple -> customType) -> tuple -> CustomType customType
-    , stateWrapper : (restTuples -> restTags) -> ( State state, restTuples ) -> Tag state restTags
-    , unwrapState : ((EndCustomType -> Maybe End) -> customType -> Maybe tuple) -> CustomType customType -> Maybe tuple
-    , stateUnwrapper : (restTags -> Maybe restTuples) -> Tag state restTags -> Maybe ( State state, restTuples )
-    , wrapDelta : ((End -> EndCustomType) -> tuple -> customType) -> tuple -> CustomType customType
-    , deltaWrapper : (restTuples -> restTags) -> ( Delta delta, restTuples ) -> Tag delta restTags
-    , unwrapDelta : ((EndCustomType -> Maybe End) -> customType -> Maybe tuple) -> CustomType customType -> Maybe tuple
-    , deltaUnwrapper : (restTags -> Maybe restTuples) -> Tag delta restTags -> Maybe ( Delta delta, restTuples )
+    { wrapState : ((End -> EndCustomType) -> ( State state, restStateTuples ) -> Tag state restStateTags) -> ( State state, restStateTuples ) -> CustomType (Tag state restStateTags)
+    , stateWrapper : (restStateTuples -> restStateTags) -> ( State state, restStateTuples ) -> Tag state restStateTags
+    , unwrapState : ((EndCustomType -> Maybe End) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )) -> CustomType (Tag state restStateTags) -> Maybe ( State state, restStateTuples )
+    , stateUnwrapper : (restStateTags -> Maybe restStateTuples) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )
+    , wrapDelta : ((End -> EndCustomType) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> CustomType (Tag delta restDeltaTags)
+    , deltaWrapper : (restDeltaTuples -> restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags
+    , unwrapDelta : ((EndCustomType -> Maybe End) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )) -> CustomType (Tag delta restDeltaTags) -> Maybe ( Delta delta, restDeltaTuples )
+    , deltaUnwrapper : (restDeltaTags -> Maybe restDeltaTuples) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )
     }
 customTypeWrapper =
     { wrapState = genericWrap CustomType EndCustomType
@@ -499,14 +499,14 @@ customTypeWrapper =
 
 
 argWrapper :
-    { wrapState : ((End -> EndTag) -> tuple -> args) -> tuple -> args
-    , stateWrapper : (restTuples -> restArgs) -> ( State arg, restTuples ) -> Arg arg restArgs
-    , unwrapState : ((EndTag -> Maybe End) -> args -> Maybe tuple) -> args -> Maybe tuple
-    , stateUnwrapper : (restArgs -> Maybe restTuples) -> Arg arg restArgs -> Maybe ( State arg, restTuples )
-    , wrapDelta : ((End -> EndTag) -> tuple -> args) -> tuple -> args
-    , deltaWrapper : (restTuples -> restArgs) -> ( Delta arg, restTuples ) -> Arg arg restArgs
-    , unwrapDelta : ((EndTag -> Maybe End) -> args -> Maybe tuple) -> args -> Maybe tuple
-    , deltaUnwrapper : (restArgs -> Maybe restTuples) -> Arg arg restArgs -> Maybe ( Delta arg, restTuples )
+    { wrapState : ((End -> EndTag) -> ( State state, restStateTuples ) -> Arg state restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
+    , stateWrapper : (restStateTuples -> restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
+    , unwrapState : ((EndTag -> Maybe End) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
+    , stateUnwrapper : (restStateArgs -> Maybe restStateTuples) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
+    , wrapDelta : ((End -> EndTag) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
+    , deltaWrapper : (restDeltaTuples -> restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
+    , unwrapDelta : ((EndTag -> Maybe End) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
+    , deltaUnwrapper : (restDeltaArgs -> Maybe restDeltaTuples) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
     }
 argWrapper =
     { wrapState = genericWrap identity EndTag
@@ -2800,7 +2800,7 @@ nestBackwards mkTuple this =
 
 {-| A data structure used to build records
 -}
-type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer stateWrapper stateUnwrapper
+type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer stateWrapper stateUnwrapper deltaWrapper deltaUnwrapper
     = RecordBuilder
         { after : after
         , afters : afters
@@ -2824,6 +2824,8 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         , viewer : viewer
         , stateWrapper : stateWrapper
         , stateUnwrapper : stateUnwrapper
+        , deltaWrapper : deltaWrapper
+        , deltaUnwrapper : deltaUnwrapper
         }
 
 
@@ -2882,6 +2884,8 @@ product toOutput =
         , subscriptionCollector = identity
         , stateWrapper = identity
         , stateUnwrapper = identity
+        , deltaWrapper = identity
+        , deltaUnwrapper = identity
         }
 
 
@@ -2906,7 +2910,7 @@ field =
     object recordWrapper
 
 
-object bifunctor fromInput (Control control) (RecordBuilder builder) =
+object wrapper fromInput (Control control) (RecordBuilder builder) =
     let
         newIndex =
             builder.index + 1
@@ -2980,8 +2984,10 @@ object bifunctor fromInput (Control control) (RecordBuilder builder) =
         , errorCollector = builder.errorCollector >> recordFeedbackCollector
         , debouncingReceiverCollector = builder.debouncingReceiverCollector >> recordDebouncingReceiverCollector
         , subscriptionCollector = builder.subscriptionCollector >> recordSubscriptionCollector
-        , stateWrapper = builder.stateWrapper >> bifunctor.stateWrapper
-        , stateUnwrapper = builder.stateUnwrapper >> bifunctor.stateUnwrapper
+        , stateWrapper = builder.stateWrapper >> wrapper.stateWrapper
+        , stateUnwrapper = builder.stateUnwrapper >> wrapper.stateUnwrapper
+        , deltaWrapper = builder.deltaWrapper >> wrapper.deltaWrapper
+        , deltaUnwrapper = builder.deltaUnwrapper >> wrapper.deltaUnwrapper
         }
 
 
@@ -3000,18 +3006,18 @@ endRecord =
     endProduct recordWrapper
 
 
-endProduct bifunctor (RecordBuilder builder) =
+endProduct wrapper (RecordBuilder builder) =
     Control
         (\path ->
             let
                 fns =
                     builder.fns path End
 
-                wrap =
-                    bifunctor.wrapState builder.stateWrapper
+                wrapState =
+                    wrapper.wrapState builder.stateWrapper
 
-                unwrap wrappedState =
-                    bifunctor.unwrapState builder.stateUnwrapper wrappedState
+                unwrapState wrappedState =
+                    wrapper.unwrapState builder.stateUnwrapper wrappedState
                         |> Maybe.withDefault initialStates
 
                 initialStates =
@@ -3031,18 +3037,18 @@ endProduct bifunctor (RecordBuilder builder) =
                         StateChangedByInput deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrap states)
+                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrapState states)
                             in
-                            ( MkState meta (wrap newState)
+                            ( MkState meta (wrapState newState)
                             , Cmd.map StateChangedByInput cmd
                             )
 
                         StateChangedInternally deltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrap states)
+                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrapState states)
                             in
-                            ( MkState meta (wrap newState)
+                            ( MkState meta (wrapState newState)
                             , Cmd.map StateChangedInternally cmd
                             )
 
@@ -3057,7 +3063,7 @@ endProduct bifunctor (RecordBuilder builder) =
                 subcontrolViews context config =
                     let
                         unwrappedConfig =
-                            { state = unwrap config.state
+                            { state = unwrapState config.state
                             , alerts = config.alerts
                             , class = config.class
                             , id = config.id
@@ -3074,25 +3080,25 @@ endProduct bifunctor (RecordBuilder builder) =
                         |> List.concatMap .html
 
                 parse context (MkState _ state) =
-                    validateRecordStates builder.parser builder.toOutput fns context (unwrap state)
+                    validateRecordStates builder.parser builder.toOutput fns context (unwrapState state)
 
                 setAllIdle (MkState i state) =
-                    MkState { i | status = Idle_ } (wrap (setAllRecordStatesToIdle builder.idleSetter fns (unwrap state)))
+                    MkState { i | status = Idle_ } (wrapState (setAllRecordStatesToIdle builder.idleSetter fns (unwrapState state)))
 
                 emitAlerts context (MkState _ state) =
-                    emitAlertsForRecord builder.alertEmitter fns context (unwrap state)
+                    emitAlertsForRecord builder.alertEmitter fns context (unwrapState state)
             in
             ControlFns
                 { path = path
                 , index = 0
                 , initBlank =
-                    ( MkState { status = Intact_, selected = 1 } (wrap initialStates)
+                    ( MkState { status = Intact_, selected = 1 } (wrapState initialStates)
                     , initialiseRecordDeltas builder.deltaInitialiser deltaSetters initialDeltas
                     )
                 , initPrefilled =
                     \output ->
                         initialiseRecordStates builder.initialiser output fns deltaSetters
-                            |> Tuple.mapFirst (\(MkState meta subcontrolStates) -> MkState meta (wrap subcontrolStates))
+                            |> Tuple.mapFirst (\(MkState meta subcontrolStates) -> MkState meta (wrapState subcontrolStates))
                 , baseUpdate = \_ -> update
                 , update = update
                 , subControlViews = subcontrolViews
@@ -3100,14 +3106,14 @@ endProduct bifunctor (RecordBuilder builder) =
                 , parse = parse
                 , setAllIdle = setAllIdle
                 , emitAlerts = emitAlerts
-                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForRecord builder.errorCollector alerts fns (unwrap states)
+                , collectFeedback = \(MkState _ states) alerts -> collectFeedbackForRecord builder.errorCollector alerts fns (unwrapState states)
                 , receiverCount = 0
-                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForRecord builder.debouncingReceiverCollector fns (unwrap states)
+                , collectDebouncingReceivers = \(MkState _ states) -> collectDebouncingReceiversForRecord builder.debouncingReceiverCollector fns (unwrapState states)
                 , label = "Record"
                 , id = Nothing
                 , name = Nothing
                 , class = []
-                , subscriptions = \context (MkState _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns context (unwrap states)
+                , subscriptions = \context (MkState _ states) -> collectRecordSubscriptions builder.subscriptionCollector deltaSetters fns context (unwrapState states)
                 }
         )
 
