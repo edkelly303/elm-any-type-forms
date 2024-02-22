@@ -454,16 +454,19 @@ genericUnwrapper untag maybeExtractor next wrappedThing =
     Maybe.map2 Tuple.pair (maybeExtractor this) (next rest)
 
 
-recordWrapper :
-    { wrapState : ((End -> EndRecord) -> ( State state, restStateTuples ) -> Field state restStateFields) -> ( State state, restStateTuples ) -> Record (Field state restStateFields)
-    , stateWrapper : (restStateTuples -> restStateFields) -> ( State state, restStateTuples ) -> Field state restStateFields
-    , unwrapState : ((EndRecord -> Maybe End) -> Field state restStateFields -> Maybe ( State state, restStateTuples )) -> Record (Field state restStateFields) -> Maybe ( State state, restStateTuples )
-    , stateUnwrapper : (restStateFields -> Maybe restStateTuples) -> Field state restStateFields -> Maybe ( State state, restStateTuples )
-    , wrapDelta : ((End -> EndRecord) -> ( Delta delta, restDeltaTuples ) -> Field delta restDeltaFields) -> ( Delta delta, restDeltaTuples ) -> Record (Field delta restDeltaFields)
-    , deltaWrapper : (restDeltaTuples -> restDeltaFields) -> ( Delta delta, restDeltaTuples ) -> Field delta restDeltaFields
-    , unwrapDelta : ((EndRecord -> Maybe End) -> Field delta restDeltaFields -> Maybe ( Delta delta, restDeltaTuples )) -> Record (Field delta restDeltaFields) -> Maybe ( Delta delta, restDeltaTuples )
-    , deltaUnwrapper : (restDeltaFields -> Maybe restDeltaTuples) -> Field delta restDeltaFields -> Maybe ( Delta delta, restDeltaTuples )
-    }
+
+-- recordWrapper :
+--     { wrapState : ((End -> EndRecord) -> ( State state, restStateTuples ) -> Field state restStateFields) -> ( State state, restStateTuples ) -> Record (Field state restStateFields)
+--     , stateWrapper : (restStateTuples -> restStateFields) -> ( State state, restStateTuples ) -> Field state restStateFields
+--     , unwrapState : ((EndRecord -> Maybe End) -> Field state restStateFields -> Maybe ( State state, restStateTuples )) -> Record (Field state restStateFields) -> Maybe ( State state, restStateTuples )
+--     , stateUnwrapper : (restStateFields -> Maybe restStateTuples) -> Field state restStateFields -> Maybe ( State state, restStateTuples )
+--     , wrapDelta : ((End -> EndRecord) -> ( Delta delta, restDeltaTuples ) -> Field delta restDeltaFields) -> ( Delta delta, restDeltaTuples ) -> Record (Field delta restDeltaFields)
+--     , deltaWrapper : (restDeltaTuples -> restDeltaFields) -> ( Delta delta, restDeltaTuples ) -> Field delta restDeltaFields
+--     , unwrapDelta : ((EndRecord -> Maybe End) -> Field delta restDeltaFields -> Maybe ( Delta delta, restDeltaTuples )) -> Record (Field delta restDeltaFields) -> Maybe ( Delta delta, restDeltaTuples )
+--     , deltaUnwrapper : (restDeltaFields -> Maybe restDeltaTuples) -> Field delta restDeltaFields -> Maybe ( Delta delta, restDeltaTuples )
+--     }
+
+
 recordWrapper =
     { wrapState = genericWrap Record EndRecord
     , stateWrapper = genericWrapper Field State_
@@ -476,16 +479,19 @@ recordWrapper =
     }
 
 
-customTypeWrapper :
-    { wrapState : ((End -> EndCustomType) -> ( State state, restStateTuples ) -> Tag state restStateTags) -> ( State state, restStateTuples ) -> CustomType (Tag state restStateTags)
-    , stateWrapper : (restStateTuples -> restStateTags) -> ( State state, restStateTuples ) -> Tag state restStateTags
-    , unwrapState : ((EndCustomType -> Maybe End) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )) -> CustomType (Tag state restStateTags) -> Maybe ( State state, restStateTuples )
-    , stateUnwrapper : (restStateTags -> Maybe restStateTuples) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )
-    , wrapDelta : ((End -> EndCustomType) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> CustomType (Tag delta restDeltaTags)
-    , deltaWrapper : (restDeltaTuples -> restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags
-    , unwrapDelta : ((EndCustomType -> Maybe End) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )) -> CustomType (Tag delta restDeltaTags) -> Maybe ( Delta delta, restDeltaTuples )
-    , deltaUnwrapper : (restDeltaTags -> Maybe restDeltaTuples) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )
-    }
+
+-- customTypeWrapper :
+--     { wrapState : ((End -> EndCustomType) -> ( State state, restStateTuples ) -> Tag state restStateTags) -> ( State state, restStateTuples ) -> CustomType (Tag state restStateTags)
+--     , stateWrapper : (restStateTuples -> restStateTags) -> ( State state, restStateTuples ) -> Tag state restStateTags
+--     , unwrapState : ((EndCustomType -> Maybe End) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )) -> CustomType (Tag state restStateTags) -> Maybe ( State state, restStateTuples )
+--     , stateUnwrapper : (restStateTags -> Maybe restStateTuples) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )
+--     , wrapDelta : ((End -> EndCustomType) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> CustomType (Tag delta restDeltaTags)
+--     , deltaWrapper : (restDeltaTuples -> restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags
+--     , unwrapDelta : ((EndCustomType -> Maybe End) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )) -> CustomType (Tag delta restDeltaTags) -> Maybe ( Delta delta, restDeltaTuples )
+--     , deltaUnwrapper : (restDeltaTags -> Maybe restDeltaTuples) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )
+--     }
+
+
 customTypeWrapper =
     { wrapState = genericWrap CustomType EndCustomType
     , stateWrapper = genericWrapper Tag State_
@@ -498,16 +504,19 @@ customTypeWrapper =
     }
 
 
-argWrapper :
-    { wrapState : ((End -> EndTag) -> ( State state, restStateTuples ) -> Arg state restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
-    , stateWrapper : (restStateTuples -> restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
-    , unwrapState : ((EndTag -> Maybe End) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
-    , stateUnwrapper : (restStateArgs -> Maybe restStateTuples) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
-    , wrapDelta : ((End -> EndTag) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
-    , deltaWrapper : (restDeltaTuples -> restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
-    , unwrapDelta : ((EndTag -> Maybe End) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
-    , deltaUnwrapper : (restDeltaArgs -> Maybe restDeltaTuples) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
-    }
+
+-- argWrapper :
+--     { wrapState : ((End -> EndTag) -> ( State state, restStateTuples ) -> Arg state restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
+--     , stateWrapper : (restStateTuples -> restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
+--     , unwrapState : ((EndTag -> Maybe End) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
+--     , stateUnwrapper : (restStateArgs -> Maybe restStateTuples) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
+--     , wrapDelta : ((End -> EndTag) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
+--     , deltaWrapper : (restDeltaTuples -> restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
+--     , unwrapDelta : ((EndTag -> Maybe End) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
+--     , deltaUnwrapper : (restDeltaArgs -> Maybe restDeltaTuples) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
+--     }
+
+
 argWrapper =
     { wrapState = genericWrap identity EndTag
     , stateWrapper = genericWrapper Arg State_
@@ -520,16 +529,19 @@ argWrapper =
     }
 
 
-tupleWrapper :
-    { wrapState : a -> ( State b, ( State c, End ) ) -> Tuple b c
-    , stateWrapper : d -> e -> f -> f
-    , unwrapState : g -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
-    , stateUnwrapper : h -> i -> j -> j
-    , wrapDelta : k -> ( Delta l, ( Delta m, End ) ) -> Tuple l m
-    , deltaWrapper : n -> o -> p -> p
-    , unwrapDelta : q -> Tuple r s -> Maybe ( Delta r, ( Delta s, End ) )
-    , deltaUnwrapper : t -> u -> v -> v
-    }
+
+-- tupleWrapper :
+--     { wrapState : a -> ( State b, ( State c, End ) ) -> Tuple b c
+--     , stateWrapper : d -> e -> f -> f
+--     , unwrapState : g -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
+--     , stateUnwrapper : h -> i -> j -> j
+--     , wrapDelta : k -> ( Delta l, ( Delta m, End ) ) -> Tuple l m
+--     , deltaWrapper : n -> o -> p -> p
+--     , unwrapDelta : q -> Tuple r s -> Maybe ( Delta r, ( Delta s, End ) )
+--     , deltaUnwrapper : t -> u -> v -> v
+--     }
+
+
 tupleWrapper =
     { wrapState = \_ ( fst, ( snd, End ) ) -> Tuple (State_ fst) (State_ snd)
     , stateWrapper = \_ _ -> identity
@@ -550,16 +562,19 @@ tupleWrapper =
     }
 
 
-tripleWrapper :
-    { wrapState : a -> ( State b, ( State c, ( State d, End ) ) ) -> Triple b c d
-    , stateWrapper : e -> f -> g -> g
-    , unwrapState : h -> Triple i j k -> Maybe ( State i, ( State j, ( State k, End ) ) )
-    , stateUnwrapper : l -> m -> n -> n
-    , wrapDelta : o -> ( Delta p, ( Delta q, ( Delta r, End ) ) ) -> Triple p q r
-    , deltaWrapper : s -> t -> u -> u
-    , unwrapDelta : v -> Triple w x y -> Maybe ( Delta w, ( Delta x, ( Delta y, End ) ) )
-    , deltaUnwrapper : z -> a1 -> b1 -> b1
-    }
+
+-- tripleWrapper :
+--     { wrapState : a -> ( State b, ( State c, ( State d, End ) ) ) -> Triple b c d
+--     , stateWrapper : e -> f -> g -> g
+--     , unwrapState : h -> Triple i j k -> Maybe ( State i, ( State j, ( State k, End ) ) )
+--     , stateUnwrapper : l -> m -> n -> n
+--     , wrapDelta : o -> ( Delta p, ( Delta q, ( Delta r, End ) ) ) -> Triple p q r
+--     , deltaWrapper : s -> t -> u -> u
+--     , unwrapDelta : v -> Triple w x y -> Maybe ( Delta w, ( Delta x, ( Delta y, End ) ) )
+--     , deltaUnwrapper : z -> a1 -> b1 -> b1
+--     }
+
+
 tripleWrapper =
     { wrapState = \_ ( a, ( b, ( c, End ) ) ) -> Triple (State_ a) (State_ b) (State_ c)
     , stateWrapper = \_ _ -> identity
@@ -2197,7 +2212,7 @@ map :
         Control
             context
             (Record (Field state EndRecord))
-            ( Delta delta, End )
+            (Record (Field delta EndRecord))
             b
 map config control =
     Control
@@ -2235,7 +2250,7 @@ maybe :
         Control
             context
             (CustomType (Tag EndTag (Tag (Arg state EndTag) EndCustomType)))
-            ( Delta (), ( Delta ( Delta delta, End ), End ) )
+            (CustomType (Tag EndTag (Tag (Arg delta EndTag) EndCustomType)))
             (Maybe output)
 maybe control =
     customType
@@ -2278,7 +2293,7 @@ result :
         Control
             context
             (CustomType (Tag (Arg failureState EndTag) (Tag (Arg successState EndTag) EndCustomType)))
-            ( Delta ( Delta failureDelta, End ), ( Delta ( Delta successDelta, End ), End ) )
+            (CustomType (Tag (Arg failureDelta EndTag) (Tag (Arg successDelta EndTag) EndCustomType)))
             (Result failureOutput successOutput)
 result failureControl successControl =
     customType
@@ -2324,13 +2339,13 @@ tuple :
         Control
             context
             (Tuple state1 state2)
-            ( Delta delta1, ( Delta delta2, End ) )
+            (Tuple delta1 delta2)
             ( output1, output2 )
 tuple first second =
-    product Tuple.pair
-        |> object tupleWrapper Tuple.first first
-        |> object tupleWrapper Tuple.second second
-        |> endProduct tupleWrapper
+    productType Tuple.pair
+        |> productField tupleWrapper Tuple.first first
+        |> productField tupleWrapper Tuple.second second
+        |> endProductType tupleWrapper
         |> label "Tuple"
         |> layout
             (\config subcontrols ->
@@ -2367,14 +2382,14 @@ triple :
         Control
             context
             (Triple state1 state2 state3)
-            ( Delta delta1, ( Delta delta2, ( Delta delta3, End ) ) )
+            (Triple delta1 delta2 delta3)
             ( output1, output2, output3 )
 triple first second third =
-    product (\a b c -> ( a, b, c ))
-        |> object tripleWrapper (\( a, _, _ ) -> a) first
-        |> object tripleWrapper (\( _, b, _ ) -> b) second
-        |> object tripleWrapper (\( _, _, c ) -> c) third
-        |> endProduct tripleWrapper
+    productType (\a b c -> ( a, b, c ))
+        |> productField tripleWrapper (\( a, _, _ ) -> a) first
+        |> productField tripleWrapper (\( _, b, _ ) -> b) second
+        |> productField tripleWrapper (\( _, _, c ) -> c) third
+        |> endProductType tripleWrapper
         |> label "Triple"
         |> layout
             (\config subcontrols ->
@@ -2647,7 +2662,7 @@ dict :
         Control
             context
             (Record (Field (List (State (Tuple keyState valueState))) EndRecord))
-            ( Delta (ListDelta ( Delta keyDelta, ( Delta valueDelta, End ) )), End )
+            (Record (Field (ListDelta (Tuple keyDelta valueDelta)) EndRecord))
             (Dict.Dict comparable value)
 dict keyControl valueControl =
     list
@@ -2723,7 +2738,7 @@ set :
         Control
             context
             (Record (Field (List (State state)) EndRecord))
-            ( Delta (ListDelta delta), End )
+            (Record (Field (ListDelta delta) EndRecord))
             (Set.Set comparable)
 set memberControl =
     list
@@ -2756,7 +2771,7 @@ array :
         Control
             context
             (Record (Field (List (State state)) EndRecord))
-            ( Delta (ListDelta delta), End )
+            (Record (Field (ListDelta delta) EndRecord))
             (Array.Array output)
 array itemControl =
     list itemControl
@@ -2788,19 +2803,19 @@ type EndRecord
     = EndRecord
 
 
-nestForwards : (c -> a -> b) -> (b -> d) -> c -> a -> d
-nestForwards mkTuple previous this =
-    \next -> previous (mkTuple this next)
+tupleAppend : (( b, a ) -> c) -> b -> a -> c
+tupleAppend previous this next =
+    previous ( this, next )
 
 
-nestBackwards : (a -> b -> c) -> b -> a -> c
-nestBackwards mkTuple this =
-    \next -> mkTuple next this
+tuplePrepend : a -> b -> ( b, a )
+tuplePrepend this next =
+    ( next, this )
 
 
 {-| A data structure used to build records
 -}
-type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer stateWrapper stateUnwrapper deltaWrapper deltaUnwrapper
+type RecordBuilder after afters before befores debouncingReceiverCollector deltaInitialiser errorCollector alertEmitter fns idleSetter initialCmds initialStates initialiser makeSetters parser subscriptionCollector toOutput updater viewer stateWrapper stateUnwrapper deltaWrapper deltaUnwrapper emptyDeltas
     = RecordBuilder
         { after : after
         , afters : afters
@@ -2813,7 +2828,8 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         , fns : fns
         , idleSetter : idleSetter
         , index : Int
-        , initialDeltas : initialDeltas
+        , initialCmds : initialCmds
+        , emptyDeltas : emptyDeltas
         , initialStates : initialStates
         , initialiser : initialiser
         , makeSetters : makeSetters
@@ -2857,16 +2873,17 @@ this library is built using the `record` combinator).
 
 
 record =
-    product
+    productType
 
 
-product toOutput =
+productType toOutput =
     RecordBuilder
         { index = 0
         , toOutput = toOutput
         , fns = \_ x -> x
         , initialStates = \_ x -> x
-        , initialDeltas = \_ x -> x
+        , initialCmds = \_ x -> x
+        , emptyDeltas = End
         , updater = identity
         , viewer = identity
         , parser = identity
@@ -2907,10 +2924,10 @@ product toOutput =
 
 
 field =
-    object recordWrapper
+    productField recordWrapper
 
 
-object wrapper fromInput (Control control) (RecordBuilder builder) =
+productField wrapper fromInput (Control control) (RecordBuilder builder) =
     let
         newIndex =
             builder.index + 1
@@ -2936,7 +2953,7 @@ object wrapper fromInput (Control control) (RecordBuilder builder) =
                             , fromInput = fromInput
                             }
                 in
-                nestForwards Tuple.pair previousFns newFns
+                tupleAppend previousFns newFns
         , initialStates =
             \path ->
                 let
@@ -2952,8 +2969,8 @@ object wrapper fromInput (Control control) (RecordBuilder builder) =
                     newInitialState =
                         Tuple.first fns.initBlank
                 in
-                nestForwards Tuple.pair previousInitialStates newInitialState
-        , initialDeltas =
+                tupleAppend previousInitialStates newInitialState
+        , initialCmds =
             \path ->
                 let
                     newPath =
@@ -2963,22 +2980,23 @@ object wrapper fromInput (Control control) (RecordBuilder builder) =
                         control newPath
 
                     previousInitialDeltas =
-                        builder.initialDeltas path
+                        builder.initialCmds path
 
                     newInitialDelta =
                         Tuple.second fns.initBlank
                 in
-                nestForwards Tuple.pair previousInitialDeltas newInitialDelta
+                tupleAppend previousInitialDeltas newInitialDelta
+        , emptyDeltas = tuplePrepend builder.emptyDeltas NoDelta
         , updater = builder.updater >> recordStateUpdater
         , viewer = builder.viewer >> recordStateViewer
         , parser = builder.parser >> recordStateValidator
         , idleSetter = builder.idleSetter >> recordStateIdleSetter
-        , initialiser = builder.initialiser >> recordStateInitialiser
+        , initialiser = builder.initialiser >> recordStateAndCmdInitialiser
         , deltaInitialiser = builder.deltaInitialiser >> recordDeltaInitialiser
-        , before = nestForwards Tuple.pair builder.before NoDelta
-        , befores = nestForwards Tuple.pair builder.befores builder.before
-        , after = nestBackwards Tuple.pair builder.after NoDelta
-        , afters = nestBackwards Tuple.pair builder.afters builder.after
+        , before = tupleAppend builder.before NoDelta
+        , befores = tupleAppend builder.befores builder.before
+        , after = tuplePrepend builder.after NoDelta
+        , afters = tuplePrepend builder.afters builder.after
         , makeSetters = builder.makeSetters >> deltaSetterMaker
         , alertEmitter = builder.alertEmitter >> recordAlertEmitter
         , errorCollector = builder.errorCollector >> recordFeedbackCollector
@@ -3003,18 +3021,18 @@ object wrapper fromInput (Control control) (RecordBuilder builder) =
 
 -}
 endRecord =
-    endProduct recordWrapper
+    endProductType recordWrapper
 
 
-endProduct wrapper (RecordBuilder builder) =
+endProductType wrapper (RecordBuilder builder) =
     Control
         (\path ->
             let
                 fns =
                     builder.fns path End
 
-                wrapState =
-                    wrapper.wrapState builder.stateWrapper
+                wrapState unwrappedState =
+                    wrapper.wrapState builder.stateWrapper unwrappedState
 
                 unwrapState wrappedState =
                     wrapper.unwrapState builder.stateUnwrapper wrappedState
@@ -3023,42 +3041,55 @@ endProduct wrapper (RecordBuilder builder) =
                 initialStates =
                     builder.initialStates path End
 
-                initialDeltas =
-                    builder.initialDeltas path End
-
+                -- ( String -> Record (Field String (Field Bool, EndRecord))
+                -- , ( Bool -> Record (Field String (Field Bool, EndRecord))
+                --   , End
+                --   )
+                -- )
                 deltaSetters =
-                    makeDeltaSetters builder.makeSetters builder.befores builder.afters
+                    makeDeltaSetters builder.makeSetters wrapFieldDeltas builder.befores builder.afters
 
-                update context delta (MkState meta states) =
+                -- (Cmd (Delta String), ( Cmd (Delta Bool), End ) )
+                initialCmdFieldDeltas =
+                    builder.initialCmds path End
+
+                wrapFieldDeltas unwrappedFieldDeltas =
+                    wrapper.wrapDelta builder.deltaWrapper unwrappedFieldDeltas
+
+                unwrapFieldDeltas wrappedFieldDeltas =
+                    wrapper.unwrapDelta builder.deltaUnwrapper wrappedFieldDeltas
+                        |> Maybe.withDefault builder.emptyDeltas
+
+                update context delta (MkState meta wrappedStates) =
                     case delta of
                         NoDelta ->
-                            ( MkState meta states, Cmd.none )
+                            ( MkState meta wrappedStates, Cmd.none )
 
-                        StateChangedByInput deltas ->
+                        StateChangedByInput wrappedDeltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrapState states)
+                                    updateRecordStates builder.updater context fns deltaSetters (unwrapFieldDeltas wrappedDeltas) (unwrapState wrappedStates)
                             in
                             ( MkState meta (wrapState newState)
                             , Cmd.map StateChangedByInput cmd
                             )
 
-                        StateChangedInternally deltas ->
+                        StateChangedInternally wrappedDeltas ->
                             let
                                 ( newState, cmd ) =
-                                    updateRecordStates builder.updater context fns deltaSetters deltas (unwrapState states)
+                                    updateRecordStates builder.updater context fns deltaSetters (unwrapFieldDeltas wrappedDeltas) (unwrapState wrappedStates)
                             in
                             ( MkState meta (wrapState newState)
                             , Cmd.map StateChangedInternally cmd
                             )
 
                         TagSelected index ->
-                            ( MkState { meta | selected = index } states
+                            ( MkState { meta | selected = index } wrappedStates
                             , Cmd.none
                             )
 
                         _ ->
-                            ( MkState meta states, Cmd.none )
+                            ( MkState meta wrappedStates, Cmd.none )
 
                 subcontrolViews context config =
                     let
@@ -3093,12 +3124,20 @@ endProduct wrapper (RecordBuilder builder) =
                 , index = 0
                 , initBlank =
                     ( MkState { status = Intact_, selected = 1 } (wrapState initialStates)
-                    , initialiseRecordDeltas builder.deltaInitialiser deltaSetters initialDeltas
+                    , initialCmdFieldDeltas
+                        -- (Cmd (Delta String), ( Cmd (Delta Bool), End ) )
+                        |> convertFieldDeltasToRecordDelta builder.deltaInitialiser deltaSetters
+                        -- List (Cmd (Record (Field String (Field Bool EndRecord))))
+                        |> Cmd.batch
+                        -- Cmd (Record (Field String (Field Bool EndRecord)))
+                        |> Cmd.map StateChangedInternally
+                      -- Cmd (Delta (Record (Field String (Field Bool EndRecord))))
                     )
                 , initPrefilled =
                     \output ->
-                        initialiseRecordStates builder.initialiser output fns deltaSetters
+                        initialiseRecordStatesAndCmds builder.initialiser output fns deltaSetters
                             |> Tuple.mapFirst (\(MkState meta subcontrolStates) -> MkState meta (wrapState subcontrolStates))
+                            |> Tuple.mapSecond (Cmd.map StateChangedInternally)
                 , baseUpdate = \_ -> update
                 , update = update
                 , subControlViews = subcontrolViews
@@ -3383,45 +3422,52 @@ recordAlertEmitter next { alerts, context, fns, states } =
         }
 
 
-makeDeltaSetters :
-    (({ output : End -> deltaSetters
-      , befores : End
-      , afters : End
-      }
-      -> deltaSetters
-     )
-     ->
-        { output : identity -> identity
-        , befores : befores
-        , afters : afters
-        }
-     -> deltaSetters
-    )
-    -> (End -> befores)
-    -> afters
-    -> deltaSetters
-makeDeltaSetters makeSetters_ befores afters =
+
+-- makeDeltaSetters :
+--     (({ output : End -> deltaSetters
+--       , befores : End
+--       , afters : End
+--       }
+--       -> deltaSetters
+--      )
+--      ->
+--         { output : identity -> identity
+--         , befores : befores
+--         , afters : afters
+--         }
+--      -> deltaSetters
+--     )
+--     -> (End -> befores)
+--     -> afters
+--     -> deltaSetters
+
+
+makeDeltaSetters makeSetters_ wrapDeltas befores afters =
     makeSetters_ (\{ output } -> output End)
         { output = identity
         , befores = befores End
         , afters = afters
+        , wrapDeltas = wrapDeltas
         }
 
 
-deltaSetterMaker :
-    ({ output : restDeltaSetters -> deltaSetters
-     , befores : befores
-     , afters : afters
-     }
-     -> deltaSetters
-    )
-    ->
-        { output : ( value -> delta, restDeltaSetters ) -> deltaSetters
-        , befores : ( ( value, after ) -> delta, befores )
-        , afters : ( after, afters )
-        }
-    -> deltaSetters
-deltaSetterMaker next { output, befores, afters } =
+
+-- deltaSetterMaker :
+--     ({ output : restDeltaSetters -> deltaSetters
+--      , befores : befores
+--      , afters : afters
+--      }
+--      -> deltaSetters
+--     )
+--     ->
+--         { output : ( value -> delta, restDeltaSetters ) -> deltaSetters
+--         , befores : ( ( value, after ) -> delta, befores )
+--         , afters : ( after, afters )
+--         }
+--     -> deltaSetters
+
+
+deltaSetterMaker next { output, befores, afters, wrapDeltas } =
     let
         ( before, restBefores ) =
             befores
@@ -3430,42 +3476,21 @@ deltaSetterMaker next { output, befores, afters } =
             afters
     in
     next
-        { output = nestForwards Tuple.pair output (\value -> before ( value, after ))
+        { output = tupleAppend output (\value -> wrapDeltas (before ( value, after )))
         , befores = restBefores
         , afters = restAfters
+        , wrapDeltas = wrapDeltas
         }
 
 
-
--- initialiseRecordStates :
---     (((End -> state)
---       -> List (Cmd msg)
---       -> b
---       -> End
---       -> End
---       -> ( State state, Cmd (Delta msg) )
---      )
---      -> (a -> a)
---      -> List c
---      -> d
---      -> e
---      -> f
---      -> g
---     )
---     -> d
---     -> e
---     -> f
---     -> g
-
-
-initialiseRecordStates :
+initialiseRecordStatesAndCmds :
     (({ states : End -> states
       , deltas : List (Cmd delta)
       , recordInput : recordInput
       , fns : End
       , deltaSetters : End
       }
-      -> ( State states, Cmd (Delta delta) )
+      -> ( State states, Cmd delta )
      )
      ->
         { states : identity -> identity
@@ -3474,17 +3499,17 @@ initialiseRecordStates :
         , fns : recordFns
         , deltaSetters : deltaSetters
         }
-     -> ( State states, Cmd (Delta delta) )
+     -> ( State states, Cmd delta )
     )
     -> recordInput
     -> recordFns
     -> deltaSetters
-    -> ( State states, Cmd (Delta delta) )
-initialiseRecordStates initialiser input fns deltaSetters =
+    -> ( State states, Cmd delta )
+initialiseRecordStatesAndCmds initialiser input fns deltaSetters =
     initialiser
         (\{ states, deltas } ->
             ( MkState { status = Intact_, selected = 1 } (states End)
-            , Cmd.batch deltas |> Cmd.map StateChangedInternally
+            , Cmd.batch deltas
             )
         )
         { states = identity
@@ -3495,7 +3520,7 @@ initialiseRecordStates initialiser input fns deltaSetters =
         }
 
 
-recordStateInitialiser :
+recordStateAndCmdInitialiser :
     ({ states : nextState -> states
      , deltas : List (Cmd msg)
      , recordInput : recordOutput
@@ -3512,7 +3537,7 @@ recordStateInitialiser :
         , deltaSetters : ( Delta delta -> msg, deltaSetters )
         }
     -> statesAndDeltas
-recordStateInitialiser next { states, deltas, recordInput, fns, deltaSetters } =
+recordStateAndCmdInitialiser next { states, deltas, recordInput, fns, deltaSetters } =
     let
         ( RecordFns recordFns, restFns ) =
             fns
@@ -3529,7 +3554,7 @@ recordStateInitialiser next { states, deltas, recordInput, fns, deltaSetters } =
                 |> controlFns.initPrefilled
     in
     next
-        { states = nestForwards Tuple.pair states state
+        { states = tupleAppend states state
         , deltas = Cmd.map deltaSetter delta :: deltas
         , recordInput = recordInput
         , fns = restFns
@@ -3537,7 +3562,7 @@ recordStateInitialiser next { states, deltas, recordInput, fns, deltaSetters } =
         }
 
 
-initialiseRecordDeltas :
+convertFieldDeltasToRecordDelta :
     (({ cmds : List (Cmd recordDelta)
       , deltaSetters : End
       , fieldDeltas : End
@@ -3553,15 +3578,13 @@ initialiseRecordDeltas :
     )
     -> deltaSetters
     -> fieldDeltas
-    -> Cmd (Delta recordDelta)
-initialiseRecordDeltas deltaInitialiser_ deltaSetters deltas =
+    -> List (Cmd recordDelta)
+convertFieldDeltasToRecordDelta deltaInitialiser_ deltaSetters deltas =
     deltaInitialiser_ (\{ cmds } -> cmds)
         { cmds = []
         , deltaSetters = deltaSetters
         , fieldDeltas = deltas
         }
-        |> Cmd.batch
-        |> Cmd.map StateChangedInternally
 
 
 recordDeltaInitialiser :
@@ -3718,7 +3741,7 @@ recordStateIdleSetter next { inputStates, outputStates, fns } =
             recordFns.controlFns
     in
     next
-        { outputStates = nestForwards Tuple.pair outputStates (controlFns.setAllIdle inputState)
+        { outputStates = tupleAppend outputStates (controlFns.setAllIdle inputState)
         , fns = restFns
         , inputStates = restInputStates
         }
@@ -3958,11 +3981,10 @@ recordStateUpdater next { newStates, newCmds, context, fns, deltaSetters, deltas
             controlFns.update context delta state
 
         cmd2 =
-            newCmd
-                |> Cmd.map deltaSetter
+            Cmd.map deltaSetter newCmd
     in
     next
-        { newStates = nestForwards Tuple.pair newStates newState
+        { newStates = tupleAppend newStates newState
         , newCmds = cmd2 :: newCmds
         , context = context
         , fns = restFns
@@ -3997,7 +4019,7 @@ type EndCustomType
 
 {-| A data structure used to build custom types
 -}
-type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer stateWrapper stateUnwrapper
+type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaAfters deltaBefore deltaBefores destructor errorCollector alertEmitter fns idleSetter initialDeltas initialStates initialiseDeltas makeDeltaSetters makeStateSetters parser stateAfter stateAfters stateBefore stateBefores stateInserter subscriptionCollector toArgStates updater viewer stateWrapper stateUnwrapper deltaWrapper deltaUnwrapper
     = CustomTypeBuilder
         { applyInputs : applyInputs
         , debouncingReceiverCollector : debouncingReceiverCollector
@@ -4028,6 +4050,8 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
         , viewer : viewer
         , stateWrapper : stateWrapper
         , stateUnwrapper : stateUnwrapper
+        , deltaWrapper : deltaWrapper
+        , deltaUnwrapper : deltaUnwrapper
         }
 
 
@@ -4089,6 +4113,8 @@ customType :
             (viewer -> viewer)
             (stateWrapper -> stateWrapper)
             (stateUnwrapper -> stateUnwrapper)
+            (deltaWrapper -> deltaWrapper)
+            (deltaUnwrapper -> deltaUnwrapper)
 customType destructor =
     CustomTypeBuilder
         { index = 0
@@ -4120,6 +4146,8 @@ customType destructor =
         , destructor = destructor
         , stateWrapper = identity
         , stateUnwrapper = identity
+        , deltaWrapper = identity
+        , deltaUnwrapper = identity
         }
 
 
@@ -4140,7 +4168,7 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
                     (ControlFns controlFns) =
                         control (Path.add newIndex path)
                 in
-                nestForwards Tuple.pair
+                tupleAppend
                     (builder.fns path)
                     (ControlFns { controlFns | index = newIndex })
         , initialStates =
@@ -4149,7 +4177,7 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
                     (ControlFns controlFns) =
                         control (Path.add newIndex path)
                 in
-                nestForwards Tuple.pair
+                tupleAppend
                     (builder.initialStates path)
                     (controlFns.initBlank |> Tuple.first)
         , initialDeltas =
@@ -4158,24 +4186,24 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
                     (ControlFns controlFns) =
                         control (Path.add newIndex path)
                 in
-                nestForwards Tuple.pair
+                tupleAppend
                     (builder.initialDeltas path)
                     (controlFns.initBlank |> Tuple.second)
         , updater = builder.updater >> customTypeStateUpdater
         , viewer = builder.viewer >> selectedTagViewer
         , parser = builder.parser >> selectedTagParser
         , idleSetter = builder.idleSetter >> selectedTagIdleSetter
-        , deltaBefore = nestForwards Tuple.pair builder.deltaBefore NoDelta
-        , deltaBefores = nestForwards Tuple.pair builder.deltaBefores builder.deltaBefore
-        , deltaAfter = nestBackwards Tuple.pair builder.deltaAfter NoDelta
-        , deltaAfters = nestBackwards Tuple.pair builder.deltaAfters builder.deltaAfter
+        , deltaBefore = tupleAppend builder.deltaBefore NoDelta
+        , deltaBefores = tupleAppend builder.deltaBefores builder.deltaBefore
+        , deltaAfter = tuplePrepend builder.deltaAfter NoDelta
+        , deltaAfters = tuplePrepend builder.deltaAfters builder.deltaAfter
         , makeDeltaSetters = builder.makeDeltaSetters >> deltaSetterMaker
         , initialiseDeltas = builder.initialiseDeltas >> customTypeDeltaInitialiser
-        , stateBefore = nestForwards Tuple.pair builder.stateBefore Nothing
-        , stateBefores = nestForwards Tuple.pair builder.stateBefores builder.stateBefore
-        , toArgStates = nestForwards Tuple.pair builder.toArgStates toArgState
-        , stateAfter = nestBackwards Tuple.pair builder.stateAfter Nothing
-        , stateAfters = nestBackwards Tuple.pair builder.stateAfters builder.stateAfter
+        , stateBefore = tupleAppend builder.stateBefore Nothing
+        , stateBefores = tupleAppend builder.stateBefores builder.stateBefore
+        , toArgStates = tupleAppend builder.toArgStates toArgState
+        , stateAfter = tuplePrepend builder.stateAfter Nothing
+        , stateAfters = tuplePrepend builder.stateAfters builder.stateAfter
         , inputToStateConverters = builder.inputToStateConverters >> convertInputToState
         , initialStateOverrider = builder.initialStateOverrider >> initialStateOverrider
         , applyInputs = builder.applyInputs >> inputToStateConverterToDestructorApplier
@@ -4186,6 +4214,8 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
         , destructor = builder.destructor
         , stateWrapper = builder.stateWrapper >> customTypeWrapper.stateWrapper
         , stateUnwrapper = builder.stateUnwrapper >> customTypeWrapper.stateUnwrapper
+        , deltaWrapper = builder.deltaWrapper >> customTypeWrapper.deltaWrapper
+        , deltaUnwrapper = builder.deltaUnwrapper >> customTypeWrapper.deltaUnwrapper
         }
 
 
@@ -4441,9 +4471,9 @@ null tag =
 tag1 label_ tag control =
     tagHelper
         label_
-        (product tag
-            |> object argWrapper Tuple.first control
-            |> endProduct argWrapper
+        (productType tag
+            |> productField argWrapper Tuple.first control
+            |> endProductType argWrapper
         )
         (\insertArgStateIntoTagStates arg1 ->
             insertArgStateIntoTagStates ( arg1, End )
@@ -4468,10 +4498,10 @@ tag1 label_ tag control =
 tag2 label_ tag control1 control2 =
     tagHelper
         label_
-        (product tag
-            |> object argWrapper Tuple.first control1
-            |> object argWrapper (Tuple.second >> Tuple.first) control2
-            |> endProduct argWrapper
+        (productType tag
+            |> productField argWrapper Tuple.first control1
+            |> productField argWrapper (Tuple.second >> Tuple.first) control2
+            |> endProductType argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, End ) )
@@ -4496,11 +4526,11 @@ tag2 label_ tag control1 control2 =
 tag3 label_ tag control1 control2 control3 =
     tagHelper
         label_
-        (product tag
-            |> object argWrapper Tuple.first control1
-            |> object argWrapper (Tuple.second >> Tuple.first) control2
-            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> endProduct argWrapper
+        (productType tag
+            |> productField argWrapper Tuple.first control1
+            |> productField argWrapper (Tuple.second >> Tuple.first) control2
+            |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> endProductType argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, End ) ) )
@@ -4512,12 +4542,12 @@ tag3 label_ tag control1 control2 control3 =
 tag4 label_ tag control1 control2 control3 control4 =
     tagHelper
         label_
-        (product tag
-            |> object argWrapper Tuple.first control1
-            |> object argWrapper (Tuple.second >> Tuple.first) control2
-            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
-            |> endProduct argWrapper
+        (productType tag
+            |> productField argWrapper Tuple.first control1
+            |> productField argWrapper (Tuple.second >> Tuple.first) control2
+            |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> endProductType argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, End ) ) ) )
@@ -4529,13 +4559,13 @@ tag4 label_ tag control1 control2 control3 control4 =
 tag5 label_ tag control1 control2 control3 control4 control5 =
     tagHelper
         label_
-        (product tag
-            |> object argWrapper Tuple.first control1
-            |> object argWrapper (Tuple.second >> Tuple.first) control2
-            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
-            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
-            |> object argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
-            |> endProduct argWrapper
+        (productType tag
+            |> productField argWrapper Tuple.first control1
+            |> productField argWrapper (Tuple.second >> Tuple.first) control2
+            |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
+            |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control4
+            |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.second >> Tuple.second >> Tuple.first) control5
+            |> endProductType argWrapper
         )
         (\insertArgStateIntoTagStates arg1 arg2 arg3 arg4 arg5 ->
             insertArgStateIntoTagStates ( arg1, ( arg2, ( arg3, ( arg4, ( arg5, End ) ) ) ) )
@@ -4778,7 +4808,7 @@ customTypeStateUpdater next { newStates, newCmds, context, fns, deltaSetters, de
             controlFns.update context delta state
     in
     next
-        { newStates = nestForwards Tuple.pair newStates newState
+        { newStates = tupleAppend newStates newState
         , newCmds = Cmd.map deltaSetter newCmd :: newCmds
         , context = context
         , fns = restFns
@@ -5013,7 +5043,7 @@ convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, 
                 )
     in
     next
-        { finalTagStates = nestForwards Tuple.pair finalTagStates finalTagState
+        { finalTagStates = tupleAppend finalTagStates finalTagState
         , tagStateOverrider = tagStateOverrider
         , initialTagStates = initialTagStates
         , controlFns = restFns
@@ -5092,7 +5122,7 @@ initialStateOverrider next { thisTagIndex, selectedTagIndex, maybeOverrides, ini
     next
         { thisTagIndex = thisTagIndex + 1
         , selectedTagIndex = newSelectedTagIndex
-        , toTagStates = nestForwards Tuple.pair toTagStates tagArgState
+        , toTagStates = tupleAppend toTagStates tagArgState
         , maybeOverrides = restMaybeOverrides
         , initialTagStates = restInitialTagStates
         }
@@ -5294,7 +5324,7 @@ selectedTagIdleSetter next { selectedTag, fns, initialStates, toFinalStates } =
     in
     next
         { initialStates = restInitialStates
-        , toFinalStates = nestForwards Tuple.pair toFinalStates newState
+        , toFinalStates = tupleAppend toFinalStates newState
         , selectedTag = selectedTag
         , fns = restFns
         }
