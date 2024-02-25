@@ -649,6 +649,11 @@ type ListDelta delta
     | ItemUpdated Int (Delta delta)
 
 
+type List_ a
+    = ListState_ (List (State a))
+    | ListDelta_ (ListDelta a)
+
+
 
 {-
    d88888b d8b   db d8888b.
@@ -1441,8 +1446,8 @@ alertReceiver alert fail message (ControlFns ctrl) =
 alertAtIndexesWithContext :
     (context -> output -> List Int)
     -> String
-    -> Control context (List state) (ListDelta delta) output
-    -> Control context (List state) (ListDelta delta) output
+    -> Control context (List_ state) (List_ delta) output
+    -> Control context (List_ state) (List_ delta) output
 alertAtIndexesWithContext toIndexes alert (Control control) =
     Control (control >> listAlertEmitter toIndexes alert)
 
@@ -1478,8 +1483,8 @@ strings, if and only if those first two items are "hello" and "world":
 alertAtIndexes :
     (output -> List Int)
     -> String
-    -> Control context (List state) (ListDelta delta) output
-    -> Control context (List state) (ListDelta delta) output
+    -> Control context (List_ state) (List_ delta) output
+    -> Control context (List_ state) (List_ delta) output
 alertAtIndexes toIndexes alert control =
     alertAtIndexesWithContext (\_ -> toIndexes) alert control
 
@@ -1487,8 +1492,8 @@ alertAtIndexes toIndexes alert control =
 listAlertEmitter :
     (context -> output -> List Int)
     -> String
-    -> ControlFns context input (List state) (ListDelta delta) output
-    -> ControlFns context input (List state) (ListDelta delta) output
+    -> ControlFns context input (List_ state) (List_ delta) output
+    -> ControlFns context input (List_ state) (List_ delta) output
 listAlertEmitter check alertLabel (ControlFns ctrl) =
     ControlFns
         { ctrl
@@ -2407,7 +2412,7 @@ triple first second third =
 -}
 list :
     Control context state delta output
-    -> Control context (List (State state)) (ListDelta delta) (List output)
+    -> Control context (List_ state) (List_ delta) (List output)
 list (Control ctrl) =
     Control
         (\path ->
@@ -2415,92 +2420,109 @@ list (Control ctrl) =
                 update =
                     wrapUpdate listUpdate
 
-                listUpdate context delta state =
-                    case delta of
-                        ItemInserted idx ->
-                            let
-                                (ControlFns fns) =
-                                    ctrl path
+                listUpdate context listDelta listState =
+                    case ( listDelta, listState ) of
+                        ( ListDelta_ delta, ListState_ state ) ->
+                            case delta of
+                                ItemInserted idx ->
+                                    let
+                                        (ControlFns fns) =
+                                            ctrl path
 
-                                ( initialState, initialCmd ) =
-                                    fns.initBlank
+                                        ( initialState, initialCmd ) =
+                                            fns.initBlank
 
-                                before =
-                                    List.take idx state
+                                        before =
+                                            List.take idx state
 
-                                after =
-                                    List.drop idx state
-                            in
-                            ( before ++ initialState :: after
-                            , Cmd.map (ItemUpdated idx) initialCmd
-                            )
+                                        after =
+                                            List.drop idx state
+                                    in
+                                    ( ListState_ (before ++ initialState :: after)
+                                    , Cmd.map (ListDelta_ << ItemUpdated idx) initialCmd
+                                    )
 
-                        ItemUpdated idx itemDelta ->
-                            let
-                                ( newState, cmd ) =
-                                    List.Extra.indexedFoldr
-                                        (\thisIdx item ( items, prevCmd ) ->
-                                            if thisIdx == idx then
-                                                let
-                                                    (ControlFns itemControl) =
-                                                        ctrl (Path.add idx path)
+                                ItemUpdated idx itemDelta ->
+                                    let
+                                        ( newState, cmd ) =
+                                            List.Extra.indexedFoldr
+                                                (\thisIdx item ( items, prevCmd ) ->
+                                                    if thisIdx == idx then
+                                                        let
+                                                            (ControlFns itemControl) =
+                                                                ctrl (Path.add idx path)
 
-                                                    ( newItem, newCmd ) =
-                                                        itemControl.update context itemDelta item
-                                                in
-                                                ( newItem :: items, newCmd )
+                                                            ( newItem, newCmd ) =
+                                                                itemControl.update context itemDelta item
+                                                        in
+                                                        ( newItem :: items, newCmd )
 
-                                            else
-                                                ( item :: items, prevCmd )
-                                        )
-                                        ( [], Cmd.none )
-                                        state
-                            in
-                            ( newState
-                            , Cmd.map (ItemUpdated idx) cmd
-                            )
+                                                    else
+                                                        ( item :: items, prevCmd )
+                                                )
+                                                ( [], Cmd.none )
+                                                state
+                                    in
+                                    ( ListState_ newState
+                                    , Cmd.map (ListDelta_ << ItemUpdated idx) cmd
+                                    )
 
-                        ItemDeleted idx ->
-                            ( List.Extra.removeAt idx state, Cmd.none )
+                                ItemDeleted idx ->
+                                    ( ListState_ (List.Extra.removeAt idx state)
+                                    , Cmd.none
+                                    )
 
-                parse context (MkState _ state) =
-                    List.foldr
-                        (\( idx, item ) res ->
-                            let
-                                (ControlFns itemControl) =
-                                    ctrl (Path.add idx path)
-                            in
-                            case res of
-                                Ok outputs ->
-                                    case itemControl.parse context item of
-                                        Ok output ->
-                                            Ok (output :: outputs)
+                        _ ->
+                            ( listState, Cmd.none )
+
+                parse context (MkState _ listState) =
+                    case listState of
+                        ListState_ state ->
+                            List.foldr
+                                (\( idx, item ) res ->
+                                    let
+                                        (ControlFns itemControl) =
+                                            ctrl (Path.add idx path)
+                                    in
+                                    case res of
+                                        Ok outputs ->
+                                            case itemControl.parse context item of
+                                                Ok output ->
+                                                    Ok (output :: outputs)
+
+                                                Err errs ->
+                                                    Err errs
 
                                         Err errs ->
-                                            Err errs
+                                            case itemControl.parse context item of
+                                                Ok _ ->
+                                                    Err errs
 
-                                Err errs ->
-                                    case itemControl.parse context item of
-                                        Ok _ ->
-                                            Err errs
+                                                Err newErrs ->
+                                                    Err (newErrs ++ errs)
+                                )
+                                (Ok [])
+                                (List.indexedMap Tuple.pair state)
 
-                                        Err newErrs ->
-                                            Err (newErrs ++ errs)
-                        )
-                        (Ok [])
-                        (List.indexedMap Tuple.pair state)
+                        ListDelta_ _ ->
+                            Ok []
 
                 collectDebouncingReceivers (MkState _ listState) =
-                    List.indexedMap
-                        (\idx itemState ->
-                            let
-                                (ControlFns itemControl) =
-                                    ctrl (Path.add idx path)
-                            in
-                            itemControl.collectDebouncingReceivers itemState
-                        )
-                        listState
-                        |> List.concat
+                    case listState of
+                        ListState_ state ->
+                            List.indexedMap
+                                (\idx itemState ->
+                                    let
+                                        (ControlFns itemControl) =
+                                            ctrl (Path.add idx path)
+                                    in
+                                    itemControl.collectDebouncingReceivers itemState
+                                )
+                                state
+                                |> List.concat
+
+                        ListDelta_ _ ->
+                            []
             in
             ControlFns
                 { path = path
@@ -2519,17 +2541,17 @@ list (Control ctrl) =
                                                 itemControl.initPrefilled itemInput
                                         in
                                         ( itemState :: itemInputs
-                                        , Cmd.map (ItemUpdated idx) itemCmd :: itemCmds
+                                        , Cmd.map (ListDelta_ << ItemUpdated idx) itemCmd :: itemCmds
                                         )
                                     )
                                     ( [], [] )
                                     input
                         in
-                        ( MkState { status = Intact_, selected = 1 } initialState
+                        ( MkState { status = Intact_, selected = 1 } (ListState_ initialState)
                         , Cmd.map StateChangedInternally (Cmd.batch initialCmds)
                         )
                 , initBlank =
-                    ( MkState { status = Intact_, selected = 1 } []
+                    ( MkState { status = Intact_, selected = 1 } (ListState_ [])
                     , Cmd.none
                     )
                 , baseUpdate = update
@@ -2545,65 +2567,82 @@ list (Control ctrl) =
                         listView path context config debouncingReceivers ctrl
                 , parse = parse
                 , setAllIdle =
-                    \(MkState i s) ->
-                        MkState { i | status = Idle_ }
-                            (List.indexedMap
-                                (\idx item ->
-                                    let
-                                        (ControlFns itemControl) =
-                                            ctrl (Path.add idx path)
-                                    in
-                                    itemControl.setAllIdle item
-                                )
-                                s
-                            )
+                    \(MkState meta listState) ->
+                        case listState of
+                            ListDelta_ _ ->
+                                MkState { meta | status = Idle_ } listState
+
+                            ListState_ state ->
+                                MkState { meta | status = Idle_ }
+                                    (ListState_
+                                        (List.indexedMap
+                                            (\idx item ->
+                                                let
+                                                    (ControlFns itemControl) =
+                                                        ctrl (Path.add idx path)
+                                                in
+                                                itemControl.setAllIdle item
+                                            )
+                                            state
+                                        )
+                                    )
                 , emitAlerts =
-                    \context (MkState _ s) ->
-                        List.indexedMap
-                            (\idx item ->
-                                let
-                                    (ControlFns itemControl) =
-                                        ctrl (Path.add idx path)
-                                in
-                                itemControl.emitAlerts context item
-                            )
-                            s
-                            |> List.concat
+                    \context (MkState _ listState) ->
+                        case listState of
+                            ListDelta_ _ ->
+                                []
+
+                            ListState_ state ->
+                                List.indexedMap
+                                    (\idx item ->
+                                        let
+                                            (ControlFns itemControl) =
+                                                ctrl (Path.add idx path)
+                                        in
+                                        itemControl.emitAlerts context item
+                                    )
+                                    state
+                                    |> List.concat
                 , collectFeedback =
                     \(MkState _ listState) alerts ->
-                        List.indexedMap
-                            (\idx item ->
-                                let
-                                    (ControlFns itemControl) =
-                                        ctrl (Path.add idx path)
+                        case listState of
+                            ListDelta_ _ ->
+                                []
 
-                                    filteredAlerts =
-                                        List.filterMap
-                                            (\alert ->
-                                                case alert of
-                                                    AlertList alertPath alertLabel alertIndexes ->
-                                                        if alertPath == path then
-                                                            if List.member idx alertIndexes then
-                                                                Just (AlertLabel alertLabel)
+                            ListState_ state ->
+                                List.indexedMap
+                                    (\idx item ->
+                                        let
+                                            (ControlFns itemControl) =
+                                                ctrl (Path.add idx path)
 
-                                                            else
-                                                                Nothing
+                                            filteredAlerts =
+                                                List.filterMap
+                                                    (\alert ->
+                                                        case alert of
+                                                            AlertList alertPath alertLabel alertIndexes ->
+                                                                if alertPath == path then
+                                                                    if List.member idx alertIndexes then
+                                                                        Just (AlertLabel alertLabel)
 
-                                                        else
-                                                            Just alert
+                                                                    else
+                                                                        Nothing
 
-                                                    AlertLabel label_ ->
-                                                        Just (AlertLabel label_)
+                                                                else
+                                                                    Just alert
 
-                                                    AlertPath path_ number ->
-                                                        Just (AlertPath path_ number)
-                                            )
-                                            alerts
-                                in
-                                itemControl.collectFeedback item filteredAlerts
-                            )
-                            listState
-                            |> List.concat
+                                                            AlertLabel label_ ->
+                                                                Just (AlertLabel label_)
+
+                                                            AlertPath path_ number ->
+                                                                Just (AlertPath path_ number)
+                                                    )
+                                                    alerts
+                                        in
+                                        itemControl.collectFeedback item filteredAlerts
+                                    )
+                                    state
+                                    |> List.concat
                 , receiverCount = 0
                 , collectDebouncingReceivers = collectDebouncingReceivers
                 , label = "List"
@@ -2612,18 +2651,23 @@ list (Control ctrl) =
                 , class = []
                 , subscriptions =
                     \context (MkState _ listState) ->
-                        List.indexedMap
-                            (\idx itemState ->
-                                let
-                                    (ControlFns itemControl) =
-                                        ctrl (Path.add idx path)
-                                in
-                                itemControl.subscriptions context itemState
-                                    |> Sub.map (ItemUpdated idx)
-                            )
-                            listState
-                            |> Sub.batch
-                            |> Sub.map StateChangedInternally
+                        case listState of
+                            ListDelta_ _ ->
+                                Sub.none
+
+                            ListState_ state ->
+                                List.indexedMap
+                                    (\idx itemState ->
+                                        let
+                                            (ControlFns itemControl) =
+                                                ctrl (Path.add idx path)
+                                        in
+                                        itemControl.subscriptions context itemState
+                                            |> Sub.map (ListDelta_ << ItemUpdated idx)
+                                    )
+                                    state
+                                    |> Sub.batch
+                                    |> Sub.map StateChangedInternally
                 }
         )
 
@@ -2652,8 +2696,8 @@ dict :
     ->
         Control
             context
-            (Record (Field (List (State (Tuple keyState valueState))) EndRecord))
-            (Record (Field (ListDelta (Tuple keyDelta valueDelta)) EndRecord))
+            (Record (Field (List_ (Tuple keyState valueState)) EndRecord))
+            (Record (Field (List_ (Tuple keyDelta valueDelta)) EndRecord))
             (Dict.Dict comparable value)
 dict keyControl valueControl =
     list
@@ -2728,8 +2772,8 @@ set :
     ->
         Control
             context
-            (Record (Field (List (State state)) EndRecord))
-            (Record (Field (ListDelta delta) EndRecord))
+            (Record (Field (List_ state) EndRecord))
+            (Record (Field (List_ delta) EndRecord))
             (Set.Set comparable)
 set memberControl =
     list
@@ -2761,8 +2805,8 @@ array :
     ->
         Control
             context
-            (Record (Field (List (State state)) EndRecord))
-            (Record (Field (ListDelta delta) EndRecord))
+            (Record (Field (List_ state) EndRecord))
+            (Record (Field (List_ delta) EndRecord))
             (Array.Array output)
 array itemControl =
     list itemControl
@@ -5661,84 +5705,89 @@ button msg text =
 listView :
     Path
     -> context
-    -> InternalViewConfig (List (State state))
+    -> InternalViewConfig (List_ state)
     -> List Alert
     -> (Path -> ControlFns context input state delta output)
-    -> List (Html (Delta (ListDelta delta)))
+    -> List (Html (Delta (List_ delta)))
 listView path context config debouncingReceivers subcontrol =
-    let
-        view_ =
-            H.div
-                [ HA.id config.id
-                , HA.class "control-container"
-                ]
-                [ H.label
-                    [ HA.for config.id ]
-                    [ H.text config.label ]
-                , if List.isEmpty config.state then
-                    button (StateChangedByInput (ItemInserted 0)) "Add item"
+    case config.state of
+        ListDelta_ _ ->
+            [ H.text "ERROR!" ]
 
-                  else
-                    H.ol []
-                        (List.indexedMap
-                            (\idx (MkState meta state) ->
-                                let
-                                    itemPath =
-                                        Path.add idx path
+        ListState_ state ->
+            let
+                view_ =
+                    H.div
+                        [ HA.id config.id
+                        , HA.class "control-container"
+                        ]
+                        [ H.label
+                            [ HA.for config.id ]
+                            [ H.text config.label ]
+                        , if List.isEmpty state then
+                            button (StateChangedByInput (ListDelta_ <| ItemInserted 0)) "Add item"
 
-                                    (ControlFns itemFns) =
-                                        subcontrol itemPath
+                          else
+                            H.ol []
+                                (List.indexedMap
+                                    (\idx (MkState meta state_) ->
+                                        let
+                                            itemPath =
+                                                Path.add idx path
 
-                                    relevantAlerts =
-                                        List.filterMap
-                                            (\alert ->
-                                                case alert of
-                                                    AlertList alertPath alertLabel alertIndexes ->
-                                                        if alertPath == path then
-                                                            if List.member idx alertIndexes then
-                                                                Just (AlertLabel alertLabel)
+                                            (ControlFns itemFns) =
+                                                subcontrol itemPath
 
-                                                            else
-                                                                Nothing
+                                            relevantAlerts =
+                                                List.filterMap
+                                                    (\alert ->
+                                                        case alert of
+                                                            AlertList alertPath alertLabel alertIndexes ->
+                                                                if alertPath == path then
+                                                                    if List.member idx alertIndexes then
+                                                                        Just (AlertLabel alertLabel)
 
-                                                        else
-                                                            Just alert
+                                                                    else
+                                                                        Nothing
 
-                                                    AlertLabel label_ ->
-                                                        Just (AlertLabel label_)
+                                                                else
+                                                                    Just alert
 
-                                                    AlertPath path_ number ->
-                                                        Just (AlertPath path_ number)
-                                            )
-                                            config.alerts
+                                                            AlertLabel label_ ->
+                                                                Just (AlertLabel label_)
 
-                                    relevantNonDebouncedAlerts =
-                                        List.filter (\f -> not <| List.member f debouncingReceivers) relevantAlerts
-                                in
-                                H.li []
-                                    [ H.div []
-                                        (itemFns.view context
-                                            { id = Maybe.withDefault ("control-" ++ Path.toString itemPath) itemFns.id
-                                            , name = Maybe.withDefault ("control-" ++ Path.toString itemPath) itemFns.name
-                                            , label = itemFns.label
-                                            , class = itemFns.class
-                                            , state = state
-                                            , status = getStatus itemFns.parse itemFns.collectFeedback relevantNonDebouncedAlerts context (MkState meta state)
-                                            , alerts = relevantNonDebouncedAlerts
-                                            , selected = meta.selected
-                                            }
-                                        )
-                                        |> H.map (ItemUpdated idx)
-                                    , button (ItemDeleted idx) "Delete item"
-                                    , H.div [] [ button (ItemInserted (idx + 1)) "Insert item" ]
-                                    ]
-                            )
-                            config.state
-                        )
-                        |> H.map StateChangedByInput
-                ]
-    in
-    [ view_ ]
+                                                            AlertPath path_ number ->
+                                                                Just (AlertPath path_ number)
+                                                    )
+                                                    config.alerts
+
+                                            relevantNonDebouncedAlerts =
+                                                List.filter (\f -> not <| List.member f debouncingReceivers) relevantAlerts
+                                        in
+                                        H.li []
+                                            [ H.div []
+                                                (itemFns.view context
+                                                    { id = Maybe.withDefault ("control-" ++ Path.toString itemPath) itemFns.id
+                                                    , name = Maybe.withDefault ("control-" ++ Path.toString itemPath) itemFns.name
+                                                    , label = itemFns.label
+                                                    , class = itemFns.class
+                                                    , state = state_
+                                                    , status = getStatus itemFns.parse itemFns.collectFeedback relevantNonDebouncedAlerts context (MkState meta state_)
+                                                    , alerts = relevantNonDebouncedAlerts
+                                                    , selected = meta.selected
+                                                    }
+                                                )
+                                                |> H.map (ListDelta_ << ItemUpdated idx)
+                                            , button (ListDelta_ <| ItemDeleted idx) "Delete item"
+                                            , H.div [] [ button (ListDelta_ <| ItemInserted (idx + 1)) "Insert item" ]
+                                            ]
+                                    )
+                                    state
+                                )
+                                |> H.map StateChangedByInput
+                        ]
+            in
+            [ view_ ]
 
 
 textControlView : String -> { state : String, id : String, label : String, name : String, class : String } -> List (Html String)
