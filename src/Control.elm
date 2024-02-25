@@ -582,6 +582,16 @@ tripleWrapper =
     }
 
 
+mapWrapper :
+    { wrapState : a -> ( State b, End ) -> Mapping b
+    , stateWrapper : c -> d -> e -> e
+    , unwrapState : f -> Mapping g -> Maybe ( State g, End )
+    , stateUnwrapper : h -> i -> j -> j
+    , wrapDelta : k -> ( Delta l, End ) -> Mapping l
+    , deltaWrapper : m -> n -> o -> o
+    , unwrapDelta : p -> Mapping q -> Maybe ( Delta q, End )
+    , deltaUnwrapper : r -> s -> t -> t
+    }
 mapWrapper =
     { wrapState = \_ ( a, End ) -> Mapping (State_ a)
     , stateWrapper = \_ _ -> identity
@@ -2712,8 +2722,8 @@ dict :
     ->
         Control
             context
-            (Mapping (List_ (Tuple keyState valueState)) )
-            (Mapping (List_ (Tuple keyDelta valueDelta)) )
+            (Mapping (List_ (Tuple keyState valueState)))
+            (Mapping (List_ (Tuple keyDelta valueDelta)))
             (Dict.Dict comparable value)
 dict keyControl valueControl =
     list
@@ -4656,31 +4666,31 @@ tag5 label_ tag control1 control2 control3 control4 control5 =
    Y8b  d8 88b  d88 db   8D    88    `8b  d8' 88  88  88        .88.   88  V888    88    88.     88 `88. 88  V888 88   88 88booo. db   8D
     `Y88P' ~Y8888P' `8888Y'    YP     `Y88P'  YP  YP  YP      Y888888P VP   V8P    YP    Y88888P 88   YD VP   V8P YP   YP Y88888P `8888Y'
 -}
--- collectCustomTypeSubscriptions :
---     (({ subs : List (Sub customTypeDelta)
---       , context : context
---       , deltaSetters : End
---       , fns : End
---       , states : End
---       }
---       -> List (Sub customTypeDelta)
---      )
---      ->
---         { subs : List (Sub customTypeDelta)
---         , context : context
---         , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
---         , fns : ( ControlFns context input state tagDelta output, restFns )
---         , states : ( State state, restStates )
---         }
---      -> List (Sub customTypeDelta)
---     )
---     -> context
---     -> ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
---     -> ( ControlFns context input state tagDelta output, restFns )
---     -> ( State state, restStates )
---     -> Sub customTypeDelta
 
 
+collectCustomTypeSubscriptions :
+    (({ subs : List (Sub customTypeDelta)
+      , context : context
+      , deltaSetters : End
+      , fns : End
+      , states : End
+      }
+      -> List (Sub customTypeDelta)
+     )
+     ->
+        { subs : List (Sub customTypeDelta)
+        , context : context
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , states : ( State state, restStates )
+        }
+     -> List (Sub customTypeDelta)
+    )
+    -> context
+    -> ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+    -> ( ControlFns context input state tagDelta output, restFns )
+    -> ( State state, restStates )
+    -> Sub customTypeDelta
 collectCustomTypeSubscriptions collector context setters fns states =
     collector (\{ subs } -> subs)
         { subs = []
@@ -4692,26 +4702,23 @@ collectCustomTypeSubscriptions collector context setters fns states =
         |> Sub.batch
 
 
-
--- customTypeSubscriptionCollector :
---     ({ subs : List (Sub customTypeDelta)
---      , context : context
---      , deltaSetters : restDeltaSetters
---      , fns : restFns
---      , states : restStates
---      }
---      -> List (Sub customTypeDelta)
---     )
---     ->
---         { subs : List (Sub customTypeDelta)
---         , context : context
---         , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
---         , fns : ( ControlFns context input state tagDelta output, restFns )
---         , states : ( State state, restStates )
---         }
---     -> List (Sub customTypeDelta)
-
-
+customTypeSubscriptionCollector :
+    ({ subs : List (Sub customTypeDelta)
+     , context : context
+     , deltaSetters : restDeltaSetters
+     , fns : restFns
+     , states : restStates
+     }
+     -> List (Sub customTypeDelta)
+    )
+    ->
+        { subs : List (Sub customTypeDelta)
+        , context : context
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , states : ( State state, restStates )
+        }
+    -> List (Sub customTypeDelta)
 customTypeSubscriptionCollector next { subs, deltaSetters, fns, context, states } =
     let
         ( setter, restDeltaSetters ) =
@@ -4785,43 +4792,40 @@ customTypeDebouncingReceiverCollector next { receivers, fns, states } =
         }
 
 
-
--- updateCustomTypeStates :
---     (({ newStates : End -> finalCustomTypeStates
---       , newCmds : List (Cmd customTypeDelta)
---       , context : context
---       , fns : End
---       , deltaSetters : End
---       , deltas : End
---       , states : End
---       }
---       ->
---         { newStates : End -> finalCustomTypeStates
---         , newCmds : List (Cmd customTypeDelta)
---         }
---      )
---      ->
---         { newStates : identity -> identity
---         , newCmds : List (Cmd customTypeDelta)
---         , context : context
---         , fns : ( ControlFns context input state delta output, restFns )
---         , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
---         , deltas : ( Delta delta, restDeltas )
---         , states : ( State state, restStates )
---         }
---      ->
---         { newStates : End -> finalCustomTypeStates
---         , newCmds : List (Cmd customTypeDelta)
---         }
---     )
---     -> context
---     -> ( ControlFns context input state delta output, restFns )
---     -> ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
---     -> ( Delta delta, restDeltas )
---     -> ( State state, restStates )
---     -> ( finalCustomTypeStates, Cmd customTypeDelta )
-
-
+updateCustomTypeStates :
+    (({ newStates : End -> finalCustomTypeStates
+      , newCmds : List (Cmd customTypeDelta)
+      , context : context
+      , fns : End
+      , deltaSetters : End
+      , deltas : End
+      , states : End
+      }
+      ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
+     )
+     ->
+        { newStates : identity -> identity
+        , newCmds : List (Cmd customTypeDelta)
+        , context : context
+        , fns : ( ControlFns context input state delta output, restFns )
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Delta delta, restDeltas )
+        , states : ( State state, restStates )
+        }
+     ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
+    )
+    -> context
+    -> ( ControlFns context input state delta output, restFns )
+    -> ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+    -> ( Delta delta, restDeltas )
+    -> ( State state, restStates )
+    -> ( finalCustomTypeStates, Cmd customTypeDelta )
 updateCustomTypeStates updater context fns deltaSetters deltas states =
     let
         { newStates, newCmds } =
@@ -4843,36 +4847,33 @@ updateCustomTypeStates updater context fns deltaSetters deltas states =
     ( newStates End, Cmd.batch newCmds )
 
 
-
--- customTypeStateUpdater :
---     ({ newStates : restStates -> intermediateCustomTypeStates
---      , newCmds : List (Cmd customTypeDelta)
---      , context : context
---      , fns : restFns
---      , deltaSetters : restDeltaSetters
---      , deltas : restDeltas
---      , states : restStates
---      }
---      ->
---         { newStates : End -> finalCustomTypeStates
---         , newCmds : List (Cmd customTypeDelta)
---         }
---     )
---     ->
---         { newStates : ( State state, restStates ) -> intermediateCustomTypeStates
---         , newCmds : List (Cmd customTypeDelta)
---         , context : context
---         , fns : ( ControlFns context input state tagDelta output, restFns )
---         , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
---         , deltas : ( Delta tagDelta, restDeltas )
---         , states : ( State state, restStates )
---         }
---     ->
---         { newStates : End -> finalCustomTypeStates
---         , newCmds : List (Cmd customTypeDelta)
---         }
-
-
+customTypeStateUpdater :
+    ({ newStates : restStates -> intermediateCustomTypeStates
+     , newCmds : List (Cmd customTypeDelta)
+     , context : context
+     , fns : restFns
+     , deltaSetters : restDeltaSetters
+     , deltas : restDeltas
+     , states : restStates
+     }
+     ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
+    )
+    ->
+        { newStates : ( State state, restStates ) -> intermediateCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        , context : context
+        , fns : ( ControlFns context input state tagDelta output, restFns )
+        , deltaSetters : ( Delta tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Delta tagDelta, restDeltas )
+        , states : ( State state, restStates )
+        }
+    ->
+        { newStates : End -> finalCustomTypeStates
+        , newCmds : List (Cmd customTypeDelta)
+        }
 customTypeStateUpdater next { newStates, newCmds, context, fns, deltaSetters, deltas, states } =
     let
         ( ControlFns controlFns, restFns ) =
@@ -4901,26 +4902,23 @@ customTypeStateUpdater next { newStates, newCmds, context, fns, deltaSetters, de
         }
 
 
-
--- initialiseCustomTypeDeltas :
---     (({ cmds : List (Cmd customTypeDelta)
---       , deltaSetters : End
---       , deltas : End
---       }
---       -> List (Cmd customTypeDelta)
---      )
---      ->
---         { cmds : List (Cmd customTypeDelta)
---         , deltaSetters : ( tagDelta -> customTypeDelta, restDeltaSetters )
---         , deltas : ( Cmd tagDelta, restDeltas )
---         }
---      -> List (Cmd customTypeDelta)
---     )
---     -> ( tagDelta -> customTypeDelta, restDeltaSetters )
---     -> ( Cmd tagDelta, restDeltas )
---     -> List (Cmd customTypeDelta)
-
-
+initialiseCustomTypeDeltas :
+    (({ cmds : List (Cmd customTypeDelta)
+      , deltaSetters : End
+      , deltas : End
+      }
+      -> List (Cmd customTypeDelta)
+     )
+     ->
+        { cmds : List (Cmd customTypeDelta)
+        , deltaSetters : ( tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Cmd tagDelta, restDeltas )
+        }
+     -> List (Cmd customTypeDelta)
+    )
+    -> ( tagDelta -> customTypeDelta, restDeltaSetters )
+    -> ( Cmd tagDelta, restDeltas )
+    -> List (Cmd customTypeDelta)
 initialiseCustomTypeDeltas deltaInitialiser_ deltaSetters deltas =
     deltaInitialiser_
         (\{ cmds } -> cmds)
@@ -4931,22 +4929,19 @@ initialiseCustomTypeDeltas deltaInitialiser_ deltaSetters deltas =
         |> List.reverse
 
 
-
--- customTypeDeltaInitialiser :
---     ({ cmds : List (Cmd customTypeDelta)
---      , deltaSetters : restDeltaSetters
---      , deltas : restDeltas
---      }
---      -> List (Cmd customTypeDelta)
---     )
---     ->
---         { cmds : List (Cmd customTypeDelta)
---         , deltaSetters : ( tagDelta -> customTypeDelta, restDeltaSetters )
---         , deltas : ( Cmd tagDelta, restDeltas )
---         }
---     -> List (Cmd customTypeDelta)
-
-
+customTypeDeltaInitialiser :
+    ({ cmds : List (Cmd customTypeDelta)
+     , deltaSetters : restDeltaSetters
+     , deltas : restDeltas
+     }
+     -> List (Cmd customTypeDelta)
+    )
+    ->
+        { cmds : List (Cmd customTypeDelta)
+        , deltaSetters : ( tagDelta -> customTypeDelta, restDeltaSetters )
+        , deltas : ( Cmd tagDelta, restDeltas )
+        }
+    -> List (Cmd customTypeDelta)
 customTypeDeltaInitialiser next { cmds, deltaSetters, deltas } =
     let
         ( setter, restDeltaSetters ) =
@@ -4962,24 +4957,21 @@ customTypeDeltaInitialiser next { cmds, deltaSetters, deltas } =
         }
 
 
-
--- applyInputToStateConvertersToDestructor :
---     (({ destructor : tag -> ( State tagStates, Cmd delta )
---       , inputToStateConverters : End
---       }
---       -> (tag -> ( State tagStates, Cmd delta ))
---      )
---      ->
---         { destructor : inputToStateConverter -> destructor
---         , inputToStateConverters : ( inputToStateConverter, restInputToStateConverters )
---         }
---      -> (tag -> ( State tagStates, Cmd delta ))
---     )
---     -> (inputToStateConverter -> destructor)
---     -> ( inputToStateConverter, restInputToStateConverters )
---     -> (tag -> ( State tagStates, Cmd delta ))
-
-
+applyInputToStateConvertersToDestructor :
+    (({ destructor : tag -> ( State tagStates, Cmd delta )
+      , inputToStateConverters : End
+      }
+      -> (tag -> ( State tagStates, Cmd delta ))
+     )
+     ->
+        { destructor : inputToStateConverter -> destructor
+        , inputToStateConverters : ( inputToStateConverter, restInputToStateConverters )
+        }
+     -> (tag -> ( State tagStates, Cmd delta ))
+    )
+    -> (inputToStateConverter -> destructor)
+    -> ( inputToStateConverter, restInputToStateConverters )
+    -> (tag -> ( State tagStates, Cmd delta ))
 applyInputToStateConvertersToDestructor inputToStateConverterToDestructorApplier_ destructor inputToStateConverters =
     inputToStateConverterToDestructorApplier_
         .destructor
@@ -4988,20 +4980,17 @@ applyInputToStateConvertersToDestructor inputToStateConverterToDestructorApplier
         }
 
 
-
--- inputToStateConverterToDestructorApplier :
---     ({ destructor : destructor
---      , inputToStateConverters : restInputToStateConverters
---      }
---      -> (tag -> ( State tagStates, Cmd delta ))
---     )
---     ->
---         { destructor : inputToStateConverter -> destructor
---         , inputToStateConverters : ( inputToStateConverter, restInputToStateConverters )
---         }
---     -> (tag -> ( State tagStates, Cmd delta ))
-
-
+inputToStateConverterToDestructorApplier :
+    ({ destructor : destructor
+     , inputToStateConverters : restInputToStateConverters
+     }
+     -> (tag -> ( State tagStates, Cmd delta ))
+    )
+    ->
+        { destructor : inputToStateConverter -> destructor
+        , inputToStateConverters : ( inputToStateConverter, restInputToStateConverters )
+        }
+    -> (tag -> ( State tagStates, Cmd delta ))
 inputToStateConverterToDestructorApplier next { destructor, inputToStateConverters } =
     let
         ( inputToStateConverter, restInputToStateConverters ) =
@@ -5013,31 +5002,28 @@ inputToStateConverterToDestructorApplier next { destructor, inputToStateConverte
         }
 
 
-
--- makeInputToStateConverters :
---     (({ c | finalTagStates : End -> ( toFinalTagState, restToFinalTagStates ) } -> ( toFinalTagState, restToFinalTagStates ))
---      ->
---         { controlFns : ( ControlFns context input state1 delta output, restControlFns )
---         , deltaSetters : ( Delta delta -> tagDelta, restDeltaSetters )
---         , finalTagStates : identity -> identity
---         , initialTagStates : ( State state, restStates )
---         , inputTuplizers : inputTuplizers
---         , maybeOverridesAfter : maybeOverridesAfter
---         , maybeOverridesBefore : maybeOverridesBefore
---         , tagStateOverrider : tagStateOverrider
---         }
---      -> ( toFinalTagState, restToFinalTagStates )
---     )
---     -> tagStateOverrider
---     -> ( State state, restStates )
---     -> ( ControlFns context input state1 delta output, restControlFns )
---     -> (End -> inputTuplizers)
---     -> (End -> maybeOverridesBefore)
---     -> maybeOverridesAfter
---     -> ( Delta delta -> tagDelta, restDeltaSetters )
---     -> ( toFinalTagState, restToFinalTagStates )
-
-
+makeInputToStateConverters :
+    (({ c | finalTagStates : End -> ( toFinalTagState, restToFinalTagStates ) } -> ( toFinalTagState, restToFinalTagStates ))
+     ->
+        { controlFns : ( ControlFns context input state1 delta output, restControlFns )
+        , deltaSetters : ( Delta delta -> tagDelta, restDeltaSetters )
+        , finalTagStates : identity -> identity
+        , initialTagStates : ( State state, restStates )
+        , inputTuplizers : inputTuplizers
+        , maybeOverridesAfter : maybeOverridesAfter
+        , maybeOverridesBefore : maybeOverridesBefore
+        , tagStateOverrider : tagStateOverrider
+        }
+     -> ( toFinalTagState, restToFinalTagStates )
+    )
+    -> tagStateOverrider
+    -> ( State state, restStates )
+    -> ( ControlFns context input state1 delta output, restControlFns )
+    -> (End -> inputTuplizers)
+    -> (End -> maybeOverridesBefore)
+    -> maybeOverridesAfter
+    -> ( Delta delta -> tagDelta, restDeltaSetters )
+    -> ( toFinalTagState, restToFinalTagStates )
 makeInputToStateConverters inputToStateConverters_ initialStateOverrider_ initialTagStates fns inputTuplizers maybeOverridesBefore maybeOverridesAfter deltaSetters =
     inputToStateConverters_
         (\{ finalTagStates } -> finalTagStates End)
@@ -5052,64 +5038,61 @@ makeInputToStateConverters inputToStateConverters_ initialStateOverrider_ initia
         }
 
 
-
--- convertInputToState :
---     ({ finalTagStates : b -> ( toFinalTagState, restToFinalTagStates )
---      , tagStateOverrider :
---         ({ thisTagIndex : Int
---          , selectedTagIndex : Int
---          , toTagStates : End -> tagStates
---          , maybeOverrides : End
---          , initialTagStates : End
---          }
---          -> State tagStates
---         )
---         ->
---             { thisTagIndex : Int
---             , selectedTagIndex : Int
---             , toTagStates : identity -> identity
---             , maybeOverrides : ( Maybe (State argState), restMaybeOverrides )
---             , initialTagStates : ( State argState, restArgStates )
---             }
---         -> State tagStates
---      , initialTagStates : ( State argState, restArgStates )
---      , controlFns : restControlFns
---      , inputTuplizers : restInputTuplizers
---      , maybeOverridesBefore : restMaybeOverridesBefore
---      , maybeOverridesAfter : restMaybeOverridesAfter
---      , deltaSetters : restDeltaSetters
---      }
---      -> ( toFinalTagState, restToFinalTagStates )
---     )
---     ->
---         { finalTagStates : ( k, b ) -> ( toFinalTagState, restToFinalTagStates )
---         , tagStateOverrider :
---             ({ thisTagIndex : Int
---              , selectedTagIndex : Int
---              , toTagStates : End -> tagStates
---              , maybeOverrides : End
---              , initialTagStates : End
---              }
---              -> State tagStates
---             )
---             ->
---                 { thisTagIndex : Int
---                 , selectedTagIndex : Int
---                 , toTagStates : identity -> identity
---                 , maybeOverrides : ( Maybe (State argState), restMaybeOverrides )
---                 , initialTagStates : ( State argState, restArgStates )
---                 }
---             -> State tagStates
---         , initialTagStates : ( State argState, restArgStates )
---         , controlFns : ( ControlFns context input state argDelta output, restControlFns )
---         , inputTuplizers : ( (input -> ( State tagStates, Cmd (Delta tagDelta) )) -> k, restInputTuplizers )
---         , maybeOverridesBefore : ( ( Maybe (State state), maybeOverrideAfter ) -> ( Maybe (State argState), restMaybeOverrides ), restMaybeOverridesBefore )
---         , maybeOverridesAfter : ( maybeOverrideAfter, restMaybeOverridesAfter )
---         , deltaSetters : ( Delta argDelta -> tagDelta, restDeltaSetters )
---         }
---     -> ( toFinalTagState, restToFinalTagStates )
-
-
+convertInputToState :
+    ({ finalTagStates : b -> ( toFinalTagState, restToFinalTagStates )
+     , tagStateOverrider :
+        ({ thisTagIndex : Int
+         , selectedTagIndex : Int
+         , toTagStates : End -> tagStates
+         , maybeOverrides : End
+         , initialTagStates : End
+         }
+         -> State tagStates
+        )
+        ->
+            { thisTagIndex : Int
+            , selectedTagIndex : Int
+            , toTagStates : identity -> identity
+            , maybeOverrides : ( Maybe (State argState), restMaybeOverrides )
+            , initialTagStates : ( State argState, restArgStates )
+            }
+        -> State tagStates
+     , initialTagStates : ( State argState, restArgStates )
+     , controlFns : restControlFns
+     , inputTuplizers : restInputTuplizers
+     , maybeOverridesBefore : restMaybeOverridesBefore
+     , maybeOverridesAfter : restMaybeOverridesAfter
+     , deltaSetters : restDeltaSetters
+     }
+     -> ( toFinalTagState, restToFinalTagStates )
+    )
+    ->
+        { finalTagStates : ( k, b ) -> ( toFinalTagState, restToFinalTagStates )
+        , tagStateOverrider :
+            ({ thisTagIndex : Int
+             , selectedTagIndex : Int
+             , toTagStates : End -> tagStates
+             , maybeOverrides : End
+             , initialTagStates : End
+             }
+             -> State tagStates
+            )
+            ->
+                { thisTagIndex : Int
+                , selectedTagIndex : Int
+                , toTagStates : identity -> identity
+                , maybeOverrides : ( Maybe (State argState), restMaybeOverrides )
+                , initialTagStates : ( State argState, restArgStates )
+                }
+            -> State tagStates
+        , initialTagStates : ( State argState, restArgStates )
+        , controlFns : ( ControlFns context input state argDelta output, restControlFns )
+        , inputTuplizers : ( (input -> ( State tagStates, Cmd (Delta tagDelta) )) -> k, restInputTuplizers )
+        , maybeOverridesBefore : ( ( Maybe (State state), maybeOverrideAfter ) -> ( Maybe (State argState), restMaybeOverrides ), restMaybeOverridesBefore )
+        , maybeOverridesAfter : ( maybeOverrideAfter, restMaybeOverridesAfter )
+        , deltaSetters : ( Delta argDelta -> tagDelta, restDeltaSetters )
+        }
+    -> ( toFinalTagState, restToFinalTagStates )
 convertInputToState next { finalTagStates, tagStateOverrider, initialTagStates, controlFns, inputTuplizers, maybeOverridesBefore, maybeOverridesAfter, deltaSetters } =
     let
         ( ControlFns fns, restFns ) =
