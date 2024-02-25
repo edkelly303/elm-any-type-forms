@@ -520,19 +520,16 @@ argWrapper =
     }
 
 
-
--- tupleWrapper :
---     { wrapState : a -> ( State b, ( State c, End ) ) -> Tuple b c
---     , stateWrapper : d -> e -> f -> f
---     , unwrapState : g -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
---     , stateUnwrapper : h -> i -> j -> j
---     , wrapDelta : k -> ( Delta l, ( Delta m, End ) ) -> Tuple l m
---     , deltaWrapper : n -> o -> p -> p
---     , unwrapDelta : q -> Tuple r s -> Maybe ( Delta r, ( Delta s, End ) )
---     , deltaUnwrapper : t -> u -> v -> v
---     }
-
-
+tupleWrapper :
+    { wrapState : a -> ( State b, ( State c, End ) ) -> Tuple b c
+    , stateWrapper : d -> e -> f -> f
+    , unwrapState : g -> Tuple fst snd -> Maybe ( State fst, ( State snd, End ) )
+    , stateUnwrapper : h -> i -> j -> j
+    , wrapDelta : k -> ( Delta l, ( Delta m, End ) ) -> Tuple l m
+    , deltaWrapper : n -> o -> p -> p
+    , unwrapDelta : q -> Tuple r s -> Maybe ( Delta r, ( Delta s, End ) )
+    , deltaUnwrapper : t -> u -> v -> v
+    }
 tupleWrapper =
     { wrapState = \_ ( fst, ( snd, End ) ) -> Tuple (State_ fst) (State_ snd)
     , stateWrapper = \_ _ -> identity
@@ -553,19 +550,16 @@ tupleWrapper =
     }
 
 
-
--- tripleWrapper :
---     { wrapState : a -> ( State b, ( State c, ( State d, End ) ) ) -> Triple b c d
---     , stateWrapper : e -> f -> g -> g
---     , unwrapState : h -> Triple i j k -> Maybe ( State i, ( State j, ( State k, End ) ) )
---     , stateUnwrapper : l -> m -> n -> n
---     , wrapDelta : o -> ( Delta p, ( Delta q, ( Delta r, End ) ) ) -> Triple p q r
---     , deltaWrapper : s -> t -> u -> u
---     , unwrapDelta : v -> Triple w x y -> Maybe ( Delta w, ( Delta x, ( Delta y, End ) ) )
---     , deltaUnwrapper : z -> a1 -> b1 -> b1
---     }
-
-
+tripleWrapper :
+    { wrapState : a -> ( State b, ( State c, ( State d, End ) ) ) -> Triple b c d
+    , stateWrapper : e -> f -> g -> g
+    , unwrapState : h -> Triple i j k -> Maybe ( State i, ( State j, ( State k, End ) ) )
+    , stateUnwrapper : l -> m -> n -> n
+    , wrapDelta : o -> ( Delta p, ( Delta q, ( Delta r, End ) ) ) -> Triple p q r
+    , deltaWrapper : s -> t -> u -> u
+    , unwrapDelta : v -> Triple w x y -> Maybe ( Delta w, ( Delta x, ( Delta y, End ) ) )
+    , deltaUnwrapper : z -> a1 -> b1 -> b1
+    }
 tripleWrapper =
     { wrapState = \_ ( a, ( b, ( c, End ) ) ) -> Triple (State_ a) (State_ b) (State_ c)
     , stateWrapper = \_ _ -> identity
@@ -584,6 +578,24 @@ tripleWrapper =
                 (maybeExtractDelta internalsFst)
                 (maybeExtractDelta internalsSnd)
                 (maybeExtractDelta internalsThd)
+    , deltaUnwrapper = \_ _ -> identity
+    }
+
+
+mapWrapper =
+    { wrapState = \_ ( a, End ) -> Mapping (State_ a)
+    , stateWrapper = \_ _ -> identity
+    , unwrapState =
+        \_ (Mapping a) ->
+            maybeExtractState a
+                |> Maybe.map (\a_ -> ( a_, End ))
+    , stateUnwrapper = \_ _ -> identity
+    , wrapDelta = \_ ( a, End ) -> Mapping (Delta_ a)
+    , deltaWrapper = \_ _ -> identity
+    , unwrapDelta =
+        \_ (Mapping a) ->
+            maybeExtractDelta a
+                |> Maybe.map (\a_ -> ( a_, End ))
     , deltaUnwrapper = \_ _ -> identity
     }
 
@@ -2182,6 +2194,10 @@ bool =
 -}
 
 
+type Mapping a
+    = Mapping (Internals a)
+
+
 {-| A combinator that converts a `Control` whose `output` is of type `a` to a `Control` whose `output` is of type `b`.
 
 This is particularly useful for implementing "wrapper" types, such as `Id`s.
@@ -2207,17 +2223,17 @@ map :
     ->
         Control
             context
-            (Record (Field state EndRecord))
-            (Record (Field delta EndRecord))
+            (Mapping state)
+            (Mapping delta)
             b
 map config control =
     Control
         (\path ->
             let
                 (Control inner) =
-                    record config.convert
-                        |> field config.revert control
-                        |> endRecord
+                    productType config.convert
+                        |> productField mapWrapper config.revert control
+                        |> endProductType mapWrapper
             in
             inner path
         )
@@ -2696,8 +2712,8 @@ dict :
     ->
         Control
             context
-            (Record (Field (List_ (Tuple keyState valueState)) EndRecord))
-            (Record (Field (List_ (Tuple keyDelta valueDelta)) EndRecord))
+            (Mapping (List_ (Tuple keyState valueState)) )
+            (Mapping (List_ (Tuple keyDelta valueDelta)) )
             (Dict.Dict comparable value)
 dict keyControl valueControl =
     list
@@ -2772,8 +2788,8 @@ set :
     ->
         Control
             context
-            (Record (Field (List_ state) EndRecord))
-            (Record (Field (List_ delta) EndRecord))
+            (Mapping (List_ state))
+            (Mapping (List_ delta))
             (Set.Set comparable)
 set memberControl =
     list
@@ -2805,8 +2821,8 @@ array :
     ->
         Control
             context
-            (Record (Field (List_ state) EndRecord))
-            (Record (Field (List_ delta) EndRecord))
+            (Mapping (List_ state))
+            (Mapping (List_ delta))
             (Array.Array output)
 array itemControl =
     list itemControl
