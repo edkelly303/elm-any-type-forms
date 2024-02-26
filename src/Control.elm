@@ -2709,6 +2709,10 @@ list (Control ctrl) =
 -}
 
 
+type Dict_ k v
+    = Dict_ (Mapping (List_ (Tuple k v)))
+
+
 {-| A combinator that produces a `Dict` from controls of given key and value
 types. The key type must be `comparable`.
 
@@ -2722,8 +2726,8 @@ dict :
     ->
         Control
             context
-            (Mapping (List_ (Tuple keyState valueState)))
-            (Mapping (List_ (Tuple keyDelta valueDelta)))
+            (Dict_ keyState valueState)
+            (Dict_ keyDelta valueDelta)
             (Dict.Dict comparable value)
 dict keyControl valueControl =
     list
@@ -2747,6 +2751,132 @@ dict keyControl valueControl =
             "@@dict-unique-keys"
         |> label "Dict"
         |> map { convert = Dict.fromList, revert = Dict.toList }
+        |> mapInternals
+            { wrapState = Dict_
+            , unwrapState = \(Dict_ s) -> s
+            , wrapDelta = Dict_
+            , unwrapDelta = \(Dict_ d) -> d
+            }
+
+
+mapState fn (MkState meta state) =
+    MkState meta (fn state)
+
+
+mapDelta fn delta =
+    case delta of
+        StateChangedByInput d ->
+            StateChangedByInput (fn d)
+
+        StateChangedInternally d ->
+            StateChangedInternally (fn d)
+
+        NoDelta ->
+            NoDelta
+
+        DebounceTimerSet x ->
+            DebounceTimerSet x
+
+        DebounceTimerExpired x ->
+            DebounceTimerExpired x
+
+        TagSelected x ->
+            TagSelected x
+
+
+mapInternals :
+    { wrapState : state -> wrappedState
+    , unwrapState : wrappedState -> state
+    , wrapDelta : delta -> wrappedDelta
+    , unwrapDelta : wrappedDelta -> delta
+    }
+    -> Control context state delta output
+    -> Control context wrappedState wrappedDelta output
+mapInternals { wrapState, unwrapState, wrapDelta, unwrapDelta } (Control controlFnsFromPath) =
+    Control
+        (\path ->
+            let
+                (ControlFns controlFns) =
+                    controlFnsFromPath path
+            in
+            ControlFns
+                { path = path
+                , index = controlFns.index
+                , initBlank =
+                    controlFns.initBlank
+                        |> Tuple.mapBoth (mapState wrapState) (Cmd.map (mapDelta wrapDelta))
+                , initPrefilled =
+                    \input ->
+                        controlFns.initPrefilled input
+                            |> Tuple.mapBoth (mapState wrapState) (Cmd.map (mapDelta wrapDelta))
+                , baseUpdate =
+                    \debounceInterval context delta state ->
+                        controlFns.baseUpdate debounceInterval context (mapDelta unwrapDelta delta) (mapState unwrapState state)
+                            |> Tuple.mapBoth (mapState wrapState) (Cmd.map (mapDelta wrapDelta))
+                , update =
+                    \context delta state ->
+                        controlFns.update context (mapDelta unwrapDelta delta) (mapState unwrapState state)
+                            |> Tuple.mapBoth (mapState wrapState) (Cmd.map (mapDelta wrapDelta))
+                , subControlViews =
+                    \context config ->
+                        let
+                            unwrappedState =
+                                unwrapState config.state
+
+                            unwrappedConfig =
+                                { state = unwrappedState
+                                , alerts = config.alerts
+                                , class = config.class
+                                , id = config.id
+                                , label = config.label
+                                , name = config.name
+                                , selected = config.selected
+                                , status = config.status
+                                }
+                        in
+                        controlFns.subControlViews context unwrappedConfig
+                            |> List.map
+                                (\subcontrol ->
+                                    { html = List.map (H.map (mapDelta wrapDelta)) subcontrol.html
+                                    , index = subcontrol.index
+                                    , label = subcontrol.label
+                                    }
+                                )
+                , view =
+                    \context config ->
+                        let
+                            unwrappedState =
+                                unwrapState config.state
+
+                            unwrappedConfig =
+                                { state = unwrappedState
+                                , alerts = config.alerts
+                                , class = config.class
+                                , id = config.id
+                                , label = config.label
+                                , name = config.name
+                                , selected = config.selected
+                                , status = config.status
+                                }
+                        in
+                        controlFns.view context unwrappedConfig
+                            |> List.map (H.map (mapDelta wrapDelta))
+                , parse = \context state -> controlFns.parse context (mapState unwrapState state)
+                , setAllIdle = \state -> controlFns.setAllIdle (mapState unwrapState state) |> mapState wrapState
+                , emitAlerts = \context state -> controlFns.emitAlerts context (mapState unwrapState state)
+                , collectDebouncingReceivers = \state -> controlFns.collectDebouncingReceivers (mapState unwrapState state)
+                , collectFeedback = \state -> controlFns.collectFeedback (mapState unwrapState state)
+                , receiverCount = controlFns.receiverCount
+                , label = controlFns.label
+                , id = controlFns.id
+                , name = controlFns.name
+                , class = controlFns.class
+                , subscriptions =
+                    \context state ->
+                        controlFns.subscriptions context (mapState unwrapState state)
+                            |> Sub.map (mapDelta wrapDelta)
+                }
+        )
 
 
 nonUniqueIndexes : List comparable -> List Int
@@ -2786,6 +2916,10 @@ nonUniqueIndexes listState =
 -}
 
 
+type Set_ a
+    = Set_ (Mapping (List_ a))
+
+
 {-| A combinator that produces a `Set` from controls of a given member
 types. The member type must be `comparable`.
 
@@ -2795,18 +2929,19 @@ types. The member type must be `comparable`.
 -}
 set :
     Control context state delta comparable
-    ->
-        Control
-            context
-            (Mapping (List_ state))
-            (Mapping (List_ delta))
-            (Set.Set comparable)
+    -> Control context (Set_ state) (Set_ delta) (Set.Set comparable)
 set memberControl =
     list
         (memberControl |> respond { alert = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
         |> alertAtIndexes nonUniqueIndexes "@@set-unique-keys"
         |> label "Set"
         |> map { convert = Set.fromList, revert = Set.toList }
+        |> mapInternals
+            { wrapState = Set_
+            , unwrapState = \(Set_ s) -> s
+            , wrapDelta = Set_
+            , unwrapDelta = \(Set_ d) -> d
+            }
 
 
 
@@ -2820,24 +2955,27 @@ set memberControl =
 -}
 
 
+type Array_ a
+    = Array_ (Mapping (List_ a))
+
+
 {-| A combinator that produces an `Array` from a control of a given type.
 
     myArrayControl =
         array int
 
 -}
-array :
-    Control context state delta output
-    ->
-        Control
-            context
-            (Mapping (List_ state))
-            (Mapping (List_ delta))
-            (Array.Array output)
+array : Control context state delta output -> Control context (Array_ state) (Array_ delta) (Array.Array output)
 array itemControl =
     list itemControl
         |> label "Array"
         |> map { convert = Array.fromList, revert = Array.toList }
+        |> mapInternals
+            { wrapState = Array_
+            , unwrapState = \(Array_ s) -> s
+            , wrapDelta = Array_
+            , unwrapDelta = \(Array_ d) -> d
+            }
 
 
 
@@ -2906,9 +3044,7 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
         }
 
 
-{-| A combinator that produces a record type, or any 'product' type that needs to
-be constructed from multiple controls. (For example, the `tuple` combinator in
-this library is built using the `record` combinator).
+{-| A combinator that produces a record type.
 
     type alias MyRecord =
         { name : String
