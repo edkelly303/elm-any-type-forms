@@ -2260,6 +2260,10 @@ map config control =
 -}
 
 
+type Maybe_ a
+    = Maybe_ (CustomType (Tag EndTag (Tag (Arg a EndTag) EndCustomType)))
+
+
 {-| A combinator that produces a `Maybe` of a control of a given type.
 
     myMaybeControl =
@@ -2271,8 +2275,8 @@ maybe :
     ->
         Control
             context
-            (CustomType (Tag EndTag (Tag (Arg state EndTag) EndCustomType)))
-            (CustomType (Tag EndTag (Tag (Arg delta EndTag) EndCustomType)))
+            (Maybe_ state)
+            (Maybe_ delta)
             (Maybe output)
 maybe control =
     customType
@@ -2288,6 +2292,12 @@ maybe control =
         |> tag1 "Just" Just control
         |> endCustomType
         |> label "Maybe"
+        |> mapInternals
+            { wrapState = Maybe_
+            , unwrapState = \(Maybe_ x) -> x
+            , wrapDelta = Maybe_
+            , unwrapDelta = \(Maybe_ x) -> x
+            }
 
 
 
@@ -2299,6 +2309,10 @@ maybe control =
    88 `88. 88.     db   8D 88b  d88 88booo.    88
    88   YD Y88888P `8888Y' ~Y8888P' Y88888P    YP
 -}
+
+
+type Result_ x a
+    = Result_ (CustomType (Tag (Arg x EndTag) (Tag (Arg a EndTag) EndCustomType)))
 
 
 {-| A combinator that produces a `Result` with a given error and
@@ -2314,8 +2328,8 @@ result :
     ->
         Control
             context
-            (CustomType (Tag (Arg failureState EndTag) (Tag (Arg successState EndTag) EndCustomType)))
-            (CustomType (Tag (Arg failureDelta EndTag) (Tag (Arg successDelta EndTag) EndCustomType)))
+            (Result_ failureState successState)
+            (Result_ failureDelta successDelta)
             (Result failureOutput successOutput)
 result failureControl successControl =
     customType
@@ -2331,6 +2345,12 @@ result failureControl successControl =
         |> tag1 "Ok" Ok successControl
         |> endCustomType
         |> label "Result"
+        |> mapInternals
+            { wrapState = Result_
+            , unwrapState = \(Result_ x) -> x
+            , wrapDelta = Result_
+            , unwrapDelta = \(Result_ x) -> x
+            }
 
 
 
