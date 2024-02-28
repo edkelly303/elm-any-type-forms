@@ -10,7 +10,7 @@ module Control exposing
     , alertAtIndexes
     , default, debounce, id, name, label, class, classList, wrapView
     , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
-    , State, Delta, ListDelta, End
+    , State, Delta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
     )
 
@@ -78,7 +78,7 @@ can achieve this as follows:
                     |> respond
                         { alert = "passwords-do-not-match"
                         , fail = True
-                        , message = "Must match 'Enter password' field"
+                        , message = "Passwords must match"
                         }
                 )
             |> endRecord
@@ -121,7 +121,7 @@ This is where the `...WithContext` family of types and functions come into play
 
 These are types that you will see in your form's `State` and `Delta` type signatures.
 
-@docs State, Delta, ListDelta, End
+@docs State, Delta, End
 
 
 # Internal stuff that you can ignore
@@ -663,8 +663,6 @@ type Delta delta
     | TagSelected Int
 
 
-{-| Special `Delta` type used only by `list` controls
--}
 type ListDelta delta
     = ItemInserted Int
     | ItemDeleted Int
@@ -1477,7 +1475,7 @@ strings, if and only if those first two items are "hello" and "world":
 
     myString =
         string
-            |> catch
+            |> respond
                 { alert = "no-hello-world"
                 , fail = True
                 , message = "The first two items in the list must not be \"hello\" and \"world\"."
@@ -1961,11 +1959,11 @@ wrapView wrapper (Control control) =
             |> default ( 1, "hello" )
 
 -}
-default : input -> AdvancedControl context input state delta output -> AdvancedControl context input state delta output
-default input (Control control) =
+default : output -> Control context state delta output -> Control context state delta output
+default output (Control control) =
     let
         initialiser (ControlFns i) =
-            ControlFns { i | initBlank = i.initPrefilled input }
+            ControlFns { i | initBlank = i.initPrefilled output }
     in
     Control (control >> initialiser)
 
@@ -2952,7 +2950,7 @@ nonUniqueIndexes listState =
 -}
 
 
-{-| A type used to contain the `state` or `delta` of an `set` control.
+{-| A type used to contain the `state` or `delta` of a `set` control.
 -}
 type Set_ a
     = Set_ (Mapping (List_ a))
@@ -3182,12 +3180,6 @@ productType toOutput =
             |> endRecord
 
 -}
-
-
-
---
-
-
 field :
     (recordOutput9 -> output7)
     -> AdvancedControl context9 input9 state9 delta11 output7
