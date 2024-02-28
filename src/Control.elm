@@ -255,7 +255,13 @@ type alias Definition state delta output =
     }
 
 
-{-| -}
+{-| Definition for a custom control that is aware of its context.
+
+This is exactly like the standard `Definition` type, except that the `update`,
+`view`, `subscriptions` and `parse` functions all take an additional `context`
+as their first argument.
+
+-}
 type alias DefinitionWithContext context state delta output =
     { blank : ( state, Cmd delta )
     , prefill : output -> ( state, Cmd delta )
@@ -275,7 +281,9 @@ type alias Control context state delta output =
     AdvancedControl context output state delta output
 
 
-{-| A slightly more flexible version of `Control`
+{-| A slightly more flexible version of `Control`, which is only used
+internally. As a user of the package, you shouldn't need to worry about this
+type.
 -}
 type AdvancedControl context input state delta output
     = Control (Path -> ControlFns context input state delta output)
@@ -752,7 +760,15 @@ simpleForm { onUpdate, onSubmit, control } =
         }
 
 
-{-| -}
+{-| Convert a `Control` into a simple `FormWithContext`, rendered as a list of
+controls wrapped in an HTML `<form>` element, with a submit button at the bottom.
+
+To use this function, follow the instructions in the documentation for
+`simpleForm`. The only difference is that when you call `mySimpleForm.update`,
+`mySimpleForm.submit`, `mySimpleForm.view` and `mySimpleForm.subscriptions`, you
+will need to supply a `context` value as the first argument.
+
+-}
 simpleFormWithContext :
     { control : Control context state delta output, onUpdate : Delta delta -> msg, onSubmit : msg }
     -> FormWithContext context state delta output msg
@@ -888,7 +904,15 @@ form { control, onUpdate, view } =
     }
 
 
-{-| -}
+{-| Convert a `Control` into a `FormWithContext`, and render the form however
+you like.
+
+To use this function, follow the instructions in the documentation for
+`form`. The only difference is that when you call `myForm.update`,
+`myForm.submit`, `myForm.view` and `myForm.subscriptions`, you will need to
+supply a `context` value as the first argument.
+
+-}
 formWithContext :
     { control : Control context state delta output, onUpdate : Delta delta -> msg, view : List (Html msg) -> Html msg }
     -> FormWithContext context state delta output msg
@@ -1100,10 +1124,10 @@ sandboxWithContext { outputToString, control, context } =
 -}
 
 
-{-| Define a new type of control, with any arbitrary `state` and `delta` types,
+{-| Define a new type of `Control`, with any arbitrary `state` and `delta` types,
 and producing any arbitrary `output` type.
 
-Here's how we could create a control like the famous
+Here's how we could define a control like the famous
 [counter example](https://elm-lang.org/examples/buttons) from the Elm Guide
 
     type CounterDelta
@@ -1112,7 +1136,7 @@ Here's how we could create a control like the famous
 
     counterControl : Control Int CounterDelta Int
     counterControl =
-        create
+        define
             { blank = 0
             , prefill = identity
             , update =
@@ -1218,7 +1242,43 @@ define definition =
         )
 
 
-{-| -}
+{-| Define a new type of `Control`, with any arbitrary `state`, `delta` and
+`output` types, and that is aware of whatever `context` you choose to supply.
+
+    type CounterDelta
+        = Increment
+        | Decrement
+
+    type alias Context =
+        { maxCount : Int, minCount : Int }
+
+    counterControl : Control Context Int CounterDelta Int
+    counterControl =
+        defineWithContext
+            { blank = 0
+            , prefill = identity
+            , update =
+                \context delta state ->
+                    -- Use the context to ensure the count stays within the
+                    -- bounds of maxCount and minCount
+                    ( Basics.clamp context.minCount context.maxCount delta
+                    , Cmd.none
+                    )
+
+            , view =
+                \context { state, name, id, label, class } ->
+                    ...
+
+            , subscriptions =
+                \context state ->
+                    ...
+
+            , parse =
+                \context state ->
+                    ...
+            }
+
+-}
 defineWithContext : DefinitionWithContext context state delta output -> Control context state delta output
 defineWithContext definition =
     Control
@@ -1367,13 +1427,20 @@ wrapUpdate innerUpdate debounce_ context wrappedDelta (MkState meta state) =
 -}
 
 
-{-| -}
+{-| Emit an alert from a `Control` if the supplied predicate function returns
+`False`; another control can then react to this alert by using `respond`.
+
+`alertIfWithContext` works exactly like `alertIf`, except that its predicate
+function takes a `context` as its first argument.
+
+-}
 alertIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 alertIfWithContext when alert (Control control) =
     Control (control >> alertEmitter when (AlertLabel alert))
 
 
-{-| Emit an alert from a `Control` if its output fails to meet the predicate.
+{-| Emit an alert from a `Control` if the supplied predicate function returns
+`False`.
 
 This is meant to be used in combination with `respond`, which listens for the
 alert and displays an error or notification message on the appropriate
@@ -1457,7 +1524,9 @@ alertReceiver alert fail message (ControlFns ctrl) =
         }
 
 
-{-| -}
+{-| Conditionally display an error on one or more items in a `list` control,
+based on the output of the `list` control and the supplied `context`.
+-}
 alertAtIndexesWithContext :
     (context -> output -> List Int)
     -> String
@@ -1530,7 +1599,21 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
         }
 
 
-{-| -}
+{-| Display an error on a `Control` if the supplied predicate function returns
+`False`.
+
+This causes the `Control` to fail validation.
+
+    type alias Context =
+        { minimumValue : Int }
+
+    positiveInt =
+        int
+            |> failIfWithContext
+                (\context x -> x < context.minimumValue)
+                "This is less than the minimum value!"
+
+-}
 failIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 failIfWithContext check message (Control c) =
     Control
@@ -1548,7 +1631,8 @@ failIfWithContext check message (Control c) =
         )
 
 
-{-| Display an error on a `Control` if its output fails to meet the predicate.
+{-| Display an error on a `Control` if the supplied predicate function returns
+`False`.
 
 This causes the `Control` to fail validation.
 
@@ -1564,7 +1648,12 @@ failIf check message control =
     failIfWithContext (\_ -> check) message control
 
 
-{-| -}
+{-| Display an error on a `Control` if the supplied predicate function returns
+`False`.
+
+This causes the `Control` to fail validation.
+
+-}
 noteIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 noteIfWithContext check message (Control c) =
     Control
@@ -1582,16 +1671,20 @@ noteIfWithContext check message (Control c) =
         )
 
 
-{-| Display an note on a `Control` if its output fails to meet the predicate.
+{-| Display an note on a `Control` if the supplied predicate function returns
+`False`.
 
 This just shows the user a message - it doesn't cause the `Control` to fail
 validation.
 
+    type alias Context =
+        { recommendedMinimumValue : Int }
+
     positiveInt =
         int
-            |> noteIf
-                (\x -> x < 1)
-                "Should this be greater than zero?"
+            |> noteIfWithContext
+                (\context x -> x < context.recommendedMinimumValue)
+                "This value is below the recommended minimum - are you sure?"
 
 -}
 noteIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
