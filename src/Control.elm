@@ -1,9 +1,9 @@
 module Control exposing
     ( Control, Form, sandbox, simpleForm, form
     , bool, int, float, string, char, enum
-    , tuple, triple, maybe, result, list, dict, set, array, map
-    , RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
-    , CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+    , Tuple, tuple, Triple, triple, Maybe_, maybe, Result_, result, List_, list, Dict_, dict, Set_, set, Array_, array, Mapping, map
+    , Record, Field, EndRecord, RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
+    , CustomType, Tag, Arg, EndTag, EndCustomType, CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
     , Definition, define
     , failIf, noteIf
     , alertIf, respond
@@ -29,17 +29,17 @@ module Control exposing
 
 # Basic combinators
 
-@docs tuple, triple, maybe, result, list, dict, set, array, map
+@docs Tuple, tuple, Triple, triple, Maybe_, maybe, Result_, result, List_, list, Dict_, dict, Set_, set, Array_, array, Mapping, map
 
 
 # Building record combinators
 
-@docs RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
+@docs Record, Field, EndRecord, RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
 
 
 # Building custom type combinators
 
-@docs CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+@docs CustomType, Tag, Arg, EndTag, EndCustomType, CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
 
 
 # Creating a new control
@@ -669,11 +669,6 @@ type ListDelta delta
     = ItemInserted Int
     | ItemDeleted Int
     | ItemUpdated Int (Delta delta)
-
-
-type List_ a
-    = ListState_ (List (State a))
-    | ListDelta_ (ListDelta a)
 
 
 
@@ -2448,6 +2443,11 @@ triple first second third =
    88booo.   .88.   db   8D    88
    Y88888P Y888888P `8888Y'    YP
 -}
+
+
+type List_ a
+    = ListState_ (List (State a))
+    | ListDelta_ (ListDelta a)
 
 
 {-| A combinator that produces a `List` of controls of a given type.
