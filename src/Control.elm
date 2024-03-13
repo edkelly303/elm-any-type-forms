@@ -12,6 +12,7 @@ module Control exposing
     , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
     , State, Delta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
+    , mapping, test, testWithContext
     )
 
 {-|
@@ -705,6 +706,64 @@ Could be encoded as:
 -}
 type End
     = End
+
+
+
+{-
+   d888888b d88888b .d8888. d888888b
+   `~~88~~' 88'     88'  YP `~~88~~'
+      88    88ooooo `8bo.      88
+      88    88~~~~~   `Y8b.    88
+      88    88.     db   8D    88
+      YP    Y88888P `8888Y'    YP
+-}
+
+
+testWithContext :
+    { control : Control context state delta output
+    , context : context
+    , deltas : List delta
+    }
+    -> Result (List String) output
+testWithContext { control, context, deltas } =
+    let
+        form_ =
+            simpleFormWithContext
+                { control = control
+                , onSubmit = Nothing
+                , onUpdate = Just
+                }
+
+        ( initialState, _ ) =
+            form_.blank
+
+        finalState =
+            List.foldl
+                (\delta state ->
+                    form_.update context (StateChangedByInput delta) state
+                        |> Tuple.first
+                )
+                initialState
+                deltas
+
+        ( _, result_ ) =
+            form_.submit context finalState
+    in
+    result_
+        |> Result.mapError (List.map .message)
+
+
+test :
+    { control : Control () state delta output
+    , deltas : List delta
+    }
+    -> Result (List String) output
+test { control, deltas } =
+    testWithContext
+        { control = control
+        , deltas = deltas
+        , context = ()
+        }
 
 
 
@@ -2073,6 +2132,21 @@ default output (Control control) =
 
 
 {-| A control that produces an `Int`. Renders as an HTML number input.
+
+    test
+        { control = int
+        , deltas = [ "1.5" ]
+        }
+
+    --> Err [ "Must be a whole number" ]
+
+    test
+        { control = int
+        , deltas = [ "123" ]
+        }
+
+    --> Ok 123
+
 -}
 int : Control context String String Int
 int =
@@ -2108,6 +2182,21 @@ int =
 
 
 {-| A control that produces a `Float`. Renders as an HTML number input.
+
+    test
+        { control = float
+        , deltas = [ "hello" ]
+        }
+
+    --> Err [ "Must be a number" ]
+
+    test
+        { control = float
+        , deltas = [ "1.0" ]
+        }
+
+    --> Ok 1.0
+
 -}
 float : Control context String String Float
 float =
@@ -2142,6 +2231,14 @@ float =
 
 
 {-| A control that produces a `String`. Renders as an HTML text input.
+
+    test
+        { control = string
+        , deltas = [ "hello" ]
+        }
+
+    --> Ok "hello"
+
 -}
 string : Control context String String String
 string =
@@ -2169,6 +2266,28 @@ string =
 
 
 {-| A control that produces a `Char`. Renders as an HTML text input.
+
+    test
+        { control = char
+        , deltas = []
+        }
+
+    --> Err [ "Must not be blank" ]
+
+    test
+        { control = char
+        , deltas = [ "hello" ]
+        }
+
+    --> Err [ "Must be exactly one character" ]
+
+    test
+        { control = char
+        , deltas = [ "h" ]
+        }
+
+    --> Ok 'h'
+
 -}
 char : Control context String String Char
 char =
@@ -2214,12 +2333,19 @@ variants have any payload. Renders as an HTML radio input.
         | Green
         | Blue
 
-    colourControl : Control Colour Colour Colour
+    colourControl : Control context Colour Colour Colour
     colourControl =
         enum
             ( "Red", Red )
             ( "Green", Green )
             [ ( "Blue", Blue ) ]
+
+    test
+        { control = colourControl
+        , deltas = [ Red, Blue, Red, Green ]
+        }
+
+    --> Ok Green
 
 -}
 enum :
@@ -2250,7 +2376,15 @@ enum first second rest =
 -}
 
 
-{-| A control that produces a `Bool`. Renders as an HTML checkbox.
+{-| A control that produces a `Bool`. Renders as an HTML checkbox. Default output is `False`.
+
+    test
+        { control = bool
+        , deltas = [ True, False, True ]
+        }
+
+    --> Ok True
+
 -}
 bool : Control context Bool Bool Bool
 bool =
@@ -2296,6 +2430,10 @@ type Mapping a
     = Mapping (Internals a)
 
 
+mapping x =
+    Mapping (Delta_ (StateChangedByInput x))
+
+
 {-| A combinator that converts a `Control` whose `output` is of type `a` to a `Control` whose `output` is of type `b`.
 
 This is particularly useful for implementing "wrapper" types, such as `Id`s.
@@ -2313,6 +2451,13 @@ however, we need to supply two functions that will allow us to both `convert` th
             , revert = \(Id i) -> i
             }
             int
+
+    test
+        { control = idControl
+        , deltas = [ mapping "1" ]
+        }
+
+    --> Ok (Id 1)
 
 -}
 map :
@@ -2844,6 +2989,13 @@ types. The key type must be `comparable`.
     myDictControl =
         dict int string
 
+    test
+        { control = myDictControl
+        , deltas = []
+        }
+
+    --> Ok Dict.empty
+
 -}
 dict :
     Control context keyState keyDelta comparable
@@ -3096,7 +3248,14 @@ type Array_ a
         array int
 
 -}
-array : Control context state delta output -> Control context (Array_ state) (Array_ delta) (Array.Array output)
+array :
+    Control context state delta output
+    ->
+        Control
+            context
+            (Array_ state)
+            (Array_ delta)
+            (Array.Array output)
 array itemControl =
     list itemControl
         |> label "Array"
