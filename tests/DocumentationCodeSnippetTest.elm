@@ -6,6 +6,9 @@ module DocumentationCodeSnippetTest exposing (tests)
 import Control
 import Dict
 import Expect
+import Html
+import Html.Attributes
+import Html.Events
 import Test
 
 
@@ -16,6 +19,28 @@ tests =
         [ Test.describe
             "Control"
             [ Test.describe
+                "alertAtIndexes"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            Control.test
+                                { control =
+                                    myList__Control__alertAtIndexes_0
+                                        |> Control.default [ "hello", "world" ]
+                                , deltas = []
+                                }
+                                |> Expect.equal
+                                    (Result.Err
+                                        [ "The first two items in the list must not be \"hello\" and \"world\"."
+                                        , "The first two items in the list must not be \"hello\" and \"world\"."
+                                        ]
+                                    )
+                        )
+                    ]
+                ]
+            , Test.describe
                 "bool"
                 [ Test.describe
                     "code snippet 0"
@@ -98,6 +123,38 @@ tests =
                     ]
                 ]
             , Test.describe
+                "failIfWithContext"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            Control.testWithContext
+                                { control =
+                                    positiveInt__Control__failIfWithContext_0
+                                , context = { minimumValue = 1 }
+                                , deltas = [ "0" ]
+                                }
+                                |> Expect.equal
+                                    (Result.Err
+                                        [ "This is less than the minimum value!"
+                                        ]
+                                    )
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            Control.testWithContext
+                                { control =
+                                    positiveInt__Control__failIfWithContext_0
+                                , context = { minimumValue = 1 }
+                                , deltas = [ "2" ]
+                                }
+                                |> Expect.equal (Result.Ok 2)
+                        )
+                    ]
+                ]
+            , Test.describe
                 "float"
                 [ Test.describe
                     "code snippet 0"
@@ -117,6 +174,42 @@ tests =
                             Control.test
                                 { control = Control.float, deltas = [ "1.0" ] }
                                 |> Expect.equal (Result.Ok 1)
+                        )
+                    ]
+                ]
+            , Test.describe
+                "form"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Form String.String String.String Basics.Int Msg__Control__form_0
+                                unused =
+                                    Control.form
+                                        { control = Control.int
+                                        , onUpdate =
+                                            FormUpdated__Control__form_0
+                                        , view =
+                                            \controlView ->
+                                                Html.form
+                                                    [ Html.Events.onSubmit
+                                                        FormSubmitted__Control__form_0
+                                                    ]
+                                                    (controlView
+                                                        ++ [ Html.button
+                                                                [ Html.Attributes.type_
+                                                                    "submit"
+                                                                ]
+                                                                [ Html.text
+                                                                    "Submit"
+                                                                ]
+                                                           ]
+                                                    )
+                                        }
+                            in
+                            Expect.pass
                         )
                     ]
                 ]
@@ -142,18 +235,24 @@ tests =
                     ]
                 ]
             , Test.describe
-                "map"
+                "simpleForm"
                 [ Test.describe
                     "code snippet 0"
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control = idControl__Control__map_0
-                                , deltas = [ Control.mapping "1" ]
-                                }
-                                |> Expect.equal
-                                    (Result.Ok (Id__Control__map_0 1))
+                            let
+                                unused : Control.Form String.String String.String Basics.Int Msg__Control__simpleForm_0
+                                unused =
+                                    Control.simpleForm
+                                        { control = Control.int
+                                        , onUpdate =
+                                            FormUpdated__Control__simpleForm_0
+                                        , onSubmit =
+                                            FormSubmitted__Control__simpleForm_0
+                                        }
+                            in
+                            Expect.pass
                         )
                     ]
                 ]
@@ -176,6 +275,31 @@ tests =
         ]
 
 
+myString__Control__alertAtIndexes_0 =
+    Control.string
+        |> Control.respond
+            { alert = "no-hello-world"
+            , fail = Basics.True
+            , message =
+                "The first two items in the list must not be \"hello\" and \"world\"."
+            , class = "control-feedback-fail"
+            }
+
+
+myList__Control__alertAtIndexes_0 =
+    Control.list myString__Control__alertAtIndexes_0
+        |> Control.alertAtIndexes
+            (\list_ ->
+                case list_ of
+                    "hello" :: "world" :: _ ->
+                        [ 0, 1 ]
+
+                    _ ->
+                        []
+            )
+            "no-hello-world"
+
+
 myDictControl__Control__dict_0 =
     Control.dict Control.int Control.string
 
@@ -194,13 +318,22 @@ colourControl__Control__enum_0 =
         [ ( "Blue", Blue__Control__enum_0 ) ]
 
 
-type Id__Control__map_0
-    = Id__Control__map_0 Basics.Int
+type alias Context__Control__failIfWithContext_0 =
+    { minimumValue : Basics.Int }
 
 
-idControl__Control__map_0 =
-    Control.map
-        { convert = \i -> Id__Control__map_0 i
-        , revert = \(Id__Control__map_0 i) -> i
-        }
-        Control.int
+positiveInt__Control__failIfWithContext_0 =
+    Control.int
+        |> Control.failIfWithContext
+            (\context x -> x < context.minimumValue)
+            "This is less than the minimum value!"
+
+
+type Msg__Control__form_0
+    = FormUpdated__Control__form_0 (Control.Delta String.String)
+    | FormSubmitted__Control__form_0
+
+
+type Msg__Control__simpleForm_0
+    = FormUpdated__Control__simpleForm_0 (Control.Delta String.String)
+    | FormSubmitted__Control__simpleForm_0

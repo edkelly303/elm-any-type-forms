@@ -1,5 +1,6 @@
 module Control exposing
-    ( Control, Form, sandbox, simpleForm, form
+    ( test, testWithContext
+    , Control, Form, sandbox, simpleForm, form
     , bool, int, float, string, char, enum
     , Tuple, tuple, Triple, triple, Maybe_, maybe, Result_, result, List_, list, Dict_, dict, Set_, set, Array_, array, Mapping, map
     , Record, Field, EndRecord, RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
@@ -12,10 +13,14 @@ module Control exposing
     , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
     , State, Delta, End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
-    , mapping, test, testWithContext
     )
 
 {-|
+
+
+# Testing
+
+@docs test, testWithContext
 
 
 # Creating a form
@@ -720,6 +725,8 @@ type End
 -}
 
 
+{-| TODO docs
+-}
 testWithContext :
     { control : Control context state delta output
     , context : context
@@ -754,6 +761,8 @@ testWithContext { control, context, deltas } =
         |> Result.mapError (List.map .message)
 
 
+{-| TODO docs
+-}
 test :
     { control : Control () state delta output
     , deltas : List delta
@@ -785,17 +794,17 @@ You will need to supply a couple of variants from your app's `Msg` type: one to
 handle updates of the form's state, and one to handle the submission of the
 form, as follows:
 
-    type alias Msg
+    type Msg
         = FormUpdated (Delta String)
         | FormSubmitted
 
-    mySimpleForm : Form (State String) (Delta String) Int Msg
-    mySimpleForm =
-        form
-            { control = int
-            , onUpdate = FormUpdated
-            , onSubmit = FormSubmitted
-            }
+    simpleForm
+        { control = int
+        , onUpdate = FormUpdated
+        , onSubmit = FormSubmitted
+        }
+
+    --: Form String String Int Msg
 
 Now you can integrate your `Form` into a larger Elm app:
 
@@ -849,21 +858,21 @@ You will need to supply a variant from your app's `Msg` type to handle updates o
 You will also need to supply a `view` function that takes the `List (Html msg)` produced by the
 supplied `Control` and returns an `Html msg`, as follows:
 
-    type alias Msg
+    type Msg
         = FormUpdated (Delta String)
         | FormSubmitted
 
-    myForm : Form (State String) (Delta String) Int Msg
-    myForm =
-        form
-            { control = int
-            , onUpdate = FormUpdated
-            , view =
-                \controlView ->
-                    H.form
-                        [ HE.onSubmit FormSubmitted ]
-                        (controlView ++ [ H.button [ HA.type_ "submit" ] [ H.text "Submit" ] ])
-            }
+    form
+        { control = int
+        , onUpdate = FormUpdated
+        , view =
+            \controlView ->
+                Html.form
+                    [ Html.Events.onSubmit FormSubmitted ]
+                    (controlView ++ [ Html.button [ Html.Attributes.type_ "submit" ] [ Html.text "Submit" ] ])
+        }
+
+    --: Form String String Int Msg
 
 Now you can integrate your `Form` into a larger Elm app:
 
@@ -2458,10 +2467,6 @@ type Mapping a
     = Mapping (Internals a)
 
 
-mapping x =
-    Mapping (Delta_ (StateChangedByInput x))
-
-
 {-| A combinator that converts a `Control` whose `output` is of type `a` to a `Control` whose `output` is of type `b`.
 
 This is particularly useful for implementing "wrapper" types, such as `Id`s.
@@ -2479,13 +2484,6 @@ however, we need to supply two functions that will allow us to both `convert` th
             , revert = \(Id i) -> i
             }
             int
-
-    test
-        { control = idControl
-        , deltas = [ mapping "1" ]
-        }
-
-    --> Ok (Id 1)
 
 -}
 map :
