@@ -348,6 +348,7 @@ type alias Feedback =
     { path : Path
     , label : String
     , message : String
+    , class : String
     , fail : Bool
     }
 
@@ -1252,6 +1253,7 @@ define definition =
                                         , label = definition.label
                                         , path = path
                                         , fail = True
+                                        , class = "control-feedback-fail"
                                         }
                                     )
                                 )
@@ -1356,6 +1358,7 @@ defineWithContext definition =
                                         , label = definition.label
                                         , path = path
                                         , fail = True
+                                        , class = "control-feedback-fail"
                                         }
                                     )
                                 )
@@ -1543,13 +1546,13 @@ notification message on this control, and if desired, cause validation to fail.
 This is meant to be used in combination with `alertIf`, which emits the alert.
 
 -}
-respond : { alert : String, fail : Bool, message : String } -> Control context state delta output -> Control context state delta output
-respond { alert, fail, message } (Control control) =
-    Control (control >> alertReceiver (AlertLabel alert) fail message)
+respond : { alert : String, fail : Bool, message : String, class : String } -> Control context state delta output -> Control context state delta output
+respond args (Control control) =
+    Control (control >> alertReceiver (AlertLabel args.alert) args.fail args.message args.class)
 
 
-alertReceiver : Alert -> Bool -> String -> ControlFns context input state delta output -> ControlFns context input state delta output
-alertReceiver alert fail message (ControlFns ctrl) =
+alertReceiver : Alert -> Bool -> String -> String -> ControlFns context input state delta output -> ControlFns context input state delta output
+alertReceiver alert fail message class_ (ControlFns ctrl) =
     ControlFns
         { ctrl
             | collectFeedback =
@@ -1564,6 +1567,7 @@ alertReceiver alert fail message (ControlFns ctrl) =
                                   , label = ctrl.label
                                   , message = message
                                   , fail = fail
+                                  , class = class_
                                   }
                                 ]
 
@@ -1607,13 +1611,14 @@ strings, if and only if those first two items are "hello" and "world":
                 { alert = "no-hello-world"
                 , fail = True
                 , message = "The first two items in the list must not be \"hello\" and \"world\"."
+                , class = "control-feedback-fail"
                 }
 
     myList =
         list myString
             |> alertAtIndexes
                 (\list_ ->
-                    case list of
+                    case list_ of
                         "hello" :: "world" :: _ ->
                             [ 0, 1 ]
 
@@ -1621,6 +1626,13 @@ strings, if and only if those first two items are "hello" and "world":
                             []
                 )
                 "no-hello-world"
+
+    test
+        { control = myList |> default [ "hello", "world" ]
+        , deltas = []
+        }
+
+    --> Err [ "The first two items in the list must not be \"hello\" and \"world\".", "The first two items in the list must not be \"hello\" and \"world\"." ]
 
 -}
 alertAtIndexes :
@@ -1672,6 +1684,22 @@ This causes the `Control` to fail validation.
                 (\context x -> x < context.minimumValue)
                 "This is less than the minimum value!"
 
+    testWithContext
+        { control = positiveInt
+        , context = { minimumValue = 1 }
+        , deltas = [ "0" ]
+        }
+
+    --> Err [ "This is less than the minimum value!" ]
+
+    testWithContext
+        { control = positiveInt
+        , context = { minimumValue = 1 }
+        , deltas = [ "2" ]
+        }
+
+    --> Ok 2
+
 -}
 failIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 failIfWithContext check message (Control c) =
@@ -1686,7 +1714,7 @@ failIfWithContext check message (Control c) =
             in
             ControlFns control
                 |> alertEmitter check alert
-                |> alertReceiver alert True message
+                |> alertReceiver alert True message "control-feedback-fail"
         )
 
 
@@ -1726,7 +1754,7 @@ noteIfWithContext check message (Control c) =
             in
             ControlFns control
                 |> alertEmitter check alert
-                |> alertReceiver alert False message
+                |> alertReceiver alert False message "control-feedback-note"
         )
 
 
@@ -3014,6 +3042,7 @@ dict keyControl valueControl =
                     { alert = "@@dict-unique-keys"
                     , fail = True
                     , message = "Keys must be unique"
+                    , class = "control-feedback-fail"
                     }
             )
             valueControl
@@ -3213,7 +3242,14 @@ set :
     -> Control context (Set_ state) (Set_ delta) (Set.Set comparable)
 set memberControl =
     list
-        (memberControl |> respond { alert = "@@set-unique-keys", fail = True, message = "Set members must be unique" })
+        (memberControl
+            |> respond
+                { alert = "@@set-unique-keys"
+                , fail = True
+                , message = "Set members must be unique"
+                , class = "control-feedback-fail"
+                }
+        )
         |> alertAtIndexes nonUniqueIndexes "@@set-unique-keys"
         |> label "Set"
         |> map { convert = Set.fromList, revert = Set.toList }
@@ -9003,6 +9039,7 @@ validateSelectedTagState parser selectedTag context fns states =
                   , label = "FATAL ERROR"
                   , message = "tag index " ++ String.fromInt selectedTag ++ " not found"
                   , fail = True
+                  , class = "control-feedback-fail"
                   }
                 ]
         , selectedTag = selectedTag
@@ -9190,19 +9227,11 @@ wrappedView status innerView =
                         H.div [ HA.class "control-feedback-container" ]
                             (List.map
                                 (\f ->
-                                    let
-                                        ( class_, text_ ) =
-                                            if f.fail then
-                                                ( "control-feedback-fail", f.message )
-
-                                            else
-                                                ( "control-feedback-note", f.message )
-                                    in
                                     H.p
-                                        [ HA.class class_
+                                        [ HA.class f.class
                                         , HA.class "control-feedback"
                                         ]
-                                        [ H.text text_ ]
+                                        [ H.text f.message ]
                                 )
                                 feedback
                             )

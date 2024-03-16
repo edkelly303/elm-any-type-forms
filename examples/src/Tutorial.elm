@@ -945,6 +945,7 @@ confirmPasswordControl =
             { alert = "password-mismatch"
             , fail = True
             , message = "Passwords must match"
+            , class = "control-feedback-fail"
             }
 
 
