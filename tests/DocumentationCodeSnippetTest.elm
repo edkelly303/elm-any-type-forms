@@ -9,6 +9,7 @@ import Expect
 import Html
 import Html.Attributes
 import Html.Events
+import Platform.Sub
 import Test
 
 
@@ -19,22 +20,57 @@ tests =
         [ Test.describe
             "Control"
             [ Test.describe
+                "module header"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            (test__Control__Header_0.init
+                                |> test__Control__Header_0.prefill
+                                    { password = "hello"
+                                    , confirmation = "world"
+                                    }
+                                |> test__Control__Header_0.quick.submit
+                            )
+                                |> Expect.equal
+                                    (Result.Err [ "Passwords must match" ])
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            (test__Control__Header_0.init
+                                |> test__Control__Header_0.prefill
+                                    { password = "openSesame"
+                                    , confirmation = "openSesame"
+                                    }
+                                |> test__Control__Header_0.quick.submit
+                            )
+                                |> Expect.equal
+                                    (Result.Ok
+                                        { password = "openSesame"
+                                        , confirmation = "openSesame"
+                                        }
+                                    )
+                        )
+                    ]
+                ]
+            , Test.describe
                 "alertAtIndexes"
                 [ Test.describe
                     "code snippet 0"
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control =
-                                    myList__Control__alertAtIndexes_0
-                                        |> Control.default [ "hello", "world" ]
-                                , deltas = []
-                                }
+                            (test__Control__alertAtIndexes_0.init
+                                |> test__Control__alertAtIndexes_0.prefill
+                                    [ "hello", "world" ]
+                                |> test__Control__alertAtIndexes_0.quick.submit
+                            )
                                 |> Expect.equal
                                     (Result.Err
-                                        [ "The first two items in the list must not be \"hello\" and \"world\"."
-                                        , "The first two items in the list must not be \"hello\" and \"world\"."
+                                        [ "List can't start with \"hello\" and \"world\"."
+                                        , "List can't start with \"hello\" and \"world\"."
                                         ]
                                     )
                         )
@@ -47,11 +83,18 @@ tests =
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control = Control.bool
-                                , deltas =
-                                    [ Basics.True, Basics.False, Basics.True ]
-                                }
+                            (test__Control__bool_0.init
+                                |> test__Control__bool_0.quick.submit
+                            )
+                                |> Expect.equal (Result.Ok Basics.False)
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            (test__Control__bool_0.init
+                                |> test__Control__bool_0.update Basics.True
+                                |> test__Control__bool_0.quick.submit
+                            )
                                 |> Expect.equal (Result.Ok Basics.True)
                         )
                     ]
@@ -63,15 +106,19 @@ tests =
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test { control = Control.char, deltas = [] }
+                            (test__Control__char_0.init
+                                |> test__Control__char_0.quick.submit
+                            )
                                 |> Expect.equal
                                     (Result.Err [ "Must not be blank" ])
                         )
                     , Test.test
                         "1"
                         (\() ->
-                            Control.test
-                                { control = Control.char, deltas = [ "hello" ] }
+                            (test__Control__char_0.init
+                                |> test__Control__char_0.update "hello"
+                                |> test__Control__char_0.quick.submit
+                            )
                                 |> Expect.equal
                                     (Result.Err
                                         [ "Must be exactly one character" ]
@@ -80,9 +127,100 @@ tests =
                     , Test.test
                         "2"
                         (\() ->
-                            Control.test
-                                { control = Control.char, deltas = [ "h" ] }
+                            (test__Control__char_0.init
+                                |> test__Control__char_0.update "h"
+                                |> test__Control__char_0.quick.submit
+                            )
                                 |> Expect.equal (Result.Ok 'h')
+                        )
+                    ]
+                ]
+            , Test.describe
+                "class"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String String.String
+                                unused =
+                                    Control.string
+                                        |> Control.class "important"
+                                        |> Control.class "no-really"
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "classList"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String String.String
+                                unused =
+                                    Control.string
+                                        |> Control.classList
+                                            [ ( "important", Basics.True )
+                                            , ( "no-really", Basics.True )
+                                            , ( "ignore-me", Basics.False )
+                                            ]
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "debounce"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String String.String
+                                unused =
+                                    Control.string |> Control.debounce 2000
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "default"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            (test__Control__default_0.init
+                                |> test__Control__default_0.quick.submit
+                            )
+                                |> Expect.equal (Result.Ok ( 1, "hello" ))
+                        )
+                    ]
+                ]
+            , Test.describe
+                "define"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            (test__Control__define_0.init
+                                |> test__Control__define_0.update
+                                    Increment__Control__define_0
+                                |> test__Control__define_0.update
+                                    Increment__Control__define_0
+                                |> test__Control__define_0.update
+                                    Decrement__Control__define_0
+                                |> test__Control__define_0.quick.submit
+                            )
+                                |> Expect.equal (Result.Ok 1)
                         )
                     ]
                 ]
@@ -93,11 +231,12 @@ tests =
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control = myDictControl__Control__dict_0
-                                , deltas = []
-                                }
-                                |> Expect.equal (Result.Ok Dict.empty)
+                            let
+                                unused : Control.Control context (Control.Dict_ String.String Basics.Bool) (Control.Dict_ String.String Basics.Bool) (Dict.Dict String.String Basics.Bool)
+                                unused =
+                                    Control.dict Control.string Control.bool
+                            in
+                            Expect.pass
                         )
                     ]
                 ]
@@ -108,17 +247,48 @@ tests =
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control = colourControl__Control__enum_0
-                                , deltas =
-                                    [ Red__Control__enum_0
-                                    , Blue__Control__enum_0
-                                    , Red__Control__enum_0
-                                    , Green__Control__enum_0
-                                    ]
-                                }
+                            (test__Control__enum_0.init
+                                |> test__Control__enum_0.quick.submit
+                            )
+                                |> Expect.equal (Result.Ok Red__Control__enum_0)
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            (test__Control__enum_0.init
+                                |> test__Control__enum_0.update
+                                    Green__Control__enum_0
+                                |> test__Control__enum_0.quick.submit
+                            )
                                 |> Expect.equal
                                     (Result.Ok Green__Control__enum_0)
+                        )
+                    ]
+                ]
+            , Test.describe
+                "failIf"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            (test__Control__failIf_0.init
+                                |> test__Control__failIf_0.update "0"
+                                |> test__Control__failIf_0.quick.submit
+                            )
+                                |> Expect.equal
+                                    (Result.Err
+                                        [ "This must be greater than zero!" ]
+                                    )
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            (test__Control__failIf_0.init
+                                |> test__Control__failIf_0.update "1"
+                                |> test__Control__failIf_0.quick.submit
+                            )
+                                |> Expect.equal (Result.Ok 1)
                         )
                     ]
                 ]
@@ -129,12 +299,10 @@ tests =
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.testWithContext
-                                { control =
-                                    positiveInt__Control__failIfWithContext_0
-                                , context = { minimumValue = 1 }
-                                , deltas = [ "0" ]
-                                }
+                            (test__Control__failIfWithContext_0.init
+                                |> test__Control__failIfWithContext_0.update "0"
+                                |> test__Control__failIfWithContext_0.quick.submit
+                            )
                                 |> Expect.equal
                                     (Result.Err
                                         [ "This is less than the minimum value!"
@@ -144,13 +312,11 @@ tests =
                     , Test.test
                         "1"
                         (\() ->
-                            Control.testWithContext
-                                { control =
-                                    positiveInt__Control__failIfWithContext_0
-                                , context = { minimumValue = 1 }
-                                , deltas = [ "2" ]
-                                }
-                                |> Expect.equal (Result.Ok 2)
+                            (test__Control__failIfWithContext_0.init
+                                |> test__Control__failIfWithContext_0.update "1"
+                                |> test__Control__failIfWithContext_0.quick.submit
+                            )
+                                |> Expect.equal (Result.Ok 1)
                         )
                     ]
                 ]
@@ -161,18 +327,20 @@ tests =
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control = Control.float
-                                , deltas = [ "hello" ]
-                                }
+                            (test__Control__float_0.init
+                                |> test__Control__float_0.update "hello"
+                                |> test__Control__float_0.quick.submit
+                            )
                                 |> Expect.equal
                                     (Result.Err [ "Must be a number" ])
                         )
                     , Test.test
                         "1"
                         (\() ->
-                            Control.test
-                                { control = Control.float, deltas = [ "1.0" ] }
+                            (test__Control__float_0.init
+                                |> test__Control__float_0.update "1.0"
+                                |> test__Control__float_0.quick.submit
+                            )
                                 |> Expect.equal (Result.Ok 1)
                         )
                     ]
@@ -214,23 +382,285 @@ tests =
                     ]
                 ]
             , Test.describe
+                "id"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String String.String
+                                unused =
+                                    Control.string |> Control.id "my-string"
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
                 "int"
                 [ Test.describe
                     "code snippet 0"
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control = Control.int, deltas = [ "1.5" ] }
+                            (test__Control__int_0.init
+                                |> test__Control__int_0.update "1.5"
+                                |> test__Control__int_0.quick.submit
+                            )
                                 |> Expect.equal
                                     (Result.Err [ "Must be a whole number" ])
                         )
                     , Test.test
                         "1"
                         (\() ->
-                            Control.test
-                                { control = Control.int, deltas = [ "123" ] }
+                            (test__Control__int_0.init
+                                |> test__Control__int_0.update "123"
+                                |> test__Control__int_0.quick.submit
+                            )
                                 |> Expect.equal (Result.Ok 123)
+                        )
+                    ]
+                ]
+            , Test.describe
+                "label"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String String.String
+                                unused =
+                                    Control.string
+                                        |> Control.label "Enter your name"
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "layout"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context (Control.Record (Control.Field String.String (Control.Field String.String Control.EndRecord))) (Control.Record (Control.Field String.String (Control.Field String.String Control.EndRecord))) MyRecord__Control__layout_0
+                                unused =
+                                    Control.record
+                                        (\foo bar -> { foo = foo, bar = bar })
+                                        |> Control.field .foo Control.string
+                                        |> Control.field .bar Control.int
+                                        |> Control.endRecord
+                                        |> Control.layout
+                                            wizard__Control__layout_0
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "list"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context (Control.List_ Basics.Bool) (Control.List_ Basics.Bool) (List Basics.Bool)
+                                unused =
+                                    Control.list Control.bool
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "map"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String Basics.Int
+                                unused =
+                                    Control.int
+                            in
+                            Expect.pass
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            let
+                                unused : Control.Control context (Control.Mapping String.String) (Control.Mapping String.String) Id__Control__map_0
+                                unused =
+                                    Control.int
+                                        |> Control.map
+                                            { convert =
+                                                \i -> Id__Control__map_0 i
+                                            , revert =
+                                                \(Id__Control__map_0 i) -> i
+                                            }
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "maybe"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String Basics.Int
+                                unused =
+                                    Control.int
+                            in
+                            Expect.pass
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            let
+                                unused : Control.Control context (Control.Maybe_ String.String) (Control.Maybe_ String.String) (Maybe.Maybe Basics.Int)
+                                unused =
+                                    Control.maybe Control.int
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "name"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String String.String
+                                unused =
+                                    Control.string |> Control.name "My string"
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "noteIf"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            (test__Control__noteIf_0.init
+                                |> test__Control__noteIf_0.update "0"
+                                |> test__Control__noteIf_0.quick.feedback
+                            )
+                                |> Expect.equal
+                                    [ "Maybe this should be greater than zero?"
+                                    ]
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            (test__Control__noteIf_0.init
+                                |> test__Control__noteIf_0.update "1"
+                                |> test__Control__noteIf_0.quick.feedback
+                            )
+                                |> Expect.equal []
+                        )
+                    ]
+                ]
+            , Test.describe
+                "noteIfWithContext"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            (test__Control__noteIfWithContext_0.init
+                                |> test__Control__noteIfWithContext_0.update "0"
+                                |> test__Control__noteIfWithContext_0.quick.feedback
+                            )
+                                |> Expect.equal
+                                    [ "This value is below the recommended minimum - are you sure?"
+                                    ]
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            (test__Control__noteIfWithContext_0.init
+                                |> test__Control__noteIfWithContext_0.update "1"
+                                |> test__Control__noteIfWithContext_0.quick.feedback
+                            )
+                                |> Expect.equal []
+                        )
+                    ]
+                ]
+            , Test.describe
+                "record"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            (test__Control__record_0.init
+                                |> test__Control__record_0.quick.submit
+                            )
+                                |> Expect.equal
+                                    (Result.Err [ "Must be a whole number" ])
+                        )
+                    , Test.test
+                        "1"
+                        (\() ->
+                            (test__Control__record_0.init
+                                |> test__Control__record_0.prefill
+                                    { foo = "!!!", bar = 42 }
+                                |> test__Control__record_0.quick.submit
+                            )
+                                |> Expect.equal
+                                    (Result.Ok { foo = "!!!", bar = 42 })
+                        )
+                    ]
+                ]
+            , Test.describe
+                "result"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context (Control.Result_ String.String Basics.Bool) (Control.Result_ String.String Basics.Bool) (Result.Result String.String Basics.Bool)
+                                unused =
+                                    Control.result Control.string Control.bool
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "sandbox"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Platform.Program () (Control.State String.String) (Control.Delta String.String)
+                                unused =
+                                    Control.sandbox
+                                        { control = Control.int
+                                        , outputToString = Debug.toString
+                                        }
+                            in
+                            Expect.pass
                         )
                     ]
                 ]
@@ -263,11 +693,64 @@ tests =
                     [ Test.test
                         "0"
                         (\() ->
-                            Control.test
-                                { control = Control.string
-                                , deltas = [ "hello" ]
-                                }
+                            (test__Control__string_0.init
+                                |> test__Control__string_0.update "hello"
+                                |> test__Control__string_0.quick.submit
+                            )
                                 |> Expect.equal (Result.Ok "hello")
+                        )
+                    ]
+                ]
+            , Test.describe
+                "triple"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context (Control.Triple String.String Basics.Bool String.String) (Control.Triple String.String Basics.Bool String.String) ( String.String, Basics.Bool, Basics.Float )
+                                unused =
+                                    Control.triple
+                                        Control.string
+                                        Control.bool
+                                        Control.float
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "tuple"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context (Control.Tuple String.String Basics.Bool) (Control.Tuple String.String Basics.Bool) ( String.String, Basics.Bool )
+                                unused =
+                                    Control.tuple Control.string Control.bool
+                            in
+                            Expect.pass
+                        )
+                    ]
+                ]
+            , Test.describe
+                "wrapView"
+                [ Test.describe
+                    "code snippet 0"
+                    [ Test.test
+                        "0"
+                        (\() ->
+                            let
+                                unused : Control.Control context String.String String.String Basics.Int
+                                unused =
+                                    Control.int
+                                        |> Control.wrapView
+                                            (\view -> [ Html.div [] view ])
+                            in
+                            Expect.pass
                         )
                     ]
                 ]
@@ -275,13 +758,38 @@ tests =
         ]
 
 
+passwordControl__Control__Header_0 =
+    Control.record
+        (\password confirmation ->
+            { password = password, confirmation = confirmation }
+        )
+        |> Control.field .password Control.string
+        |> Control.field
+            .confirmation
+            (Control.string
+                |> Control.respond
+                    { alert = "passwords-do-not-match"
+                    , fail = Basics.True
+                    , message = "Passwords must match"
+                    , class = "control-feedback-fail"
+                    }
+            )
+        |> Control.endRecord
+        |> Control.alertIf
+            (\{ password, confirmation } -> password /= confirmation)
+            "passwords-do-not-match"
+
+
+test__Control__Header_0 =
+    Control.toTest passwordControl__Control__Header_0
+
+
 myString__Control__alertAtIndexes_0 =
     Control.string
         |> Control.respond
             { alert = "no-hello-world"
             , fail = Basics.True
-            , message =
-                "The first two items in the list must not be \"hello\" and \"world\"."
+            , message = "List can't start with \"hello\" and \"world\"."
             , class = "control-feedback-fail"
             }
 
@@ -300,8 +808,75 @@ myList__Control__alertAtIndexes_0 =
             "no-hello-world"
 
 
-myDictControl__Control__dict_0 =
-    Control.dict Control.int Control.string
+test__Control__alertAtIndexes_0 =
+    Control.toTest myList__Control__alertAtIndexes_0
+
+
+test__Control__bool_0 =
+    Control.toTest Control.bool
+
+
+test__Control__char_0 =
+    Control.toTest Control.char
+
+
+oneAndHello__Control__default_0 =
+    Control.tuple Control.int Control.string |> Control.default ( 1, "hello" )
+
+
+test__Control__default_0 =
+    Control.toTest oneAndHello__Control__default_0
+
+
+type CounterDelta__Control__define_0
+    = Increment__Control__define_0
+    | Decrement__Control__define_0
+
+
+counterControl__Control__define_0 : Control.Control context Basics.Int CounterDelta__Control__define_0 Basics.Int
+counterControl__Control__define_0 =
+    Control.define
+        { blank = 0
+        , prefill = Basics.identity
+        , update =
+            \delta state ->
+                case delta of
+                    Increment__Control__define_0 ->
+                        state + 1
+
+                    Decrement__Control__define_0 ->
+                        state - 1
+        , view =
+            \{ state, name, id, label, class } ->
+                Html.div
+                    [ Html.Attributes.class Control.class ]
+                    [ Html.label
+                        [ Html.Attributes.for Control.id ]
+                        [ Html.text Control.label ]
+                    , Html.div
+                        [ Html.Attributes.id Control.id
+                        , Html.Attributes.name Control.name
+                        ]
+                        [ Html.button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Events.onClick Increment__Control__define_0
+                            ]
+                            [ Html.text "+" ]
+                        , Html.div [] [ Html.text <| String.fromInt state ]
+                        , Html.button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Events.onClick Decrement__Control__define_0
+                            ]
+                            [ Html.text "-" ]
+                        ]
+                    ]
+        , subscriptions = \state -> Platform.Sub.none
+        , parse = Result.Ok
+        }
+
+
+test__Control__define_0 =
+    Control.toTest counterControl__Control__define_0
 
 
 type Colour__Control__enum_0
@@ -318,6 +893,19 @@ colourControl__Control__enum_0 =
         [ ( "Blue", Blue__Control__enum_0 ) ]
 
 
+test__Control__enum_0 =
+    Control.toTest colourControl__Control__enum_0
+
+
+positiveInt__Control__failIf_0 =
+    Control.int
+        |> Control.failIf (\x -> x < 1) "This must be greater than zero!"
+
+
+test__Control__failIf_0 =
+    Control.toTest positiveInt__Control__failIf_0
+
+
 type alias Context__Control__failIfWithContext_0 =
     { minimumValue : Basics.Int }
 
@@ -329,11 +917,123 @@ positiveInt__Control__failIfWithContext_0 =
             "This is less than the minimum value!"
 
 
+test__Control__failIfWithContext_0 =
+    positiveInt__Control__failIfWithContext_0
+        |> Control.toTestWithContext { minimumValue = 1 }
+
+
+test__Control__float_0 =
+    Control.toTest Control.float
+
+
 type Msg__Control__form_0
     = FormUpdated__Control__form_0 (Control.Delta String.String)
     | FormSubmitted__Control__form_0
 
 
+test__Control__int_0 =
+    Control.toTest Control.int
+
+
+type alias MyRecord__Control__layout_0 =
+    { foo : String.String, bar : Basics.Int }
+
+
+wizard__Control__layout_0 config subcontrols =
+    let
+        currentPage =
+            config.selected
+
+        totalPages =
+            List.length subcontrols
+
+        currentPageView =
+            subcontrols
+                |> List.filter (\{ index } -> index == currentPage)
+                |> List.map .html
+                |> List.concat
+
+        nextClicked =
+            config.selectMsg (currentPage + 1)
+
+        backClicked =
+            config.selectMsg (currentPage - 1)
+
+        navigationButton txt msg =
+            Html.button
+                [ Html.Attributes.type_ "button", Html.Events.onClick msg ]
+                [ Html.text txt ]
+    in
+    [ Html.div
+        [ Html.Attributes.id config.id, Html.Attributes.class config.class ]
+        ([ Html.h1 [] [ Html.text "Wizard!" ]
+         , navigationButton "Back" backClicked
+         , Html.text
+            (String.join
+                " "
+                [ "page"
+                , String.fromInt currentPage
+                , "of"
+                , String.fromInt totalPages
+                ]
+            )
+         , navigationButton "Next" nextClicked
+         ]
+            ++ currentPageView
+        )
+    ]
+
+
+type Id__Control__map_0
+    = Id__Control__map_0 Basics.Int
+
+
+positiveInt__Control__noteIf_0 =
+    Control.int
+        |> Control.noteIf
+            (\x -> x < 1)
+            "Maybe this should be greater than zero?"
+
+
+test__Control__noteIf_0 =
+    Control.toTest positiveInt__Control__noteIf_0
+
+
+type alias Context__Control__noteIfWithContext_0 =
+    { recommendedMinimumValue : Basics.Int }
+
+
+boundedInt__Control__noteIfWithContext_0 =
+    Control.int
+        |> Control.noteIfWithContext
+            (\context x -> x < context.recommendedMinimumValue)
+            "This value is below the recommended minimum - are you sure?"
+
+
+test__Control__noteIfWithContext_0 =
+    boundedInt__Control__noteIfWithContext_0
+        |> Control.toTestWithContext { recommendedMinimumValue = 1 }
+
+
+type alias MyRecord__Control__record_0 =
+    { foo : String.String, bar : Basics.Int }
+
+
+myRecordControl__Control__record_0 =
+    Control.record (\foo bar -> { foo = foo, bar = bar })
+        |> Control.field .foo Control.string
+        |> Control.field .bar Control.int
+        |> Control.endRecord
+
+
+test__Control__record_0 =
+    Control.toTest myRecordControl__Control__record_0
+
+
 type Msg__Control__simpleForm_0
     = FormUpdated__Control__simpleForm_0 (Control.Delta String.String)
     | FormSubmitted__Control__simpleForm_0
+
+
+test__Control__string_0 =
+    Control.toTest Control.string

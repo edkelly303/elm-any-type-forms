@@ -1,5 +1,5 @@
 module Control exposing
-    ( test, testWithContext
+    ( toTest, toTestWithContext
     , Control, Form, sandbox, simpleForm, form
     , bool, int, float, string, char, enum
     , Tuple, tuple, Triple, triple, Maybe_, maybe, Result_, result, List_, list, Dict_, dict, Set_, set, Array_, array, Mapping, map
@@ -11,7 +11,7 @@ module Control exposing
     , alertAtIndexes
     , default, debounce, id, name, label, class, classList, wrapView
     , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
-    , State, Delta, End
+    , State, Delta(..), End
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
     )
 
@@ -20,7 +20,7 @@ module Control exposing
 
 # Testing
 
-@docs test, testWithContext
+@docs toTest, toTestWithContext
 
 
 # Creating a form
@@ -78,13 +78,14 @@ can achieve this as follows:
                 , confirmation = confirmation
                 }
             )
-            |> field string
-            |> field
+            |> field .password string
+            |> field .confirmation
                 (string
                     |> respond
                         { alert = "passwords-do-not-match"
                         , fail = True
                         , message = "Passwords must match"
+                        , class = "control-feedback-fail"
                         }
                 )
             |> endRecord
@@ -93,6 +94,27 @@ can achieve this as follows:
                     password /= confirmation
                 )
                 "passwords-do-not-match"
+
+    test =
+        toTest passwordControl
+
+    test.init
+        |> test.prefill
+            { password = "hello"
+            , confirmation = "world"
+            }
+        |> test.quick.submit
+
+    --> Err [ "Passwords must match" ]
+
+    test.init
+        |> test.prefill
+            { password = "openSesame"
+            , confirmation = "openSesame"
+            }
+        |> test.quick.submit
+
+    --> Ok { password = "openSesame", confirmation = "openSesame" }
 
 @docs alertIf, respond
 
@@ -165,7 +187,9 @@ import Time
 -}
 
 
-{-| A `FormWithContext` is a record which contains functions that you can use in your
+{-| TODO - finish this section!
+
+A `FormWithContext` is a record which contains functions that you can use in your
 Elm `Program` to initialise, view, update, subscribe, and submit your form.
 
 Unlike the standard `Form`, several of the functions provided by `FormWithContext`
@@ -725,55 +749,72 @@ type End
 -}
 
 
-{-| TODO docs
--}
-testWithContext :
-    { control : Control context state delta output
-    , context : context
-    , deltas : List delta
-    }
-    -> Result (List String) output
-testWithContext { control, context, deltas } =
-    let
-        form_ =
-            simpleFormWithContext
-                { control = control
-                , onSubmit = Nothing
-                , onUpdate = Just
-                }
-
-        ( initialState, _ ) =
-            form_.blank
-
-        finalState =
-            List.foldl
-                (\delta state ->
-                    form_.update context (StateChangedByInput delta) state
-                        |> Tuple.first
-                )
-                initialState
-                deltas
-
-        ( _, result_ ) =
-            form_.submit context finalState
-    in
-    result_
-        |> Result.mapError (List.map .message)
-
-
-{-| TODO docs
--}
-test :
-    { control : Control () state delta output
-    , deltas : List delta
-    }
-    -> Result (List String) output
-test { control, deltas } =
-    testWithContext
-        { control = control
-        , deltas = deltas
-        , context = ()
+type alias Test state delta output =
+    { init : State state
+    , prefill : output -> State state -> State state
+    , update : delta -> State state -> State state
+    , full :
+        { feedback : State state -> List Feedback
+        , submit : State state -> Result (List Feedback) output
         }
+    , quick :
+        { feedback : State state -> List String
+        , submit : State state -> Result (List String) output
+        }
+    }
+
+
+{-| TODO docs
+-}
+toTestWithContext : context -> Control context state delta output -> Test state delta output
+toTestWithContext context (Control control) =
+    let
+        (ControlFns fns) =
+            control Path.root
+
+        submit state =
+            let
+                parsingResult =
+                    fns.parse context state
+
+                validationErrors =
+                    fns.emitAlerts context state
+                        |> fns.collectFeedback state
+                        |> List.filter .fail
+            in
+            case ( parsingResult, validationErrors ) of
+                ( Ok output, [] ) ->
+                    Ok output
+
+                ( Ok _, vErrs ) ->
+                    Err vErrs
+
+                ( Err pErrs, vErrs ) ->
+                    Err (pErrs ++ vErrs)
+
+        feedback state =
+            fns.emitAlerts context state
+                |> fns.collectFeedback state
+    in
+    { init = fns.initBlank |> Tuple.first
+    , prefill = \input _ -> fns.initPrefilled input |> Tuple.first
+    , update = \delta state -> fns.update context (StateChangedByInput delta) state |> Tuple.first
+    , full =
+        { submit = submit
+        , feedback = feedback
+        }
+    , quick =
+        { submit = \state -> submit state |> Result.mapError (List.map .message)
+        , feedback = \state -> feedback state |> List.map .message
+        }
+    }
+
+
+{-| TODO docs
+-}
+toTest : Control () state delta output -> Test state delta output
+toTest control =
+    toTestWithContext () control
 
 
 
@@ -1071,19 +1112,19 @@ formWithContext { control, onUpdate, view } =
 
 {-| Test and debug a `Control` by turning it into a `Program` that you can run as a standalone Elm application.
 
+    sandbox
+        { control = int
+        , outputToString = Debug.toString
+        }
+
+    --: Program () (State String) (Delta String)
+
 This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
 your main Elm application's `Model`and `Msg` types.
 
 Once you're happy with the form, you can then ask the Elm repl (or your editor's Elm plugin) to tell you the type
 signature of the `Program`, which will give you the form's `State` and `Delta` types. You can then plug these into your
 main `Model`and `Msg` types wherever appropriate.
-
-    main : Program () (State String) (Delta String)
-    main =
-        sandbox
-            { control = int
-            , outputToString = Debug.toString
-            }
 
 -}
 sandbox :
@@ -1203,7 +1244,7 @@ Here's how we could define a control like the famous
         = Increment
         | Decrement
 
-    counterControl : Control Int CounterDelta Int
+    counterControl : Control context Int CounterDelta Int
     counterControl =
         define
             { blank = 0
@@ -1243,6 +1284,16 @@ Here's how we could define a control like the famous
             , parse = Ok
             }
 
+    test =
+        toTest counterControl
+
+    test.init
+        |> test.update Increment
+        |> test.update Increment
+        |> test.update Decrement
+        |> test.quick.submit
+    
+    --> Ok 1
 -}
 define : Definition state delta output -> Control context state delta output
 define definition =
@@ -1499,7 +1550,7 @@ wrapUpdate innerUpdate debounce_ context wrappedDelta (MkState meta state) =
 
 
 {-| Emit an alert from a `Control` if the supplied predicate function returns
-`False`; another control can then react to this alert by using `respond`.
+`True`; another control can then react to this alert by using `respond`.
 
 `alertIfWithContext` works exactly like `alertIf`, except that its predicate
 function takes a `context` as its first argument.
@@ -1511,7 +1562,7 @@ alertIfWithContext when alert (Control control) =
 
 
 {-| Emit an alert from a `Control` if the supplied predicate function returns
-`False`.
+`True`.
 
 This is meant to be used in combination with `respond`, which listens for the
 alert and displays an error or notification message on the appropriate
@@ -1619,7 +1670,7 @@ strings, if and only if those first two items are "hello" and "world":
             |> respond
                 { alert = "no-hello-world"
                 , fail = True
-                , message = "The first two items in the list must not be \"hello\" and \"world\"."
+                , message = "List can't start with \"hello\" and \"world\"."
                 , class = "control-feedback-fail"
                 }
 
@@ -1636,12 +1687,14 @@ strings, if and only if those first two items are "hello" and "world":
                 )
                 "no-hello-world"
 
-    test
-        { control = myList |> default [ "hello", "world" ]
-        , deltas = []
-        }
+    test =
+        toTest myList
 
-    --> Err [ "The first two items in the list must not be \"hello\" and \"world\".", "The first two items in the list must not be \"hello\" and \"world\"." ]
+    test.init
+        |> test.prefill [ "hello", "world" ]
+        |> test.quick.submit
+
+    --> Err [ "List can't start with \"hello\" and \"world\".", "List can't start with \"hello\" and \"world\"."]
 
 -}
 alertAtIndexes :
@@ -1680,7 +1733,7 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
 
 
 {-| Display an error on a `Control` if the supplied predicate function returns
-`False`.
+`True`.
 
 This causes the `Control` to fail validation.
 
@@ -1693,21 +1746,21 @@ This causes the `Control` to fail validation.
                 (\context x -> x < context.minimumValue)
                 "This is less than the minimum value!"
 
-    testWithContext
-        { control = positiveInt
-        , context = { minimumValue = 1 }
-        , deltas = [ "0" ]
-        }
+    test =
+        positiveInt
+            |> toTestWithContext { minimumValue = 1 }
+
+    test.init
+        |> test.update "0"
+        |> test.quick.submit
 
     --> Err [ "This is less than the minimum value!" ]
 
-    testWithContext
-        { control = positiveInt
-        , context = { minimumValue = 1 }
-        , deltas = [ "2" ]
-        }
+    test.init
+        |> test.update "1"
+        |> test.quick.submit
 
-    --> Ok 2
+    --> Ok 1
 
 -}
 failIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1728,7 +1781,7 @@ failIfWithContext check message (Control c) =
 
 
 {-| Display an error on a `Control` if the supplied predicate function returns
-`False`.
+`True`.
 
 This causes the `Control` to fail validation.
 
@@ -1738,16 +1791,56 @@ This causes the `Control` to fail validation.
                 (\x -> x < 1)
                 "This must be greater than zero!"
 
+    test =
+        toTest positiveInt
+
+    test.init
+        |> test.update "0"
+        |> test.quick.submit
+
+    --> Err [ "This must be greater than zero!" ]
+
+    test.init
+        |> test.update "1"
+        |> test.quick.submit
+
+    --> Ok 1
+
 -}
 failIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
 failIf check message control =
     failIfWithContext (\_ -> check) message control
 
 
-{-| Display an error on a `Control` if the supplied predicate function returns
-`False`.
+{-| Display a notification on a `Control` if the supplied predicate function
+returns `True`.
 
-This causes the `Control` to fail validation.
+This does not cause the `Control` to fail validation.
+
+    type alias Context =
+        { recommendedMinimumValue : Int }
+
+    boundedInt =
+        int
+            |> noteIfWithContext
+                (\context x -> x < context.recommendedMinimumValue)
+                "This value is below the recommended minimum - are you sure?"
+
+    test =
+         boundedInt
+            |> toTestWithContext { recommendedMinimumValue = 1 }
+
+    test.init
+        |> test.update "0"
+        |> test.quick.feedback
+
+    --> [ "This value is below the recommended minimum - are you sure?" ]
+
+    test.init
+        |> test.update "1"
+        |> test.quick.feedback
+
+    --> []
 
 -}
 noteIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1767,20 +1860,32 @@ noteIfWithContext check message (Control c) =
         )
 
 
-{-| Display an note on a `Control` if the supplied predicate function returns
-`False`.
+{-| Display a notification on a `Control` if the supplied predicate function
+returns `True`.
 
 This just shows the user a message - it doesn't cause the `Control` to fail
 validation.
 
-    type alias Context =
-        { recommendedMinimumValue : Int }
-
     positiveInt =
         int
-            |> noteIfWithContext
-                (\context x -> x < context.recommendedMinimumValue)
-                "This value is below the recommended minimum - are you sure?"
+            |> noteIf
+                (\x -> x < 1)
+                "Maybe this should be greater than zero?"
+
+    test =
+        toTest positiveInt
+
+    test.init
+        |> test.update "0"
+        |> test.quick.feedback
+
+    --> [ "Maybe this should be greater than zero?" ]
+
+    test.init
+        |> test.update "1"
+        |> test.quick.feedback
+
+    --> []
 
 -}
 noteIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1803,9 +1908,10 @@ noteIf check message control =
 any parsing or validation errors. This can be used to allow the user to finish
 typing into a text input before we show them feedback.
 
-    sluggishStringControl =
-        string
-            |> debounce 2000
+    string
+        |> debounce 2000
+
+    --: Control context String String String
 
 -}
 debounce : Float -> Control context state delta output -> Control context state delta output
@@ -1830,9 +1936,10 @@ debounce millis (Control control) =
 
 {-| Set an id for a `Control`.
 
-    myStringControlHasAnId =
-        string
-            |> id "my-string"
+    string
+        |> id "my-string"
+
+    --: Control context String String String
 
 -}
 id : String -> Control context state delta output -> Control context state delta output
@@ -1857,9 +1964,10 @@ id id_ (Control control) =
 
 {-| Set a name for a `Control`.
 
-    myStringControlHasAName =
-        string
-            |> name "My string"
+    string
+        |> name "My string"
+
+    --: Control context String String String
 
 -}
 name : String -> Control context state delta output -> Control context state delta output
@@ -1884,9 +1992,10 @@ name name_ (Control control) =
 
 {-| Set a label for a `Control`.
 
-    myStringControlHasALabel =
-        string
-            |> label "Enter your name"
+    string
+        |> label "Enter your name"
+
+    --: Control context String String String
 
 -}
 label : String -> AdvancedControl context input state delta output -> AdvancedControl context input state delta output
@@ -1933,10 +2042,11 @@ label label_ (Control control) =
 
 {-| Add an HTML class attribute for a `Control`. See docs for Html.Attributes.class in elm-html.
 
-    myStringControlHasAClass =
-        string
-            |> class "important"
-            |> class "no-really"
+    string
+        |> class "important"
+        |> class "no-really"
+
+    --: Control context String String String
 
 -}
 class : String -> Control context state delta output -> Control context state delta output
@@ -1951,13 +2061,14 @@ class class_ (Control control) =
 {-| Add a list of HTML class attributes to a `Control`. See docs for Html.Attributes.classList in the `elm/html`
 package.
 
-    myStringControlHasClasses =
-        string
-            |> classList
-                [ ( "important", True )
-                , ( "no-really", True )
-                , ( "ignore-me", False )
-                ]
+    string
+        |> classList
+            [ ( "important", True )
+            , ( "no-really", True )
+            , ( "ignore-me", False )
+            ]
+
+    --: Control context String String String
 
 -}
 classList : List ( String, Bool ) -> Control context state delta output -> Control context state delta output
@@ -2003,21 +2114,22 @@ than a list. The wizard example below is very naive, but hopefully gives you the
 idea.
 
     type alias MyRecord =
-        { name : String
-        , age : Int
+        { foo : String
+        , bar : Int
         }
 
-    myRecordControl =
-        record
-            (\name age ->
-                { name = name
-                , age = age
-                }
-            )
-            |> field string
-            |> field int
-            |> endRecord
-            |> layout wizard
+    record
+        (\foo bar ->
+            { foo = foo
+            , bar = bar
+            }
+        )
+        |> field .foo string
+        |> field .bar int
+        |> endRecord
+        |> layout wizard
+
+    --: Control context (Record (Field String (Field String EndRecord))) (Record (Field String (Field String EndRecord))) MyRecord
 
     wizard config subcontrols =
         let
@@ -2046,7 +2158,7 @@ idea.
                     ]
                     [ Html.text txt ]
         in
-        Html.div
+        [ Html.div
             [ Html.Attributes.id config.id
             , Html.Attributes.class config.class
             ]
@@ -2064,6 +2176,7 @@ idea.
              ]
                 ++ currentPageView
             )
+        ]
 
 -}
 layout :
@@ -2108,9 +2221,10 @@ layout view (Control control) =
 
 {-| Transform the HTML output of a `Control`'s view function.
 
-    wrappedInt =
-        int
-            |> wrapView (\view -> [ Html.div [] view ])
+    int
+        |> wrapView (\view -> [ Html.div [] view ])
+
+    --: Control context String String Int
 
 -}
 wrapView :
@@ -2147,6 +2261,14 @@ wrapView wrapper (Control control) =
         tuple int string
             |> default ( 1, "hello" )
 
+    test =
+        toTest oneAndHello
+
+    test.init
+        |> test.quick.submit
+
+    --> Ok (1, "hello")
+
 -}
 default : output -> Control context state delta output -> Control context state delta output
 default output (Control control) =
@@ -2170,17 +2292,18 @@ default output (Control control) =
 
 {-| A control that produces an `Int`. Renders as an HTML number input.
 
-    test
-        { control = int
-        , deltas = [ "1.5" ]
-        }
+    test =
+        toTest int
+
+    test.init
+        |> test.update "1.5"
+        |> test.quick.submit
 
     --> Err [ "Must be a whole number" ]
 
-    test
-        { control = int
-        , deltas = [ "123" ]
-        }
+    test.init
+        |> test.update "123"
+        |> test.quick.submit
 
     --> Ok 123
 
@@ -2220,17 +2343,18 @@ int =
 
 {-| A control that produces a `Float`. Renders as an HTML number input.
 
-    test
-        { control = float
-        , deltas = [ "hello" ]
-        }
+    test =
+        toTest float
+
+    test.init
+        |> test.update "hello"
+        |> test.quick.submit
 
     --> Err [ "Must be a number" ]
 
-    test
-        { control = float
-        , deltas = [ "1.0" ]
-        }
+    test.init
+        |> test.update "1.0"
+        |> test.quick.submit
 
     --> Ok 1.0
 
@@ -2269,10 +2393,12 @@ float =
 
 {-| A control that produces a `String`. Renders as an HTML text input.
 
-    test
-        { control = string
-        , deltas = [ "hello" ]
-        }
+    test =
+        toTest string
+
+    test.init
+        |> test.update "hello"
+        |> test.quick.submit
 
     --> Ok "hello"
 
@@ -2304,24 +2430,23 @@ string =
 
 {-| A control that produces a `Char`. Renders as an HTML text input.
 
-    test
-        { control = char
-        , deltas = []
-        }
+    test =
+        toTest char
+
+    test.init
+        |> test.quick.submit
 
     --> Err [ "Must not be blank" ]
 
-    test
-        { control = char
-        , deltas = [ "hello" ]
-        }
+    test.init
+        |> test.update "hello"
+        |> test.quick.submit
 
     --> Err [ "Must be exactly one character" ]
 
-    test
-        { control = char
-        , deltas = [ "h" ]
-        }
+    test.init
+        |> test.update "h"
+        |> test.quick.submit
 
     --> Ok 'h'
 
@@ -2362,8 +2487,8 @@ char =
 -}
 
 
-{-| A control that produces a custom type where none of the
-variants have any payload. Renders as an HTML radio input.
+{-| A control that produces a custom type where none of the tags have any
+arguments. Renders as an HTML radio input. Defaults to the first tag.
 
     type Colour
         = Red
@@ -2377,10 +2502,17 @@ variants have any payload. Renders as an HTML radio input.
             ( "Green", Green )
             [ ( "Blue", Blue ) ]
 
-    test
-        { control = colourControl
-        , deltas = [ Red, Blue, Red, Green ]
-        }
+    test =
+        toTest colourControl
+
+    test.init
+        |> test.quick.submit
+
+    --> Ok Red
+
+    test.init
+        |> test.update Green
+        |> test.quick.submit
 
     --> Ok Green
 
@@ -2415,10 +2547,17 @@ enum first second rest =
 
 {-| A control that produces a `Bool`. Renders as an HTML checkbox. Default output is `False`.
 
-    test
-        { control = bool
-        , deltas = [ True, False, True ]
-        }
+    test =
+        toTest bool
+
+    test.init
+        |> test.quick.submit
+
+    --> Ok False
+
+    test.init
+        |> test.update True
+        |> test.quick.submit
 
     --> Ok True
 
@@ -2478,12 +2617,17 @@ however, we need to supply two functions that will allow us to both `convert` th
     type Id
         = Id Int
 
-    idControl =
-        map
+    int
+
+    --: Control context String String Int
+
+    int
+        |> map
             { convert = \i -> Id i
             , revert = \(Id i) -> i
             }
-            int
+
+    --: Control context (Mapping String) (Mapping String) Id
 
 -}
 map :
@@ -2527,8 +2671,13 @@ type Maybe_ a
 
 {-| A combinator that produces a `Maybe` of a control of a given type.
 
-    myMaybeControl =
-        maybe int
+    int
+
+    --: Control context String String Int
+
+    maybe int
+
+    --: Control context (Maybe_ String) (Maybe_ String) (Maybe Int)
 
 -}
 maybe :
@@ -2581,8 +2730,9 @@ type Result_ err ok
 {-| A combinator that produces a `Result` with a given error and
 success type.
 
-    myResultControl =
-        result string int
+    result string bool
+
+    --: Control context (Result_ String Bool) (Result_ String Bool) (Result String Bool)
 
 -}
 result :
@@ -2635,8 +2785,9 @@ type Tuple fst snd
 
 {-| A combinator that produces a tuple of two controls of given types.
 
-    myTupleControl =
-        tuple string int
+    tuple string bool
+
+    --: Control context (Tuple String Bool) (Tuple String Bool) ( String, Bool )
 
 -}
 tuple :
@@ -2679,8 +2830,9 @@ type Triple a b c
 
 {-| A combinator that produces a triple of three controls of given types.
 
-    myTripleControl =
-        triple string int float
+    triple string bool float
+
+    --: Control context (Triple String Bool String) (Triple String Bool String) ( String, Bool, Float )
 
 -}
 triple :
@@ -2726,8 +2878,9 @@ type List_ a
 
 {-| A combinator that produces a `List` of controls of a given type.
 
-    myListControl =
-        list int
+    list bool
+
+    --: Control context (List_ Bool) (List_ Bool) (List Bool)
 
 -}
 list :
@@ -3012,15 +3165,11 @@ type Dict_ k v
 {-| A combinator that produces a `Dict` from controls of given key and value
 types. The key type must be `comparable`.
 
-    myDictControl =
-        dict int string
+    import Dict
 
-    test
-        { control = myDictControl
-        , deltas = []
-        }
+    dict string bool
 
-    --> Ok Dict.empty
+    --: Control context (Dict_ String Bool) (Dict_ String Bool) (Dict.Dict String Bool)
 
 -}
 dict :
@@ -3377,20 +3526,34 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
 {-| A combinator that produces a record type.
 
     type alias MyRecord =
-        { name : String
-        , age : Int
+        { foo : String
+        , bar : Int
         }
 
     myRecordControl =
         record
-            (\name age ->
-                { name = name
-                , age = age
+            (\foo bar ->
+                { foo = foo
+                , bar = bar
                 }
             )
-            |> field string
-            |> field int
+            |> field .foo string
+            |> field .bar int
             |> endRecord
+
+    test =
+        toTest myRecordControl
+
+    test.init
+        |> test.quick.submit
+
+    --> Err [ "Must be a whole number" ]
+
+    test.init
+        |> test.prefill { foo = "!!!", bar = 42 }
+        |> test.quick.submit
+
+    --> Ok { foo = "!!!", bar = 42 }
 
 -}
 record :
@@ -3462,7 +3625,7 @@ productType toOutput =
 
     helloControl =
         record Hello
-            |> field string
+            |> field .hello string
             |> endRecord
 
 -}
@@ -3843,7 +4006,7 @@ productField wrapper fromInput (Control control) (RecordBuilder builder) =
 
     helloControl =
         record Hello
-            |> field string
+            |> field .hello string
             |> endRecord
 
 -}
