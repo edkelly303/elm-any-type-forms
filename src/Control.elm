@@ -4,7 +4,7 @@ module Control exposing
     , bool, int, float, string, char, enum
     , Tuple, tuple, Triple, triple, Maybe_, maybe, Result_, result, List_, list, Dict_, dict, Set_, set, Array_, array, Mapping, map
     , Record, Field, EndRecord, RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
-    , CustomType, Tag, Arg, EndTag, EndCustomType, CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+    , CustomType, Variant, Arg, EndVariant, EndCustomType, CustomTypeBuilder, customType, variant0, variant1, variant2, variant3, variant4, variant5, endCustomType
     , Definition, define
     , failIf, noteIf
     , alertIf, respond
@@ -45,7 +45,7 @@ module Control exposing
 
 # Building custom type combinators
 
-@docs CustomType, Tag, Arg, EndTag, EndCustomType, CustomTypeBuilder, customType, tag0, tag1, tag2, tag3, tag4, tag5, endCustomType
+@docs CustomType, Variant, Arg, EndVariant, EndCustomType, CustomTypeBuilder, customType, variant0, variant1, variant2, variant3, variant4, variant5, endCustomType
 
 
 # Creating a new control
@@ -70,6 +70,8 @@ Take the example of a password creation form. You want to validate that the
 "Enter password" and "Confirm password" fields both contain the same string, and
 show a helpful error message on the "Confirm password" field if they don't. You
 can achieve this as follows:
+
+    import Control exposing (record, field, endRecord, string, alertIf, respond, toTest)
 
     passwordControl =
         record
@@ -142,6 +144,8 @@ This is where the `...WithContext` family of types and functions come into play
     `view`, `subscriptions` and `submit` functions, and also to any validation
     functions applied to the form's `Control`s.
 
+    TODO more stuff here...
+
 @docs FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
 
 
@@ -200,6 +204,7 @@ For example, imagine your app's `Model` contains a list of users, and you build
 a form to create a new user. The new user record should only be valid if its
 nickname hasn't already been chosen by another user:
 
+    import Control exposing (string, failIfWithContext, simpleFormWithContext)
     import Set
 
     type alias User =
@@ -407,7 +412,7 @@ type alias LayoutConfig delta =
     }
 
 
-{-| an internal type needed to represent the validation state of a control
+{-| An internal type needed to represent the validation state of a control
 -}
 type Status
     = Intact
@@ -415,7 +420,7 @@ type Status
     | Idle (List Feedback)
 
 
-{-| an internal type needed to track the position of a control within a tree of
+{-| An internal type needed to track the position of a control within a tree of
 controls
 -}
 type alias Path =
@@ -516,45 +521,45 @@ recordWrapper =
 
 
 customTypeWrapper :
-    { wrapState : ((End -> EndCustomType) -> ( State state, restStateTuples ) -> Tag state restStateTags) -> ( State state, restStateTuples ) -> CustomType (Tag state restStateTags)
-    , stateWrapper : (restStateTuples -> restStateTags) -> ( State state, restStateTuples ) -> Tag state restStateTags
-    , unwrapState : ((EndCustomType -> Maybe End) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )) -> CustomType (Tag state restStateTags) -> Maybe ( State state, restStateTuples )
-    , stateUnwrapper : (restStateTags -> Maybe restStateTuples) -> Tag state restStateTags -> Maybe ( State state, restStateTuples )
-    , wrapDelta : ((End -> EndCustomType) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> CustomType (Tag delta restDeltaTags)
-    , deltaWrapper : (restDeltaTuples -> restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> Tag delta restDeltaTags
-    , unwrapDelta : ((EndCustomType -> Maybe End) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )) -> CustomType (Tag delta restDeltaTags) -> Maybe ( Delta delta, restDeltaTuples )
-    , deltaUnwrapper : (restDeltaTags -> Maybe restDeltaTuples) -> Tag delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )
+    { wrapState : ((End -> EndCustomType) -> ( State state, restStateTuples ) -> Variant state restStateTags) -> ( State state, restStateTuples ) -> CustomType (Variant state restStateTags)
+    , stateWrapper : (restStateTuples -> restStateTags) -> ( State state, restStateTuples ) -> Variant state restStateTags
+    , unwrapState : ((EndCustomType -> Maybe End) -> Variant state restStateTags -> Maybe ( State state, restStateTuples )) -> CustomType (Variant state restStateTags) -> Maybe ( State state, restStateTuples )
+    , stateUnwrapper : (restStateTags -> Maybe restStateTuples) -> Variant state restStateTags -> Maybe ( State state, restStateTuples )
+    , wrapDelta : ((End -> EndCustomType) -> ( Delta delta, restDeltaTuples ) -> Variant delta restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> CustomType (Variant delta restDeltaTags)
+    , deltaWrapper : (restDeltaTuples -> restDeltaTags) -> ( Delta delta, restDeltaTuples ) -> Variant delta restDeltaTags
+    , unwrapDelta : ((EndCustomType -> Maybe End) -> Variant delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )) -> CustomType (Variant delta restDeltaTags) -> Maybe ( Delta delta, restDeltaTuples )
+    , deltaUnwrapper : (restDeltaTags -> Maybe restDeltaTuples) -> Variant delta restDeltaTags -> Maybe ( Delta delta, restDeltaTuples )
     }
 customTypeWrapper =
     { wrapState = genericWrap CustomType EndCustomType
-    , stateWrapper = genericWrapper Tag State_
-    , unwrapState = genericUnwrap (\(CustomType tags) -> tags) (\EndCustomType -> End)
-    , stateUnwrapper = genericUnwrapper (\(Tag tag restTags) -> ( tag, restTags )) maybeExtractState
+    , stateWrapper = genericWrapper Variant State_
+    , unwrapState = genericUnwrap (\(CustomType variants) -> variants) (\EndCustomType -> End)
+    , stateUnwrapper = genericUnwrapper (\(Variant variant restVariants) -> ( variant, restVariants )) maybeExtractState
     , wrapDelta = genericWrap CustomType EndCustomType
-    , deltaWrapper = genericWrapper Tag Delta_
-    , unwrapDelta = genericUnwrap (\(CustomType tags) -> tags) (\EndCustomType -> End)
-    , deltaUnwrapper = genericUnwrapper (\(Tag tag restTags) -> ( tag, restTags )) maybeExtractDelta
+    , deltaWrapper = genericWrapper Variant Delta_
+    , unwrapDelta = genericUnwrap (\(CustomType variants) -> variants) (\EndCustomType -> End)
+    , deltaUnwrapper = genericUnwrapper (\(Variant variant restVariants) -> ( variant, restVariants )) maybeExtractDelta
     }
 
 
 argWrapper :
-    { wrapState : ((End -> EndTag) -> ( State state, restStateTuples ) -> Arg state restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
+    { wrapState : ((End -> EndVariant) -> ( State state, restStateTuples ) -> Arg state restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
     , stateWrapper : (restStateTuples -> restStateArgs) -> ( State state, restStateTuples ) -> Arg state restStateArgs
-    , unwrapState : ((EndTag -> Maybe End) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
+    , unwrapState : ((EndVariant -> Maybe End) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
     , stateUnwrapper : (restStateArgs -> Maybe restStateTuples) -> Arg state restStateArgs -> Maybe ( State state, restStateTuples )
-    , wrapDelta : ((End -> EndTag) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
+    , wrapDelta : ((End -> EndVariant) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
     , deltaWrapper : (restDeltaTuples -> restDeltaArgs) -> ( Delta delta, restDeltaTuples ) -> Arg delta restDeltaArgs
-    , unwrapDelta : ((EndTag -> Maybe End) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
+    , unwrapDelta : ((EndVariant -> Maybe End) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
     , deltaUnwrapper : (restDeltaArgs -> Maybe restDeltaTuples) -> Arg delta restDeltaArgs -> Maybe ( Delta delta, restDeltaTuples )
     }
 argWrapper =
-    { wrapState = genericWrap identity EndTag
+    { wrapState = genericWrap identity EndVariant
     , stateWrapper = genericWrapper Arg State_
-    , unwrapState = genericUnwrap identity (\EndTag -> End)
+    , unwrapState = genericUnwrap identity (\EndVariant -> End)
     , stateUnwrapper = genericUnwrapper (\(Arg arg restArgs) -> ( arg, restArgs )) maybeExtractState
-    , wrapDelta = genericWrap identity EndTag
+    , wrapDelta = genericWrap identity EndVariant
     , deltaWrapper = genericWrapper Arg Delta_
-    , unwrapDelta = genericUnwrap identity (\EndTag -> End)
+    , unwrapDelta = genericUnwrap identity (\EndVariant -> End)
     , deltaUnwrapper = genericUnwrapper (\(Arg arg restArgs) -> ( arg, restArgs )) maybeExtractDelta
     }
 
@@ -835,6 +840,8 @@ You will need to supply a couple of variants from your app's `Msg` type: one to
 handle updates of the form's state, and one to handle the submission of the
 form, as follows:
 
+    import Control exposing (Form, Delta, simpleForm, int)
+
     type Msg
         = FormUpdated (Delta String)
         | FormSubmitted
@@ -898,6 +905,11 @@ simpleFormWithContext { onUpdate, onSubmit, control } =
 You will need to supply a variant from your app's `Msg` type to handle updates of the form's state.
 You will also need to supply a `view` function that takes the `List (Html msg)` produced by the
 supplied `Control` and returns an `Html msg`, as follows:
+
+    import Control exposing (Form, Delta, form, int)
+    import Html
+    import Html.Attributes
+    import Html.Events
 
     type Msg
         = FormUpdated (Delta String)
@@ -1112,6 +1124,8 @@ formWithContext { control, onUpdate, view } =
 
 {-| Test and debug a `Control` by turning it into a `Program` that you can run as a standalone Elm application.
 
+    import Control exposing (sandbox, int, State, Delta)
+
     sandbox
         { control = int
         , outputToString = Debug.toString
@@ -1240,6 +1254,11 @@ and producing any arbitrary `output` type.
 Here's how we could define a control like the famous
 [counter example](https://elm-lang.org/examples/buttons) from the Elm Guide
 
+    import Control exposing (define, Control, toTest)
+    import Html
+    import Html.Attributes
+    import Html.Events
+
     type CounterDelta
         = Increment
         | Decrement
@@ -1247,19 +1266,19 @@ Here's how we could define a control like the famous
     counterControl : Control context Int CounterDelta Int
     counterControl =
         define
-            { blank = 0
-            , prefill = identity
+            { blank = (0, Cmd.none)
+            , prefill = \n -> (n, Cmd.none)
             , update =
                 \delta state ->
                     case delta of
                         Increment ->
-                            state + 1
+                            (state + 1, Cmd.none)
 
                         Decrement ->
-                            state - 1
+                            (state - 1, Cmd.none)
             , view =
                 \{ state, name, id, label, class } ->
-                    Html.div [ Html.Attributes.class class ]
+                    [ Html.div [ Html.Attributes.class class ]
                         [ Html.label
                             [ Html.Attributes.for id ]
                             [ Html.text label ]
@@ -1280,8 +1299,10 @@ Here's how we could define a control like the famous
                                 [ Html.text "-" ]
                             ]
                         ]
+                    ]
             , subscriptions = \state -> Sub.none
             , parse = Ok
+            , label = "Counter"
             }
 
     test =
@@ -1292,8 +1313,9 @@ Here's how we could define a control like the famous
         |> test.update Increment
         |> test.update Decrement
         |> test.quick.submit
-    
+
     --> Ok 1
+
 -}
 define : Definition state delta output -> Control context state delta output
 define definition =
@@ -1365,6 +1387,8 @@ define definition =
 
 {-| Define a new type of `Control`, with any arbitrary `state`, `delta` and
 `output` types, and that is aware of whatever `context` you choose to supply.
+
+    import Control exposing (defineWithContext, Control)
 
     type CounterDelta
         = Increment
@@ -1665,6 +1689,8 @@ based on the output of the `list` control.
 The following example will display errors on the first two items in a list of
 strings, if and only if those first two items are "hello" and "world":
 
+    import Control exposing (string, respond, list, alertAtIndexes, toTest)
+
     myString =
         string
             |> respond
@@ -1737,6 +1763,8 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
 
 This causes the `Control` to fail validation.
 
+    import Control exposing (int, failIfWithContext, toTestWithContext)
+
     type alias Context =
         { minimumValue : Int }
 
@@ -1785,6 +1813,8 @@ failIfWithContext check message (Control c) =
 
 This causes the `Control` to fail validation.
 
+    import Control exposing (int, failIf, toTest)
+
     positiveInt =
         int
             |> failIf
@@ -1816,6 +1846,8 @@ failIf check message control =
 returns `True`.
 
 This does not cause the `Control` to fail validation.
+
+    import Control exposing (int, noteIfWithContext, toTestWithContext)
 
     type alias Context =
         { recommendedMinimumValue : Int }
@@ -1866,6 +1898,8 @@ returns `True`.
 This just shows the user a message - it doesn't cause the `Control` to fail
 validation.
 
+    import Control exposing (int, noteIf, toTest)
+
     positiveInt =
         int
             |> noteIf
@@ -1908,6 +1942,8 @@ noteIf check message control =
 any parsing or validation errors. This can be used to allow the user to finish
 typing into a text input before we show them feedback.
 
+    import Control exposing (Control, string, debounce)
+
     string
         |> debounce 2000
 
@@ -1935,6 +1971,8 @@ debounce millis (Control control) =
 
 
 {-| Set an id for a `Control`.
+
+    import Control exposing (Control, string, id)
 
     string
         |> id "my-string"
@@ -1964,6 +2002,8 @@ id id_ (Control control) =
 
 {-| Set a name for a `Control`.
 
+    import Control exposing (Control, string, name)
+
     string
         |> name "My string"
 
@@ -1991,6 +2031,8 @@ name name_ (Control control) =
 
 
 {-| Set a label for a `Control`.
+
+    import Control exposing (Control, string, label)
 
     string
         |> label "Enter your name"
@@ -2042,6 +2084,8 @@ label label_ (Control control) =
 
 {-| Add an HTML class attribute for a `Control`. See docs for Html.Attributes.class in elm-html.
 
+    import Control exposing (Control, string, class)
+
     string
         |> class "important"
         |> class "no-really"
@@ -2060,6 +2104,8 @@ class class_ (Control control) =
 
 {-| Add a list of HTML class attributes to a `Control`. See docs for Html.Attributes.classList in the `elm/html`
 package.
+
+    import Control exposing (Control, string, classList)
 
     string
         |> classList
@@ -2112,6 +2158,11 @@ are laid out on the screen.
 For example, you could use it to present a record control as a wizard, rather
 than a list. The wizard example below is very naive, but hopefully gives you the
 idea.
+
+    import Control exposing (Control, Record, Field, EndRecord, record, field, endRecord, layout, string, int)
+    import Html
+    import Html.Attributes
+    import Html.Events
 
     type alias MyRecord =
         { foo : String
@@ -2221,6 +2272,9 @@ layout view (Control control) =
 
 {-| Transform the HTML output of a `Control`'s view function.
 
+    import Control exposing (Control, int, wrapView)
+    import Html
+
     int
         |> wrapView (\view -> [ Html.div [] view ])
 
@@ -2257,6 +2311,8 @@ wrapView wrapper (Control control) =
 
 {-| Set a default `output` value for a `Control`.
 
+    import Control exposing (tuple, int, string, default, toTest)
+
     oneAndHello =
         tuple int string
             |> default ( 1, "hello" )
@@ -2291,6 +2347,8 @@ default output (Control control) =
 
 
 {-| A control that produces an `Int`. Renders as an HTML number input.
+
+    import Control exposing (int, toTest)
 
     test =
         toTest int
@@ -2343,6 +2401,8 @@ int =
 
 {-| A control that produces a `Float`. Renders as an HTML number input.
 
+    import Control exposing (float, toTest)
+
     test =
         toTest float
 
@@ -2393,6 +2453,8 @@ float =
 
 {-| A control that produces a `String`. Renders as an HTML text input.
 
+    import Control exposing (string, toTest)
+
     test =
         toTest string
 
@@ -2429,6 +2491,8 @@ string =
 
 
 {-| A control that produces a `Char`. Renders as an HTML text input.
+
+    import Control exposing (char, toTest)
 
     test =
         toTest char
@@ -2487,8 +2551,10 @@ char =
 -}
 
 
-{-| A control that produces a custom type where none of the tags have any
-arguments. Renders as an HTML radio input. Defaults to the first tag.
+{-| A control that produces a custom type where none of the variants have any
+arguments. Renders as an HTML radio input. Defaults to the first variant.
+
+    import Control exposing (Control, enum, toTest)
 
     type Colour
         = Red
@@ -2546,6 +2612,8 @@ enum first second rest =
 
 
 {-| A control that produces a `Bool`. Renders as an HTML checkbox. Default output is `False`.
+
+    import Control exposing (bool, toTest)
 
     test =
         toTest bool
@@ -2614,6 +2682,8 @@ Note: with most common map functions, such as `List.map`, we only need to supply
 however, we need to supply two functions that will allow us to both `convert` the type from `a -> b` and
 `revert` it back from `b -> a`.
 
+    import Control exposing (Control, Mapping, int, map, toTest)
+
     type Id
         = Id Int
 
@@ -2666,10 +2736,12 @@ map config control =
 {-| A type used to contain the `state` or `delta` types for a `maybe` control.
 -}
 type Maybe_ a
-    = Maybe_ (CustomType (Tag EndTag (Tag (Arg a EndTag) EndCustomType)))
+    = Maybe_ (CustomType (Variant EndVariant (Variant (Arg a EndVariant) EndCustomType)))
 
 
 {-| A combinator that produces a `Maybe` of a control of a given type.
+
+    import Control exposing (Control, Maybe_,  int, maybe)
 
     int
 
@@ -2690,16 +2762,16 @@ maybe :
             (Maybe output)
 maybe control =
     customType
-        (\nothing just tag ->
-            case tag of
+        (\nothing just variant ->
+            case variant of
                 Nothing ->
                     nothing
 
                 Just a ->
                     just a
         )
-        |> tag0 "Nothing" Nothing
-        |> tag1 "Just" Just control
+        |> variant0 "Nothing" Nothing
+        |> variant1 "Just" Just control
         |> endCustomType
         |> label "Maybe"
         |> mapInternals
@@ -2724,11 +2796,13 @@ maybe control =
 {-| A type used to contain the `state` or `delta` types for a `result` control.
 -}
 type Result_ err ok
-    = Result_ (CustomType (Tag (Arg err EndTag) (Tag (Arg ok EndTag) EndCustomType)))
+    = Result_ (CustomType (Variant (Arg err EndVariant) (Variant (Arg ok EndVariant) EndCustomType)))
 
 
 {-| A combinator that produces a `Result` with a given error and
 success type.
+
+    import Control exposing (Control, Result_, result, string, bool)
 
     result string bool
 
@@ -2746,16 +2820,16 @@ result :
             (Result errOutput okOutput)
 result failureControl successControl =
     customType
-        (\err ok tag ->
-            case tag of
+        (\err ok variant ->
+            case variant of
                 Err failure ->
                     err failure
 
                 Ok success ->
                     ok success
         )
-        |> tag1 "Err" Err failureControl
-        |> tag1 "Ok" Ok successControl
+        |> variant1 "Err" Err failureControl
+        |> variant1 "Ok" Ok successControl
         |> endCustomType
         |> label "Result"
         |> mapInternals
@@ -2784,6 +2858,8 @@ type Tuple fst snd
 
 
 {-| A combinator that produces a tuple of two controls of given types.
+
+    import Control exposing (Control, Tuple, tuple, string, bool)
 
     tuple string bool
 
@@ -2829,6 +2905,8 @@ type Triple a b c
 
 
 {-| A combinator that produces a triple of three controls of given types.
+
+    import Control exposing (Control, Triple, triple, string, bool, float)
 
     triple string bool float
 
@@ -2877,6 +2955,8 @@ type List_ a
 
 
 {-| A combinator that produces a `List` of controls of a given type.
+
+    import Control exposing (Control, List_, list, bool)
 
     list bool
 
@@ -3165,6 +3245,7 @@ type Dict_ k v
 {-| A combinator that produces a `Dict` from controls of given key and value
 types. The key type must be `comparable`.
 
+    import Control exposing (Control, Dict_, dict, string, bool)
     import Dict
 
     dict string bool
@@ -3380,8 +3461,12 @@ type Set_ a
 {-| A combinator that produces a `Set` from controls of a given member
 types. The member type must be `comparable`.
 
-    mySetControl =
-        set string
+    import Control exposing (Control, Set_, set, string)
+    import Set
+
+    set string
+
+    --: Control context (Set_ String) (Set_ String) (Set.Set String)
 
 -}
 set :
@@ -3427,8 +3512,12 @@ type Array_ a
 
 {-| A combinator that produces an `Array` from a control of a given type.
 
-    myArrayControl =
-        array int
+    import Control exposing (Control, Array_, array, int)
+    import Array
+
+    array int
+
+    --: Control context (Array_ String) (Array_ String) (Array.Array Int)
 
 -}
 array :
@@ -3524,6 +3613,8 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
 
 
 {-| A combinator that produces a record type.
+
+    import Control exposing (record, field, endRecord, int, string, toTest)
 
     type alias MyRecord =
         { foo : String
@@ -5247,10 +5338,10 @@ type CustomType customType
     = CustomType customType
 
 
-{-| A type used to contain the `state` or `delta` of a tag for a custom type control.
+{-| A type used to contain the `state` or `delta` of a variant for a custom type control.
 -}
-type Tag args restTags
-    = Tag (Internals args) restTags
+type Variant args restTags
+    = Variant (Internals args) restTags
 
 
 {-| A type used to mark the end of the type annotation for a custom type control.
@@ -5307,8 +5398,8 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
 
     myCustomTypeControl =
         customType
-            (\noArgs oneArg twoArgs tag ->
-                case tag of
+            (\noArgs oneArg twoArgs variant ->
+                case variant of
                     NoArgs ->
                         noArgs
 
@@ -5318,9 +5409,9 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
                     TwoArgs arg1 arg2 ->
                         TwoArgs arg1 arg2
             )
-            |> tag0 "NoArgs" NoArgs
-            |> tag1 "OneArg" OneArg string
-            |> tag2 "TwoArgs" TwoArgs int float
+            |> variant0 "NoArgs" NoArgs
+            |> variant1 "OneArg" OneArg string
+            |> variant2 "TwoArgs" TwoArgs int float
             |> endCustomType
 
 -}
@@ -5396,7 +5487,7 @@ customType destructor =
         }
 
 
-tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
+variantHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
     let
         (Control control) =
             internalRecord
@@ -5474,13 +5565,13 @@ tagHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
 
     helloControl =
         customType
-            (\bar baz tag ->
-                case tag ofcustomType
+            (\bar baz variant ->
+                case variant of
                     Bar -> bar
                     Baz -> baz
             )
-            |> tag0 "Bar" Bar
-            |> tag0 "Baz" Baz
+            |> variant0 "Bar" Bar
+            |> variant0 "Baz" Baz
             |> endCustomType
 
 -}
@@ -5490,14 +5581,14 @@ endCustomType :
                 input
                 ->
                     ( State ( State state, restStates )
-                    , Cmd (Delta (CustomType (Tag tagDelta restDeltaTags)))
+                    , Cmd (Delta (CustomType (Variant tagDelta restDeltaTags)))
                     )
           , inputToStateConverters : End
           }
           -> input
           ->
             ( State ( State state, restStates )
-            , Cmd (Delta (CustomType (Tag tagDelta restDeltaTags)))
+            , Cmd (Delta (CustomType (Variant tagDelta restDeltaTags)))
             )
          )
          ->
@@ -5508,7 +5599,7 @@ endCustomType :
          -> input
          ->
             ( State ( State state, restStates )
-            , Cmd (Delta (CustomType (Tag tagDelta restDeltaTags)))
+            , Cmd (Delta (CustomType (Variant tagDelta restDeltaTags)))
             )
         )
         (({ fns : End, receivers : List Alert, states : End } -> List Alert)
@@ -5570,21 +5661,21 @@ endCustomType :
         )
         (Path -> End -> ( Cmd (Delta tagDelta), restDeltas1 ))
         (Path -> End -> ( State state, restStates ))
-        (({ cmds : List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+        (({ cmds : List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
           , deltaSetters : End
           , deltas : End
           }
-          -> List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+          -> List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
          )
          ->
-            { cmds : List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+            { cmds : List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
             , deltaSetters :
-                ( Delta tagDelta -> CustomType (Tag tagDelta restDeltaTags)
+                ( Delta tagDelta -> CustomType (Variant tagDelta restDeltaTags)
                 , restDeltaSetters
                 )
             , deltas : ( Cmd (Delta tagDelta), restDeltas1 )
             }
-         -> List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+         -> List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
         )
         (({ e | output : End -> d } -> d)
          ->
@@ -5593,10 +5684,10 @@ endCustomType :
             , output : a -> a
             , wrapDeltas :
                 ( Delta delta, restDeltaTuples )
-                -> CustomType (Tag delta restDeltaTags1)
+                -> CustomType (Variant delta restDeltaTags1)
             }
          ->
-            ( Delta tagDelta -> CustomType (Tag tagDelta restDeltaTags)
+            ( Delta tagDelta -> CustomType (Variant tagDelta restDeltaTags)
             , restDeltaSetters
             )
         )
@@ -5610,7 +5701,7 @@ endCustomType :
             { controlFns :
                 ( ControlFns context input1 state tagDelta output, restFns )
             , deltaSetters :
-                ( Delta tagDelta -> CustomType (Tag tagDelta restDeltaTags)
+                ( Delta tagDelta -> CustomType (Variant tagDelta restDeltaTags)
                 , restDeltaSetters
                 )
             , finalTagStates : identity1 -> identity1
@@ -5648,50 +5739,50 @@ endCustomType :
           , deltaSetters : End
           , fns : End
           , states : End
-          , subs : List (Sub (CustomType (Tag tagDelta restDeltaTags)))
+          , subs : List (Sub (CustomType (Variant tagDelta restDeltaTags)))
           }
-          -> List (Sub (CustomType (Tag tagDelta restDeltaTags)))
+          -> List (Sub (CustomType (Variant tagDelta restDeltaTags)))
          )
          ->
             { context : context
             , deltaSetters :
-                ( Delta tagDelta -> CustomType (Tag tagDelta restDeltaTags)
+                ( Delta tagDelta -> CustomType (Variant tagDelta restDeltaTags)
                 , restDeltaSetters
                 )
             , fns : ( ControlFns context input1 state tagDelta output, restFns )
             , states : ( State state, restStates )
-            , subs : List (Sub (CustomType (Tag tagDelta restDeltaTags)))
+            , subs : List (Sub (CustomType (Variant tagDelta restDeltaTags)))
             }
-         -> List (Sub (CustomType (Tag tagDelta restDeltaTags)))
+         -> List (Sub (CustomType (Variant tagDelta restDeltaTags)))
         )
         (End -> inputTuplizers)
         (({ context : context
           , deltaSetters : End
           , deltas : End
           , fns : End
-          , newCmds : List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+          , newCmds : List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
           , newStates : End -> ( State state, restStates )
           , states : End
           }
           ->
-            { newCmds : List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+            { newCmds : List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
             , newStates : End -> ( State state, restStates )
             }
          )
          ->
             { context : context
             , deltaSetters :
-                ( Delta tagDelta -> CustomType (Tag tagDelta restDeltaTags)
+                ( Delta tagDelta -> CustomType (Variant tagDelta restDeltaTags)
                 , restDeltaSetters
                 )
             , deltas : ( Delta tagDelta, restDeltas )
             , fns : ( ControlFns context input1 state tagDelta output, restFns )
-            , newCmds : List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+            , newCmds : List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
             , newStates : identity -> identity
             , states : ( State state, restStates )
             }
          ->
-            { newCmds : List (Cmd (CustomType (Tag tagDelta restDeltaTags)))
+            { newCmds : List (Cmd (CustomType (Variant tagDelta restDeltaTags)))
             , newStates : End -> ( State state, restStates )
             }
         )
@@ -5700,7 +5791,7 @@ endCustomType :
             { alerts : List Alert
             , context : context
             , deltaSetters :
-                ( Delta tagDelta -> CustomType (Tag tagDelta restDeltaTags)
+                ( Delta tagDelta -> CustomType (Variant tagDelta restDeltaTags)
                 , restDeltaSetters
                 )
             , fns : ( ControlFns context input1 state tagDelta output, restFns )
@@ -5711,25 +5802,25 @@ endCustomType :
             List
                 { i
                     | html :
-                        List (H.Html (CustomType (Tag tagDelta restDeltaTags)))
+                        List (H.Html (CustomType (Variant tagDelta restDeltaTags)))
                     , index : Int
                     , label : String
                 }
         )
         ((End -> EndCustomType)
          -> ( State state, restStates )
-         -> Tag state restStateTags
+         -> Variant state restStateTags
         )
         ((EndCustomType -> Maybe End)
-         -> Tag state restStateTags
+         -> Variant state restStateTags
          -> Maybe ( State state, restStates )
         )
         ((End -> EndCustomType)
          -> ( Delta delta, restDeltaTuples )
-         -> Tag delta restDeltaTags1
+         -> Variant delta restDeltaTags1
         )
         ((EndCustomType -> Maybe End)
-         -> Tag tagDelta restDeltaTags
+         -> Variant tagDelta restDeltaTags
          -> Maybe ( Delta tagDelta, restDeltas )
         )
         ( Delta tagDelta, restDeltas )
@@ -5737,8 +5828,8 @@ endCustomType :
         AdvancedControl
             context
             input
-            (CustomType (Tag state restStateTags))
-            (CustomType (Tag tagDelta restDeltaTags))
+            (CustomType (Variant state restStateTags))
+            (CustomType (Variant tagDelta restDeltaTags))
             output
 endCustomType (CustomTypeBuilder builder) =
     Control
@@ -5865,13 +5956,13 @@ endCustomType (CustomTypeBuilder builder) =
                         |> Cmd.map StateChangedInternally
                     )
                 , initPrefilled =
-                    \tag ->
+                    \variant ->
                         let
                             destructor =
                                 applyInputToStateConvertersToDestructor builder.applyInputs builder.destructor stateSetters
 
                             ( MkState meta states, initPrefilledDelta ) =
-                                destructor tag
+                                destructor variant
 
                             initPrefilledState =
                                 MkState meta (wrapState states)
@@ -5924,35 +6015,37 @@ endCustomType (CustomTypeBuilder builder) =
 -}
 
 
-{-| A type that can contain the `state` or `delta` of an argument for a tag within a custom type control.
+{-| A type that can contain the `state` or `delta` of an argument for a variant within a custom type control.
 -}
 type Arg arg restArgs
     = Arg (Internals arg) restArgs
 
 
-{-| A type used to mark the end of the type annotation for a tag within a custom type control.
+{-| A type used to mark the end of the type annotation for a variant within a custom type control.
 -}
-type EndTag
-    = EndTag
+type EndVariant
+    = EndVariant
 
 
-{-| Add a tag with no arguments to a custom type.
+{-| Add a variant with no arguments to a custom type.
+
+    import Control exposing (customType, endCustomType, variant0)
 
     type Unit
         = Unit
 
     unitControl =
         customType
-            (\unit tag ->
-                case tag of
+            (\unit variant ->
+                case variant of
                     Unit ->
                         unit
             )
-            |> tag0 "Unit" Unit
+            |> variant0 "Unit" Unit
             |> endCustomType
 
 -}
-tag0 :
+variant0 :
     String
     -> output9
     ->
@@ -5994,7 +6087,7 @@ tag0 :
              -> List Alert
             )
             (Path.Path
-             -> ( ControlFns context9 output9 EndTag EndTag output9, a22 )
+             -> ( ControlFns context9 output9 EndVariant EndVariant output9, a22 )
              -> c6
             )
             (a21
@@ -6007,8 +6100,8 @@ tag0 :
                 }
              -> ( State finalState, restFinalStates )
             )
-            (Path.Path -> ( Cmd (Delta EndTag), a20 ) -> c5)
-            (Path.Path -> ( State EndTag, a19 ) -> c4)
+            (Path.Path -> ( Cmd (Delta EndVariant), a20 ) -> c5)
+            (Path.Path -> ( State EndVariant, a19 ) -> c4)
             (a18
              ->
                 { cmds : List (Cmd customTypeDelta2)
@@ -6312,54 +6405,54 @@ tag0 :
                 }
              -> n
             )
-            (a4 -> ( State state1, restStateTuples1 ) -> Tag state1 restStateTags1)
-            (a3 -> Tag state restStateTags -> Maybe ( State state, restStateTuples ))
-            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Tag delta2 restDeltaTags1)
-            (a1 -> Tag delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
+            (a4 -> ( State state1, restStateTuples1 ) -> Variant state1 restStateTags1)
+            (a3 -> Variant state restStateTags -> Maybe ( State state, restStateTuples ))
+            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Variant delta2 restDeltaTags1)
+            (a1 -> Variant delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
             ( Delta delta, a )
-tag0 label_ tag =
-    tagHelper
+variant0 label_ variant =
+    variantHelper
         label_
-        (null tag)
+        (null variant)
         (\insertArgStateIntoTagStates ->
-            insertArgStateIntoTagStates tag
+            insertArgStateIntoTagStates variant
         )
 
 
-null : tag -> Control context EndTag EndTag tag
-null tag =
+null : variant -> Control context EndVariant EndVariant variant
+null variant =
     define
-        { blank = ( EndTag, Cmd.none )
-        , prefill = \_ -> ( EndTag, Cmd.none )
+        { blank = ( EndVariant, Cmd.none )
+        , prefill = \_ -> ( EndVariant, Cmd.none )
         , view = \_ -> []
-        , update = \_ EndTag -> ( EndTag, Cmd.none )
-        , parse = \EndTag -> Ok tag
-        , subscriptions = \EndTag -> Sub.none
+        , update = \_ EndVariant -> ( EndVariant, Cmd.none )
+        , parse = \EndVariant -> Ok variant
+        , subscriptions = \EndVariant -> Sub.none
         , label = ""
         }
 
 
-{-| Add a tag with one argument to a custom type.
+{-| Add a variant with one argument to a custom type.
 
     type alias MyResult =
         Result String Int
 
     myResultControl =
         customType
-            (\ok err tag ->
-                case tag of
+            (\ok err variant ->
+                case variant of
                     Ok value ->
                         ok value
 
                     Err error ->
                         err error
             )
-            |> tag1 "Ok" Ok int
-            |> tag1 "Err" Err string
+            |> variant1 "Ok" Ok int
+            |> variant1 "Err" Err string
             |> endCustomType
 
 -}
-tag1 :
+variant1 :
     String
     -> (output10 -> output9)
     -> AdvancedControl context9 output10 state10 delta11 output10
@@ -6406,8 +6499,8 @@ tag1 :
                 ( ControlFns
                     context9
                     ( output10, b3 )
-                    (Arg state10 EndTag)
-                    (Arg delta11 EndTag)
+                    (Arg state10 EndVariant)
+                    (Arg delta11 EndVariant)
                     output9
                 , a22
                 )
@@ -6423,8 +6516,8 @@ tag1 :
                 }
              -> ( State finalState, restFinalStates )
             )
-            (Path.Path -> ( Cmd (Delta (Arg delta11 EndTag)), a20 ) -> c5)
-            (Path.Path -> ( State (Arg state10 EndTag), a19 ) -> c4)
+            (Path.Path -> ( Cmd (Delta (Arg delta11 EndVariant)), a20 ) -> c5)
+            (Path.Path -> ( State (Arg state10 EndVariant), a19 ) -> c4)
             (a18
              ->
                 { cmds : List (Cmd customTypeDelta2)
@@ -6728,15 +6821,15 @@ tag1 :
                 }
              -> o
             )
-            (a4 -> ( State state1, restStateTuples1 ) -> Tag state1 restStateTags1)
-            (a3 -> Tag state restStateTags -> Maybe ( State state, restStateTuples ))
-            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Tag delta2 restDeltaTags1)
-            (a1 -> Tag delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
+            (a4 -> ( State state1, restStateTuples1 ) -> Variant state1 restStateTags1)
+            (a3 -> Variant state restStateTags -> Maybe ( State state, restStateTuples ))
+            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Variant delta2 restDeltaTags1)
+            (a1 -> Variant delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
             ( Delta delta, a )
-tag1 label_ tag control =
-    tagHelper
+variant1 label_ variant control =
+    variantHelper
         label_
-        (productType tag
+        (productType variant
             |> productField argWrapper Tuple.first control
             |> endProductType argWrapper
         )
@@ -6745,22 +6838,22 @@ tag1 label_ tag control =
         )
 
 
-{-| Add a tag with two arguments to a custom type.
+{-| Add a variant with two arguments to a custom type.
 
     type Point
         = Point Float Float
 
     pointControl =
         customType
-            (\point tag ->
-                case tag of
+            (\point variant ->
+                case variant of
                     Point x y ->
                         point x y
             )
             |> tag2 "Point" Point float float
 
 -}
-tag2 :
+variant2 :
     String
     -> (output11 -> output10 -> output9)
     -> AdvancedControl context9 output11 state11 delta12 output11
@@ -6808,8 +6901,8 @@ tag2 :
                 ( ControlFns
                     context9
                     ( output11, ( output10, b3 ) )
-                    (Arg state11 (Arg state10 EndTag))
-                    (Arg delta12 (Arg delta11 EndTag))
+                    (Arg state11 (Arg state10 EndVariant))
+                    (Arg delta12 (Arg delta11 EndVariant))
                     output9
                 , a22
                 )
@@ -6826,10 +6919,10 @@ tag2 :
              -> ( State finalState, restFinalStates )
             )
             (Path.Path
-             -> ( Cmd (Delta (Arg delta12 (Arg delta11 EndTag))), a20 )
+             -> ( Cmd (Delta (Arg delta12 (Arg delta11 EndVariant))), a20 )
              -> c5
             )
-            (Path.Path -> ( State (Arg state11 (Arg state10 EndTag)), a19 ) -> c4)
+            (Path.Path -> ( State (Arg state11 (Arg state10 EndVariant)), a19 ) -> c4)
             (a18
              ->
                 { cmds : List (Cmd customTypeDelta2)
@@ -7133,15 +7226,15 @@ tag2 :
                 }
              -> p
             )
-            (a4 -> ( State state1, restStateTuples1 ) -> Tag state1 restStateTags1)
-            (a3 -> Tag state restStateTags -> Maybe ( State state, restStateTuples ))
-            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Tag delta2 restDeltaTags1)
-            (a1 -> Tag delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
+            (a4 -> ( State state1, restStateTuples1 ) -> Variant state1 restStateTags1)
+            (a3 -> Variant state restStateTags -> Maybe ( State state, restStateTuples ))
+            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Variant delta2 restDeltaTags1)
+            (a1 -> Variant delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
             ( Delta delta, a )
-tag2 label_ tag control1 control2 =
-    tagHelper
+variant2 label_ variant control1 control2 =
+    variantHelper
         label_
-        (productType tag
+        (productType variant
             |> productField argWrapper Tuple.first control1
             |> productField argWrapper (Tuple.second >> Tuple.first) control2
             |> endProductType argWrapper
@@ -7151,22 +7244,22 @@ tag2 label_ tag control1 control2 =
         )
 
 
-{-| Add a tag with three arguments to a custom type.
+{-| Add a variant with three arguments to a custom type.
 
     type Point3D
         = Point3D Float Float Float
 
     point3DControl =
         customType
-            (\point3D tag ->
-                case tag of
+            (\point3D variant ->
+                case variant of
                     Point3D x y z ->
                         point3D x y z
             )
-            |> tag3 "Point3D" Point3D float float float
+            |> variant3 "Point3D" Point3D float float float
 
 -}
-tag3 :
+variant3 :
     String
     -> (output12 -> output11 -> output10 -> output9)
     -> AdvancedControl context9 output12 state12 delta13 output12
@@ -7215,8 +7308,8 @@ tag3 :
                 ( ControlFns
                     context9
                     ( output12, ( output11, ( output10, b3 ) ) )
-                    (Arg state12 (Arg state11 (Arg state10 EndTag)))
-                    (Arg delta13 (Arg delta12 (Arg delta11 EndTag)))
+                    (Arg state12 (Arg state11 (Arg state10 EndVariant)))
+                    (Arg delta13 (Arg delta12 (Arg delta11 EndVariant)))
                     output9
                 , a22
                 )
@@ -7233,11 +7326,11 @@ tag3 :
              -> ( State finalState, restFinalStates )
             )
             (Path.Path
-             -> ( Cmd (Delta (Arg delta13 (Arg delta12 (Arg delta11 EndTag)))), a20 )
+             -> ( Cmd (Delta (Arg delta13 (Arg delta12 (Arg delta11 EndVariant)))), a20 )
              -> c5
             )
             (Path.Path
-             -> ( State (Arg state12 (Arg state11 (Arg state10 EndTag))), a19 )
+             -> ( State (Arg state12 (Arg state11 (Arg state10 EndVariant))), a19 )
              -> c4
             )
             (a18
@@ -7543,15 +7636,15 @@ tag3 :
                 }
              -> q
             )
-            (a4 -> ( State state1, restStateTuples1 ) -> Tag state1 restStateTags1)
-            (a3 -> Tag state restStateTags -> Maybe ( State state, restStateTuples ))
-            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Tag delta2 restDeltaTags1)
-            (a1 -> Tag delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
+            (a4 -> ( State state1, restStateTuples1 ) -> Variant state1 restStateTags1)
+            (a3 -> Variant state restStateTags -> Maybe ( State state, restStateTuples ))
+            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Variant delta2 restDeltaTags1)
+            (a1 -> Variant delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
             ( Delta delta, a )
-tag3 label_ tag control1 control2 control3 =
-    tagHelper
+variant3 label_ variant control1 control2 control3 =
+    variantHelper
         label_
-        (productType tag
+        (productType variant
             |> productField argWrapper Tuple.first control1
             |> productField argWrapper (Tuple.second >> Tuple.first) control2
             |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
@@ -7562,9 +7655,9 @@ tag3 label_ tag control1 control2 control3 =
         )
 
 
-{-| Add a tag with four arguments to a custom type.
+{-| Add a variant with four arguments to a custom type.
 -}
-tag4 :
+variant4 :
     String
     -> (output13 -> output12 -> output11 -> output10 -> output9)
     -> AdvancedControl context9 output13 state13 delta14 output13
@@ -7614,8 +7707,8 @@ tag4 :
                 ( ControlFns
                     context9
                     ( output13, ( output12, ( output11, ( output10, b3 ) ) ) )
-                    (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndTag))))
-                    (Arg delta14 (Arg delta13 (Arg delta12 (Arg delta11 EndTag))))
+                    (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndVariant))))
+                    (Arg delta14 (Arg delta13 (Arg delta12 (Arg delta11 EndVariant))))
                     output9
                 , a22
                 )
@@ -7635,7 +7728,7 @@ tag4 :
              ->
                 ( Cmd
                     (Delta
-                        (Arg delta14 (Arg delta13 (Arg delta12 (Arg delta11 EndTag))))
+                        (Arg delta14 (Arg delta13 (Arg delta12 (Arg delta11 EndVariant))))
                     )
                 , a20
                 )
@@ -7643,7 +7736,7 @@ tag4 :
             )
             (Path.Path
              ->
-                ( State (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndTag))))
+                ( State (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndVariant))))
                 , a19
                 )
              -> c4
@@ -7953,15 +8046,15 @@ tag4 :
                 }
              -> r
             )
-            (a4 -> ( State state1, restStateTuples1 ) -> Tag state1 restStateTags1)
-            (a3 -> Tag state restStateTags -> Maybe ( State state, restStateTuples ))
-            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Tag delta2 restDeltaTags1)
-            (a1 -> Tag delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
+            (a4 -> ( State state1, restStateTuples1 ) -> Variant state1 restStateTags1)
+            (a3 -> Variant state restStateTags -> Maybe ( State state, restStateTuples ))
+            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Variant delta2 restDeltaTags1)
+            (a1 -> Variant delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
             ( Delta delta, a )
-tag4 label_ tag control1 control2 control3 control4 =
-    tagHelper
+variant4 label_ variant control1 control2 control3 control4 =
+    variantHelper
         label_
-        (productType tag
+        (productType variant
             |> productField argWrapper Tuple.first control1
             |> productField argWrapper (Tuple.second >> Tuple.first) control2
             |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
@@ -7973,9 +8066,9 @@ tag4 label_ tag control1 control2 control3 control4 =
         )
 
 
-{-| Add a tag with five arguments to a custom type.
+{-| Add a variant with five arguments to a custom type.
 -}
-tag5 :
+variant5 :
     String
     -> (output14 -> output13 -> output12 -> output11 -> output10 -> output9)
     -> AdvancedControl context9 output14 state14 delta15 output14
@@ -8030,11 +8123,11 @@ tag5 :
                     )
                     (Arg
                         state14
-                        (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndTag))))
+                        (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndVariant))))
                     )
                     (Arg
                         delta15
-                        (Arg delta14 (Arg delta13 (Arg delta12 (Arg delta11 EndTag))))
+                        (Arg delta14 (Arg delta13 (Arg delta12 (Arg delta11 EndVariant))))
                     )
                     output9
                 , a22
@@ -8059,7 +8152,7 @@ tag5 :
                             delta15
                             (Arg
                                 delta14
-                                (Arg delta13 (Arg delta12 (Arg delta11 EndTag)))
+                                (Arg delta13 (Arg delta12 (Arg delta11 EndVariant)))
                             )
                         )
                     )
@@ -8072,7 +8165,7 @@ tag5 :
                 ( State
                     (Arg
                         state14
-                        (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndTag))))
+                        (Arg state13 (Arg state12 (Arg state11 (Arg state10 EndVariant))))
                     )
                 , a19
                 )
@@ -8391,15 +8484,15 @@ tag5 :
                 }
              -> s
             )
-            (a4 -> ( State state1, restStateTuples1 ) -> Tag state1 restStateTags1)
-            (a3 -> Tag state restStateTags -> Maybe ( State state, restStateTuples ))
-            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Tag delta2 restDeltaTags1)
-            (a1 -> Tag delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
+            (a4 -> ( State state1, restStateTuples1 ) -> Variant state1 restStateTags1)
+            (a3 -> Variant state restStateTags -> Maybe ( State state, restStateTuples ))
+            (a2 -> ( Delta delta2, restDeltaTuples1 ) -> Variant delta2 restDeltaTags1)
+            (a1 -> Variant delta1 restDeltaTags -> Maybe ( Delta delta1, restDeltaTuples ))
             ( Delta delta, a )
-tag5 label_ tag control1 control2 control3 control4 control5 =
-    tagHelper
+variant5 label_ variant control1 control2 control3 control4 control5 =
+    variantHelper
         label_
-        (productType tag
+        (productType variant
             |> productField argWrapper Tuple.first control1
             |> productField argWrapper (Tuple.second >> Tuple.first) control2
             |> productField argWrapper (Tuple.second >> Tuple.second >> Tuple.first) control3
@@ -9198,7 +9291,7 @@ validateSelectedTagState parser selectedTag context fns states =
             Err
                 [ { path = Path.root
                   , label = "FATAL ERROR"
-                  , message = "tag index " ++ String.fromInt selectedTag ++ " not found"
+                  , message = "variant index " ++ String.fromInt selectedTag ++ " not found"
                   , fail = True
                   , class = "control-feedback-fail"
                   }
@@ -9553,9 +9646,9 @@ textControlView inputmode config =
 
 
 enumView : List ( String, enum ) -> { state : enum, id : String, label : String, name : String, class : String } -> List (Html enum)
-enumView tags config =
+enumView variants config =
     radioView
-        { options = List.map (\( a, b ) -> ( b, a )) tags
+        { options = List.map (\( a, b ) -> ( b, a )) variants
         , selectedOption = config.state
         , toMsg = identity
         , id = config.id
