@@ -306,7 +306,7 @@ tuplesAndTriples =
         |> Control.field (\() -> ( 1, "hello", 1.0 )) (Control.triple Control.int Control.string Control.float |> htmlBefore tripleIntro)
         |> Control.endRecord
         |> htmlBefore tuplesAndTriplesIntro
-        |> htmlAfter tupleAndTripleOutro
+        |> htmlAfter tuplesAndTriplesOutro
 
 
 tuplesAndTriplesIntro =
@@ -352,7 +352,7 @@ You'll get an `( Int, String, Float )` triple like this:
 """
 
 
-tupleAndTripleOutro =
+tuplesAndTriplesOutro =
     md
         """
 But tuples and triples are Elm's least-loved data structures - if you want to combine multiple values, records tend to 
