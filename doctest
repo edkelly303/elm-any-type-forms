@@ -1,0 +1,9 @@
+#! bash
+
+echo elm-review --rules Review.Documentation.CodeSnippet --fix-all-without-prompt
+echo
+npm exec elm-review -- --rules Review.Documentation.CodeSnippet --fix-all-without-prompt
+echo
+echo elm-test "tests/DocumentationCodeSnippetTest.elm"
+echo
+elm-test "tests/DocumentationCodeSnippetTest.elm"
