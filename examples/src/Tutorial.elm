@@ -39,9 +39,6 @@ update msg model =
             let
                 ( newForm, result ) =
                     form.submit model.bool model.form
-
-                _ =
-                    Debug.log "Output" result
             in
             ( { model
                 | form = newForm

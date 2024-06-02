@@ -784,11 +784,11 @@ function _Debug_crash_UNUSED(identifier, fact1, fact2, fact3, fact4)
 
 function _Debug_regionToString(region)
 {
-	if (region.p.aC === region.i.aC)
+	if (region.x.bt === region.u.bt)
 	{
-		return 'on line ' + region.p.aC;
+		return 'on line ' + region.x.bt;
 	}
-	return 'on lines ' + region.p.aC + ' through ' + region.i.aC;
+	return 'on lines ' + region.x.bt + ' through ' + region.u.bt;
 }
 
 
@@ -1857,8 +1857,8 @@ var _Platform_worker = F4(function(impl, flagDecoder, debugMetadata, args)
 	return _Platform_initialize(
 		flagDecoder,
 		args,
-		impl.db,
-		impl.s,
+		impl.dJ,
+		impl.r,
 		impl.t,
 		function() { return function() {} }
 	);
@@ -2719,9 +2719,9 @@ var _VirtualDom_mapEventTuple = F2(function(func, tuple)
 var _VirtualDom_mapEventRecord = F2(function(func, record)
 {
 	return {
-		R: func(record.R),
-		bW: record.bW,
-		bR: record.bR
+		az: func(record.az),
+		cN: record.cN,
+		cH: record.cH
 	}
 });
 
@@ -2989,11 +2989,11 @@ function _VirtualDom_makeCallback(eventNode, initialHandler)
 		// 3 = Custom
 
 		var value = result.a;
-		var message = !tag ? value : tag < 3 ? value.a : value.R;
-		var stopPropagation = tag == 1 ? value.b : tag == 3 && value.bW;
+		var message = !tag ? value : tag < 3 ? value.a : value.az;
+		var stopPropagation = tag == 1 ? value.b : tag == 3 && value.cN;
 		var currentEventNode = (
 			stopPropagation && event.stopPropagation(),
-			(tag == 2 ? value.b : tag == 3 && value.bR) && event.preventDefault(),
+			(tag == 2 ? value.b : tag == 3 && value.cH) && event.preventDefault(),
 			eventNode
 		);
 		var tagger;
@@ -3943,11 +3943,11 @@ var _Browser_element = _Debugger_element || F4(function(impl, flagDecoder, debug
 	return _Platform_initialize(
 		flagDecoder,
 		args,
-		impl.db,
-		impl.s,
+		impl.dJ,
+		impl.r,
 		impl.t,
 		function(sendToApp, initialModel) {
-			var view = impl.n;
+			var view = impl.m;
 			/**/
 			var domNode = args['node'];
 			//*/
@@ -3979,12 +3979,12 @@ var _Browser_document = _Debugger_document || F4(function(impl, flagDecoder, deb
 	return _Platform_initialize(
 		flagDecoder,
 		args,
-		impl.db,
-		impl.s,
+		impl.dJ,
+		impl.r,
 		impl.t,
 		function(sendToApp, initialModel) {
-			var divertHrefToApp = impl.bU && impl.bU(sendToApp)
-			var view = impl.n;
+			var divertHrefToApp = impl.cL && impl.cL(sendToApp)
+			var view = impl.m;
 			var title = _VirtualDom_doc.title;
 			var bodyNode = _VirtualDom_doc.body;
 			var currNode = _VirtualDom_virtualize(bodyNode);
@@ -3992,12 +3992,12 @@ var _Browser_document = _Debugger_document || F4(function(impl, flagDecoder, deb
 			{
 				_VirtualDom_divertHrefToApp = divertHrefToApp;
 				var doc = view(model);
-				var nextNode = _VirtualDom_node('body')(_List_Nil)(doc.c1);
+				var nextNode = _VirtualDom_node('body')(_List_Nil)(doc.dC);
 				var patches = _VirtualDom_diff(currNode, nextNode);
 				bodyNode = _VirtualDom_applyPatches(bodyNode, currNode, patches, sendToApp);
 				currNode = nextNode;
 				_VirtualDom_divertHrefToApp = 0;
-				(title !== doc.ds) && (_VirtualDom_doc.title = title = doc.ds);
+				(title !== doc.dX) && (_VirtualDom_doc.title = title = doc.dX);
 			});
 		}
 	);
@@ -4053,12 +4053,12 @@ function _Browser_makeAnimator(model, draw)
 
 function _Browser_application(impl)
 {
-	var onUrlChange = impl.dj;
-	var onUrlRequest = impl.dk;
+	var onUrlChange = impl.dP;
+	var onUrlRequest = impl.dQ;
 	var key = function() { key.a(onUrlChange(_Browser_getUrl())); };
 
 	return _Browser_document({
-		bU: function(sendToApp)
+		cL: function(sendToApp)
 		{
 			key.a = sendToApp;
 			_Browser_window.addEventListener('popstate', key);
@@ -4074,9 +4074,9 @@ function _Browser_application(impl)
 					var next = $elm$url$Url$fromString(href).a;
 					sendToApp(onUrlRequest(
 						(next
-							&& curr.cE === next.cE
-							&& curr.cp === next.cp
-							&& curr.cA.a === next.cA.a
+							&& curr.dm === next.dm
+							&& curr.dc === next.dc
+							&& curr.dl.a === next.dl.a
 						)
 							? $elm$browser$Browser$Internal(next)
 							: $elm$browser$Browser$External(href)
@@ -4084,12 +4084,12 @@ function _Browser_application(impl)
 				}
 			});
 		},
-		db: function(flags)
+		dJ: function(flags)
 		{
-			return A3(impl.db, flags, _Browser_getUrl(), key);
+			return A3(impl.dJ, flags, _Browser_getUrl(), key);
 		},
-		n: impl.n,
-		s: impl.s,
+		m: impl.m,
+		r: impl.r,
 		t: impl.t
 	});
 }
@@ -4156,17 +4156,17 @@ var _Browser_decodeEvent = F2(function(decoder, event)
 function _Browser_visibilityInfo()
 {
 	return (typeof _VirtualDom_doc.hidden !== 'undefined')
-		? { c9: 'hidden', c3: 'visibilitychange' }
+		? { dH: 'hidden', dE: 'visibilitychange' }
 		:
 	(typeof _VirtualDom_doc.mozHidden !== 'undefined')
-		? { c9: 'mozHidden', c3: 'mozvisibilitychange' }
+		? { dH: 'mozHidden', dE: 'mozvisibilitychange' }
 		:
 	(typeof _VirtualDom_doc.msHidden !== 'undefined')
-		? { c9: 'msHidden', c3: 'msvisibilitychange' }
+		? { dH: 'msHidden', dE: 'msvisibilitychange' }
 		:
 	(typeof _VirtualDom_doc.webkitHidden !== 'undefined')
-		? { c9: 'webkitHidden', c3: 'webkitvisibilitychange' }
-		: { c9: 'hidden', c3: 'visibilitychange' };
+		? { dH: 'webkitHidden', dE: 'webkitvisibilitychange' }
+		: { dH: 'hidden', dE: 'visibilitychange' };
 }
 
 
@@ -4247,12 +4247,12 @@ var _Browser_call = F2(function(functionName, id)
 function _Browser_getViewport()
 {
 	return {
-		cK: _Browser_getScene(),
-		cV: {
-			cZ: _Browser_window.pageXOffset,
-			c_: _Browser_window.pageYOffset,
-			cY: _Browser_doc.documentElement.clientWidth,
-			cn: _Browser_doc.documentElement.clientHeight
+		aB: _Browser_getScene(),
+		aF: {
+			ap: _Browser_window.pageXOffset,
+			aq: _Browser_window.pageYOffset,
+			F: _Browser_doc.documentElement.clientWidth,
+			C: _Browser_doc.documentElement.clientHeight
 		}
 	};
 }
@@ -4262,8 +4262,8 @@ function _Browser_getScene()
 	var body = _Browser_doc.body;
 	var elem = _Browser_doc.documentElement;
 	return {
-		cY: Math.max(body.scrollWidth, body.offsetWidth, elem.scrollWidth, elem.offsetWidth, elem.clientWidth),
-		cn: Math.max(body.scrollHeight, body.offsetHeight, elem.scrollHeight, elem.offsetHeight, elem.clientHeight)
+		F: Math.max(body.scrollWidth, body.offsetWidth, elem.scrollWidth, elem.offsetWidth, elem.clientWidth),
+		C: Math.max(body.scrollHeight, body.offsetHeight, elem.scrollHeight, elem.offsetHeight, elem.clientHeight)
 	};
 }
 
@@ -4286,15 +4286,15 @@ function _Browser_getViewportOf(id)
 	return _Browser_withNode(id, function(node)
 	{
 		return {
-			cK: {
-				cY: node.scrollWidth,
-				cn: node.scrollHeight
+			aB: {
+				F: node.scrollWidth,
+				C: node.scrollHeight
 			},
-			cV: {
-				cZ: node.scrollLeft,
-				c_: node.scrollTop,
-				cY: node.clientWidth,
-				cn: node.clientHeight
+			aF: {
+				ap: node.scrollLeft,
+				aq: node.scrollTop,
+				F: node.clientWidth,
+				C: node.clientHeight
 			}
 		};
 	});
@@ -4324,18 +4324,18 @@ function _Browser_getElement(id)
 		var x = _Browser_window.pageXOffset;
 		var y = _Browser_window.pageYOffset;
 		return {
-			cK: _Browser_getScene(),
-			cV: {
-				cZ: x,
-				c_: y,
-				cY: _Browser_doc.documentElement.clientWidth,
-				cn: _Browser_doc.documentElement.clientHeight
+			aB: _Browser_getScene(),
+			aF: {
+				ap: x,
+				aq: y,
+				F: _Browser_doc.documentElement.clientWidth,
+				C: _Browser_doc.documentElement.clientHeight
 			},
-			c7: {
-				cZ: x + rect.left,
-				c_: y + rect.top,
-				cY: rect.width,
-				cn: rect.height
+			br: {
+				ap: x + rect.left,
+				aq: y + rect.top,
+				F: rect.width,
+				C: rect.height
 			}
 		};
 	});
@@ -4546,8 +4546,8 @@ var _Regex_never = /.^/;
 var _Regex_fromStringWith = F2(function(options, string)
 {
 	var flags = 'g';
-	if (options.dg) { flags += 'm'; }
-	if (options.c2) { flags += 'i'; }
+	if (options.dO) { flags += 'm'; }
+	if (options.dD) { flags += 'i'; }
 
 	try
 	{
@@ -5107,25 +5107,25 @@ var $elm$core$Array$treeFromBuilder = F2(
 	});
 var $elm$core$Array$builderToArray = F2(
 	function (reverseNodeList, builder) {
-		if (!builder.w) {
+		if (!builder.I) {
 			return A4(
 				$elm$core$Array$Array_elm_builtin,
-				$elm$core$Elm$JsArray$length(builder.z),
+				$elm$core$Elm$JsArray$length(builder.L),
 				$elm$core$Array$shiftStep,
 				$elm$core$Elm$JsArray$empty,
-				builder.z);
+				builder.L);
 		} else {
-			var treeLen = builder.w * $elm$core$Array$branchFactor;
+			var treeLen = builder.I * $elm$core$Array$branchFactor;
 			var depth = $elm$core$Basics$floor(
 				A2($elm$core$Basics$logBase, $elm$core$Array$branchFactor, treeLen - 1));
-			var correctNodeList = reverseNodeList ? $elm$core$List$reverse(builder.B) : builder.B;
-			var tree = A2($elm$core$Array$treeFromBuilder, correctNodeList, builder.w);
+			var correctNodeList = reverseNodeList ? $elm$core$List$reverse(builder.O) : builder.O;
+			var tree = A2($elm$core$Array$treeFromBuilder, correctNodeList, builder.I);
 			return A4(
 				$elm$core$Array$Array_elm_builtin,
-				$elm$core$Elm$JsArray$length(builder.z) + treeLen,
+				$elm$core$Elm$JsArray$length(builder.L) + treeLen,
 				A2($elm$core$Basics$max, 5, depth * $elm$core$Array$shiftStep),
 				tree,
-				builder.z);
+				builder.L);
 		}
 	});
 var $elm$core$Basics$idiv = _Basics_idiv;
@@ -5138,7 +5138,7 @@ var $elm$core$Array$initializeHelp = F5(
 				return A2(
 					$elm$core$Array$builderToArray,
 					false,
-					{B: nodeList, w: (len / $elm$core$Array$branchFactor) | 0, z: tail});
+					{O: nodeList, I: (len / $elm$core$Array$branchFactor) | 0, L: tail});
 			} else {
 				var leaf = $elm$core$Array$Leaf(
 					A3($elm$core$Elm$JsArray$initialize, $elm$core$Array$branchFactor, fromIndex, fn));
@@ -5205,7 +5205,7 @@ var $elm$url$Url$Http = 0;
 var $elm$url$Url$Https = 1;
 var $elm$url$Url$Url = F6(
 	function (protocol, host, port_, path, query, fragment) {
-		return {cl: fragment, cp: host, C: path, cA: port_, cE: protocol, cF: query};
+		return {bd: fragment, dc: host, D: path, dl: port_, dm: protocol, bk: query};
 	});
 var $elm$core$String$contains = _String_contains;
 var $elm$core$String$length = _String_length;
@@ -5490,7 +5490,7 @@ var $author$project$Tutorial$BasicControls = function (a) {
 var $author$project$Tutorial$CreateYourOwn = function (a) {
 	return {$: 9, a: a};
 };
-var $author$project$Tutorial$CustomTypes = function (a) {
+var $author$project$Tutorial$EnumsAndCustomTypes = function (a) {
 	return {$: 4, a: a};
 };
 var $author$project$Tutorial$LeavingTheSandbox = function (a) {
@@ -5564,7 +5564,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$problemToString = function (probl
 	}
 };
 var $dillonkearns$elm_markdown$Markdown$Parser$deadEndToString = function (deadEnd) {
-	return 'Problem at row ' + ($elm$core$String$fromInt(deadEnd.dr) + ('\n' + $dillonkearns$elm_markdown$Markdown$Parser$problemToString(deadEnd.$7)));
+	return 'Problem at row ' + ($elm$core$String$fromInt(deadEnd.dW) + ('\n' + $dillonkearns$elm_markdown$Markdown$Parser$problemToString(deadEnd.dT)));
 };
 var $author$project$Tutorial$deadEndsToString = function (deadEnds) {
 	return A2(
@@ -5662,8 +5662,8 @@ var $dillonkearns$elm_markdown$Markdown$Html$attributesToString = function (attr
 		A2(
 			$elm$core$List$map,
 			function (_v0) {
-				var name = _v0.o;
-				var value = _v0.cU;
+				var name = _v0.l;
+				var value = _v0.dx;
 				return name + ('=\"' + (value + '\"'));
 			},
 			attributes));
@@ -5775,10 +5775,10 @@ var $elm$core$Maybe$withDefault = F2(
 	});
 var $elm$core$String$words = _String_words;
 var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
-	bo: $elm$html$Html$blockquote(_List_Nil),
-	bp: function (_v0) {
-		var body = _v0.c1;
-		var language = _v0.de;
+	cl: $elm$html$Html$blockquote(_List_Nil),
+	cm: function (_v0) {
+		var body = _v0.dC;
+		var language = _v0.dM;
 		var classes = function () {
 			var _v1 = A2($elm$core$Maybe$map, $elm$core$String$words, language);
 			if ((!_v1.$) && _v1.a.b) {
@@ -5806,7 +5806,7 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 						]))
 				]));
 	},
-	bq: function (content) {
+	cn: function (content) {
 		return A2(
 			$elm$html$Html$code,
 			_List_Nil,
@@ -5815,13 +5815,13 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 					$elm$html$Html$text(content)
 				]));
 	},
-	bu: function (children) {
+	co: function (children) {
 		return A2($elm$html$Html$em, _List_Nil, children);
 	},
-	bw: A2($elm$html$Html$br, _List_Nil, _List_Nil),
-	bx: function (_v3) {
-		var level = _v3.cv;
-		var children = _v3.ce;
+	cr: A2($elm$html$Html$br, _List_Nil, _List_Nil),
+	cs: function (_v3) {
+		var level = _v3.dh;
+		var children = _v3.c5;
 		switch (level) {
 			case 0:
 				return A2($elm$html$Html$h1, _List_Nil, children);
@@ -5837,17 +5837,17 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 				return A2($elm$html$Html$h6, _List_Nil, children);
 		}
 	},
-	ac: $dillonkearns$elm_markdown$Markdown$Html$oneOf(_List_Nil),
-	bz: function (imageInfo) {
-		var _v5 = imageInfo.ds;
+	aj: $dillonkearns$elm_markdown$Markdown$Html$oneOf(_List_Nil),
+	ct: function (imageInfo) {
+		var _v5 = imageInfo.dX;
 		if (!_v5.$) {
 			var title = _v5.a;
 			return A2(
 				$elm$html$Html$img,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$src(imageInfo.bV),
-						$elm$html$Html$Attributes$alt(imageInfo.bn),
+						$elm$html$Html$Attributes$src(imageInfo.cM),
+						$elm$html$Html$Attributes$alt(imageInfo.ck),
 						$elm$html$Html$Attributes$title(title)
 					]),
 				_List_Nil);
@@ -5856,22 +5856,22 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 				$elm$html$Html$img,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$src(imageInfo.bV),
-						$elm$html$Html$Attributes$alt(imageInfo.bn)
+						$elm$html$Html$Attributes$src(imageInfo.cM),
+						$elm$html$Html$Attributes$alt(imageInfo.ck)
 					]),
 				_List_Nil);
 		}
 	},
-	bE: F2(
+	cy: F2(
 		function (link, content) {
-			var _v6 = link.ds;
+			var _v6 = link.dX;
 			if (!_v6.$) {
 				var title = _v6.a;
 				return A2(
 					$elm$html$Html$a,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$href(link.c5),
+							$elm$html$Html$Attributes$href(link.dF),
 							$elm$html$Html$Attributes$title(title)
 						]),
 					content);
@@ -5880,12 +5880,12 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 					$elm$html$Html$a,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$href(link.c5)
+							$elm$html$Html$Attributes$href(link.dF)
 						]),
 					content);
 			}
 		}),
-	bO: F2(
+	cD: F2(
 		function (startingIndex, items) {
 			return A2(
 				$elm$html$Html$ol,
@@ -5906,16 +5906,16 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 					},
 					items));
 		}),
-	bQ: $elm$html$Html$p(_List_Nil),
-	bX: function (children) {
+	cG: $elm$html$Html$p(_List_Nil),
+	cO: function (children) {
 		return A2($elm$html$Html$del, _List_Nil, children);
 	},
-	bY: function (children) {
+	cP: function (children) {
 		return A2($elm$html$Html$strong, _List_Nil, children);
 	},
-	b_: $elm$html$Html$table(_List_Nil),
-	b$: $elm$html$Html$tbody(_List_Nil),
-	b0: function (maybeAlignment) {
+	cR: $elm$html$Html$table(_List_Nil),
+	cS: $elm$html$Html$tbody(_List_Nil),
+	cT: function (maybeAlignment) {
 		var attrs = A2(
 			$elm$core$Maybe$withDefault,
 			_List_Nil,
@@ -5940,8 +5940,8 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 						maybeAlignment))));
 		return $elm$html$Html$td(attrs);
 	},
-	b1: $elm$html$Html$thead(_List_Nil),
-	b2: function (maybeAlignment) {
+	cU: $elm$html$Html$thead(_List_Nil),
+	cV: function (maybeAlignment) {
 		var attrs = A2(
 			$elm$core$Maybe$withDefault,
 			_List_Nil,
@@ -5966,10 +5966,10 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$defaultHtmlRenderer = {
 						maybeAlignment))));
 		return $elm$html$Html$th(attrs);
 	},
-	bh: $elm$html$Html$tr(_List_Nil),
-	q: $elm$html$Html$text,
-	b4: A2($elm$html$Html$hr, _List_Nil, _List_Nil),
-	b6: function (items) {
+	ca: $elm$html$Html$tr(_List_Nil),
+	y: $elm$html$Html$text,
+	cX: A2($elm$html$Html$hr, _List_Nil, _List_Nil),
+	c_: function (items) {
 		return A2(
 			$elm$html$Html$ul,
 			_List_Nil,
@@ -6234,13 +6234,13 @@ var $elm$parser$Parser$Advanced$chompWhileHelp = F5(
 	function (isGood, offset, row, col, s0) {
 		chompWhileHelp:
 		while (true) {
-			var newOffset = A3($elm$parser$Parser$Advanced$isSubChar, isGood, offset, s0.bV);
+			var newOffset = A3($elm$parser$Parser$Advanced$isSubChar, isGood, offset, s0.cM);
 			if (_Utils_eq(newOffset, -1)) {
 				return A3(
 					$elm$parser$Parser$Advanced$Good,
-					_Utils_cmp(s0.d, offset) < 0,
+					_Utils_cmp(s0.g, offset) < 0,
 					0,
-					{cf: col, h: s0.h, m: s0.m, d: offset, dr: row, bV: s0.bV});
+					{bc: col, p: s0.p, q: s0.q, g: offset, dW: row, cM: s0.cM});
 			} else {
 				if (_Utils_eq(newOffset, -2)) {
 					var $temp$isGood = isGood,
@@ -6272,7 +6272,7 @@ var $elm$parser$Parser$Advanced$chompWhileHelp = F5(
 	});
 var $elm$parser$Parser$Advanced$chompWhile = function (isGood) {
 	return function (s) {
-		return A5($elm$parser$Parser$Advanced$chompWhileHelp, isGood, s.d, s.dr, s.cf, s);
+		return A5($elm$parser$Parser$Advanced$chompWhileHelp, isGood, s.g, s.dW, s.bc, s);
 	};
 };
 var $elm$core$Basics$always = F2(
@@ -6386,14 +6386,14 @@ var $elm$parser$Parser$Advanced$AddRight = F2(
 	});
 var $elm$parser$Parser$Advanced$DeadEnd = F4(
 	function (row, col, problem, contextStack) {
-		return {cf: col, c4: contextStack, $7: problem, dr: row};
+		return {bc: col, bo: contextStack, dT: problem, dW: row};
 	});
 var $elm$parser$Parser$Advanced$fromState = F2(
 	function (s, x) {
 		return A2(
 			$elm$parser$Parser$Advanced$AddRight,
 			$elm$parser$Parser$Advanced$Empty,
-			A4($elm$parser$Parser$Advanced$DeadEnd, s.dr, s.cf, x, s.h));
+			A4($elm$parser$Parser$Advanced$DeadEnd, s.dW, s.bc, x, s.p));
 	});
 var $elm$parser$Parser$Advanced$isSubString = _Parser_isSubString;
 var $elm$core$Basics$not = _Basics_not;
@@ -6402,7 +6402,7 @@ var $elm$parser$Parser$Advanced$token = function (_v0) {
 	var expecting = _v0.b;
 	var progress = !$elm$core$String$isEmpty(str);
 	return function (s) {
-		var _v1 = A5($elm$parser$Parser$Advanced$isSubString, str, s.d, s.dr, s.cf, s.bV);
+		var _v1 = A5($elm$parser$Parser$Advanced$isSubString, str, s.g, s.dW, s.bc, s.cM);
 		var newOffset = _v1.a;
 		var newRow = _v1.b;
 		var newCol = _v1.c;
@@ -6413,7 +6413,7 @@ var $elm$parser$Parser$Advanced$token = function (_v0) {
 			$elm$parser$Parser$Advanced$Good,
 			progress,
 			0,
-			{cf: newCol, h: s.h, m: s.m, d: newOffset, dr: newRow, bV: s.bV});
+			{bc: newCol, p: s.p, q: s.q, g: newOffset, dW: newRow, cM: s.cM});
 	};
 };
 var $dillonkearns$elm_markdown$Whitespace$lineEnd = $elm$parser$Parser$Advanced$oneOf(
@@ -6532,7 +6532,7 @@ var $elm$parser$Parser$Advanced$mapChompedString = F2(
 					p,
 					A2(
 						func,
-						A3($elm$core$String$slice, s0.d, s1.d, s0.bV),
+						A3($elm$core$String$slice, s0.g, s1.g, s0.cM),
 						a),
 					s1);
 			}
@@ -6548,8 +6548,8 @@ var $elm$parser$Parser$Advanced$keeper = F2(
 var $elm$parser$Parser$Advanced$end = function (x) {
 	return function (s) {
 		return _Utils_eq(
-			$elm$core$String$length(s.bV),
-			s.d) ? A3($elm$parser$Parser$Advanced$Good, false, 0, s) : A2(
+			$elm$core$String$length(s.cM),
+			s.g) ? A3($elm$parser$Parser$Advanced$Good, false, 0, s) : A2(
 			$elm$parser$Parser$Advanced$Bad,
 			false,
 			A2($elm$parser$Parser$Advanced$fromState, s, x));
@@ -6787,7 +6787,7 @@ var $dillonkearns$elm_markdown$HtmlParser$Text = function (a) {
 var $elm$parser$Parser$Advanced$chompIf = F2(
 	function (isGood, expecting) {
 		return function (s) {
-			var newOffset = A3($elm$parser$Parser$Advanced$isSubChar, isGood, s.d, s.bV);
+			var newOffset = A3($elm$parser$Parser$Advanced$isSubChar, isGood, s.g, s.cM);
 			return _Utils_eq(newOffset, -1) ? A2(
 				$elm$parser$Parser$Advanced$Bad,
 				false,
@@ -6795,11 +6795,11 @@ var $elm$parser$Parser$Advanced$chompIf = F2(
 				$elm$parser$Parser$Advanced$Good,
 				true,
 				0,
-				{cf: 1, h: s.h, m: s.m, d: s.d + 1, dr: s.dr + 1, bV: s.bV}) : A3(
+				{bc: 1, p: s.p, q: s.q, g: s.g + 1, dW: s.dW + 1, cM: s.cM}) : A3(
 				$elm$parser$Parser$Advanced$Good,
 				true,
 				0,
-				{cf: s.cf + 1, h: s.h, m: s.m, d: newOffset, dr: s.dr, bV: s.bV}));
+				{bc: s.bc + 1, p: s.p, q: s.q, g: newOffset, dW: s.dW, cM: s.cM}));
 		};
 	});
 var $dillonkearns$elm_markdown$HtmlParser$expectTagNameCharacter = $elm$parser$Parser$Expecting('at least 1 tag name character');
@@ -7733,23 +7733,23 @@ var $dillonkearns$elm_markdown$HtmlParser$attributes = A2(
 			function (key, value, accum) {
 				return A2(
 					$elm$core$List$cons,
-					{o: key, cU: value},
+					{l: key, dx: value},
 					accum);
 			}),
 		_List_Nil),
 	A2($elm$parser$Parser$Advanced$loop, $elm$core$Dict$empty, $dillonkearns$elm_markdown$HtmlParser$attributesStep));
 var $elm$parser$Parser$Advanced$chompUntilEndOr = function (str) {
 	return function (s) {
-		var _v0 = A5(_Parser_findSubString, str, s.d, s.dr, s.cf, s.bV);
+		var _v0 = A5(_Parser_findSubString, str, s.g, s.dW, s.bc, s.cM);
 		var newOffset = _v0.a;
 		var newRow = _v0.b;
 		var newCol = _v0.c;
-		var adjustedOffset = (newOffset < 0) ? $elm$core$String$length(s.bV) : newOffset;
+		var adjustedOffset = (newOffset < 0) ? $elm$core$String$length(s.cM) : newOffset;
 		return A3(
 			$elm$parser$Parser$Advanced$Good,
-			_Utils_cmp(s.d, adjustedOffset) < 0,
+			_Utils_cmp(s.g, adjustedOffset) < 0,
 			0,
-			{cf: newCol, h: s.h, m: s.m, d: adjustedOffset, dr: newRow, bV: s.bV});
+			{bc: newCol, p: s.p, q: s.q, g: adjustedOffset, dW: newRow, cM: s.cM});
 	};
 };
 var $dillonkearns$elm_markdown$HtmlParser$cdata = A2(
@@ -8125,10 +8125,10 @@ var $dillonkearns$elm_markdown$Markdown$Parser$innerParagraphParser = A2(
 var $dillonkearns$elm_markdown$Markdown$Parser$openBlockOrParagraphParser = A2($elm$parser$Parser$Advanced$ignorer, $dillonkearns$elm_markdown$Markdown$Parser$innerParagraphParser, $dillonkearns$elm_markdown$Helpers$lineEndOrEnd);
 var $dillonkearns$elm_markdown$Markdown$OrderedList$ListItem = F4(
 	function (order, intended, marker, body) {
-		return {c1: body, dc: intended, df: marker, dm: order};
+		return {dC: body, dK: intended, dN: marker, dS: order};
 	});
 var $elm$parser$Parser$Advanced$getCol = function (s) {
-	return A3($elm$parser$Parser$Advanced$Good, false, s.cf, s);
+	return A3($elm$parser$Parser$Advanced$Good, false, s.bc, s);
 };
 var $dillonkearns$elm_markdown$Markdown$OrderedList$orderedListEmptyItemParser = A2(
 	$elm$parser$Parser$Advanced$keeper,
@@ -8330,7 +8330,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$orderedListBlock = function (prev
 	return A2(
 		$elm$parser$Parser$Advanced$map,
 		function (item) {
-			return A6($dillonkearns$elm_markdown$Markdown$RawBlock$OrderedListBlock, true, item.dc, item.df, item.dm, _List_Nil, item.c1);
+			return A6($dillonkearns$elm_markdown$Markdown$RawBlock$OrderedListBlock, true, item.dK, item.dN, item.dS, _List_Nil, item.dC);
 		},
 		$dillonkearns$elm_markdown$Markdown$OrderedList$parser(previousWasBody));
 };
@@ -8357,14 +8357,14 @@ var $dillonkearns$elm_markdown$Markdown$Inline$Text = function (a) {
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$matchToInline = function (_v0) {
 	var match = _v0;
-	var _v1 = match.u;
+	var _v1 = match.A;
 	switch (_v1.$) {
 		case 0:
-			return $dillonkearns$elm_markdown$Markdown$Inline$Text(match.q);
+			return $dillonkearns$elm_markdown$Markdown$Inline$Text(match.y);
 		case 1:
 			return $dillonkearns$elm_markdown$Markdown$Inline$HardLineBreak;
 		case 2:
-			return $dillonkearns$elm_markdown$Markdown$Inline$CodeInline(match.q);
+			return $dillonkearns$elm_markdown$Markdown$Inline$CodeInline(match.y);
 		case 3:
 			var _v2 = _v1.a;
 			var text = _v2.a;
@@ -8385,7 +8385,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$matchToInline = function (_
 				$dillonkearns$elm_markdown$Markdown$Inline$Link,
 				url,
 				maybeTitle,
-				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.A));
+				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.M));
 		case 5:
 			var _v4 = _v1.a;
 			var url = _v4.a;
@@ -8394,7 +8394,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$matchToInline = function (_
 				$dillonkearns$elm_markdown$Markdown$Inline$Image,
 				url,
 				maybeTitle,
-				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.A));
+				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.M));
 		case 6:
 			var model = _v1.a;
 			return $dillonkearns$elm_markdown$Markdown$Inline$HtmlInline(model);
@@ -8403,10 +8403,10 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$matchToInline = function (_
 			return A2(
 				$dillonkearns$elm_markdown$Markdown$Inline$Emphasis,
 				length,
-				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.A));
+				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.M));
 		default:
 			return $dillonkearns$elm_markdown$Markdown$Inline$Strikethrough(
-				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.A));
+				$dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines(match.M));
 	}
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines = function (matches) {
@@ -8415,34 +8415,34 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$matchesToInlines = function
 var $dillonkearns$elm_markdown$Markdown$InlineParser$Match = $elm$core$Basics$identity;
 var $dillonkearns$elm_markdown$Markdown$InlineParser$prepareChildMatch = F2(
 	function (parentMatch, childMatch) {
-		return {i: childMatch.i - parentMatch.D, A: childMatch.A, p: childMatch.p - parentMatch.D, q: childMatch.q, J: childMatch.J - parentMatch.D, D: childMatch.D - parentMatch.D, u: childMatch.u};
+		return {u: childMatch.u - parentMatch.P, M: childMatch.M, x: childMatch.x - parentMatch.P, y: childMatch.y, ah: childMatch.ah - parentMatch.P, P: childMatch.P - parentMatch.P, A: childMatch.A};
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$addChild = F2(
 	function (parentMatch, childMatch) {
 		return {
-			i: parentMatch.i,
-			A: A2(
+			u: parentMatch.u,
+			M: A2(
 				$elm$core$List$cons,
 				A2($dillonkearns$elm_markdown$Markdown$InlineParser$prepareChildMatch, parentMatch, childMatch),
-				parentMatch.A),
-			p: parentMatch.p,
-			q: parentMatch.q,
-			J: parentMatch.J,
-			D: parentMatch.D,
-			u: parentMatch.u
+				parentMatch.M),
+			x: parentMatch.x,
+			y: parentMatch.y,
+			ah: parentMatch.ah,
+			P: parentMatch.P,
+			A: parentMatch.A
 		};
 	});
 var $elm$core$List$sortBy = _List_sortBy;
 var $dillonkearns$elm_markdown$Markdown$InlineParser$organizeChildren = function (_v4) {
 	var match = _v4;
 	return {
-		i: match.i,
-		A: $dillonkearns$elm_markdown$Markdown$InlineParser$organizeMatches(match.A),
-		p: match.p,
-		q: match.q,
-		J: match.J,
-		D: match.D,
-		u: match.u
+		u: match.u,
+		M: $dillonkearns$elm_markdown$Markdown$InlineParser$organizeMatches(match.M),
+		x: match.x,
+		y: match.y,
+		ah: match.ah,
+		P: match.P,
+		A: match.A
 	};
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$organizeMatches = function (matches) {
@@ -8450,7 +8450,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$organizeMatches = function 
 		$elm$core$List$sortBy,
 		function (_v3) {
 			var match = _v3;
-			return match.p;
+			return match.x;
 		},
 		matches);
 	if (!_v2.b) {
@@ -8474,7 +8474,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$organizeMatchesHelp = F3(
 			} else {
 				var match = remaining.a;
 				var rest = remaining.b;
-				if (_Utils_cmp(prevMatch.i, match.p) < 1) {
+				if (_Utils_cmp(prevMatch.u, match.x) < 1) {
 					var $temp$remaining = rest,
 						$temp$_v0 = match,
 						$temp$matchesTail = A2(
@@ -8486,7 +8486,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$organizeMatchesHelp = F3(
 					matchesTail = $temp$matchesTail;
 					continue organizeMatchesHelp;
 				} else {
-					if ((_Utils_cmp(prevMatch.p, match.p) < 0) && (_Utils_cmp(prevMatch.i, match.i) > 0)) {
+					if ((_Utils_cmp(prevMatch.x, match.x) < 0) && (_Utils_cmp(prevMatch.u, match.u) > 0)) {
 						var $temp$remaining = rest,
 							$temp$_v0 = A2($dillonkearns$elm_markdown$Markdown$InlineParser$addChild, prevMatch, match),
 							$temp$matchesTail = matchesTail;
@@ -8513,13 +8513,13 @@ var $dillonkearns$elm_markdown$Markdown$Helpers$containsAmpersand = function (st
 };
 var $elm$regex$Regex$Match = F4(
 	function (match, index, number, submatches) {
-		return {r: index, aD: match, dh: number, bZ: submatches};
+		return {s: index, bu: match, bw: number, cQ: submatches};
 	});
 var $elm$regex$Regex$fromStringWith = _Regex_fromStringWith;
 var $elm$regex$Regex$fromString = function (string) {
 	return A2(
 		$elm$regex$Regex$fromStringWith,
-		{c2: false, dg: false},
+		{dD: false, dO: false},
 		string);
 };
 var $elm$regex$Regex$never = _Regex_never;
@@ -8543,7 +8543,7 @@ var $dillonkearns$elm_markdown$Markdown$Entity$validUnicode = function (_int) {
 		$elm$core$Char$fromCode(65533));
 };
 var $dillonkearns$elm_markdown$Markdown$Entity$replaceDecimal = function (match) {
-	var _v0 = match.bZ;
+	var _v0 = match.cQ;
 	if (_v0.b && (!_v0.a.$)) {
 		var first = _v0.a.a;
 		var _v1 = $elm$core$String$toInt(first);
@@ -8551,10 +8551,10 @@ var $dillonkearns$elm_markdown$Markdown$Entity$replaceDecimal = function (match)
 			var v = _v1.a;
 			return $dillonkearns$elm_markdown$Markdown$Entity$validUnicode(v);
 		} else {
-			return match.aD;
+			return match.bu;
 		}
 	} else {
-		return match.aD;
+		return match.bu;
 	}
 };
 var $dillonkearns$elm_markdown$Markdown$Entity$replaceDecimals = A2($elm$regex$Regex$replace, $dillonkearns$elm_markdown$Markdown$Entity$decimalRegex, $dillonkearns$elm_markdown$Markdown$Entity$replaceDecimal);
@@ -8820,7 +8820,7 @@ var $dillonkearns$elm_markdown$Markdown$Entity$entities = $elm$core$Dict$fromLis
 			_Utils_Tuple2('diams', 9830)
 		]));
 var $dillonkearns$elm_markdown$Markdown$Entity$replaceEntity = function (match) {
-	var _v0 = match.bZ;
+	var _v0 = match.cQ;
 	if (_v0.b && (!_v0.a.$)) {
 		var first = _v0.a.a;
 		var _v1 = A2($elm$core$Dict$get, first, $dillonkearns$elm_markdown$Markdown$Entity$entities);
@@ -8829,10 +8829,10 @@ var $dillonkearns$elm_markdown$Markdown$Entity$replaceEntity = function (match) 
 			return $elm$core$String$fromChar(
 				$elm$core$Char$fromCode(code));
 		} else {
-			return match.aD;
+			return match.bu;
 		}
 	} else {
-		return match.aD;
+		return match.bu;
 	}
 };
 var $dillonkearns$elm_markdown$Markdown$Entity$replaceEntities = A2($elm$regex$Regex$replace, $dillonkearns$elm_markdown$Markdown$Entity$entitiesRegex, $dillonkearns$elm_markdown$Markdown$Entity$replaceEntity);
@@ -8844,7 +8844,7 @@ var $dillonkearns$elm_markdown$Markdown$Helpers$replaceEscapable = A2(
 	$elm$regex$Regex$replace,
 	$dillonkearns$elm_markdown$Markdown$Helpers$escapableRegex,
 	function (regexMatch) {
-		var _v0 = regexMatch.bZ;
+		var _v0 = regexMatch.cQ;
 		if (((_v0.b && (!_v0.a.$)) && _v0.b.b) && (!_v0.b.a.$)) {
 			var backslashes = _v0.a.a;
 			var _v1 = _v0.b;
@@ -8856,7 +8856,7 @@ var $dillonkearns$elm_markdown$Markdown$Helpers$replaceEscapable = A2(
 					'\\'),
 				escapedStr);
 		} else {
-			return regexMatch.aD;
+			return regexMatch.bu;
 		}
 	});
 var $dillonkearns$elm_markdown$Markdown$Entity$hexadecimalRegex = A2(
@@ -8879,13 +8879,13 @@ var $dillonkearns$elm_markdown$Markdown$Entity$hexToInt = function (string) {
 		$elm$core$String$toLower(string));
 };
 var $dillonkearns$elm_markdown$Markdown$Entity$replaceHexadecimal = function (match) {
-	var _v0 = match.bZ;
+	var _v0 = match.cQ;
 	if (_v0.b && (!_v0.a.$)) {
 		var first = _v0.a.a;
 		return $dillonkearns$elm_markdown$Markdown$Entity$validUnicode(
 			$dillonkearns$elm_markdown$Markdown$Entity$hexToInt(first));
 	} else {
-		return match.aD;
+		return match.bu;
 	}
 };
 var $dillonkearns$elm_markdown$Markdown$Entity$replaceHexadecimals = A2($elm$regex$Regex$replace, $dillonkearns$elm_markdown$Markdown$Entity$hexadecimalRegex, $dillonkearns$elm_markdown$Markdown$Entity$replaceHexadecimal);
@@ -8897,29 +8897,29 @@ var $dillonkearns$elm_markdown$Markdown$Helpers$formatStr = function (str) {
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$normalMatch = function (text) {
 	return {
-		i: 0,
-		A: _List_Nil,
-		p: 0,
-		q: $dillonkearns$elm_markdown$Markdown$Helpers$formatStr(text),
-		J: 0,
-		D: 0,
-		u: $dillonkearns$elm_markdown$Markdown$InlineParser$NormalType
+		u: 0,
+		M: _List_Nil,
+		x: 0,
+		y: $dillonkearns$elm_markdown$Markdown$Helpers$formatStr(text),
+		ah: 0,
+		P: 0,
+		A: $dillonkearns$elm_markdown$Markdown$InlineParser$NormalType
 	};
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$parseTextMatch = F3(
 	function (rawText, _v2, parsedMatches) {
 		var matchModel = _v2;
 		var updtMatch = {
-			i: matchModel.i,
-			A: A3($dillonkearns$elm_markdown$Markdown$InlineParser$parseTextMatches, matchModel.q, _List_Nil, matchModel.A),
-			p: matchModel.p,
-			q: matchModel.q,
-			J: matchModel.J,
-			D: matchModel.D,
-			u: matchModel.u
+			u: matchModel.u,
+			M: A3($dillonkearns$elm_markdown$Markdown$InlineParser$parseTextMatches, matchModel.y, _List_Nil, matchModel.M),
+			x: matchModel.x,
+			y: matchModel.y,
+			ah: matchModel.ah,
+			P: matchModel.P,
+			A: matchModel.A
 		};
 		if (!parsedMatches.b) {
-			var finalStr = A2($elm$core$String$dropLeft, matchModel.i, rawText);
+			var finalStr = A2($elm$core$String$dropLeft, matchModel.u, rawText);
 			return $elm$core$String$isEmpty(finalStr) ? _List_fromArray(
 				[updtMatch]) : _List_fromArray(
 				[
@@ -8928,17 +8928,17 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$parseTextMatch = F3(
 				]);
 		} else {
 			var matchHead = parsedMatches.a;
-			var _v4 = matchHead.u;
+			var _v4 = matchHead.A;
 			if (!_v4.$) {
 				return A2($elm$core$List$cons, updtMatch, parsedMatches);
 			} else {
-				return _Utils_eq(matchModel.i, matchHead.p) ? A2($elm$core$List$cons, updtMatch, parsedMatches) : ((_Utils_cmp(matchModel.i, matchHead.p) < 0) ? A2(
+				return _Utils_eq(matchModel.u, matchHead.x) ? A2($elm$core$List$cons, updtMatch, parsedMatches) : ((_Utils_cmp(matchModel.u, matchHead.x) < 0) ? A2(
 					$elm$core$List$cons,
 					updtMatch,
 					A2(
 						$elm$core$List$cons,
 						$dillonkearns$elm_markdown$Markdown$InlineParser$normalMatch(
-							A3($elm$core$String$slice, matchModel.i, matchHead.p, rawText)),
+							A3($elm$core$String$slice, matchModel.u, matchHead.x, rawText)),
 						parsedMatches)) : parsedMatches);
 			}
 		}
@@ -8955,10 +8955,10 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$parseTextMatches = F3(
 						]);
 				} else {
 					var matchModel = parsedMatches.a;
-					return (matchModel.p > 0) ? A2(
+					return (matchModel.x > 0) ? A2(
 						$elm$core$List$cons,
 						$dillonkearns$elm_markdown$Markdown$InlineParser$normalMatch(
-							A2($elm$core$String$left, matchModel.p, rawText)),
+							A2($elm$core$String$left, matchModel.x, rawText)),
 						parsedMatches) : parsedMatches;
 				}
 			} else {
@@ -9011,7 +9011,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$cleanAngleBracketTokens = F
 				} else {
 					var hd = tokensL.a;
 					var rest = tokensL.b;
-					if (_Utils_cmp(hd.r, hd1.r) < 0) {
+					if (_Utils_cmp(hd.s, hd1.s) < 0) {
 						if (!countL) {
 							return A2(
 								$elm$core$List$cons,
@@ -9081,7 +9081,7 @@ var $elm$core$List$filterMap = F2(
 var $elm$regex$Regex$find = _Regex_findAtMost(_Regex_infinity);
 var $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketOpen = {$: 4};
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToAngleBracketLToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	if ((_v0.b && _v0.b.b) && (!_v0.b.a.$)) {
 		var maybeBackslashes = _v0.a;
 		var _v1 = _v0.b;
@@ -9090,7 +9090,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToAngleBracketLToke
 			0,
 			A2($elm$core$Maybe$map, $elm$core$String$length, maybeBackslashes));
 		return $dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength) ? $elm$core$Maybe$Just(
-			{r: regMatch.r + backslashesLength, bD: 1, f: $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketOpen}) : $elm$core$Maybe$Nothing;
+			{s: regMatch.s + backslashesLength, cx: 1, n: $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketOpen}) : $elm$core$Maybe$Nothing;
 	} else {
 		return $elm$core$Maybe$Nothing;
 	}
@@ -9111,7 +9111,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketClose = functio
 var $dillonkearns$elm_markdown$Markdown$InlineParser$Escaped = 0;
 var $dillonkearns$elm_markdown$Markdown$InlineParser$NotEscaped = 1;
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToAngleBracketRToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	if ((_v0.b && _v0.b.b) && (!_v0.b.a.$)) {
 		var maybeBackslashes = _v0.a;
 		var _v1 = _v0.b;
@@ -9121,9 +9121,9 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToAngleBracketRToke
 			A2($elm$core$Maybe$map, $elm$core$String$length, maybeBackslashes));
 		return $elm$core$Maybe$Just(
 			{
-				r: regMatch.r + backslashesLength,
-				bD: 1,
-				f: $dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength) ? $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketClose(1) : $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketClose(0)
+				s: regMatch.s + backslashesLength,
+				cx: 1,
+				n: $dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength) ? $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketClose(1) : $dillonkearns$elm_markdown$Markdown$InlineParser$AngleBracketClose(0)
 			});
 	} else {
 		return $elm$core$Maybe$Nothing;
@@ -9243,7 +9243,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$getFringeRank = function (m
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToEmphasisToken = F3(
 	function (_char, rawText, regMatch) {
-		var _v0 = regMatch.bZ;
+		var _v0 = regMatch.cQ;
 		if ((((_v0.b && _v0.b.b) && _v0.b.b.b) && (!_v0.b.b.a.$)) && _v0.b.b.b.b) {
 			var maybeBackslashes = _v0.a;
 			var _v1 = _v0.b;
@@ -9261,8 +9261,8 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToEmphasisToken = F
 					return 0;
 				}
 			}();
-			var mLeftFringe = ((!(!regMatch.r)) && (!leftFringeLength)) ? $elm$core$Maybe$Just(
-				A3($elm$core$String$slice, regMatch.r - 1, regMatch.r, rawText)) : maybeLeftFringe;
+			var mLeftFringe = ((!(!regMatch.s)) && (!leftFringeLength)) ? $elm$core$Maybe$Just(
+				A3($elm$core$String$slice, regMatch.s - 1, regMatch.s, rawText)) : maybeLeftFringe;
 			var backslashesLength = function () {
 				if (!maybeBackslashes.$) {
 					var backslashes = maybeBackslashes.a;
@@ -9283,15 +9283,15 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToEmphasisToken = F
 			if ((delimiterLength <= 0) || ((_char === '_') && ((lFringeRank === 2) && (rFringeRank === 2)))) {
 				return $elm$core$Maybe$Nothing;
 			} else {
-				var index = ((regMatch.r + backslashesLength) + leftFringeLength) + (isEscaped ? 1 : 0);
+				var index = ((regMatch.s + backslashesLength) + leftFringeLength) + (isEscaped ? 1 : 0);
 				return $elm$core$Maybe$Just(
 					{
-						r: index,
-						bD: delimiterLength,
-						f: A2(
+						s: index,
+						cx: delimiterLength,
+						n: A2(
 							$dillonkearns$elm_markdown$Markdown$InlineParser$EmphasisToken,
 							_char,
-							{a4: lFringeRank, bc: rFringeRank})
+							{bR: lFringeRank, b0: rFringeRank})
 					});
 			}
 		} else {
@@ -9312,7 +9312,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$CodeToken = function (a) {
 	return {$: 0, a: a};
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToCodeToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	if ((_v0.b && _v0.b.b) && (!_v0.b.a.$)) {
 		var maybeBackslashes = _v0.a;
 		var _v1 = _v0.b;
@@ -9323,9 +9323,9 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToCodeToken = funct
 			A2($elm$core$Maybe$map, $elm$core$String$length, maybeBackslashes));
 		return $elm$core$Maybe$Just(
 			{
-				r: regMatch.r + backslashesLength,
-				bD: $elm$core$String$length(backtick),
-				f: $dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength) ? $dillonkearns$elm_markdown$Markdown$InlineParser$CodeToken(1) : $dillonkearns$elm_markdown$Markdown$InlineParser$CodeToken(0)
+				s: regMatch.s + backslashesLength,
+				cx: $elm$core$String$length(backtick),
+				n: $dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength) ? $dillonkearns$elm_markdown$Markdown$InlineParser$CodeToken(1) : $dillonkearns$elm_markdown$Markdown$InlineParser$CodeToken(0)
 			});
 	} else {
 		return $elm$core$Maybe$Nothing;
@@ -9343,7 +9343,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$hardBreakTokenRegex = A2(
 	$elm$regex$Regex$fromString('(?:(\\\\+)|( {2,}))\\n'));
 var $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken = {$: 8};
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToHardBreakToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	_v0$2:
 	while (true) {
 		if (_v0.b) {
@@ -9351,15 +9351,15 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToHardBreakToken = 
 				var backslashes = _v0.a.a;
 				var backslashesLength = $elm$core$String$length(backslashes);
 				return (!$dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength)) ? $elm$core$Maybe$Just(
-					{r: (regMatch.r + backslashesLength) - 1, bD: 2, f: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken}) : $elm$core$Maybe$Nothing;
+					{s: (regMatch.s + backslashesLength) - 1, cx: 2, n: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken}) : $elm$core$Maybe$Nothing;
 			} else {
 				if (_v0.b.b && (!_v0.b.a.$)) {
 					var _v1 = _v0.b;
 					return $elm$core$Maybe$Just(
 						{
-							r: regMatch.r,
-							bD: $elm$core$String$length(regMatch.aD),
-							f: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken
+							s: regMatch.s,
+							cx: $elm$core$String$length(regMatch.bu),
+							n: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken
 						});
 				} else {
 					break _v0$2;
@@ -9372,7 +9372,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToHardBreakToken = 
 	return $elm$core$Maybe$Nothing;
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToSoftHardBreakToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	_v0$2:
 	while (true) {
 		if (_v0.b) {
@@ -9380,16 +9380,16 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToSoftHardBreakToke
 				var backslashes = _v0.a.a;
 				var backslashesLength = $elm$core$String$length(backslashes);
 				return $dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength) ? $elm$core$Maybe$Just(
-					{r: regMatch.r + backslashesLength, bD: 1, f: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken}) : $elm$core$Maybe$Just(
-					{r: (regMatch.r + backslashesLength) - 1, bD: 2, f: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken});
+					{s: regMatch.s + backslashesLength, cx: 1, n: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken}) : $elm$core$Maybe$Just(
+					{s: (regMatch.s + backslashesLength) - 1, cx: 2, n: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken});
 			} else {
 				if (_v0.b.b) {
 					var _v1 = _v0.b;
 					return $elm$core$Maybe$Just(
 						{
-							r: regMatch.r,
-							bD: $elm$core$String$length(regMatch.aD),
-							f: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken
+							s: regMatch.s,
+							cx: $elm$core$String$length(regMatch.bu),
+							n: $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakToken
 						});
 				} else {
 					break _v0$2;
@@ -9421,7 +9421,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$linkImageCloseTokenRegex = 
 	$elm$regex$Regex$fromString('(\\\\*)(\\])'));
 var $dillonkearns$elm_markdown$Markdown$InlineParser$SquareBracketClose = {$: 3};
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToLinkImageCloseToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	if ((_v0.b && _v0.b.b) && (!_v0.b.a.$)) {
 		var maybeBackslashes = _v0.a;
 		var _v1 = _v0.b;
@@ -9430,7 +9430,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToLinkImageCloseTok
 			0,
 			A2($elm$core$Maybe$map, $elm$core$String$length, maybeBackslashes));
 		return $dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength) ? $elm$core$Maybe$Just(
-			{r: regMatch.r + backslashesLength, bD: 1, f: $dillonkearns$elm_markdown$Markdown$InlineParser$SquareBracketClose}) : $elm$core$Maybe$Nothing;
+			{s: regMatch.s + backslashesLength, cx: 1, n: $dillonkearns$elm_markdown$Markdown$InlineParser$SquareBracketClose}) : $elm$core$Maybe$Nothing;
 	} else {
 		return $elm$core$Maybe$Nothing;
 	}
@@ -9451,7 +9451,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$LinkOpenToken = function (a
 	return {$: 1, a: a};
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToLinkImageOpenToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	if (((_v0.b && _v0.b.b) && _v0.b.b.b) && (!_v0.b.b.a.$)) {
 		var maybeBackslashes = _v0.a;
 		var _v1 = _v0.b;
@@ -9462,14 +9462,14 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToLinkImageOpenToke
 			0,
 			A2($elm$core$Maybe$map, $elm$core$String$length, maybeBackslashes));
 		var isEscaped = !$dillonkearns$elm_markdown$Markdown$Helpers$isEven(backslashesLength);
-		var index = isEscaped ? ((regMatch.r + backslashesLength) + 1) : (regMatch.r + backslashesLength);
+		var index = isEscaped ? ((regMatch.s + backslashesLength) + 1) : (regMatch.s + backslashesLength);
 		if (isEscaped) {
 			if (!maybeImageOpen.$) {
 				return $elm$core$Maybe$Just(
 					{
-						r: index,
-						bD: 1,
-						f: $dillonkearns$elm_markdown$Markdown$InlineParser$LinkOpenToken(0)
+						s: index,
+						cx: 1,
+						n: $dillonkearns$elm_markdown$Markdown$InlineParser$LinkOpenToken(0)
 					});
 			} else {
 				return $elm$core$Maybe$Nothing;
@@ -9477,13 +9477,13 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToLinkImageOpenToke
 		} else {
 			if (!maybeImageOpen.$) {
 				return $elm$core$Maybe$Just(
-					{r: index, bD: 2, f: $dillonkearns$elm_markdown$Markdown$InlineParser$ImageOpenToken});
+					{s: index, cx: 2, n: $dillonkearns$elm_markdown$Markdown$InlineParser$ImageOpenToken});
 			} else {
 				return $elm$core$Maybe$Just(
 					{
-						r: index,
-						bD: 1,
-						f: $dillonkearns$elm_markdown$Markdown$InlineParser$LinkOpenToken(0)
+						s: index,
+						cx: 1,
+						n: $dillonkearns$elm_markdown$Markdown$InlineParser$LinkOpenToken(0)
 					});
 			}
 		}
@@ -9501,7 +9501,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$StrikethroughToken = functi
 	return {$: 9, a: a};
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToStrikethroughToken = function (regMatch) {
-	var _v0 = regMatch.bZ;
+	var _v0 = regMatch.cQ;
 	if ((_v0.b && _v0.b.b) && (!_v0.b.a.$)) {
 		var maybeBackslashes = _v0.a;
 		var _v1 = _v0.b;
@@ -9518,7 +9518,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$regMatchToStrikethroughToke
 		var length = _v2.a;
 		var meaning = _v2.b;
 		return $elm$core$Maybe$Just(
-			{r: regMatch.r + backslashesLength, bD: length, f: meaning});
+			{s: regMatch.s + backslashesLength, cx: length, n: meaning});
 	} else {
 		return $elm$core$Maybe$Nothing;
 	}
@@ -9551,7 +9551,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$mergeByIndex = F2(
 			if (right.b) {
 				var rfirst = right.a;
 				var rrest = right.b;
-				return (_Utils_cmp(lfirst.r, rfirst.r) < 0) ? A2(
+				return (_Utils_cmp(lfirst.s, rfirst.s) < 0) ? A2(
 					$elm$core$List$cons,
 					lfirst,
 					A2($dillonkearns$elm_markdown$Markdown$InlineParser$mergeByIndex, lrest, right)) : A2(
@@ -9573,13 +9573,13 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$tokenize = function (rawTex
 			A2(
 				$elm$core$List$sortBy,
 				function ($) {
-					return $.r;
+					return $.s;
 				},
 				$dillonkearns$elm_markdown$Markdown$InlineParser$findAngleBracketLTokens(rawText)),
 			A2(
 				$elm$core$List$sortBy,
 				function ($) {
-					return $.r;
+					return $.s;
 				},
 				$dillonkearns$elm_markdown$Markdown$InlineParser$findAngleBracketRTokens(rawText)),
 			0),
@@ -9642,8 +9642,8 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$encodeUrl = A2(
 		function (match) {
 			return A2(
 				$elm$core$Maybe$withDefault,
-				match.aD,
-				$elm$url$Url$percentDecode(match.aD));
+				match.bu,
+				$elm$url$Url$percentDecode(match.bu));
 		}));
 var $dillonkearns$elm_markdown$Markdown$InlineParser$urlRegex = A2(
 	$elm$core$Maybe$withDefault,
@@ -9651,14 +9651,14 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$urlRegex = A2(
 	$elm$regex$Regex$fromString('^([A-Za-z][A-Za-z0-9.+\\-]{1,31}:[^<>\\x00-\\x20]*)$'));
 var $dillonkearns$elm_markdown$Markdown$InlineParser$autolinkToMatch = function (_v0) {
 	var match = _v0;
-	return A2($elm$regex$Regex$contains, $dillonkearns$elm_markdown$Markdown$InlineParser$urlRegex, match.q) ? $elm$core$Result$Ok(
+	return A2($elm$regex$Regex$contains, $dillonkearns$elm_markdown$Markdown$InlineParser$urlRegex, match.y) ? $elm$core$Result$Ok(
 		_Utils_update(
 			match,
 			{
-				u: $dillonkearns$elm_markdown$Markdown$InlineParser$AutolinkType(
+				A: $dillonkearns$elm_markdown$Markdown$InlineParser$AutolinkType(
 					_Utils_Tuple2(
-						match.q,
-						$dillonkearns$elm_markdown$Markdown$InlineParser$encodeUrl(match.q)))
+						match.y,
+						$dillonkearns$elm_markdown$Markdown$InlineParser$encodeUrl(match.y)))
 			})) : $elm$core$Result$Err(match);
 };
 var $elm$regex$Regex$findAtMost = _Regex_findAtMost;
@@ -9699,11 +9699,11 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$prepareUrlAndTitle = F2(
 var $dillonkearns$elm_markdown$Markdown$InlineParser$refRegexToMatch = F3(
 	function (matchModel, references, maybeRegexMatch) {
 		var refLabel = function (str) {
-			return $elm$core$String$isEmpty(str) ? matchModel.q : str;
+			return $elm$core$String$isEmpty(str) ? matchModel.y : str;
 		}(
 			A2(
 				$elm$core$Maybe$withDefault,
-				matchModel.q,
+				matchModel.y,
 				A2(
 					$elm$core$Maybe$withDefault,
 					$elm$core$Maybe$Nothing,
@@ -9712,7 +9712,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$refRegexToMatch = F3(
 						A2(
 							$elm$core$Basics$composeR,
 							function ($) {
-								return $.bZ;
+								return $.cQ;
 							},
 							$elm$core$List$head),
 						maybeRegexMatch))));
@@ -9727,7 +9727,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$refRegexToMatch = F3(
 			var rawUrl = _v1.a;
 			var maybeTitle = _v1.b;
 			var type_ = function () {
-				var _v3 = matchModel.u;
+				var _v3 = matchModel.A;
 				if (_v3.$ === 5) {
 					return $dillonkearns$elm_markdown$Markdown$InlineParser$ImageType(
 						A2($dillonkearns$elm_markdown$Markdown$InlineParser$prepareUrlAndTitle, rawUrl, maybeTitle));
@@ -9738,7 +9738,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$refRegexToMatch = F3(
 			}();
 			var regexMatchLength = function () {
 				if (!maybeRegexMatch.$) {
-					var match = maybeRegexMatch.a.aD;
+					var match = maybeRegexMatch.a.bu;
 					return $elm$core$String$length(match);
 				} else {
 					return 0;
@@ -9747,7 +9747,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$refRegexToMatch = F3(
 			return $elm$core$Maybe$Just(
 				_Utils_update(
 					matchModel,
-					{i: matchModel.i + regexMatchLength, u: type_}));
+					{u: matchModel.u + regexMatchLength, A: type_}));
 		}
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$checkForInlineReferences = F3(
@@ -9782,7 +9782,7 @@ var $dillonkearns$elm_markdown$Markdown$Helpers$returnFirstJust = function (mayb
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$inlineLinkTypeOrImageTypeRegexToMatch = F2(
 	function (matchModel, regexMatch) {
-		var _v0 = regexMatch.bZ;
+		var _v0 = regexMatch.cQ;
 		if ((((_v0.b && _v0.b.b) && _v0.b.b.b) && _v0.b.b.b.b) && _v0.b.b.b.b.b) {
 			var maybeRawUrlAngleBrackets = _v0.a;
 			var _v1 = _v0.b;
@@ -9800,9 +9800,9 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$inlineLinkTypeOrImageTypeRe
 				return _Utils_update(
 					matchModel,
 					{
-						i: matchModel.i + $elm$core$String$length(regexMatch.aD),
-						u: function () {
-							var _v5 = matchModel.u;
+						u: matchModel.u + $elm$core$String$length(regexMatch.bu),
+						A: function () {
+							var _v5 = matchModel.A;
 							if (_v5.$ === 5) {
 								return $dillonkearns$elm_markdown$Markdown$InlineParser$ImageType;
 							} else {
@@ -9845,7 +9845,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$checkParsedAheadOverlapping
 		var overlappingMatches = $elm$core$List$filter(
 			function (_v1) {
 				var testMatch = _v1;
-				return (_Utils_cmp(match.i, testMatch.p) > 0) && (_Utils_cmp(match.i, testMatch.i) < 0);
+				return (_Utils_cmp(match.u, testMatch.x) > 0) && (_Utils_cmp(match.u, testMatch.u) < 0);
 			});
 		return ($elm$core$List$isEmpty(remainMatches) || $elm$core$List$isEmpty(
 			overlappingMatches(remainMatches))) ? $elm$core$Maybe$Just(
@@ -9857,14 +9857,14 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$emailRegex = A2(
 	$elm$regex$Regex$fromString('^([a-zA-Z0-9.!#$%&\'*+\\/=?^_`{|}~\\-]+@[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?)*)$'));
 var $dillonkearns$elm_markdown$Markdown$InlineParser$emailAutolinkTypeToMatch = function (_v0) {
 	var match = _v0;
-	return A2($elm$regex$Regex$contains, $dillonkearns$elm_markdown$Markdown$InlineParser$emailRegex, match.q) ? $elm$core$Result$Ok(
+	return A2($elm$regex$Regex$contains, $dillonkearns$elm_markdown$Markdown$InlineParser$emailRegex, match.y) ? $elm$core$Result$Ok(
 		_Utils_update(
 			match,
 			{
-				u: $dillonkearns$elm_markdown$Markdown$InlineParser$AutolinkType(
+				A: $dillonkearns$elm_markdown$Markdown$InlineParser$AutolinkType(
 					_Utils_Tuple2(
-						match.q,
-						'mailto:' + $dillonkearns$elm_markdown$Markdown$InlineParser$encodeUrl(match.q)))
+						match.y,
+						'mailto:' + $dillonkearns$elm_markdown$Markdown$InlineParser$encodeUrl(match.y)))
 			})) : $elm$core$Result$Err(match);
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$findTokenHelp = F3(
@@ -9904,7 +9904,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$HtmlToken = F2(
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$NotOpening = 0;
 var $elm$parser$Parser$Advanced$getOffset = function (s) {
-	return A3($elm$parser$Parser$Advanced$Good, false, s.d, s);
+	return A3($elm$parser$Parser$Advanced$Good, false, s.g, s);
 };
 var $elm$parser$Parser$Advanced$bagToList = F2(
 	function (bag, list) {
@@ -9936,7 +9936,7 @@ var $elm$parser$Parser$Advanced$run = F2(
 	function (_v0, src) {
 		var parse = _v0;
 		var _v1 = parse(
-			{cf: 1, h: _List_Nil, m: 1, d: 0, dr: 1, bV: src});
+			{bc: 1, p: _List_Nil, q: 1, g: 0, dW: 1, cM: src});
 		if (!_v1.$) {
 			var value = _v1.b;
 			return $elm$core$Result$Ok(value);
@@ -9958,7 +9958,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$htmlToToken = F2(
 					$elm$parser$Parser$Advanced$succeed(
 						F3(
 							function (startOffset, htmlTag, endOffset) {
-								return {cq: htmlTag, bD: endOffset - startOffset};
+								return {dd: htmlTag, cx: endOffset - startOffset};
 							})),
 					$elm$parser$Parser$Advanced$getOffset),
 				$dillonkearns$elm_markdown$HtmlParser$html),
@@ -9966,13 +9966,13 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$htmlToToken = F2(
 		var parsed = A2(
 			$elm$parser$Parser$Advanced$run,
 			consumedCharacters,
-			A2($elm$core$String$dropLeft, match.p, rawText));
+			A2($elm$core$String$dropLeft, match.x, rawText));
 		if (!parsed.$) {
-			var htmlTag = parsed.a.cq;
-			var length = parsed.a.bD;
+			var htmlTag = parsed.a.dd;
+			var length = parsed.a.cx;
 			var htmlToken = A2($dillonkearns$elm_markdown$Markdown$InlineParser$HtmlToken, 0, htmlTag);
 			return $elm$core$Maybe$Just(
-				{r: match.p, bD: length, f: htmlToken});
+				{s: match.x, cx: length, n: htmlToken});
 		} else {
 			return $elm$core$Maybe$Nothing;
 		}
@@ -9988,21 +9988,21 @@ var $dillonkearns$elm_markdown$Markdown$Helpers$ifError = F2(
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$isCodeTokenPair = F2(
 	function (closeToken, openToken) {
-		var _v0 = openToken.f;
+		var _v0 = openToken.n;
 		if (!_v0.$) {
 			if (!_v0.a) {
 				var _v1 = _v0.a;
-				return _Utils_eq(openToken.bD - 1, closeToken.bD);
+				return _Utils_eq(openToken.cx - 1, closeToken.cx);
 			} else {
 				var _v2 = _v0.a;
-				return _Utils_eq(openToken.bD, closeToken.bD);
+				return _Utils_eq(openToken.cx, closeToken.cx);
 			}
 		} else {
 			return false;
 		}
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$isLinkTypeOrImageOpenToken = function (token) {
-	var _v0 = token.f;
+	var _v0 = token.n;
 	switch (_v0.$) {
 		case 1:
 			return true;
@@ -10014,15 +10014,15 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$isLinkTypeOrImageOpenToken 
 };
 var $dillonkearns$elm_markdown$Markdown$InlineParser$isOpenEmphasisToken = F2(
 	function (closeToken, openToken) {
-		var _v0 = openToken.f;
+		var _v0 = openToken.n;
 		if (_v0.$ === 7) {
 			var openChar = _v0.a;
 			var open = _v0.b;
-			var _v1 = closeToken.f;
+			var _v1 = closeToken.n;
 			if (_v1.$ === 7) {
 				var closeChar = _v1.a;
 				var close = _v1.b;
-				return _Utils_eq(openChar, closeChar) ? ((_Utils_eq(open.a4, open.bc) || _Utils_eq(close.a4, close.bc)) ? ((!(!A2($elm$core$Basics$modBy, 3, closeToken.bD + openToken.bD))) || ((!A2($elm$core$Basics$modBy, 3, closeToken.bD)) && (!A2($elm$core$Basics$modBy, 3, openToken.bD)))) : true) : false;
+				return _Utils_eq(openChar, closeChar) ? ((_Utils_eq(open.bR, open.b0) || _Utils_eq(close.bR, close.b0)) ? ((!(!A2($elm$core$Basics$modBy, 3, closeToken.cx + openToken.cx))) || ((!A2($elm$core$Basics$modBy, 3, closeToken.cx)) && (!A2($elm$core$Basics$modBy, 3, openToken.cx)))) : true) : false;
 			} else {
 				return false;
 			}
@@ -10033,14 +10033,14 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$isOpenEmphasisToken = F2(
 var $dillonkearns$elm_markdown$Markdown$InlineParser$isStrikethroughTokenPair = F2(
 	function (closeToken, openToken) {
 		var _v0 = function () {
-			var _v1 = openToken.f;
+			var _v1 = openToken.n;
 			if (_v1.$ === 9) {
 				if (!_v1.a) {
 					var _v2 = _v1.a;
-					return _Utils_Tuple2(true, openToken.bD - 1);
+					return _Utils_Tuple2(true, openToken.cx - 1);
 				} else {
 					var _v3 = _v1.a;
-					return _Utils_Tuple2(true, openToken.bD);
+					return _Utils_Tuple2(true, openToken.cx);
 				}
 			} else {
 				return _Utils_Tuple2(false, 0);
@@ -10049,14 +10049,14 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$isStrikethroughTokenPair = 
 		var openTokenIsStrikethrough = _v0.a;
 		var openTokenLength = _v0.b;
 		var _v4 = function () {
-			var _v5 = closeToken.f;
+			var _v5 = closeToken.n;
 			if (_v5.$ === 9) {
 				if (!_v5.a) {
 					var _v6 = _v5.a;
-					return _Utils_Tuple2(true, closeToken.bD - 1);
+					return _Utils_Tuple2(true, closeToken.cx - 1);
 				} else {
 					var _v7 = _v5.a;
-					return _Utils_Tuple2(true, closeToken.bD);
+					return _Utils_Tuple2(true, closeToken.cx);
 				}
 			} else {
 				return _Utils_Tuple2(false, 0);
@@ -10069,7 +10069,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$isStrikethroughTokenPair = 
 var $dillonkearns$elm_markdown$Markdown$InlineParser$HardLineBreakType = {$: 1};
 var $dillonkearns$elm_markdown$Markdown$InlineParser$tokenToMatch = F2(
 	function (token, type_) {
-		return {i: token.r + token.bD, A: _List_Nil, p: token.r, q: '', J: 0, D: 0, u: type_};
+		return {u: token.s + token.cx, M: _List_Nil, x: token.s, y: '', ah: 0, P: 0, A: type_};
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$lineBreakTTM = F2(
 	function (remaining, matches) {
@@ -10080,7 +10080,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$lineBreakTTM = F2(
 			} else {
 				var token = remaining.a;
 				var tokensTail = remaining.b;
-				var _v1 = token.f;
+				var _v1 = token.n;
 				if (_v1.$ === 8) {
 					var $temp$remaining = tokensTail,
 						$temp$matches = A2(
@@ -10106,7 +10106,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$removeParsedAheadTokens = F
 		return A2(
 			$elm$core$List$filter,
 			function (token) {
-				return _Utils_cmp(token.r, match.i) > -1;
+				return _Utils_cmp(token.s, match.u) > -1;
 			},
 			tokensTail);
 	});
@@ -10168,7 +10168,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$codeAutolinkTypeHtmlTagTTM 
 			} else {
 				var token = remaining.a;
 				var tokensTail = remaining.b;
-				var _v36 = token.f;
+				var _v36 = token.n;
 				switch (_v36.$) {
 					case 0:
 						var _v37 = A2(
@@ -10207,7 +10207,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$codeAutolinkTypeHtmlTagTTM 
 					case 5:
 						var isEscaped = _v36.a;
 						var isAngleBracketOpen = function (_v43) {
-							var meaning = _v43.f;
+							var meaning = _v43.n;
 							if (meaning.$ === 4) {
 								return true;
 							} else {
@@ -10289,12 +10289,12 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$codeToMatch = F5(
 		var openToken = _v32.a;
 		var remainTokens = _v32.c;
 		var updatedOpenToken = function () {
-			var _v33 = openToken.f;
+			var _v33 = openToken.n;
 			if ((!_v33.$) && (!_v33.a)) {
 				var _v34 = _v33.a;
 				return _Utils_update(
 					openToken,
-					{r: openToken.r + 1, bD: openToken.bD - 1});
+					{s: openToken.s + 1, cx: openToken.cx - 1});
 			} else {
 				return openToken;
 			}
@@ -10319,11 +10319,11 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$emphasisTTM = F5(
 			} else {
 				var token = remaining.a;
 				var tokensTail = remaining.b;
-				var _v27 = token.f;
+				var _v27 = token.n;
 				if (_v27.$ === 7) {
 					var _char = _v27.a;
-					var leftFringeRank = _v27.b.a4;
-					var rightFringeRank = _v27.b.bc;
+					var leftFringeRank = _v27.b.bR;
+					var rightFringeRank = _v27.b.b0;
 					if (_Utils_eq(leftFringeRank, rightFringeRank)) {
 						if ((!(!rightFringeRank)) && ((_char !== '_') || (rightFringeRank === 1))) {
 							var _v28 = A2(
@@ -10444,30 +10444,30 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$emphasisToMatch = F5(
 		var openToken = _v25.a;
 		var innerTokens = _v25.b;
 		var remainTokens = _v25.c;
-		var remainLength = openToken.bD - closeToken.bD;
-		var updt = (!remainLength) ? {aR: closeToken, aE: openToken, ba: remainTokens, bl: tokensTail} : ((remainLength > 0) ? {
-			aR: closeToken,
-			aE: _Utils_update(
+		var remainLength = openToken.cx - closeToken.cx;
+		var updt = (!remainLength) ? {bE: closeToken, bx: openToken, b_: remainTokens, ch: tokensTail} : ((remainLength > 0) ? {
+			bE: closeToken,
+			bx: _Utils_update(
 				openToken,
-				{r: openToken.r + remainLength, bD: closeToken.bD}),
-			ba: A2(
+				{s: openToken.s + remainLength, cx: closeToken.cx}),
+			b_: A2(
 				$elm$core$List$cons,
 				_Utils_update(
 					openToken,
-					{bD: remainLength}),
+					{cx: remainLength}),
 				remainTokens),
-			bl: tokensTail
+			ch: tokensTail
 		} : {
-			aR: _Utils_update(
+			bE: _Utils_update(
 				closeToken,
-				{bD: openToken.bD}),
-			aE: openToken,
-			ba: remainTokens,
-			bl: A2(
+				{cx: openToken.cx}),
+			bx: openToken,
+			b_: remainTokens,
+			ch: A2(
 				$elm$core$List$cons,
 				_Utils_update(
 					closeToken,
-					{r: closeToken.r + openToken.bD, bD: -remainLength}),
+					{s: closeToken.s + openToken.cx, cx: -remainLength}),
 				tokensTail)
 		});
 		var match = A7(
@@ -10477,11 +10477,11 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$emphasisToMatch = F5(
 			function (s) {
 				return s;
 			},
-			$dillonkearns$elm_markdown$Markdown$InlineParser$EmphasisType(updt.aE.bD),
-			updt.aE,
-			updt.aR,
+			$dillonkearns$elm_markdown$Markdown$InlineParser$EmphasisType(updt.bx.cx),
+			updt.bx,
+			updt.bE,
 			$elm$core$List$reverse(innerTokens));
-		return _Utils_Tuple3(updt.bl, match, updt.ba);
+		return _Utils_Tuple3(updt.ch, match, updt.b_);
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$htmlElementTTM = F5(
 	function (remaining, tokens, matches, references, rawText) {
@@ -10498,7 +10498,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$htmlElementTTM = F5(
 			} else {
 				var token = remaining.a;
 				var tokensTail = remaining.b;
-				var _v23 = token.f;
+				var _v23 = token.n;
 				if (_v23.$ === 6) {
 					var isOpen = _v23.a;
 					var htmlModel = _v23.b;
@@ -10550,7 +10550,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$linkImageTypeTTM = F5(
 			} else {
 				var token = remaining.a;
 				var tokensTail = remaining.b;
-				var _v18 = token.f;
+				var _v18 = token.n;
 				if (_v18.$ === 3) {
 					var _v19 = A2($dillonkearns$elm_markdown$Markdown$InlineParser$findToken, $dillonkearns$elm_markdown$Markdown$InlineParser$isLinkTypeOrImageOpenToken, tokens);
 					if (!_v19.$) {
@@ -10623,14 +10623,14 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$linkOrImageTypeToMatch = F6
 			tokensTail,
 			oldMatches,
 			_Utils_ap(innerTokens, remainTokens));
-		var remainText = A2($elm$core$String$dropLeft, closeToken.r + 1, rawText);
+		var remainText = A2($elm$core$String$dropLeft, closeToken.s + 1, rawText);
 		var inactivateLinkOpenToken = function (token) {
-			var _v16 = token.f;
+			var _v16 = token.n;
 			if (_v16.$ === 1) {
 				return _Utils_update(
 					token,
 					{
-						f: $dillonkearns$elm_markdown$Markdown$InlineParser$LinkOpenToken(1)
+						n: $dillonkearns$elm_markdown$Markdown$InlineParser$LinkOpenToken(1)
 					});
 			} else {
 				return token;
@@ -10651,7 +10651,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$linkOrImageTypeToMatch = F6
 				closeToken,
 				$elm$core$List$reverse(innerTokens));
 		};
-		var _v9 = openToken.f;
+		var _v9 = openToken.n;
 		switch (_v9.$) {
 			case 2:
 				var tempMatch = findTempMatch(false);
@@ -10713,7 +10713,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$strikethroughTTM = F5(
 			} else {
 				var token = remaining.a;
 				var tokensTail = remaining.b;
-				var _v5 = token.f;
+				var _v5 = token.n;
 				if (_v5.$ === 9) {
 					var _v6 = A2(
 						$dillonkearns$elm_markdown$Markdown$InlineParser$findToken,
@@ -10769,12 +10769,12 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$strikethroughToMatch = F5(
 		var openToken = _v1.a;
 		var remainTokens = _v1.c;
 		var updatedOpenToken = function () {
-			var _v2 = openToken.f;
+			var _v2 = openToken.n;
 			if ((_v2.$ === 9) && (!_v2.a)) {
 				var _v3 = _v2.a;
 				return _Utils_update(
 					openToken,
-					{r: openToken.r + 1, bD: openToken.bD - 1});
+					{s: openToken.s + 1, cx: openToken.cx - 1});
 			} else {
 				return openToken;
 			}
@@ -10786,13 +10786,13 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$strikethroughToMatch = F5(
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$tokenPairToMatch = F7(
 	function (references, rawText, processText, type_, openToken, closeToken, innerTokens) {
-		var textStart = openToken.r + openToken.bD;
-		var textEnd = closeToken.r;
+		var textStart = openToken.s + openToken.cx;
+		var textEnd = closeToken.s;
 		var text = processText(
 			A3($elm$core$String$slice, textStart, textEnd, rawText));
-		var start = openToken.r;
-		var end = closeToken.r + closeToken.bD;
-		var match = {i: end, A: _List_Nil, p: start, q: text, J: textEnd, D: textStart, u: type_};
+		var start = openToken.s;
+		var end = closeToken.s + closeToken.cx;
+		var match = {u: end, M: _List_Nil, x: start, y: text, ah: textEnd, P: textStart, A: type_};
 		var matches = A2(
 			$elm$core$List$map,
 			function (_v0) {
@@ -10800,7 +10800,7 @@ var $dillonkearns$elm_markdown$Markdown$InlineParser$tokenPairToMatch = F7(
 				return A2($dillonkearns$elm_markdown$Markdown$InlineParser$prepareChildMatch, match, matchModel);
 			},
 			A4($dillonkearns$elm_markdown$Markdown$InlineParser$tokensToMatches, innerTokens, _List_Nil, references, rawText));
-		return {i: end, A: matches, p: start, q: text, J: textEnd, D: textStart, u: type_};
+		return {u: end, M: matches, x: start, y: text, ah: textEnd, P: textStart, A: type_};
 	});
 var $dillonkearns$elm_markdown$Markdown$InlineParser$tokensToMatches = F4(
 	function (tokens, matches, references, rawText) {
@@ -11034,7 +11034,7 @@ var $dillonkearns$elm_markdown$Markdown$TableParser$parseHeader = F2(
 				$elm$core$List$map2,
 				F2(
 					function (headerCell, alignment) {
-						return {aM: alignment, c: headerCell};
+						return {bA: alignment, c: headerCell};
 					}),
 				headers,
 				columnAlignments);
@@ -11058,7 +11058,7 @@ var $dillonkearns$elm_markdown$Markdown$TableParser$parseHeader = F2(
 	});
 var $dillonkearns$elm_markdown$Markdown$CodeBlock$CodeBlock = F2(
 	function (language, body) {
-		return {c1: body, de: language};
+		return {dC: body, dM: language};
 	});
 var $dillonkearns$elm_markdown$Markdown$CodeBlock$infoString = function (fenceCharacter) {
 	var toInfoString = F2(
@@ -11071,7 +11071,7 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$infoString = function (fenceCh
 				return $elm$core$Maybe$Just(trimmed);
 			}
 		});
-	var _v0 = fenceCharacter.a3;
+	var _v0 = fenceCharacter.bQ;
 	if (!_v0) {
 		return A2(
 			$elm$parser$Parser$Advanced$mapChompedString,
@@ -11093,7 +11093,7 @@ var $dillonkearns$elm_markdown$Parser$Token$backtick = A2(
 	$elm$parser$Parser$Advanced$Token,
 	'`',
 	$elm$parser$Parser$Expecting('a \'`\''));
-var $dillonkearns$elm_markdown$Markdown$CodeBlock$backtick = {cd: '`', a3: 0, bk: $dillonkearns$elm_markdown$Parser$Token$backtick};
+var $dillonkearns$elm_markdown$Markdown$CodeBlock$backtick = {c4: '`', bQ: 0, cg: $dillonkearns$elm_markdown$Parser$Token$backtick};
 var $dillonkearns$elm_markdown$Markdown$CodeBlock$colToIndentation = function (_int) {
 	switch (_int) {
 		case 1:
@@ -11121,7 +11121,7 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$fenceOfAtLeast = F2(
 			A2(
 				$elm$core$List$repeat,
 				minLength,
-				$elm$parser$Parser$Advanced$token(fenceCharacter.bk)));
+				$elm$parser$Parser$Advanced$token(fenceCharacter.cg)));
 		return A2(
 			$elm$parser$Parser$Advanced$mapChompedString,
 			F2(
@@ -11134,14 +11134,14 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$fenceOfAtLeast = F2(
 				$elm$parser$Parser$Advanced$ignorer,
 				builtTokens,
 				$elm$parser$Parser$Advanced$chompWhile(
-					$elm$core$Basics$eq(fenceCharacter.cd))));
+					$elm$core$Basics$eq(fenceCharacter.c4))));
 	});
 var $dillonkearns$elm_markdown$Markdown$CodeBlock$Tilde = 1;
 var $dillonkearns$elm_markdown$Parser$Token$tilde = A2(
 	$elm$parser$Parser$Advanced$Token,
 	'~',
 	$elm$parser$Parser$Expecting('a `~`'));
-var $dillonkearns$elm_markdown$Markdown$CodeBlock$tilde = {cd: '~', a3: 1, bk: $dillonkearns$elm_markdown$Parser$Token$tilde};
+var $dillonkearns$elm_markdown$Markdown$CodeBlock$tilde = {c4: '~', bQ: 1, cg: $dillonkearns$elm_markdown$Parser$Token$tilde};
 var $dillonkearns$elm_markdown$Whitespace$upToThreeSpaces = $elm$parser$Parser$Advanced$oneOf(
 	_List_fromArray(
 		[
@@ -11175,7 +11175,7 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$openingFence = A2(
 					function (indent, _v0) {
 						var character = _v0.a;
 						var length = _v0.b;
-						return {aQ: character, bA: indent, bD: length};
+						return {bD: character, cu: indent, cx: length};
 					})),
 			$dillonkearns$elm_markdown$Whitespace$upToThreeSpaces),
 		A2($elm$parser$Parser$Advanced$andThen, $dillonkearns$elm_markdown$Markdown$CodeBlock$colToIndentation, $elm$parser$Parser$Advanced$getCol)),
@@ -11216,7 +11216,7 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$codeBlockLine = function (inde
 			$dillonkearns$elm_markdown$Helpers$lineEndOrEnd));
 };
 var $elm$parser$Parser$Advanced$getSource = function (s) {
-	return A3($elm$parser$Parser$Advanced$Good, false, s.bV, s);
+	return A3($elm$parser$Parser$Advanced$Good, false, s.cM, s);
 };
 var $dillonkearns$elm_markdown$Markdown$CodeBlock$remainingBlockHelp = function (_v0) {
 	var fence = _v0.a;
@@ -11244,7 +11244,7 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$remainingBlockHelp = function 
 					$elm$parser$Parser$Advanced$ignorer,
 					$elm$parser$Parser$Advanced$succeed(
 						$elm$parser$Parser$Advanced$Done(body)),
-					A2($dillonkearns$elm_markdown$Markdown$CodeBlock$closingFence, fence.bD, fence.aQ))),
+					A2($dillonkearns$elm_markdown$Markdown$CodeBlock$closingFence, fence.cx, fence.bD))),
 				A2(
 				$elm$parser$Parser$Advanced$keeper,
 				A2(
@@ -11261,7 +11261,7 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$remainingBlockHelp = function 
 												body,
 												A3($elm$core$String$slice, start, end, source))));
 								})),
-						$dillonkearns$elm_markdown$Markdown$CodeBlock$codeBlockLine(fence.bA)),
+						$dillonkearns$elm_markdown$Markdown$CodeBlock$codeBlockLine(fence.cu)),
 					$elm$parser$Parser$Advanced$getOffset),
 				$elm$parser$Parser$Advanced$getSource)
 			]));
@@ -11282,7 +11282,7 @@ var $dillonkearns$elm_markdown$Markdown$CodeBlock$parser = A2(
 				$elm$parser$Parser$Advanced$succeed($dillonkearns$elm_markdown$Markdown$CodeBlock$CodeBlock),
 				A2(
 					$elm$parser$Parser$Advanced$ignorer,
-					$dillonkearns$elm_markdown$Markdown$CodeBlock$infoString(fence.aQ),
+					$dillonkearns$elm_markdown$Markdown$CodeBlock$infoString(fence.bD),
 					$dillonkearns$elm_markdown$Helpers$lineEndOrEnd)),
 			$dillonkearns$elm_markdown$Markdown$CodeBlock$remainingBlock(fence));
 	},
@@ -11389,18 +11389,18 @@ var $elm$parser$Parser$Advanced$chompUntil = function (_v0) {
 	var str = _v0.a;
 	var expecting = _v0.b;
 	return function (s) {
-		var _v1 = A5($elm$parser$Parser$Advanced$findSubString, str, s.d, s.dr, s.cf, s.bV);
+		var _v1 = A5($elm$parser$Parser$Advanced$findSubString, str, s.g, s.dW, s.bc, s.cM);
 		var newOffset = _v1.a;
 		var newRow = _v1.b;
 		var newCol = _v1.c;
 		return _Utils_eq(newOffset, -1) ? A2(
 			$elm$parser$Parser$Advanced$Bad,
 			false,
-			A4($elm$parser$Parser$Advanced$fromInfo, newRow, newCol, expecting, s.h)) : A3(
+			A4($elm$parser$Parser$Advanced$fromInfo, newRow, newCol, expecting, s.p)) : A3(
 			$elm$parser$Parser$Advanced$Good,
-			_Utils_cmp(s.d, newOffset) < 0,
+			_Utils_cmp(s.g, newOffset) < 0,
 			0,
-			{cf: newCol, h: s.h, m: s.m, d: newOffset, dr: newRow, bV: s.bV});
+			{bc: newCol, p: s.p, q: s.q, g: newOffset, dW: newRow, cM: s.cM});
 	};
 };
 var $dillonkearns$elm_markdown$Parser$Token$greaterThan = A2(
@@ -11409,11 +11409,11 @@ var $dillonkearns$elm_markdown$Parser$Token$greaterThan = A2(
 	$elm$parser$Parser$Expecting('a `>`'));
 var $elm$parser$Parser$Advanced$Located = F3(
 	function (row, col, context) {
-		return {cf: col, h: context, dr: row};
+		return {bc: col, p: context, dW: row};
 	});
 var $elm$parser$Parser$Advanced$changeContext = F2(
 	function (newContext, s) {
-		return {cf: s.cf, h: newContext, m: s.m, d: s.d, dr: s.dr, bV: s.bV};
+		return {bc: s.bc, p: newContext, q: s.q, g: s.g, dW: s.dW, cM: s.cM};
 	});
 var $elm$parser$Parser$Advanced$inContext = F2(
 	function (context, _v0) {
@@ -11424,8 +11424,8 @@ var $elm$parser$Parser$Advanced$inContext = F2(
 					$elm$parser$Parser$Advanced$changeContext,
 					A2(
 						$elm$core$List$cons,
-						A3($elm$parser$Parser$Advanced$Located, s0.dr, s0.cf, context),
-						s0.h),
+						A3($elm$parser$Parser$Advanced$Located, s0.dW, s0.bc, context),
+						s0.p),
 					s0));
 			if (!_v1.$) {
 				var p = _v1.a;
@@ -11435,7 +11435,7 @@ var $elm$parser$Parser$Advanced$inContext = F2(
 					$elm$parser$Parser$Advanced$Good,
 					p,
 					a,
-					A2($elm$parser$Parser$Advanced$changeContext, s0.h, s1));
+					A2($elm$parser$Parser$Advanced$changeContext, s0.p, s1));
 			} else {
 				var step = _v1;
 				return step;
@@ -11611,7 +11611,7 @@ var $dillonkearns$elm_markdown$Markdown$LinkReferenceDefinition$parser = A2(
 							function (label, destination, title) {
 								return _Utils_Tuple2(
 									label,
-									{c5: destination, ds: title});
+									{dF: destination, dX: title});
 							})),
 					$dillonkearns$elm_markdown$Whitespace$upToThreeSpaces),
 				A2(
@@ -11867,7 +11867,7 @@ var $dillonkearns$elm_markdown$Markdown$TableParser$delimiterToAlignment = funct
 var $dillonkearns$elm_markdown$Markdown$TableParser$delimiterRowParser = A2(
 	$elm$parser$Parser$Advanced$andThen,
 	function (delimiterRow) {
-		var trimmed = delimiterRow.a.cT;
+		var trimmed = delimiterRow.a.dw;
 		var headers = delimiterRow.b;
 		return $elm$core$List$isEmpty(headers) ? $elm$parser$Parser$Advanced$problem(
 			$elm$parser$Parser$Expecting('Must have at least one column in delimiter row.')) : ((($elm$core$List$length(headers) === 1) && (!(A2($elm$core$String$startsWith, '|', trimmed) && A2($elm$core$String$endsWith, '|', trimmed)))) ? $elm$parser$Parser$Advanced$problem(
@@ -11880,8 +11880,8 @@ var $dillonkearns$elm_markdown$Markdown$TableParser$delimiterRowParser = A2(
 				return A2(
 					$dillonkearns$elm_markdown$Markdown$Table$TableDelimiterRow,
 					{
-						cG: delimiterText,
-						cT: $elm$core$String$trim(delimiterText)
+						dn: delimiterText,
+						dw: $elm$core$String$trim(delimiterText)
 					},
 					A2(
 						$elm$core$List$map,
@@ -12260,9 +12260,9 @@ var $dillonkearns$elm_markdown$Markdown$Parser$unorderedListBlock = function (pr
 					var completion = unparsedListItem.a;
 					var body = unparsedListItem.b;
 					return {
-						c1: body,
-						df: listmarker,
-						v: $elm$core$Maybe$Just(
+						dC: body,
+						dN: listmarker,
+						E: $elm$core$Maybe$Just(
 							function () {
 								if (completion === 1) {
 									return true;
@@ -12273,9 +12273,9 @@ var $dillonkearns$elm_markdown$Markdown$Parser$unorderedListBlock = function (pr
 					};
 				case 1:
 					var body = unparsedListItem.a;
-					return {c1: body, df: listmarker, v: $elm$core$Maybe$Nothing};
+					return {dC: body, dN: listmarker, E: $elm$core$Maybe$Nothing};
 				default:
-					return {c1: '', df: listmarker, v: $elm$core$Maybe$Nothing};
+					return {dC: '', dN: listmarker, E: $elm$core$Maybe$Nothing};
 			}
 		});
 	return A2(
@@ -12412,7 +12412,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeBlocks = function (state)
 					var _v94 = A2(
 						$elm$parser$Parser$Advanced$run,
 						$dillonkearns$elm_markdown$Markdown$Parser$cyclic$rawBlockParser(),
-						openListItem.c1);
+						openListItem.dC);
 					if (!_v94.$) {
 						var value = _v94.a;
 						var tight2 = A2($elm$core$List$member, $dillonkearns$elm_markdown$Markdown$RawBlock$BlankLine, value.b) ? false : tight;
@@ -12427,7 +12427,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeBlocks = function (state)
 										intended,
 										A2(
 											$elm$core$List$cons,
-											{c1: value.b, v: openListItem.v},
+											{dC: value.b, E: openListItem.E},
 											closeListItems),
 										openListItem),
 									rest)
@@ -12490,7 +12490,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeBlocks = function (state)
 								var _v98 = A2(
 									$elm$parser$Parser$Advanced$run,
 									$dillonkearns$elm_markdown$Markdown$Parser$cyclic$rawBlockParser(),
-									openListItem.c1);
+									openListItem.dC);
 								if (!_v98.$) {
 									var value = _v98.a;
 									var tight2 = A2($elm$core$List$member, $dillonkearns$elm_markdown$Markdown$RawBlock$BlankLine, value.b) ? false : tight;
@@ -12505,7 +12505,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeBlocks = function (state)
 													intended,
 													A2(
 														$elm$core$List$cons,
-														{c1: value.b, v: openListItem.v},
+														{dC: value.b, E: openListItem.E},
 														closeListItems),
 													openListItem),
 												rest)
@@ -12590,8 +12590,8 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 										$elm$core$List$cons,
 										$dillonkearns$elm_markdown$Markdown$RawBlock$CodeBlock(
 											{
-												c1: A2($dillonkearns$elm_markdown$Markdown$Parser$joinStringsPreserveAll, block2.c1, block1.c1),
-												de: $elm$core$Maybe$Nothing
+												dC: A2($dillonkearns$elm_markdown$Markdown$Parser$joinStringsPreserveAll, block2.dC, block1.dC),
+												dM: $elm$core$Maybe$Nothing
 											}),
 										rest)
 								});
@@ -12811,11 +12811,11 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 							case 3:
 								var intended2 = newRawBlock.b;
 								var openListItem1 = newRawBlock.d;
-								if (_Utils_eq(openListItem2.df, openListItem1.df)) {
+								if (_Utils_eq(openListItem2.dN, openListItem1.dN)) {
 									var _v59 = A2(
 										$elm$parser$Parser$Advanced$run,
 										$dillonkearns$elm_markdown$Markdown$Parser$cyclic$rawBlockParser(),
-										openListItem2.c1);
+										openListItem2.dC);
 									if (!_v59.$) {
 										var value = _v59.a;
 										return A2($elm$core$List$member, $dillonkearns$elm_markdown$Markdown$RawBlock$BlankLine, value.b) ? $elm$parser$Parser$Advanced$succeed(
@@ -12829,7 +12829,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 														intended2,
 														A2(
 															$elm$core$List$cons,
-															{c1: value.b, v: openListItem2.v},
+															{dC: value.b, E: openListItem2.E},
 															closeListItems2),
 														openListItem1),
 													rest)
@@ -12844,7 +12844,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 														intended2,
 														A2(
 															$elm$core$List$cons,
-															{c1: value.b, v: openListItem2.v},
+															{dC: value.b, E: openListItem2.E},
 															closeListItems2),
 														openListItem1),
 													rest)
@@ -12859,7 +12859,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 									var _v60 = A2(
 										$elm$parser$Parser$Advanced$run,
 										$dillonkearns$elm_markdown$Markdown$Parser$cyclic$rawBlockParser(),
-										openListItem2.c1);
+										openListItem2.dC);
 									if (!_v60.$) {
 										var value = _v60.a;
 										var tight2 = A2($elm$core$List$member, $dillonkearns$elm_markdown$Markdown$RawBlock$BlankLine, value.b) ? false : tight;
@@ -12877,7 +12877,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 															intended1,
 															A2(
 																$elm$core$List$cons,
-																{c1: value.b, v: openListItem2.v},
+																{dC: value.b, E: openListItem2.E},
 																closeListItems2),
 															openListItem1),
 														rest))
@@ -12904,7 +12904,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 												_Utils_update(
 													openListItem2,
 													{
-														c1: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', openListItem2.c1, body1)
+														dC: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', openListItem2.dC, body1)
 													})),
 											rest)
 									});
@@ -12912,7 +12912,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 								var _v61 = A2(
 									$elm$parser$Parser$Advanced$run,
 									$dillonkearns$elm_markdown$Markdown$Parser$cyclic$rawBlockParser(),
-									openListItem2.c1);
+									openListItem2.dC);
 								if (!_v61.$) {
 									var value = _v61.a;
 									var tight2 = A2($elm$core$List$member, $dillonkearns$elm_markdown$Markdown$RawBlock$BlankLine, value.b) ? false : tight;
@@ -12930,7 +12930,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 														intended1,
 														A2(
 															$elm$core$List$cons,
-															{c1: value.b, v: openListItem2.v},
+															{dC: value.b, E: openListItem2.E},
 															closeListItems2),
 														openListItem2),
 													rest))
@@ -13137,7 +13137,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 											b: A2(
 												$elm$core$List$cons,
 												$dillonkearns$elm_markdown$Markdown$RawBlock$OpenBlockOrParagraph(
-													A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', rawHeaders, text.cG)),
+													A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', rawHeaders, text.dn)),
 												rest)
 										});
 								}
@@ -13241,7 +13241,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 									var _v89 = A2(
 										$elm$parser$Parser$Advanced$run,
 										$dillonkearns$elm_markdown$Markdown$Parser$cyclic$rawBlockParser(),
-										openListItem2.c1);
+										openListItem2.dC);
 									if (!_v89.$) {
 										var value = _v89.a;
 										if (newRawBlock.$ === 3) {
@@ -13257,7 +13257,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 															intended1,
 															A2(
 																$elm$core$List$cons,
-																{c1: value.b, v: openListItem2.v},
+																{dC: value.b, E: openListItem2.E},
 																closeListItems2),
 															openListItem),
 														rest)
@@ -13280,7 +13280,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$completeOrMergeBlocks = F2(
 																	intended1,
 																	A2(
 																		$elm$core$List$cons,
-																		{c1: value.b, v: openListItem2.v},
+																		{dC: value.b, E: openListItem2.E},
 																		closeListItems2),
 																	openListItem2),
 																rest)))
@@ -13319,8 +13319,8 @@ var $dillonkearns$elm_markdown$Markdown$Parser$inlineParseHelper = F2(
 				$elm$core$List$map,
 				$elm$core$Tuple$mapSecond(
 					function (_v37) {
-						var destination = _v37.c5;
-						var title = _v37.ds;
+						var destination = _v37.dF;
+						var title = _v37.dX;
 						return _Utils_Tuple2(destination, title);
 					}),
 				referencesDict));
@@ -13536,12 +13536,12 @@ var $dillonkearns$elm_markdown$Markdown$Parser$parseHeaderInlines = F2(
 			$elm$core$List$map,
 			function (_v24) {
 				var label = _v24.c;
-				var alignment = _v24.aM;
+				var alignment = _v24.bA;
 				return A3(
 					$dillonkearns$elm_markdown$Markdown$Parser$parseRawInline,
 					linkReferences,
 					function (parsedHeaderLabel) {
-						return {aM: alignment, c: parsedHeaderLabel};
+						return {bA: alignment, c: parsedHeaderLabel};
 					},
 					label);
 			},
@@ -13610,7 +13610,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$parseInlines = F2(
 							A2(
 								$elm$core$List$map,
 								function (item) {
-									return A2(parseItem, item.v, item.c1);
+									return A2(parseItem, item.E, item.dC);
 								},
 								unparsedItems))));
 			case 4:
@@ -13660,7 +13660,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$parseInlines = F2(
 				var codeBlockBody = rawBlock.a;
 				return $dillonkearns$elm_markdown$Markdown$Parser$ParsedBlock(
 					$dillonkearns$elm_markdown$Markdown$Block$CodeBlock(
-						{c1: codeBlockBody, de: $elm$core$Maybe$Nothing}));
+						{dC: codeBlockBody, dM: $elm$core$Maybe$Nothing}));
 			case 8:
 				var _v22 = rawBlock.a;
 				var header = _v22.a;
@@ -13675,7 +13675,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$parseInlines = F2(
 				var text = _v23.a;
 				return $dillonkearns$elm_markdown$Markdown$Parser$ParsedBlock(
 					$dillonkearns$elm_markdown$Markdown$Block$Paragraph(
-						A2($dillonkearns$elm_markdown$Markdown$Parser$inlineParseHelper, linkReferences, text.cG)));
+						A2($dillonkearns$elm_markdown$Markdown$Parser$inlineParseHelper, linkReferences, text.dn)));
 			default:
 				var raw = rawBlock.b;
 				return $dillonkearns$elm_markdown$Markdown$Parser$ParsedBlock(
@@ -13776,7 +13776,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$stepRawBlock = function (revStmts
 															_Utils_update(
 																openListItem,
 																{
-																	c1: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '', openListItem.c1, newString)
+																	dC: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '', openListItem.dC, newString)
 																})),
 														rest))
 											});
@@ -13796,7 +13796,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$stepRawBlock = function (revStmts
 														_Utils_update(
 															openListItem,
 															{
-																c1: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', openListItem.c1, newString)
+																dC: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', openListItem.dC, newString)
 															})),
 													rest)
 											});
@@ -13957,7 +13957,7 @@ var $dillonkearns$elm_markdown$Markdown$Parser$stepRawBlock = function (revStmts
 																		_Utils_update(
 																			openListItem,
 																			{
-																				c1: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '', openListItem.c1, newString)
+																				dC: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '', openListItem.dC, newString)
 																			})),
 																	rest))
 														});
@@ -13977,12 +13977,12 @@ var $dillonkearns$elm_markdown$Markdown$Parser$stepRawBlock = function (revStmts
 																	_Utils_update(
 																		openListItem,
 																		{
-																			c1: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', openListItem.c1, newString)
+																			dC: A3($dillonkearns$elm_markdown$Markdown$Parser$joinRawStringsWith, '\n', openListItem.dC, newString)
 																		})),
 																rest)
 														});
 												});
-											return ($elm$core$String$trim(openListItem.c1) === '') ? A2(
+											return ($elm$core$String$trim(openListItem.dC) === '') ? A2(
 												$elm$parser$Parser$Advanced$map,
 												function (block) {
 													return $elm$parser$Parser$Advanced$Loop(block);
@@ -14550,7 +14550,7 @@ var $dillonkearns$elm_markdown$Markdown$Block$extractInlineBlockText = function 
 								rows))
 						])));
 		case 7:
-			var body = block.a.c1;
+			var body = block.a.dC;
 			return body;
 		default:
 			return '';
@@ -14660,11 +14660,11 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 					A2(
 						$elm$core$Result$map,
 						function (children) {
-							return renderer.bx(
+							return renderer.cs(
 								{
-									ce: children,
-									cv: level,
-									dp: $dillonkearns$elm_markdown$Markdown$Block$extractInlineText(content)
+									c5: children,
+									dh: level,
+									dU: $dillonkearns$elm_markdown$Markdown$Block$extractInlineText(content)
 								});
 						},
 						A2($dillonkearns$elm_markdown$Markdown$Renderer$renderStyled, renderer, content)));
@@ -14673,7 +14673,7 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 				return $elm$core$Maybe$Just(
 					A2(
 						$elm$core$Result$map,
-						renderer.bQ,
+						renderer.cG,
 						A2($dillonkearns$elm_markdown$Markdown$Renderer$renderStyled, renderer, content)));
 			case 0:
 				var html = block.a;
@@ -14693,7 +14693,7 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 					A2(
 						$elm$core$Result$map,
 						function (listItems) {
-							return renderer.b6(
+							return renderer.c_(
 								A2(
 									$elm$core$List$map,
 									function (_v7) {
@@ -14746,7 +14746,7 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 						$elm$core$Result$map,
 						function (listItems) {
 							return A2(
-								renderer.bO,
+								renderer.cD,
 								startingIndex,
 								A2(
 									$elm$core$List$map,
@@ -14785,16 +14785,16 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 				var codeBlock = block.a;
 				return $elm$core$Maybe$Just(
 					$elm$core$Result$Ok(
-						renderer.bp(codeBlock)));
+						renderer.cm(codeBlock)));
 			case 8:
 				return $elm$core$Maybe$Just(
-					$elm$core$Result$Ok(renderer.b4));
+					$elm$core$Result$Ok(renderer.cX));
 			case 3:
 				var nestedBlocks = block.a;
 				return $elm$core$Maybe$Just(
 					A2(
 						$elm$core$Result$map,
-						renderer.bo,
+						renderer.cl,
 						$dillonkearns$elm_markdown$Markdown$Renderer$combineResults(
 							A2($dillonkearns$elm_markdown$Markdown$Renderer$renderHelper, renderer, nestedBlocks))));
 			default:
@@ -14805,7 +14805,7 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 						$elm$core$List$map,
 						function (_v11) {
 							var label = _v11.c;
-							var alignment = _v11.aM;
+							var alignment = _v11.bA;
 							return A2(
 								$elm$core$Result$map,
 								$elm$core$Tuple$pair(alignment),
@@ -14815,15 +14815,15 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 				var renderedHeader = A2(
 					$elm$core$Result$map,
 					function (listListView) {
-						return renderer.b1(
+						return renderer.cU(
 							$elm$core$List$singleton(
-								renderer.bh(
+								renderer.ca(
 									A2(
 										$elm$core$List$map,
 										function (_v10) {
 											var maybeAlignment = _v10.a;
 											var item = _v10.b;
-											return A2(renderer.b2, maybeAlignment, item);
+											return A2(renderer.cV, maybeAlignment, item);
 										},
 										listListView))));
 					},
@@ -14831,14 +14831,14 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 				var renderedBody = function (r) {
 					return $elm$core$List$isEmpty(r) ? _List_Nil : _List_fromArray(
 						[
-							renderer.b$(r)
+							renderer.cS(r)
 						]);
 				};
 				var alignmentForColumn = function (columnIndex) {
 					return A2(
 						$elm$core$Maybe$andThen,
 						function ($) {
-							return $.aM;
+							return $.bA;
 						},
 						$elm$core$List$head(
 							A2($elm$core$List$drop, columnIndex, header)));
@@ -14846,14 +14846,14 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 				var renderRow = function (cells) {
 					return A2(
 						$elm$core$Result$map,
-						renderer.bh,
+						renderer.ca,
 						A2(
 							$elm$core$Result$map,
 							$elm$core$List$indexedMap(
 								F2(
 									function (index, cell) {
 										return A2(
-											renderer.b0,
+											renderer.cT,
 											alignmentForColumn(index),
 											cell);
 									})),
@@ -14870,7 +14870,7 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHelperSingle = function (
 						$elm$core$Result$map2,
 						F2(
 							function (h, r) {
-								return renderer.b_(
+								return renderer.cR(
 									A2(
 										$elm$core$List$cons,
 										h,
@@ -14888,7 +14888,7 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderHtmlNode = F4(
 			tag,
 			attributes,
 			children,
-			renderer.ac,
+			renderer.aj,
 			A2($dillonkearns$elm_markdown$Markdown$Renderer$renderHelper, renderer, children));
 	});
 var $dillonkearns$elm_markdown$Markdown$Renderer$renderSingleInline = F2(
@@ -14899,21 +14899,21 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderSingleInline = F2(
 				return $elm$core$Maybe$Just(
 					A2(
 						$elm$core$Result$map,
-						renderer.bY,
+						renderer.cP,
 						A2($dillonkearns$elm_markdown$Markdown$Renderer$renderStyled, renderer, innerInlines)));
 			case 3:
 				var innerInlines = inline.a;
 				return $elm$core$Maybe$Just(
 					A2(
 						$elm$core$Result$map,
-						renderer.bu,
+						renderer.co,
 						A2($dillonkearns$elm_markdown$Markdown$Renderer$renderStyled, renderer, innerInlines)));
 			case 5:
 				var innerInlines = inline.a;
 				return $elm$core$Maybe$Just(
 					A2(
 						$elm$core$Result$map,
-						renderer.bX,
+						renderer.cO,
 						A2($dillonkearns$elm_markdown$Markdown$Renderer$renderStyled, renderer, innerInlines)));
 			case 2:
 				var src = inline.a;
@@ -14921,22 +14921,22 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderSingleInline = F2(
 				var children = inline.c;
 				return $elm$core$Maybe$Just(
 					$elm$core$Result$Ok(
-						renderer.bz(
+						renderer.ct(
 							{
-								bn: $dillonkearns$elm_markdown$Markdown$Block$extractInlineText(children),
-								bV: src,
-								ds: title
+								ck: $dillonkearns$elm_markdown$Markdown$Block$extractInlineText(children),
+								cM: src,
+								dX: title
 							})));
 			case 7:
 				var string = inline.a;
 				return $elm$core$Maybe$Just(
 					$elm$core$Result$Ok(
-						renderer.q(string)));
+						renderer.y(string)));
 			case 6:
 				var string = inline.a;
 				return $elm$core$Maybe$Just(
 					$elm$core$Result$Ok(
-						renderer.bq(string)));
+						renderer.cn(string)));
 			case 1:
 				var destination = inline.a;
 				var title = inline.b;
@@ -14947,14 +14947,14 @@ var $dillonkearns$elm_markdown$Markdown$Renderer$renderSingleInline = F2(
 						function (children) {
 							return $elm$core$Result$Ok(
 								A2(
-									renderer.bE,
-									{c5: destination, ds: title},
+									renderer.cy,
+									{dF: destination, dX: title},
 									children));
 						},
 						A2($dillonkearns$elm_markdown$Markdown$Renderer$renderStyled, renderer, inlines)));
 			case 8:
 				return $elm$core$Maybe$Just(
-					$elm$core$Result$Ok(renderer.bw));
+					$elm$core$Result$Ok(renderer.cr));
 			default:
 				var html = inline.a;
 				if (!html.$) {
@@ -15012,7 +15012,7 @@ var $author$project$Control$Control = $elm$core$Basics$identity;
 var $author$project$Control$ControlFns = $elm$core$Basics$identity;
 var $author$project$Control$Idle_ = {$: 2};
 var $author$project$Control$Intact_ = {$: 0};
-var $author$project$Control$State = F2(
+var $author$project$Control$MkState = F2(
 	function (a, b) {
 		return {$: 0, a: a, b: b};
 	});
@@ -15060,30 +15060,30 @@ var $elm$time$Time$Posix = $elm$core$Basics$identity;
 var $elm$time$Time$millisToPosix = $elm$core$Basics$identity;
 var $elm$time$Time$now = _Time_now($elm$time$Time$millisToPosix);
 var $elm$core$Process$sleep = _Process_sleep;
-var $author$project$Control$wrapUpdate = F4(
-	function (innerUpdate, debounce_, wrappedDelta, _v0) {
-		var internalState = _v0.a;
+var $author$project$Control$wrapUpdate = F5(
+	function (innerUpdate, debounce_, context, wrappedDelta, _v0) {
+		var meta = _v0.a;
 		var state = _v0.b;
 		switch (wrappedDelta.$) {
 			case 0:
 				return _Utils_Tuple2(
-					A2($author$project$Control$State, internalState, state),
+					A2($author$project$Control$MkState, meta, state),
 					$elm$core$Platform$Cmd$none);
 			case 2:
 				var delta = wrappedDelta.a;
-				var _v2 = A2(innerUpdate, delta, state);
+				var _v2 = A3(innerUpdate, context, delta, state);
 				var newState = _v2.a;
 				var cmd = _v2.b;
 				return _Utils_Tuple2(
-					A2($author$project$Control$State, internalState, newState),
+					A2($author$project$Control$MkState, meta, newState),
 					A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedInternally, cmd));
 			case 1:
 				var delta = wrappedDelta.a;
-				var _v3 = A2(innerUpdate, delta, state);
+				var _v3 = A3(innerUpdate, context, delta, state);
 				var newState = _v3.a;
 				var cmd = _v3.b;
 				return (debounce_ > 0) ? _Utils_Tuple2(
-					A2($author$project$Control$State, internalState, newState),
+					A2($author$project$Control$MkState, meta, newState),
 					$elm$core$Platform$Cmd$batch(
 						_List_fromArray(
 							[
@@ -15091,9 +15091,9 @@ var $author$project$Control$wrapUpdate = F4(
 								A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedByInput, cmd)
 							]))) : _Utils_Tuple2(
 					A2(
-						$author$project$Control$State,
+						$author$project$Control$MkState,
 						_Utils_update(
-							internalState,
+							meta,
 							{k: $author$project$Control$Idle_}),
 						newState),
 					A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedByInput, cmd));
@@ -15101,9 +15101,9 @@ var $author$project$Control$wrapUpdate = F4(
 				var now = wrappedDelta.a;
 				return _Utils_Tuple2(
 					A2(
-						$author$project$Control$State,
+						$author$project$Control$MkState,
 						_Utils_update(
-							internalState,
+							meta,
 							{
 								k: $author$project$Control$DebouncingSince(now)
 							}),
@@ -15116,39 +15116,39 @@ var $author$project$Control$wrapUpdate = F4(
 						$elm$core$Process$sleep(debounce_)));
 			case 4:
 				var now = wrappedDelta.a;
-				var _v5 = internalState.k;
+				var _v5 = meta.k;
 				if (_v5.$ === 1) {
 					var startTime = _v5.a;
 					return _Utils_eq(now, startTime) ? _Utils_Tuple2(
 						A2(
-							$author$project$Control$State,
+							$author$project$Control$MkState,
 							_Utils_update(
-								internalState,
+								meta,
 								{k: $author$project$Control$Idle_}),
 							state),
 						$elm$core$Platform$Cmd$none) : _Utils_Tuple2(
-						A2($author$project$Control$State, internalState, state),
+						A2($author$project$Control$MkState, meta, state),
 						$elm$core$Platform$Cmd$none);
 				} else {
 					return _Utils_Tuple2(
-						A2($author$project$Control$State, internalState, state),
+						A2($author$project$Control$MkState, meta, state),
 						$elm$core$Platform$Cmd$none);
 				}
 			default:
 				var idx = wrappedDelta.a;
 				return _Utils_Tuple2(
 					A2(
-						$author$project$Control$State,
+						$author$project$Control$MkState,
 						_Utils_update(
-							internalState,
-							{g: idx}),
+							meta,
+							{h: idx}),
 						state),
 					$elm$core$Platform$Cmd$none);
 		}
 	});
 var $author$project$Control$wrappedView = F2(
 	function (status, innerView) {
-		return A2(
+		return _Utils_eq(innerView, _List_Nil) ? $elm$html$Html$text('') : A2(
 			$elm$html$Html$div,
 			_List_fromArray(
 				[
@@ -15164,7 +15164,7 @@ var $author$project$Control$wrappedView = F2(
 								return A2(
 									$elm$core$List$any,
 									function (_v1) {
-										var fail = _v1.O;
+										var fail = _v1.ai;
 										return fail;
 									},
 									feedback) ? 'control-invalid' : 'control-valid';
@@ -15191,19 +15191,16 @@ var $author$project$Control$wrappedView = F2(
 									A2(
 										$elm$core$List$map,
 										function (f) {
-											var _v3 = f.O ? _Utils_Tuple2('control-feedback-fail', f.R) : _Utils_Tuple2('control-feedback-note', f.R);
-											var class_ = _v3.a;
-											var text_ = _v3.b;
 											return A2(
 												$elm$html$Html$p,
 												_List_fromArray(
 													[
-														$elm$html$Html$Attributes$class(class_),
+														$elm$html$Html$Attributes$class(f.e),
 														$elm$html$Html$Attributes$class('control-feedback')
 													]),
 												_List_fromArray(
 													[
-														$elm$html$Html$text(text_)
+														$elm$html$Html$text(f.az)
 													]));
 										},
 										feedback));
@@ -15214,97 +15211,105 @@ var $author$project$Control$wrappedView = F2(
 					}()
 					])));
 	});
-var $author$project$Control$create = function (controlConfig) {
+var $author$project$Control$define = function (definition) {
 	return function (path) {
-		var preUpdate = $author$project$Control$wrapUpdate(controlConfig.s);
-		var parse = function (_v7) {
-			var state = _v7.b;
-			return A2(
-				$elm$core$Result$mapError,
-				$elm$core$List$map(
-					function (message) {
-						return {O: true, c: controlConfig.c, R: message, C: path};
-					}),
-				controlConfig.j(state));
-		};
+		var preUpdate = $author$project$Control$wrapUpdate(
+			function (_v13) {
+				return definition.r;
+			});
+		var parse = F2(
+			function (_v11, _v12) {
+				var state = _v12.b;
+				return A2(
+					$elm$core$Result$mapError,
+					$elm$core$List$map(
+						function (message) {
+							return {e: 'control-feedback-fail', ai: true, c: definition.c, az: message, D: path};
+						}),
+					definition.o(state));
+			});
 		return {
-			az: preUpdate,
-			l: _List_Nil,
-			K: function (_v0) {
+			aQ: preUpdate,
+			e: _List_Nil,
+			R: function (_v0) {
 				return _List_Nil;
 			},
-			E: F2(
+			B: F2(
 				function (_v1, _v2) {
 					return _List_Nil;
 				}),
-			F: function (_v3) {
-				return _List_Nil;
-			},
-			e: $elm$core$Maybe$Nothing,
-			r: 0,
-			H: A2(
+			G: F2(
+				function (_v3, _v4) {
+					return _List_Nil;
+				}),
+			f: $elm$core$Maybe$Nothing,
+			s: 0,
+			J: A2(
 				$elm$core$Tuple$mapSecond,
 				$elm$core$Platform$Cmd$map($author$project$Control$StateChangedInternally),
 				A2(
 					$elm$core$Tuple$mapFirst,
-					$author$project$Control$State(
-						{g: 1, k: $author$project$Control$Intact_}),
-					controlConfig.N)),
-			ae: function (input) {
+					$author$project$Control$MkState(
+						{h: 1, k: $author$project$Control$Intact_}),
+					definition.Y)),
+			as: function (input) {
 				return A2(
 					$elm$core$Tuple$mapSecond,
 					$elm$core$Platform$Cmd$map($author$project$Control$StateChangedInternally),
 					A2(
 						$elm$core$Tuple$mapFirst,
-						$author$project$Control$State(
-							{g: 1, k: $author$project$Control$Intact_}),
-						controlConfig.Q(input)));
+						$author$project$Control$MkState(
+							{h: 1, k: $author$project$Control$Intact_}),
+						definition._(input)));
 			},
-			c: controlConfig.c,
-			o: $elm$core$Maybe$Nothing,
-			j: parse,
-			C: path,
-			al: 0,
-			am: function (_v4) {
-				var i = _v4.a;
-				var s = _v4.b;
+			c: definition.c,
+			l: $elm$core$Maybe$Nothing,
+			o: parse,
+			D: path,
+			av: 0,
+			an: function (_v5) {
+				var i = _v5.a;
+				var s = _v5.b;
 				return A2(
-					$author$project$Control$State,
+					$author$project$Control$MkState,
 					_Utils_update(
 						i,
 						{k: $author$project$Control$Idle_}),
 					s);
 			},
-			aF: function (_v5) {
-				return _List_Nil;
-			},
-			t: function (_v6) {
-				var s = _v6.b;
-				return A2(
-					$elm$core$Platform$Sub$map,
-					$author$project$Control$StateChangedInternally,
-					controlConfig.t(s));
-			},
-			s: preUpdate(0),
-			n: function (viewConfig) {
-				return _List_fromArray(
-					[
-						A2(
-						$elm$html$Html$map,
-						$author$project$Control$StateChangedByInput,
-						A2(
-							$author$project$Control$wrappedView,
-							viewConfig.k,
-							controlConfig.n(
-								{
-									l: A2($elm$core$String$join, ' ', viewConfig.l),
-									e: viewConfig.e,
-									c: viewConfig.c,
-									o: viewConfig.o,
-									y: viewConfig.y
-								})))
-					]);
-			}
+			a_: F2(
+				function (_v6, _v7) {
+					return _List_Nil;
+				}),
+			t: F2(
+				function (_v8, _v9) {
+					var s = _v9.b;
+					return A2(
+						$elm$core$Platform$Sub$map,
+						$author$project$Control$StateChangedInternally,
+						definition.t(s));
+				}),
+			r: preUpdate(0),
+			m: F2(
+				function (_v10, viewConfig) {
+					return _List_fromArray(
+						[
+							A2(
+							$elm$html$Html$map,
+							$author$project$Control$StateChangedByInput,
+							A2(
+								$author$project$Control$wrappedView,
+								viewConfig.k,
+								definition.m(
+									{
+										e: A2($elm$core$String$join, ' ', viewConfig.e),
+										f: viewConfig.f,
+										c: viewConfig.c,
+										l: viewConfig.l,
+										v: viewConfig.v
+									})))
+						]);
+				})
 		};
 	};
 };
@@ -15331,29 +15336,29 @@ var $elm$html$Html$Events$onClick = function (msg) {
 		'click',
 		$elm$json$Json$Decode$succeed(msg));
 };
-var $author$project$Control$bool = $author$project$Control$create(
+var $author$project$Control$bool = $author$project$Control$define(
 	{
-		N: _Utils_Tuple2(false, $elm$core$Platform$Cmd$none),
+		Y: _Utils_Tuple2(false, $elm$core$Platform$Cmd$none),
 		c: 'Bool',
-		j: $elm$core$Result$Ok,
-		Q: function (b) {
+		o: $elm$core$Result$Ok,
+		_: function (b) {
 			return _Utils_Tuple2(b, $elm$core$Platform$Cmd$none);
 		},
 		t: function (_v0) {
 			return $elm$core$Platform$Sub$none;
 		},
-		s: F2(
+		r: F2(
 			function (delta, _v1) {
 				return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
 			}),
-		n: function (config) {
+		m: function (config) {
 			return _List_fromArray(
 				[
 					A2(
 					$elm$html$Html$label,
 					_List_fromArray(
 						[
-							$elm$html$Html$Attributes$for(config.e)
+							$elm$html$Html$Attributes$for(config.f)
 						]),
 					_List_fromArray(
 						[
@@ -15364,11 +15369,11 @@ var $author$project$Control$bool = $author$project$Control$create(
 					_List_fromArray(
 						[
 							$elm$html$Html$Attributes$type_('checkbox'),
-							$elm$html$Html$Attributes$id(config.e),
-							$elm$html$Html$Attributes$name(config.o),
-							$elm$html$Html$Attributes$class(config.l),
-							$elm$html$Html$Attributes$checked(config.y),
-							$elm$html$Html$Events$onClick(!config.y)
+							$elm$html$Html$Attributes$id(config.f),
+							$elm$html$Html$Attributes$name(config.l),
+							$elm$html$Html$Attributes$class(config.e),
+							$elm$html$Html$Attributes$checked(config.v),
+							$elm$html$Html$Events$onClick(!config.v)
 						]),
 					_List_Nil)
 				]);
@@ -15382,7 +15387,7 @@ var $author$project$Control$debounce = F2(
 			return _Utils_update(
 				fns,
 				{
-					s: fns.az(millis)
+					r: fns.aQ(millis)
 				});
 		};
 		return A2($elm$core$Basics$composeR, control, debouncer);
@@ -15437,7 +15442,7 @@ var $author$project$Control$textControlView = F2(
 				$elm$html$Html$label,
 				_List_fromArray(
 					[
-						$elm$html$Html$Attributes$for(config.e)
+						$elm$html$Html$Attributes$for(config.f)
 					]),
 				_List_fromArray(
 					[
@@ -15448,26 +15453,26 @@ var $author$project$Control$textControlView = F2(
 				_List_fromArray(
 					[
 						$elm$html$Html$Events$onInput($elm$core$Basics$identity),
-						$elm$html$Html$Attributes$name(config.o),
-						$elm$html$Html$Attributes$id(config.e),
-						$elm$html$Html$Attributes$class(config.l),
+						$elm$html$Html$Attributes$name(config.l),
+						$elm$html$Html$Attributes$id(config.f),
+						$elm$html$Html$Attributes$class(config.e),
 						A2($elm$html$Html$Attributes$attribute, 'inputmode', inputmode),
-						$elm$html$Html$Attributes$value(config.y)
+						$elm$html$Html$Attributes$value(config.v)
 					]),
 				_List_fromArray(
 					[
-						$elm$html$Html$text(config.y)
+						$elm$html$Html$text(config.v)
 					]))
 			]);
 	});
 var $author$project$Control$char = A2(
 	$author$project$Control$debounce,
 	500,
-	$author$project$Control$create(
+	$author$project$Control$define(
 		{
-			N: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
+			Y: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			c: 'Char',
-			j: function (str) {
+			o: function (str) {
 				var _v0 = $elm$core$String$uncons(str);
 				if (!_v0.$) {
 					var _v1 = _v0.a;
@@ -15482,7 +15487,7 @@ var $author$project$Control$char = A2(
 							['Must not be blank']));
 				}
 			},
-			Q: function (c) {
+			_: function (c) {
 				return _Utils_Tuple2(
 					$elm$core$String$fromChar(c),
 					$elm$core$Platform$Cmd$none);
@@ -15490,293 +15495,489 @@ var $author$project$Control$char = A2(
 			t: function (_v2) {
 				return $elm$core$Platform$Sub$none;
 			},
-			s: F2(
+			r: F2(
 				function (delta, _v3) {
 					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
 				}),
-			n: $author$project$Control$textControlView('text')
+			m: $author$project$Control$textControlView('text')
 		}));
 var $author$project$Control$End = 0;
 var $author$project$Control$collectDebouncingReceiversForRecord = F3(
 	function (debouncingReceiverCollector_, fns, states) {
-		return A4(
+		return A2(
 			debouncingReceiverCollector_,
-			F3(
-				function (receivers, _v0, _v1) {
-					return receivers;
-				}),
-			_List_Nil,
-			fns,
-			states);
+			function (_v0) {
+				var alerts = _v0.j;
+				return alerts;
+			},
+			{j: _List_Nil, d: fns, i: states});
 	});
-var $author$project$Control$collectErrorsForRecord = F4(
-	function (errorCollector_, alerts, fns, states) {
-		return A5(
-			errorCollector_,
-			F4(
-				function (_v0, errors, _v1, _v2) {
-					return errors;
-				}),
-			alerts,
-			_List_Nil,
-			fns,
-			states);
+var $author$project$Control$collectFeedbackForRecord = F4(
+	function (feedbackCollector_, alerts, fns, states) {
+		return A2(
+			feedbackCollector_,
+			function (_v0) {
+				var feedback = _v0.aW;
+				return feedback;
+			},
+			{j: alerts, aW: _List_Nil, d: fns, i: states});
 	});
-var $author$project$Control$collectRecordSubscriptions = F4(
-	function (collector, setters, fns, states) {
+var $author$project$Control$collectRecordSubscriptions = F5(
+	function (collector, setters, fns, context, states) {
 		return A2(
 			$elm$core$Platform$Sub$map,
 			$author$project$Control$StateChangedInternally,
 			$elm$core$Platform$Sub$batch(
-				A5(
+				A2(
 					collector,
-					F4(
-						function (listSubs, _v0, _v1, _v2) {
-							return listSubs;
-						}),
-					_List_Nil,
-					setters,
-					fns,
-					states)));
+					function (_v0) {
+						var listSubs = _v0.bS;
+						return listSubs;
+					},
+					{p: context, d: fns, bS: _List_Nil, cK: setters, i: states})));
 	});
-var $author$project$Control$emitAlertsForRecord = F3(
-	function (alertEmitter_, fns, states) {
-		return A4(
-			alertEmitter_,
-			F3(
-				function (alerts, _v0, _v1) {
-					return alerts;
-				}),
-			_List_Nil,
-			fns,
-			states);
-	});
-var $author$project$Control$initialiseRecordDeltas = F3(
+var $author$project$Control$convertFieldDeltasToRecordDelta = F3(
 	function (deltaInitialiser_, deltaSetters, deltas) {
 		return A2(
-			$elm$core$Platform$Cmd$map,
-			$author$project$Control$StateChangedInternally,
-			$elm$core$Platform$Cmd$batch(
-				A4(
-					deltaInitialiser_,
-					F3(
-						function (cmdList, _v0, _v1) {
-							return cmdList;
-						}),
-					_List_Nil,
-					deltaSetters,
-					deltas)));
+			deltaInitialiser_,
+			function (_v0) {
+				var cmds = _v0.aR;
+				return cmds;
+			},
+			{aR: _List_Nil, w: deltaSetters, cp: deltas});
 	});
-var $author$project$Control$initialiseRecordStates = F4(
+var $author$project$Control$emitAlertsForRecord = F4(
+	function (alertEmitter_, fns, context, states) {
+		return A2(
+			alertEmitter_,
+			function (_v0) {
+				var alerts = _v0.j;
+				return alerts;
+			},
+			{j: _List_Nil, p: context, d: fns, i: states});
+	});
+var $author$project$Control$initialiseRecordStatesAndCmds = F4(
 	function (initialiser, input, fns, deltaSetters) {
-		return A6(
+		return A2(
 			initialiser,
-			F5(
-				function (states, deltas, _v0, _v1, _v2) {
-					return _Utils_Tuple2(
-						A2(
-							$author$project$Control$State,
-							{g: 1, k: $author$project$Control$Intact_},
-							states(0)),
-						A2(
-							$elm$core$Platform$Cmd$map,
-							$author$project$Control$StateChangedInternally,
-							$elm$core$Platform$Cmd$batch(deltas)));
-				}),
-			$elm$core$Basics$identity,
-			_List_Nil,
-			input,
-			fns,
-			deltaSetters);
+			function (_v0) {
+				var states = _v0.i;
+				var deltas = _v0.ag;
+				return _Utils_Tuple2(
+					A2(
+						$author$project$Control$MkState,
+						{h: 1, k: $author$project$Control$Intact_},
+						states(0)),
+					$elm$core$Platform$Cmd$batch(deltas));
+			},
+			{w: deltaSetters, ag: _List_Nil, d: fns, cI: input, i: $elm$core$Basics$identity});
 	});
-var $author$project$Control$makeDeltaSetters = F3(
-	function (makeSetters_, befores, afters) {
-		return A3(
+var $author$project$Control$makeDeltaSetters = F4(
+	function (makeSetters_, wrapDeltas, befores, afters) {
+		return A2(
 			makeSetters_,
-			F2(
-				function (_v0, _v1) {
-					return 0;
-				}),
-			befores(0),
-			afters);
+			function (_v0) {
+				var output = _v0.bV;
+				return output(0);
+			},
+			{
+				a1: afters,
+				a2: befores(0),
+				bV: $elm$core$Basics$identity,
+				c0: wrapDeltas
+			});
 	});
 var $author$project$Control$setAllRecordStatesToIdle = F3(
 	function (idleSetter_, fns, states) {
-		return A3(
+		return A2(
 			idleSetter_,
-			F2(
-				function (_v0, _v1) {
-					return 0;
-				}),
-			fns,
-			states);
+			function (_v0) {
+				var outputStates = _v0.bW;
+				return outputStates(0);
+			},
+			{d: fns, cv: states, bW: $elm$core$Basics$identity});
 	});
-var $author$project$Control$updateRecordStates = F5(
-	function (updater, fields, setters, deltas, states) {
-		var _v0 = A6(
+var $author$project$Control$updateRecordStates = F6(
+	function (updater, context, fields, setters, deltas, states) {
+		var _v0 = A2(
 			updater,
-			F5(
-				function (output, _v1, _v2, _v3, _v4) {
-					return output;
-				}),
-			{ah: _List_Nil, ai: $elm$core$Basics$identity},
-			fields,
-			setters,
-			deltas,
-			states);
-		var newStates = _v0.ai;
-		var newCmds = _v0.ah;
+			function (output) {
+				return {ak: output.ak, al: output.al};
+			},
+			{p: context, w: setters, ag: deltas, d: fields, ak: _List_Nil, al: $elm$core$Basics$identity, i: states});
+		var newStates = _v0.al;
+		var newCmds = _v0.ak;
 		return _Utils_Tuple2(
 			newStates(0),
 			$elm$core$Platform$Cmd$batch(newCmds));
 	});
-var $author$project$Control$validateRecordStates = F4(
-	function (parser, toOutput, fns, states) {
-		return A4(
+var $author$project$Control$validateRecordStates = F5(
+	function (parser, toOutput, fns, context, states) {
+		return A2(
 			parser,
-			F3(
-				function (output, _v0, _v1) {
-					return output;
-				}),
-			$elm$core$Result$Ok(toOutput),
-			fns,
-			states);
-	});
-var $author$project$Control$viewRecordStates = F4(
-	function (viewer, fns, setters, config) {
-		return A6(
-			viewer,
-			F5(
-				function (views, _v0, _v1, _v2, _v3) {
-					return views;
-				}),
-			_List_Nil,
-			config.V,
-			fns,
-			setters,
-			config.y);
-	});
-var $author$project$Control$endRecord = function (_v0) {
-	var rec = _v0;
-	return function (path) {
-		var initialStates = A2(rec.ag, path, 0);
-		var initialDeltas = A2(rec.af, path, 0);
-		var fns = A2(rec.x, path, 0);
-		var parse = function (_v11) {
-			var state = _v11.b;
-			return A4($author$project$Control$validateRecordStates, rec.aj, rec.bj, fns, state);
-		};
-		var setAllIdle = function (_v10) {
-			var i = _v10.a;
-			var state = _v10.b;
-			return A2(
-				$author$project$Control$State,
-				_Utils_update(
-					i,
-					{k: $author$project$Control$Idle_}),
-				A3($author$project$Control$setAllRecordStatesToIdle, rec.ad, fns, state));
-		};
-		var emitAlerts = function (_v9) {
-			var state = _v9.b;
-			return A3($author$project$Control$emitAlertsForRecord, rec.Z, fns, state);
-		};
-		var deltaSetters = A3($author$project$Control$makeDeltaSetters, rec.a6, rec.aP, rec.aL);
-		var subcontrolViews = function (config) {
-			return A4($author$project$Control$viewRecordStates, rec.X, fns, deltaSetters, config);
-		};
-		var update = F2(
-			function (delta, _v8) {
-				var s = _v8.a;
-				var state = _v8.b;
-				switch (delta.$) {
-					case 0:
-						return _Utils_Tuple2(
-							A2($author$project$Control$State, s, state),
-							$elm$core$Platform$Cmd$none);
-					case 1:
-						var deltas = delta.a;
-						var _v6 = A5($author$project$Control$updateRecordStates, rec.U, fns, deltaSetters, deltas, state);
-						var newState = _v6.a;
-						var cmd = _v6.b;
-						return _Utils_Tuple2(
-							A2($author$project$Control$State, s, newState),
-							A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedByInput, cmd));
-					case 2:
-						var deltas = delta.a;
-						var _v7 = A5($author$project$Control$updateRecordStates, rec.U, fns, deltaSetters, deltas, state);
-						var newState = _v7.a;
-						var cmd = _v7.b;
-						return _Utils_Tuple2(
-							A2($author$project$Control$State, s, newState),
-							A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedInternally, cmd));
-					case 5:
-						var index = delta.a;
-						return _Utils_Tuple2(
-							A2(
-								$author$project$Control$State,
-								_Utils_update(
-									s,
-									{g: index}),
-								state),
-							$elm$core$Platform$Cmd$none);
-					default:
-						return _Utils_Tuple2(
-							A2($author$project$Control$State, s, state),
-							$elm$core$Platform$Cmd$none);
-				}
+			function (_v0) {
+				var toOutputResult = _v0.ce;
+				return toOutputResult;
+			},
+			{
+				p: context,
+				d: fns,
+				i: states,
+				ce: $elm$core$Result$Ok(toOutput)
 			});
-		var view = function (config) {
-			return A2(
-				$elm$core$List$concatMap,
-				function ($) {
-					return $.ac;
+	});
+var $author$project$Control$viewRecordStates = F5(
+	function (viewer, context, fns, setters, config) {
+		return A2(
+			viewer,
+			function (_v0) {
+				var views = _v0.ci;
+				return views;
+			},
+			{j: config.j, p: context, w: setters, d: fns, i: config.v, ci: _List_Nil});
+	});
+var $author$project$Control$endProductType = F2(
+	function (wrapper, _v0) {
+		var builder = _v0;
+		return function (path) {
+			var wrapState = function (unwrappedState) {
+				return A2(wrapper.ae, builder.X, unwrappedState);
+			};
+			var wrapFieldDeltas = function (unwrappedFieldDeltas) {
+				return A2(wrapper.ad, builder.T, unwrappedFieldDeltas);
+			};
+			var unwrapFieldDeltas = function (wrappedFieldDeltas) {
+				return A2(
+					$elm$core$Maybe$withDefault,
+					builder.aU,
+					A2(wrapper.ab, builder.S, wrappedFieldDeltas));
+			};
+			var initialStates = A2(builder.at, path, 0);
+			var unwrapState = function (wrappedState) {
+				return A2(
+					$elm$core$Maybe$withDefault,
+					initialStates,
+					A2(wrapper.ac, builder.W, wrappedState));
+			};
+			var initialCmdFieldDeltas = A2(builder.aY, path, 0);
+			var fns = A2(builder.d, path, 0);
+			var parse = F2(
+				function (context, _v12) {
+					var state = _v12.b;
+					return A5(
+						$author$project$Control$validateRecordStates,
+						builder.aZ,
+						builder.cd,
+						fns,
+						context,
+						unwrapState(state));
+				});
+			var setAllIdle = function (_v11) {
+				var i = _v11.a;
+				var state = _v11.b;
+				return A2(
+					$author$project$Control$MkState,
+					_Utils_update(
+						i,
+						{k: $author$project$Control$Idle_}),
+					wrapState(
+						A3(
+							$author$project$Control$setAllRecordStatesToIdle,
+							builder.aX,
+							fns,
+							unwrapState(state))));
+			};
+			var emitAlerts = F2(
+				function (context, _v10) {
+					var state = _v10.b;
+					return A4(
+						$author$project$Control$emitAlertsForRecord,
+						builder.aP,
+						fns,
+						context,
+						unwrapState(state));
+				});
+			var deltaSetters = A4($author$project$Control$makeDeltaSetters, builder.bU, wrapFieldDeltas, builder.a2, builder.a1);
+			var subcontrolViews = F2(
+				function (context, config) {
+					var unwrappedConfig = {
+						j: config.j,
+						e: config.e,
+						f: config.f,
+						c: config.c,
+						l: config.l,
+						h: config.h,
+						v: unwrapState(config.v),
+						k: config.k
+					};
+					return A5($author$project$Control$viewRecordStates, builder.a0, context, fns, deltaSetters, unwrappedConfig);
+				});
+			var view = F2(
+				function (context, config) {
+					return A2(
+						$elm$core$List$concatMap,
+						function ($) {
+							return $.aj;
+						},
+						A2(subcontrolViews, context, config));
+				});
+			var update = F3(
+				function (context, delta, _v9) {
+					var meta = _v9.a;
+					var wrappedStates = _v9.b;
+					switch (delta.$) {
+						case 0:
+							return _Utils_Tuple2(
+								A2($author$project$Control$MkState, meta, wrappedStates),
+								$elm$core$Platform$Cmd$none);
+						case 1:
+							var wrappedDeltas = delta.a;
+							var _v7 = A6(
+								$author$project$Control$updateRecordStates,
+								builder.aD,
+								context,
+								fns,
+								deltaSetters,
+								unwrapFieldDeltas(wrappedDeltas),
+								unwrapState(wrappedStates));
+							var newState = _v7.a;
+							var cmd = _v7.b;
+							return _Utils_Tuple2(
+								A2(
+									$author$project$Control$MkState,
+									meta,
+									wrapState(newState)),
+								A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedByInput, cmd));
+						case 2:
+							var wrappedDeltas = delta.a;
+							var _v8 = A6(
+								$author$project$Control$updateRecordStates,
+								builder.aD,
+								context,
+								fns,
+								deltaSetters,
+								unwrapFieldDeltas(wrappedDeltas),
+								unwrapState(wrappedStates));
+							var newState = _v8.a;
+							var cmd = _v8.b;
+							return _Utils_Tuple2(
+								A2(
+									$author$project$Control$MkState,
+									meta,
+									wrapState(newState)),
+								A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedInternally, cmd));
+						case 5:
+							var index = delta.a;
+							return _Utils_Tuple2(
+								A2(
+									$author$project$Control$MkState,
+									_Utils_update(
+										meta,
+										{h: index}),
+									wrappedStates),
+								$elm$core$Platform$Cmd$none);
+						default:
+							return _Utils_Tuple2(
+								A2($author$project$Control$MkState, meta, wrappedStates),
+								$elm$core$Platform$Cmd$none);
+					}
+				});
+			return {
+				aQ: function (_v1) {
+					return update;
 				},
-				A4($author$project$Control$viewRecordStates, rec.X, fns, deltaSetters, config));
+				e: _List_Nil,
+				R: function (_v2) {
+					var states = _v2.b;
+					return A3(
+						$author$project$Control$collectDebouncingReceiversForRecord,
+						builder.aS,
+						fns,
+						unwrapState(states));
+				},
+				B: F2(
+					function (_v3, alerts) {
+						var states = _v3.b;
+						return A4(
+							$author$project$Control$collectFeedbackForRecord,
+							builder.aV,
+							alerts,
+							fns,
+							unwrapState(states));
+					}),
+				G: emitAlerts,
+				f: $elm$core$Maybe$Nothing,
+				s: 0,
+				J: _Utils_Tuple2(
+					A2(
+						$author$project$Control$MkState,
+						{h: 1, k: $author$project$Control$Intact_},
+						wrapState(initialStates)),
+					A2(
+						$elm$core$Platform$Cmd$map,
+						$author$project$Control$StateChangedInternally,
+						$elm$core$Platform$Cmd$batch(
+							A3($author$project$Control$convertFieldDeltasToRecordDelta, builder.bL, deltaSetters, initialCmdFieldDeltas)))),
+				as: function (output) {
+					return A2(
+						$elm$core$Tuple$mapSecond,
+						$elm$core$Platform$Cmd$map($author$project$Control$StateChangedInternally),
+						A2(
+							$elm$core$Tuple$mapFirst,
+							function (_v4) {
+								var meta = _v4.a;
+								var subcontrolStates = _v4.b;
+								return A2(
+									$author$project$Control$MkState,
+									meta,
+									wrapState(subcontrolStates));
+							},
+							A4($author$project$Control$initialiseRecordStatesAndCmds, builder.bP, output, fns, deltaSetters)));
+				},
+				c: 'Record',
+				l: $elm$core$Maybe$Nothing,
+				o: parse,
+				D: path,
+				av: 0,
+				an: setAllIdle,
+				a_: subcontrolViews,
+				t: F2(
+					function (context, _v5) {
+						var states = _v5.b;
+						return A5(
+							$author$project$Control$collectRecordSubscriptions,
+							builder.a$,
+							deltaSetters,
+							fns,
+							context,
+							unwrapState(states));
+					}),
+				r: update,
+				m: view
+			};
 		};
-		return {
-			az: function (_v1) {
-				return update;
-			},
-			l: _List_Nil,
-			K: function (_v2) {
-				var states = _v2.b;
-				return A3($author$project$Control$collectDebouncingReceiversForRecord, rec.aa, fns, states);
-			},
-			E: F2(
-				function (_v3, alerts) {
-					var states = _v3.b;
-					return A4($author$project$Control$collectErrorsForRecord, rec.ab, alerts, fns, states);
-				}),
-			F: emitAlerts,
-			e: $elm$core$Maybe$Nothing,
-			r: 0,
-			H: _Utils_Tuple2(
-				A2(
-					$author$project$Control$State,
-					{g: 1, k: $author$project$Control$Intact_},
-					initialStates),
-				A3($author$project$Control$initialiseRecordDeltas, rec.aZ, deltaSetters, initialDeltas)),
-			ae: function (output) {
-				return A4($author$project$Control$initialiseRecordStates, rec.a1, output, fns, deltaSetters);
-			},
-			c: 'Record',
-			o: $elm$core$Maybe$Nothing,
-			j: parse,
-			C: path,
-			al: 0,
-			am: setAllIdle,
-			aF: function (config) {
-				return subcontrolViews(config);
-			},
-			t: function (_v4) {
-				var states = _v4.b;
-				return A4($author$project$Control$collectRecordSubscriptions, rec.an, deltaSetters, fns, states);
-			},
-			s: update,
-			n: view
-		};
-	};
+	});
+var $author$project$Control$Delta_ = function (a) {
+	return {$: 1, a: a};
 };
+var $author$project$Control$EndRecord = 0;
+var $author$project$Control$Field = F2(
+	function (a, b) {
+		return {$: 0, a: a, b: b};
+	});
+var $author$project$Control$Record = $elm$core$Basics$identity;
+var $author$project$Control$State_ = function (a) {
+	return {$: 0, a: a};
+};
+var $author$project$Control$genericUnwrap = F4(
+	function (untag, unend, unwrapper_, wrappedThing) {
+		return A2(
+			unwrapper_,
+			A2($elm$core$Basics$composeR, unend, $elm$core$Maybe$Just),
+			untag(wrappedThing));
+	});
+var $elm$core$Maybe$map2 = F3(
+	function (func, ma, mb) {
+		if (ma.$ === 1) {
+			return $elm$core$Maybe$Nothing;
+		} else {
+			var a = ma.a;
+			if (mb.$ === 1) {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var b = mb.a;
+				return $elm$core$Maybe$Just(
+					A2(func, a, b));
+			}
+		}
+	});
+var $author$project$Control$genericUnwrapper = F4(
+	function (untag, maybeExtractor, next, wrappedThing) {
+		var _v0 = untag(wrappedThing);
+		var _this = _v0.a;
+		var rest = _v0.b;
+		return A3(
+			$elm$core$Maybe$map2,
+			$elm$core$Tuple$pair,
+			maybeExtractor(_this),
+			next(rest));
+	});
+var $author$project$Control$genericWrap = F4(
+	function (tag, end, wrapper_, tup) {
+		return tag(
+			A2(
+				wrapper_,
+				function (_v0) {
+					return end;
+				},
+				tup));
+	});
+var $author$project$Control$genericWrapper = F4(
+	function (tag, internalsType, next, _v0) {
+		var _this = _v0.a;
+		var rest = _v0.b;
+		return A2(
+			tag,
+			internalsType(_this),
+			next(rest));
+	});
+var $author$project$Control$maybeExtractDelta = function (internals) {
+	if (!internals.$) {
+		return $elm$core$Maybe$Nothing;
+	} else {
+		var delta = internals.a;
+		return $elm$core$Maybe$Just(delta);
+	}
+};
+var $author$project$Control$maybeExtractState = function (internals) {
+	if (!internals.$) {
+		var state = internals.a;
+		return $elm$core$Maybe$Just(state);
+	} else {
+		return $elm$core$Maybe$Nothing;
+	}
+};
+var $author$project$Control$recordWrapper = {
+	S: A2(
+		$author$project$Control$genericUnwrapper,
+		function (_v0) {
+			var _this = _v0.a;
+			var rest = _v0.b;
+			return _Utils_Tuple2(_this, rest);
+		},
+		$author$project$Control$maybeExtractDelta),
+	T: A2($author$project$Control$genericWrapper, $author$project$Control$Field, $author$project$Control$Delta_),
+	W: A2(
+		$author$project$Control$genericUnwrapper,
+		function (_v1) {
+			var _this = _v1.a;
+			var rest = _v1.b;
+			return _Utils_Tuple2(_this, rest);
+		},
+		$author$project$Control$maybeExtractState),
+	X: A2($author$project$Control$genericWrapper, $author$project$Control$Field, $author$project$Control$State_),
+	ab: A2(
+		$author$project$Control$genericUnwrap,
+		function (_v2) {
+			var fields = _v2;
+			return fields;
+		},
+		function (_v3) {
+			return 0;
+		}),
+	ac: A2(
+		$author$project$Control$genericUnwrap,
+		function (_v4) {
+			var fields = _v4;
+			return fields;
+		},
+		function (_v5) {
+			return 0;
+		}),
+	ad: A2($author$project$Control$genericWrap, $elm$core$Basics$identity, 0),
+	ae: A2($author$project$Control$genericWrap, $elm$core$Basics$identity, 0)
+};
+var $author$project$Control$endRecord = $author$project$Control$endProductType($author$project$Control$recordWrapper);
 var $author$project$Control$NoDelta = {$: 0};
 var $author$project$Control$RecordBuilder = $elm$core$Basics$identity;
 var $author$project$Control$RecordFns = $elm$core$Basics$identity;
@@ -15786,207 +15987,276 @@ var $author$project$Path$add = F2(
 		var path = _v0;
 		return A2($elm$core$List$cons, segment, path);
 	});
-var $author$project$Control$deltaSetterMaker = F3(
-	function (next, _v0, _v1) {
-		var before = _v0.a;
-		var befores = _v0.b;
-		var after = _v1.a;
-		var afters = _v1.b;
-		return _Utils_Tuple2(
-			function (value) {
-				return before(
-					_Utils_Tuple2(value, after));
-			},
-			A2(next, befores, afters));
+var $author$project$Control$tupleAppend = F3(
+	function (previous, _this, next) {
+		return previous(
+			_Utils_Tuple2(_this, next));
 	});
-var $author$project$Control$nestBackwards = F2(
-	function (mkBifunctor, _this) {
-		return function (next) {
-			return A2(mkBifunctor, next, _this);
-		};
+var $author$project$Control$deltaSetterMaker = F2(
+	function (next, _v0) {
+		var output = _v0.bV;
+		var befores = _v0.a2;
+		var afters = _v0.a1;
+		var wrapDeltas = _v0.c0;
+		var _v1 = befores;
+		var before = _v1.a;
+		var restBefores = _v1.b;
+		var _v2 = afters;
+		var after = _v2.a;
+		var restAfters = _v2.b;
+		return next(
+			{
+				a1: restAfters,
+				a2: restBefores,
+				bV: A2(
+					$author$project$Control$tupleAppend,
+					output,
+					function (value) {
+						return wrapDeltas(
+							before(
+								_Utils_Tuple2(value, after)));
+					}),
+				c0: wrapDeltas
+			});
 	});
-var $author$project$Control$nestForwards = F3(
-	function (mkBifunctor, previous, _this) {
-		return function (next) {
-			return previous(
-				A2(mkBifunctor, _this, next));
-		};
-	});
-var $author$project$Control$recordAlertEmitter = F4(
-	function (next, alerts, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
+var $author$project$Control$recordAlertEmitter = F2(
+	function (next, _v0) {
+		var alerts = _v0.j;
+		var context = _v0.p;
+		var fns = _v0.d;
+		var states = _v0.i;
+		var _v1 = states;
 		var state = _v1.a;
 		var restStates = _v1.b;
-		var _v2 = fns.x;
-		var controlFns = _v2;
-		var newAlerts = controlFns.F(state);
-		return A3(
-			next,
-			_Utils_ap(alerts, newAlerts),
-			restFns,
-			restStates);
+		var _v2 = fns;
+		var recordFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = recordFns.af;
+		var controlFns = _v3;
+		var newAlerts = A2(controlFns.G, context, state);
+		return next(
+			{
+				j: _Utils_ap(alerts, newAlerts),
+				p: context,
+				d: restFns,
+				i: restStates
+			});
 	});
-var $author$project$Control$recordDebouncingReceiverCollector = F4(
-	function (next, receivers, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
+var $author$project$Control$recordDebouncingReceiverCollector = F2(
+	function (next, _v0) {
+		var alerts = _v0.j;
+		var fns = _v0.d;
+		var states = _v0.i;
+		var _v1 = states;
 		var state = _v1.a;
 		var restStates = _v1.b;
-		var _v2 = fns.x;
-		var controlFns = _v2;
-		return A3(
-			next,
-			_Utils_ap(
-				receivers,
-				controlFns.K(state)),
-			restFns,
-			restStates);
+		var _v2 = fns;
+		var recordFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = recordFns.af;
+		var controlFns = _v3;
+		return next(
+			{
+				j: _Utils_ap(
+					alerts,
+					controlFns.R(state)),
+				d: restFns,
+				i: restStates
+			});
 	});
-var $author$project$Control$recordDeltaInitialiser = F4(
-	function (next, cmdList, _v0, _v1) {
-		var setter = _v0.a;
-		var restSetters = _v0.b;
+var $author$project$Control$recordDeltaInitialiser = F2(
+	function (next, _v0) {
+		var cmds = _v0.aR;
+		var deltaSetters = _v0.w;
+		var fieldDeltas = _v0.cp;
+		var _v1 = fieldDeltas;
 		var delta = _v1.a;
 		var restDeltas = _v1.b;
-		return A3(
-			next,
-			A2(
-				$elm$core$List$cons,
-				A2($elm$core$Platform$Cmd$map, setter, delta),
-				cmdList),
-			restSetters,
-			restDeltas);
-	});
-var $author$project$Control$recordErrorCollector = F5(
-	function (next, alerts, errors, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var state = _v1.a;
-		var restStates = _v1.b;
-		var _v2 = fns.x;
-		var controlFns = _v2;
-		return A4(
-			next,
-			alerts,
-			_Utils_ap(
-				errors,
-				A2(controlFns.E, state, alerts)),
-			restFns,
-			restStates);
-	});
-var $author$project$Control$recordStateIdleSetter = F3(
-	function (next, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var state = _v1.a;
-		var restStates = _v1.b;
-		var _v2 = fns.x;
-		var controlFns = _v2;
-		return _Utils_Tuple2(
-			controlFns.am(state),
-			A2(next, restFns, restStates));
-	});
-var $author$project$Control$recordStateInitialiser = F6(
-	function (next, states, deltas, recordInput, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var deltaSetter = _v1.a;
-		var restDeltaSetters = _v1.b;
-		var _v2 = fns.x;
-		var controlFns = _v2;
-		var _v3 = controlFns.ae(
-			fns.cm(recordInput));
-		var state = _v3.a;
-		var delta = _v3.b;
-		return A5(
-			next,
-			A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, states, state),
-			A2(
-				$elm$core$List$cons,
-				A2($elm$core$Platform$Cmd$map, deltaSetter, delta),
-				deltas),
-			recordInput,
-			restFns,
-			restDeltaSetters);
-	});
-var $author$project$Control$recordStateUpdater = F6(
-	function (next, _v0, _v1, _v2, _v3, _v4) {
-		var newStates = _v0.ai;
-		var newCmds = _v0.ah;
-		var fns = _v1.a;
-		var restFns = _v1.b;
+		var _v2 = deltaSetters;
 		var deltaSetter = _v2.a;
 		var restDeltaSetters = _v2.b;
+		return next(
+			{
+				aR: A2(
+					$elm$core$List$cons,
+					A2($elm$core$Platform$Cmd$map, deltaSetter, delta),
+					cmds),
+				w: restDeltaSetters,
+				cp: restDeltas
+			});
+	});
+var $author$project$Control$recordFeedbackCollector = F2(
+	function (next, _v0) {
+		var alerts = _v0.j;
+		var feedback = _v0.aW;
+		var fns = _v0.d;
+		var states = _v0.i;
+		var _v1 = states;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		var _v2 = fns;
+		var recordFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = recordFns.af;
+		var controlFns = _v3;
+		return next(
+			{
+				j: alerts,
+				aW: _Utils_ap(
+					feedback,
+					A2(controlFns.B, state, alerts)),
+				d: restFns,
+				i: restStates
+			});
+	});
+var $author$project$Control$recordStateAndCmdInitialiser = F2(
+	function (next, _v0) {
+		var states = _v0.i;
+		var deltas = _v0.ag;
+		var recordInput = _v0.cI;
+		var fns = _v0.d;
+		var deltaSetters = _v0.w;
+		var _v1 = fns;
+		var recordFns = _v1.a;
+		var restFns = _v1.b;
+		var _v2 = deltaSetters;
+		var deltaSetter = _v2.a;
+		var restDeltaSetters = _v2.b;
+		var _v3 = recordFns.af;
+		var controlFns = _v3;
+		var _v4 = controlFns.as(
+			recordFns.da(recordInput));
+		var state = _v4.a;
+		var delta = _v4.b;
+		return next(
+			{
+				w: restDeltaSetters,
+				ag: A2(
+					$elm$core$List$cons,
+					A2($elm$core$Platform$Cmd$map, deltaSetter, delta),
+					deltas),
+				d: restFns,
+				cI: recordInput,
+				i: A2($author$project$Control$tupleAppend, states, state)
+			});
+	});
+var $author$project$Control$recordStateIdleSetter = F2(
+	function (next, _v0) {
+		var inputStates = _v0.cv;
+		var outputStates = _v0.bW;
+		var fns = _v0.d;
+		var _v1 = inputStates;
+		var inputState = _v1.a;
+		var restInputStates = _v1.b;
+		var _v2 = fns;
+		var recordFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = recordFns.af;
+		var controlFns = _v3;
+		return next(
+			{
+				d: restFns,
+				cv: restInputStates,
+				bW: A2(
+					$author$project$Control$tupleAppend,
+					outputStates,
+					controlFns.an(inputState))
+			});
+	});
+var $author$project$Control$recordStateUpdater = F2(
+	function (next, _v0) {
+		var newStates = _v0.al;
+		var newCmds = _v0.ak;
+		var context = _v0.p;
+		var fns = _v0.d;
+		var deltaSetters = _v0.w;
+		var deltas = _v0.ag;
+		var states = _v0.i;
+		var _v1 = states;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		var _v2 = fns;
+		var recordFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = deltas;
 		var delta = _v3.a;
 		var restDeltas = _v3.b;
-		var state = _v4.a;
-		var restStates = _v4.b;
-		var _v5 = fns.x;
+		var _v4 = deltaSetters;
+		var deltaSetter = _v4.a;
+		var restDeltaSetters = _v4.b;
+		var _v5 = recordFns.af;
 		var controlFns = _v5;
-		var _v6 = A2(controlFns.s, delta, state);
+		var _v6 = A3(controlFns.r, context, delta, state);
 		var newState = _v6.a;
 		var newCmd = _v6.b;
 		var cmd2 = A2($elm$core$Platform$Cmd$map, deltaSetter, newCmd);
-		return A5(
-			next,
+		return next(
 			{
-				ah: A2($elm$core$List$cons, cmd2, newCmds),
-				ai: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, newStates, newState)
-			},
-			restFns,
-			restDeltaSetters,
-			restDeltas,
-			restStates);
+				p: context,
+				w: restDeltaSetters,
+				ag: restDeltas,
+				d: restFns,
+				ak: A2($elm$core$List$cons, cmd2, newCmds),
+				al: A2($author$project$Control$tupleAppend, newStates, newState),
+				i: restStates
+			});
 	});
-var $author$project$Control$recordStateValidator = F4(
-	function (next, toOutputResult, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
+var $author$project$Control$recordStateValidator = F2(
+	function (next, _v0) {
+		var toOutputResult = _v0.ce;
+		var fns = _v0.d;
+		var context = _v0.p;
+		var states = _v0.i;
+		var _v1 = states;
 		var state = _v1.a;
 		var restStates = _v1.b;
-		var _v2 = fns.x;
-		var controlFns = _v2;
-		return A3(
-			next,
-			function () {
-				var _v3 = _Utils_Tuple2(
-					toOutputResult,
-					controlFns.j(state));
-				if (!_v3.a.$) {
-					if (!_v3.b.$) {
-						var toOutput = _v3.a.a;
-						var parsed = _v3.b.a;
-						return $elm$core$Result$Ok(
-							toOutput(parsed));
+		var _v2 = fns;
+		var recordFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = recordFns.af;
+		var controlFns = _v3;
+		return next(
+			{
+				p: context,
+				d: restFns,
+				i: restStates,
+				ce: function () {
+					var _v4 = _Utils_Tuple2(
+						toOutputResult,
+						A2(controlFns.o, context, state));
+					if (!_v4.a.$) {
+						if (!_v4.b.$) {
+							var toOutput = _v4.a.a;
+							var parsed = _v4.b.a;
+							return $elm$core$Result$Ok(
+								toOutput(parsed));
+						} else {
+							var es = _v4.b.a;
+							return $elm$core$Result$Err(es);
+						}
 					} else {
-						var es = _v3.b.a;
-						return $elm$core$Result$Err(es);
+						if (!_v4.b.$) {
+							var es = _v4.a.a;
+							return $elm$core$Result$Err(es);
+						} else {
+							var es = _v4.a.a;
+							var es2 = _v4.b.a;
+							return $elm$core$Result$Err(
+								_Utils_ap(es, es2));
+						}
 					}
-				} else {
-					if (!_v3.b.$) {
-						var es = _v3.a.a;
-						return $elm$core$Result$Err(es);
-					} else {
-						var es = _v3.a.a;
-						var es2 = _v3.b.a;
-						return $elm$core$Result$Err(
-							_Utils_ap(es, es2));
-					}
-				}
-			}(),
-			restFns,
-			restStates);
+				}()
+			});
 	});
 var $author$project$Control$Debouncing = {$: 1};
 var $author$project$Control$Idle = function (a) {
 	return {$: 2, a: a};
 };
 var $author$project$Control$Intact = {$: 0};
-var $author$project$Control$getStatus = F4(
-	function (parse, collectErrors, alerts, state) {
-		var internalState = state.a;
-		var _v0 = internalState.k;
+var $author$project$Control$getStatus = F5(
+	function (parse, collectErrors, alerts, context, state) {
+		var meta = state.a;
+		var _v0 = meta.k;
 		switch (_v0.$) {
 			case 0:
 				return $author$project$Control$Intact;
@@ -15994,7 +16264,7 @@ var $author$project$Control$getStatus = F4(
 				return $author$project$Control$Debouncing;
 			default:
 				var parsedErrors = function () {
-					var _v1 = parse(state);
+					var _v1 = A2(parse, context, state);
 					if (!_v1.$) {
 						return _List_Nil;
 					} else {
@@ -16017,18 +16287,27 @@ var $author$project$Path$toString = function (_v0) {
 			$elm$core$String$fromInt,
 			$elm$core$List$reverse(path)));
 };
-var $author$project$Control$recordStateViewer = F6(
-	function (next, views, alerts, _v0, _v1, _v2) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var setter = _v1.a;
-		var restSetters = _v1.b;
-		var _v3 = _v2.a;
-		var internalState = _v3.a;
-		var state = _v3.b;
-		var restStates = _v2.b;
-		var _v4 = fns.x;
-		var controlFns = _v4;
+var $author$project$Control$recordStateViewer = F2(
+	function (next, _v0) {
+		var views = _v0.ci;
+		var alerts = _v0.j;
+		var deltaSetters = _v0.w;
+		var fns = _v0.d;
+		var context = _v0.p;
+		var states = _v0.i;
+		var _v1 = states;
+		var _v2 = _v1.a;
+		var meta = _v2.a;
+		var state = _v2.b;
+		var restStates = _v1.b;
+		var _v3 = fns;
+		var recordFns = _v3.a;
+		var restFns = _v3.b;
+		var _v4 = deltaSetters;
+		var setter = _v4.a;
+		var restDeltaSetters = _v4.b;
+		var _v5 = recordFns.af;
+		var controlFns = _v5;
 		var view = A2(
 			$elm$core$List$map,
 			$elm$html$Html$map(
@@ -16036,132 +16315,155 @@ var $author$project$Control$recordStateViewer = F6(
 					return $author$project$Control$StateChangedByInput(
 						setter(delta));
 				}),
-			controlFns.n(
-				{
-					V: alerts,
-					l: controlFns.l,
-					e: A2(
-						$elm$core$Maybe$withDefault,
-						'control-' + $author$project$Path$toString(controlFns.C),
-						controlFns.e),
-					c: controlFns.c,
-					o: A2(
-						$elm$core$Maybe$withDefault,
-						'control-' + $author$project$Path$toString(controlFns.C),
-						controlFns.o),
-					g: internalState.g,
-					y: state,
-					k: A4(
-						$author$project$Control$getStatus,
-						controlFns.j,
-						controlFns.E,
-						alerts,
-						A2($author$project$Control$State, internalState, state))
-				}));
-		return A5(
-			next,
-			_Utils_ap(
-				views,
-				_List_fromArray(
-					[
-						{ac: view, r: controlFns.r, c: controlFns.c}
-					])),
-			alerts,
-			restFns,
-			restSetters,
-			restStates);
-	});
-var $author$project$Control$recordSubscriptionCollector = F5(
-	function (next, listSubs, _v0, _v1, _v2) {
-		var setter = _v0.a;
-		var restSetters = _v0.b;
-		var fns = _v1.a;
-		var restFns = _v1.b;
-		var state = _v2.a;
-		var restStates = _v2.b;
-		var _v3 = fns.x;
-		var controlFns = _v3;
-		return A4(
-			next,
 			A2(
-				$elm$core$List$cons,
-				A2(
-					$elm$core$Platform$Sub$map,
-					setter,
-					controlFns.t(state)),
-				listSubs),
-			restSetters,
-			restFns,
-			restStates);
+				controlFns.m,
+				context,
+				{
+					j: alerts,
+					e: controlFns.e,
+					f: A2(
+						$elm$core$Maybe$withDefault,
+						'control-' + $author$project$Path$toString(controlFns.D),
+						controlFns.f),
+					c: controlFns.c,
+					l: A2(
+						$elm$core$Maybe$withDefault,
+						'control-' + $author$project$Path$toString(controlFns.D),
+						controlFns.l),
+					h: meta.h,
+					v: state,
+					k: A5(
+						$author$project$Control$getStatus,
+						controlFns.o,
+						controlFns.B,
+						alerts,
+						context,
+						A2($author$project$Control$MkState, meta, state))
+				}));
+		return next(
+			{
+				j: alerts,
+				p: context,
+				w: restDeltaSetters,
+				d: restFns,
+				i: restStates,
+				ci: _Utils_ap(
+					views,
+					_List_fromArray(
+						[
+							{aj: view, s: controlFns.s, c: controlFns.c}
+						]))
+			});
+	});
+var $author$project$Control$recordSubscriptionCollector = F2(
+	function (next, _v0) {
+		var listSubs = _v0.bS;
+		var setters = _v0.cK;
+		var fns = _v0.d;
+		var context = _v0.p;
+		var states = _v0.i;
+		var _v1 = states;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		var _v2 = fns;
+		var recordFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = setters;
+		var setter = _v3.a;
+		var restDeltaSetters = _v3.b;
+		var _v4 = recordFns.af;
+		var controlFns = _v4;
+		var newSub = A2(
+			$elm$core$Platform$Sub$map,
+			setter,
+			A2(controlFns.t, context, state));
+		return next(
+			{
+				p: context,
+				d: restFns,
+				bS: A2($elm$core$List$cons, newSub, listSubs),
+				cK: restDeltaSetters,
+				i: restStates
+			});
 	});
 var $elm$core$Tuple$second = function (_v0) {
 	var y = _v0.b;
 	return y;
 };
-var $author$project$Control$field = F3(
-	function (fromInput, _v0, _v1) {
+var $author$project$Control$tuplePrepend = F2(
+	function (_this, next) {
+		return _Utils_Tuple2(next, _this);
+	});
+var $author$project$Control$productField = F4(
+	function (wrapper, fromInput, _v0, _v1) {
 		var control = _v0;
 		var builder = _v1;
-		var newIndex = builder.r + 1;
+		var newIndex = builder.s + 1;
 		return {
-			aK: A3($author$project$Control$nestBackwards, $elm$core$Tuple$pair, builder.aK, $author$project$Control$NoDelta),
-			aL: A3($author$project$Control$nestBackwards, $elm$core$Tuple$pair, builder.aL, builder.aK),
-			Z: A2($elm$core$Basics$composeR, builder.Z, $author$project$Control$recordAlertEmitter),
-			aO: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, builder.aO, $author$project$Control$NoDelta),
-			aP: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, builder.aP, builder.aO),
-			aa: A2($elm$core$Basics$composeR, builder.aa, $author$project$Control$recordDebouncingReceiverCollector),
-			aZ: A2($elm$core$Basics$composeR, builder.aZ, $author$project$Control$recordDeltaInitialiser),
-			ab: A2($elm$core$Basics$composeR, builder.ab, $author$project$Control$recordErrorCollector),
-			x: function (path) {
-				var previousFns = builder.x(path);
+			bz: A2($author$project$Control$tuplePrepend, builder.bz, $author$project$Control$NoDelta),
+			a1: A2($author$project$Control$tuplePrepend, builder.a1, builder.bz),
+			aP: A2($elm$core$Basics$composeR, builder.aP, $author$project$Control$recordAlertEmitter),
+			bC: A2($author$project$Control$tupleAppend, builder.bC, $author$project$Control$NoDelta),
+			a2: A2($author$project$Control$tupleAppend, builder.a2, builder.bC),
+			aS: A2($elm$core$Basics$composeR, builder.aS, $author$project$Control$recordDebouncingReceiverCollector),
+			bL: A2($elm$core$Basics$composeR, builder.bL, $author$project$Control$recordDeltaInitialiser),
+			S: A2($elm$core$Basics$composeR, builder.S, wrapper.S),
+			T: A2($elm$core$Basics$composeR, builder.T, wrapper.T),
+			aU: A2($author$project$Control$tuplePrepend, builder.aU, $author$project$Control$NoDelta),
+			aV: A2($elm$core$Basics$composeR, builder.aV, $author$project$Control$recordFeedbackCollector),
+			d: function (path) {
+				var previousFns = builder.d(path);
 				var newPath = A2($author$project$Path$add, newIndex, path);
 				var _v2 = control(newPath);
 				var fns = _v2;
 				var newFns = {
-					x: _Utils_update(
+					af: _Utils_update(
 						fns,
-						{r: newIndex}),
-					cm: fromInput
+						{s: newIndex}),
+					da: fromInput
 				};
-				return A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, previousFns, newFns);
+				return A2($author$project$Control$tupleAppend, previousFns, newFns);
 			},
-			ad: A2($elm$core$Basics$composeR, builder.ad, $author$project$Control$recordStateIdleSetter),
-			r: newIndex,
-			af: function (path) {
-				var previousInitialDeltas = builder.af(path);
+			aX: A2($elm$core$Basics$composeR, builder.aX, $author$project$Control$recordStateIdleSetter),
+			s: newIndex,
+			aY: function (path) {
+				var previousInitialDeltas = builder.aY(path);
 				var newPath = A2($author$project$Path$add, newIndex, path);
 				var _v3 = control(newPath);
 				var fns = _v3;
-				var newInitialDelta = fns.H.b;
-				return A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, previousInitialDeltas, newInitialDelta);
+				var newInitialDelta = fns.J.b;
+				return A2($author$project$Control$tupleAppend, previousInitialDeltas, newInitialDelta);
 			},
-			ag: function (path) {
-				var previousInitialStates = builder.ag(path);
+			at: function (path) {
+				var previousInitialStates = builder.at(path);
 				var newPath = A2($author$project$Path$add, newIndex, path);
 				var _v4 = control(newPath);
 				var fns = _v4;
-				var newInitialState = fns.H.a;
-				return A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, previousInitialStates, newInitialState);
+				var newInitialState = fns.J.a;
+				return A2($author$project$Control$tupleAppend, previousInitialStates, newInitialState);
 			},
-			a1: A2($elm$core$Basics$composeR, builder.a1, $author$project$Control$recordStateInitialiser),
-			a6: A2($elm$core$Basics$composeR, builder.a6, $author$project$Control$deltaSetterMaker),
-			aj: A2($elm$core$Basics$composeR, builder.aj, $author$project$Control$recordStateValidator),
-			an: A2($elm$core$Basics$composeR, builder.an, $author$project$Control$recordSubscriptionCollector),
-			bj: builder.bj,
-			U: A2($elm$core$Basics$composeR, builder.U, $author$project$Control$recordStateUpdater),
-			X: A2($elm$core$Basics$composeR, builder.X, $author$project$Control$recordStateViewer)
+			bP: A2($elm$core$Basics$composeR, builder.bP, $author$project$Control$recordStateAndCmdInitialiser),
+			bU: A2($elm$core$Basics$composeR, builder.bU, $author$project$Control$deltaSetterMaker),
+			aZ: A2($elm$core$Basics$composeR, builder.aZ, $author$project$Control$recordStateValidator),
+			W: A2($elm$core$Basics$composeR, builder.W, wrapper.W),
+			X: A2($elm$core$Basics$composeR, builder.X, wrapper.X),
+			a$: A2($elm$core$Basics$composeR, builder.a$, $author$project$Control$recordSubscriptionCollector),
+			cd: builder.cd,
+			aD: A2($elm$core$Basics$composeR, builder.aD, $author$project$Control$recordStateUpdater),
+			a0: A2($elm$core$Basics$composeR, builder.a0, $author$project$Control$recordStateViewer)
 		};
 	});
+var $author$project$Control$field = $author$project$Control$productField($author$project$Control$recordWrapper);
 var $elm$core$String$fromFloat = _String_fromNumber;
 var $elm$core$String$toFloat = _String_toFloat;
 var $author$project$Control$float = A2(
 	$author$project$Control$debounce,
 	500,
-	$author$project$Control$create(
+	$author$project$Control$define(
 		{
-			N: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
+			Y: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			c: 'Float',
-			j: function (state) {
+			o: function (state) {
 				var _v0 = $elm$core$String$toFloat(state);
 				if (!_v0.$) {
 					var i = _v0.a;
@@ -16172,7 +16474,7 @@ var $author$project$Control$float = A2(
 							['Must be a number']));
 				}
 			},
-			Q: function (f) {
+			_: function (f) {
 				return _Utils_Tuple2(
 					$elm$core$String$fromFloat(f),
 					$elm$core$Platform$Cmd$none);
@@ -16180,11 +16482,11 @@ var $author$project$Control$float = A2(
 			t: function (_v1) {
 				return $elm$core$Platform$Sub$none;
 			},
-			s: F2(
+			r: F2(
 				function (delta, _v2) {
 					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
 				}),
-			n: $author$project$Control$textControlView('decimal')
+			m: $author$project$Control$textControlView('decimal')
 		}));
 var $author$project$Control$wrapView = F2(
 	function (wrapper, _v0) {
@@ -16194,10 +16496,11 @@ var $author$project$Control$wrapView = F2(
 			return _Utils_update(
 				i,
 				{
-					n: function (config) {
-						return wrapper(
-							i.n(config));
-					}
+					m: F2(
+						function (context, config) {
+							return wrapper(
+								A2(i.m, context, config));
+						})
 				});
 		};
 		return A2($elm$core$Basics$composeR, control, viewer);
@@ -16220,11 +16523,11 @@ var $author$project$Tutorial$htmlBefore = function (str) {
 var $author$project$Control$int = A2(
 	$author$project$Control$debounce,
 	500,
-	$author$project$Control$create(
+	$author$project$Control$define(
 		{
-			N: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
+			Y: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			c: 'Int',
-			j: function (state) {
+			o: function (state) {
 				var _v0 = $elm$core$String$toInt(state);
 				if (!_v0.$) {
 					var i = _v0.a;
@@ -16235,7 +16538,7 @@ var $author$project$Control$int = A2(
 							['Must be a whole number']));
 				}
 			},
-			Q: function (s) {
+			_: function (s) {
 				return _Utils_Tuple2(
 					$elm$core$String$fromInt(s),
 					$elm$core$Platform$Cmd$none);
@@ -16243,64 +16546,70 @@ var $author$project$Control$int = A2(
 			t: function (_v1) {
 				return $elm$core$Platform$Sub$none;
 			},
-			s: F2(
+			r: F2(
 				function (delta, _v2) {
 					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
 				}),
-			n: $author$project$Control$textControlView('numeric')
+			m: $author$project$Control$textControlView('numeric')
 		}));
-var $author$project$Control$record = function (toOutput) {
+var $author$project$Control$productType = function (toOutput) {
 	return {
-		aK: 0,
-		aL: 0,
-		Z: $elm$core$Basics$identity,
-		aO: $elm$core$Basics$identity,
+		bz: 0,
+		a1: 0,
 		aP: $elm$core$Basics$identity,
-		aa: $elm$core$Basics$identity,
-		aZ: $elm$core$Basics$identity,
-		ab: $elm$core$Basics$identity,
-		x: F2(
+		bC: $elm$core$Basics$identity,
+		a2: $elm$core$Basics$identity,
+		aS: $elm$core$Basics$identity,
+		bL: $elm$core$Basics$identity,
+		S: $elm$core$Basics$identity,
+		T: $elm$core$Basics$identity,
+		aU: 0,
+		aV: $elm$core$Basics$identity,
+		d: F2(
 			function (_v0, x) {
 				return x;
 			}),
-		ad: $elm$core$Basics$identity,
-		r: 0,
-		af: F2(
+		aX: $elm$core$Basics$identity,
+		s: 0,
+		aY: F2(
 			function (_v1, x) {
 				return x;
 			}),
-		ag: F2(
+		at: F2(
 			function (_v2, x) {
 				return x;
 			}),
-		a1: $elm$core$Basics$identity,
-		a6: $elm$core$Basics$identity,
-		aj: $elm$core$Basics$identity,
-		an: $elm$core$Basics$identity,
-		bj: toOutput,
-		U: $elm$core$Basics$identity,
-		X: $elm$core$Basics$identity
+		bP: $elm$core$Basics$identity,
+		bU: $elm$core$Basics$identity,
+		aZ: $elm$core$Basics$identity,
+		W: $elm$core$Basics$identity,
+		X: $elm$core$Basics$identity,
+		a$: $elm$core$Basics$identity,
+		cd: toOutput,
+		aD: $elm$core$Basics$identity,
+		a0: $elm$core$Basics$identity
 	};
 };
+var $author$project$Control$record = $author$project$Control$productType;
 var $author$project$Control$string = A2(
 	$author$project$Control$debounce,
 	500,
-	$author$project$Control$create(
+	$author$project$Control$define(
 		{
-			N: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
+			Y: _Utils_Tuple2('', $elm$core$Platform$Cmd$none),
 			c: 'String',
-			j: $elm$core$Result$Ok,
-			Q: function (s) {
+			o: $elm$core$Result$Ok,
+			_: function (s) {
 				return _Utils_Tuple2(s, $elm$core$Platform$Cmd$none);
 			},
 			t: function (_v0) {
 				return $elm$core$Platform$Sub$none;
 			},
-			s: F2(
+			r: F2(
 				function (delta, _v1) {
 					return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
 				}),
-			n: $author$project$Control$textControlView('text')
+			m: $author$project$Control$textControlView('text')
 		}));
 var $author$project$Tutorial$basicControls = A2(
 	$author$project$Tutorial$htmlAfter,
@@ -16312,13 +16621,13 @@ var $author$project$Tutorial$basicControls = A2(
 			A3(
 				$author$project$Control$field,
 				function ($) {
-					return $.ck;
+					return $.c9;
 				},
 				$author$project$Control$float,
 				A3(
 					$author$project$Control$field,
 					function ($) {
-						return $.cs;
+						return $.df;
 					},
 					A2(
 						$author$project$Tutorial$htmlBefore,
@@ -16327,7 +16636,7 @@ var $author$project$Tutorial$basicControls = A2(
 					A3(
 						$author$project$Control$field,
 						function ($) {
-							return $.cd;
+							return $.c4;
 						},
 						A2(
 							$author$project$Tutorial$htmlBefore,
@@ -16336,7 +16645,7 @@ var $author$project$Tutorial$basicControls = A2(
 						A3(
 							$author$project$Control$field,
 							function ($) {
-								return $.cO;
+								return $.du;
 							},
 							A2(
 								$author$project$Tutorial$htmlBefore,
@@ -16345,7 +16654,7 @@ var $author$project$Tutorial$basicControls = A2(
 							A3(
 								$author$project$Control$field,
 								function ($) {
-									return $.cb;
+									return $.a3;
 								},
 								A2(
 									$author$project$Tutorial$htmlBefore,
@@ -16354,10 +16663,10 @@ var $author$project$Tutorial$basicControls = A2(
 								$author$project$Control$record(
 									F5(
 										function (bool, string, _char, _int, _float) {
-											return {cb: bool, cd: _char, ck: _float, cs: _int, cO: string};
+											return {a3: bool, c4: _char, c9: _float, df: _int, du: string};
 										}))))))))));
 var $elm$html$Html$button = _VirtualDom_node('button');
-var $author$project$Tutorial$createYourOwnIntro = $author$project$Tutorial$md('\n## Creating your own controls\n\nOne final issue with our `customerControl`: why the heck are we including the customer\'s current age? In a year\'s time, \nthat data is going to be completely stale and useless. Instead, it would be much better to capture their date of birth. \n\n### Playing the dating game\n\nThe first thing we\'ll need is a `Date` type. There isn\'t one in `elm/core`, so let\'s go to the terminal and do \n`elm install justinmimbs/date`. \n\nOnce the package has been installed, add a few imports to the top of the `Main.elm` module:\n```\nimport Date\nimport Html\nimport Html.Attributes\n```\n\nNow, change our `Customer` type as follows:\n\n```\ntype alias Customer = \n    { name : String\n    , dateOfBirth : Date.Date\n    , products : List Product\n    , id : Id\n    , password : String\n    }\n```\n\n### Building a Date control\n\nWe _could_ pull together a date control using the combinators we\'ve already learned - something like this:\n\n```\nboringDateControl =\n    Control.record Date.fromCalendarDate\n        |> Control.field Date.year\n            (Control.int\n                |> Control.label "Year"\n            )\n        |> Control.field Date.month\n            (Control.int\n                |> Control.label "Month"\n                |> Control.map\n                    { convert = Date.numberToMonth\n                    , revert = Date.monthToNumber\n                    }\n            )\n        |> Control.field Date.day\n            (Control.int\n                |> Control.label "Day"\n            )\n        |> Control.endRecord\n```\n\n(Notice that although we\'re using `Control.record`, we\'re not actually creating a record here! We\'re passing the values \nproduced by the three fields to the `Date.fromCalendarDate` function.)\n\n### Building a Date control _from scratch_\n\nBut let\'s not use `Control.record` - let\'s say we want to use HTML\'s built-in `<input type="date">` element to render \nour `Date` control. \n\nWe can do this with `Control.create`, which gives us the flexibility to build completely bespoke controls for any Elm \ntype.\n\n```\ndateControl =\n    Control.create\n        { label = "Date of birth"\n        , initBlank = ( "1970-01-01", Cmd.none )\n        , initPrefilled = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )\n        , update = \\delta state -> ( delta, Cmd.none )\n        , view =\n            \\{ state, id, label, name, class } ->\n                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]\n                , Html.input\n                    [ Html.Attributes.type_ "date"\n                    , Html.Attributes.value state\n                    , Html.Attributes.id id\n                    , Html.Attributes.class class\n                    , Html.Attributes.name name\n                    ]\n                    []\n                ]\n        , subscriptions = \\state -> Sub.none\n        , parse =\n            \\state ->\n                case Date.fromIsoString state of\n                    Ok date ->\n                        Ok date\n\n                    Err error ->\n                        Err [ error ]\n        }\n```\n\nThis looks like a lot to digest, but we can take it one field at a time.\n\n#### label : `String`\nThis is the default label that will be displayed on the control.\n\n#### initBlank : `( state, Cmd delta )`\nThis specifies the default internal `state` of the control when it\'s initialised, \ntogether with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we \ndon\'t need to send any `Cmd`s.\n\n#### initPrefilled : `output -> ( state, Cmd delta )`\nThis defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial \n`Cmd` if needed. In this case, we\'re teaching it how to turn a `Date` into a `String` and there\'s no `Cmd` to send.\n\n#### update : `delta -> state -> ( state, Cmd delta )`\nThis is exactly like a normal Elm app\'s `update` function - for \n`delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all \nwe need to do in our update function is replace the existing `state` with the new `delta`.\n\n#### view : `{ state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` \nThis is very similar to a normal Elm app\'s `view` function, but with two differences. First, in addition to the `state`, \nit also gives us access to some other stuff that we can include in our view\'s HTML attributes. Second, it produces a \nlist of HTML elements, rather than a single element.\n\n#### subscriptions : `state -> Sub delta`\nThis is exactly like a normal Elm app\'s `subscriptions` function. Here, we don\'t \nneed to manage any subscriptions, so we can just return `Sub.none`.\n\n#### parse : `state -> Result (List String) output`\nThis attempts to turn the control\'s `state` into a value of the \ncontrol\'s `output` type, returning a list of errors if it fails. In this case, it\'s trying to parse a `String` into a \n`Date`.\n\n### Wiring it up\n\nFinally, let\'s update `customerControl` to replace the `age` field with our new `dateOfBirth` field:\n\n```\ncustomerControl = \n    Control.record\n        (\\name dateOfBirth products id password ->\n            { name = name\n            , dateOfBirth = dateOfBirth\n            , products = products\n            , id = id\n            , password = password\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .dateOfBirth dateControl\n        |> Control.field .products productListControl\n        |> Control.field .id idControl\n        |> Control.field .password passwordControl\n        |> Control.endRecord\n        |> htmlBefore createYourOwnIntro\n        |> htmlAfter createYourOwnOutro\n```\n\nAnd the final result should look like this:\n');
+var $author$project$Tutorial$createYourOwnIntro = $author$project$Tutorial$md('\n## Creating your own controls\n\nOne final issue with our `customerControl`: why the heck are we including the customer\'s current age? In a year\'s time, \nthat data is going to be completely stale and useless. Instead, it would be much better to capture their date of birth. \n\n### Playing the dating game\n\nThe first thing we\'ll need is a `Date` type. There isn\'t one in `elm/core`, so let\'s go to the terminal and do \n`elm install justinmimbs/date`. \n\nOnce the package has been installed, add a few imports to the top of the `Main.elm` module:\n```\nimport Date\nimport Html\nimport Html.Attributes\n```\n\nNow, change our `Customer` type as follows:\n\n```\ntype alias Customer = \n    { name : String\n    , dateOfBirth : Date.Date\n    , stickers : List Sticker\n    , id : Id\n    , password : String\n    }\n```\n\n### Building a Date control\n\nWe _could_ pull together a date control using the combinators we\'ve already learned - something like this:\n\n```\nboringDateControl =\n    Control.record Date.fromCalendarDate\n        |> Control.field Date.year\n            (Control.int\n                |> Control.label "Year"\n            )\n        |> Control.field Date.month\n            (Control.int\n                |> Control.label "Month"\n                |> Control.map\n                    { convert = Date.numberToMonth\n                    , revert = Date.monthToNumber\n                    }\n            )\n        |> Control.field Date.day\n            (Control.int\n                |> Control.label "Day"\n            )\n        |> Control.endRecord\n```\n\n(Notice that although we\'re using `Control.record`, we\'re not actually creating a record here! We\'re passing the values \nproduced by the three fields to the `Date.fromCalendarDate` function.)\n\n### Building a Date control _from scratch_\n\nBut let\'s not use `Control.record` - let\'s say we want to use HTML\'s built-in `<input type="date">` element to render \nour `Date` control. \n\nWe can do this with `Control.create`, which gives us the flexibility to build completely bespoke controls for any Elm \ntype.\n\n```\ndateControl =\n    Control.create\n        { label = "Date of birth"\n        , initBlank = ( "1970-01-01", Cmd.none )\n        , initPrefilled = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )\n        , update = \\delta state -> ( delta, Cmd.none )\n        , view =\n            \\{ state, id, label, name, class } ->\n                [ Html.label [ Html.Attributes.for id ] [ Html.text label ]\n                , Html.input\n                    [ Html.Attributes.type_ "date"\n                    , Html.Attributes.value state\n                    , Html.Attributes.id id\n                    , Html.Attributes.class class\n                    , Html.Attributes.name name\n                    ]\n                    []\n                ]\n        , subscriptions = \\state -> Sub.none\n        , parse =\n            \\state ->\n                case Date.fromIsoString state of\n                    Ok date ->\n                        Ok date\n\n                    Err error ->\n                        Err [ error ]\n        }\n```\n\nThis looks like a lot to digest, but we can take it one field at a time.\n\n#### label : `String`\nThis is the default label that will be displayed on the control.\n\n#### initBlank : `( state, Cmd delta )`\nThis specifies the default internal `state` of the control when it\'s initialised, \ntogether with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we \ndon\'t need to send any `Cmd`s.\n\n#### initPrefilled : `output -> ( state, Cmd delta )`\nThis defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial \n`Cmd` if needed. In this case, we\'re teaching it how to turn a `Date` into a `String` and there\'s no `Cmd` to send.\n\n#### update : `delta -> state -> ( state, Cmd delta )`\nThis is exactly like a normal Elm app\'s `update` function - for \n`delta`, think `Msg`, and for `state`, think `Model`. In this case, both the `state` and `delta` are `String`s, and all \nwe need to do in our update function is replace the existing `state` with the new `delta`.\n\n#### view : `{ state : state, label : String, id : String, name : String, class : String } -> List (Html delta)` \nThis is very similar to a normal Elm app\'s `view` function, but with two differences. First, in addition to the `state`, \nit also gives us access to some other stuff that we can include in our view\'s HTML attributes. Second, it produces a \nlist of HTML elements, rather than a single element.\n\n#### subscriptions : `state -> Sub delta`\nThis is exactly like a normal Elm app\'s `subscriptions` function. Here, we don\'t \nneed to manage any subscriptions, so we can just return `Sub.none`.\n\n#### parse : `state -> Result (List String) output`\nThis attempts to turn the control\'s `state` into a value of the \ncontrol\'s `output` type, returning a list of errors if it fails. In this case, it\'s trying to parse a `String` into a \n`Date`.\n\n### Wiring it up\n\nFinally, let\'s update `customerControl` to replace the `age` field with our new `dateOfBirth` field:\n\n```\ncustomerControl = \n    Control.record\n        (\\name dateOfBirth stickers id password ->\n            { name = name\n            , dateOfBirth = dateOfBirth\n            , stickers = stickers\n            , id = id\n            , password = password\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .dateOfBirth dateControl\n        |> Control.field .stickers stickerListControl\n        |> Control.field .id idControl\n        |> Control.field .password passwordControl\n        |> Control.endRecord\n        |> htmlBefore createYourOwnIntro\n        |> htmlAfter createYourOwnOutro\n```\n\nAnd the final result should look like this:\n');
 var $author$project$Tutorial$createYourOwnOutro = $author$project$Tutorial$md('\nNow our customer form is done... but to make it useful, we\'re going to want to embed it into a bigger Elm app. How can \nwe do that?\n');
 var $elm$time$Time$Jan = 0;
 var $justinmimbs$date$Date$RD = $elm$core$Basics$identity;
@@ -16476,7 +16785,7 @@ var $justinmimbs$date$Date$toCalendarDateHelp = F3(
 				d = $temp$d;
 				continue toCalendarDateHelp;
 			} else {
-				return {ch: d, cw: m, c$: y};
+				return {c7: d, di: m, dA: y};
 			}
 		}
 	});
@@ -16516,33 +16825,33 @@ var $justinmimbs$date$Date$toOrdinalDate = function (_v0) {
 	var rd = _v0;
 	var y = $justinmimbs$date$Date$year(rd);
 	return {
-		bP: rd - $justinmimbs$date$Date$daysBeforeYear(y),
-		c$: y
+		cE: rd - $justinmimbs$date$Date$daysBeforeYear(y),
+		dA: y
 	};
 };
 var $justinmimbs$date$Date$toCalendarDate = function (_v0) {
 	var rd = _v0;
 	var date = $justinmimbs$date$Date$toOrdinalDate(rd);
-	return A3($justinmimbs$date$Date$toCalendarDateHelp, date.c$, 0, date.bP);
+	return A3($justinmimbs$date$Date$toCalendarDateHelp, date.dA, 0, date.cE);
 };
 var $justinmimbs$date$Date$day = A2(
 	$elm$core$Basics$composeR,
 	$justinmimbs$date$Date$toCalendarDate,
 	function ($) {
-		return $.ch;
+		return $.c7;
 	});
 var $justinmimbs$date$Date$month = A2(
 	$elm$core$Basics$composeR,
 	$justinmimbs$date$Date$toCalendarDate,
 	function ($) {
-		return $.cw;
+		return $.di;
 	});
 var $justinmimbs$date$Date$monthNumber = A2($elm$core$Basics$composeR, $justinmimbs$date$Date$month, $justinmimbs$date$Date$monthToNumber);
 var $justinmimbs$date$Date$ordinalDay = A2(
 	$elm$core$Basics$composeR,
 	$justinmimbs$date$Date$toOrdinalDate,
 	function ($) {
-		return $.bP;
+		return $.cE;
 	});
 var $elm$core$String$padLeft = F3(
 	function (n, _char, string) {
@@ -16625,22 +16934,22 @@ var $justinmimbs$date$Date$toWeekDate = function (_v0) {
 	var wy = $justinmimbs$date$Date$year(rd + (4 - wdn));
 	var week1Day1 = $justinmimbs$date$Date$daysBeforeWeekYear(wy) + 1;
 	return {
-		cW: 1 + (((rd - week1Day1) / 7) | 0),
-		cX: wy,
-		dt: $justinmimbs$date$Date$numberToWeekday(wdn)
+		dy: 1 + (((rd - week1Day1) / 7) | 0),
+		dz: wy,
+		dY: $justinmimbs$date$Date$numberToWeekday(wdn)
 	};
 };
 var $justinmimbs$date$Date$weekNumber = A2(
 	$elm$core$Basics$composeR,
 	$justinmimbs$date$Date$toWeekDate,
 	function ($) {
-		return $.cW;
+		return $.dy;
 	});
 var $justinmimbs$date$Date$weekYear = A2(
 	$elm$core$Basics$composeR,
 	$justinmimbs$date$Date$toWeekDate,
 	function ($) {
-		return $.cX;
+		return $.dz;
 	});
 var $justinmimbs$date$Date$weekday = A2($elm$core$Basics$composeR, $justinmimbs$date$Date$weekdayNumber, $justinmimbs$date$Date$numberToWeekday);
 var $elm$core$Basics$min = F2(
@@ -16739,16 +17048,16 @@ var $justinmimbs$date$Date$formatField = F4(
 							$elm$core$String$fromInt(
 								$justinmimbs$date$Date$monthNumber(date)));
 					case 3:
-						return language.a7(
+						return language.bg(
 							$justinmimbs$date$Date$month(date));
 					case 4:
-						return language.bK(
+						return language.bv(
 							$justinmimbs$date$Date$month(date));
 					case 5:
 						return A2(
 							$elm$core$String$left,
 							1,
-							language.a7(
+							language.bg(
 								$justinmimbs$date$Date$month(date)));
 					default:
 						return '';
@@ -16781,7 +17090,7 @@ var $justinmimbs$date$Date$formatField = F4(
 							$elm$core$String$fromInt(
 								$justinmimbs$date$Date$day(date)));
 					case 3:
-						return language.bs(
+						return language.bp(
 							$justinmimbs$date$Date$day(date));
 					default:
 						return '';
@@ -16811,28 +17120,28 @@ var $justinmimbs$date$Date$formatField = F4(
 			case 'E':
 				switch (length) {
 					case 1:
-						return language.au(
+						return language.aN(
 							$justinmimbs$date$Date$weekday(date));
 					case 2:
-						return language.au(
+						return language.aN(
 							$justinmimbs$date$Date$weekday(date));
 					case 3:
-						return language.au(
+						return language.aN(
 							$justinmimbs$date$Date$weekday(date));
 					case 4:
-						return language.b7(
+						return language.by(
 							$justinmimbs$date$Date$weekday(date));
 					case 5:
 						return A2(
 							$elm$core$String$left,
 							1,
-							language.au(
+							language.aN(
 								$justinmimbs$date$Date$weekday(date)));
 					case 6:
 						return A2(
 							$elm$core$String$left,
 							2,
-							language.au(
+							language.aN(
 								$justinmimbs$date$Date$weekday(date)));
 					default:
 						return '';
@@ -17050,10 +17359,10 @@ var $justinmimbs$date$Pattern$patternHelp = function (tokens) {
 };
 var $elm$parser$Parser$DeadEnd = F3(
 	function (row, col, problem) {
-		return {cf: col, $7: problem, dr: row};
+		return {bc: col, dT: problem, dW: row};
 	});
 var $elm$parser$Parser$problemToDeadEnd = function (p) {
-	return A3($elm$parser$Parser$DeadEnd, p.dr, p.cf, p.$7);
+	return A3($elm$parser$Parser$DeadEnd, p.dW, p.bc, p.dT);
 };
 var $elm$parser$Parser$run = F2(
 	function (parser, source) {
@@ -17132,14 +17441,14 @@ var $justinmimbs$date$Date$weekdayToName = function (wd) {
 	}
 };
 var $justinmimbs$date$Date$language_en = {
-	bs: $justinmimbs$date$Date$withOrdinalSuffix,
-	bK: $justinmimbs$date$Date$monthToName,
-	a7: A2(
+	bp: $justinmimbs$date$Date$withOrdinalSuffix,
+	bv: $justinmimbs$date$Date$monthToName,
+	bg: A2(
 		$elm$core$Basics$composeR,
 		$justinmimbs$date$Date$monthToName,
 		$elm$core$String$left(3)),
-	b7: $justinmimbs$date$Date$weekdayToName,
-	au: A2(
+	by: $justinmimbs$date$Date$weekdayToName,
+	aN: A2(
 		$elm$core$Basics$composeR,
 		$justinmimbs$date$Date$weekdayToName,
 		$elm$core$String$left(3))
@@ -17148,7 +17457,7 @@ var $justinmimbs$date$Date$format = function (pattern) {
 	return A2($justinmimbs$date$Date$formatWithLanguage, $justinmimbs$date$Date$language_en, pattern);
 };
 var $justinmimbs$date$Date$deadEndToString = function (_v0) {
-	var problem = _v0.$7;
+	var problem = _v0.dT;
 	if (problem.$ === 12) {
 		var message = problem.a;
 		return message;
@@ -17493,11 +17802,11 @@ var $justinmimbs$date$Date$fromIsoString = A2(
 				$elm$core$Basics$composeR,
 				$elm$core$Maybe$map($justinmimbs$date$Date$deadEndToString),
 				$elm$core$Maybe$withDefault('')))));
-var $author$project$Tutorial$dateControl = $author$project$Control$create(
+var $author$project$Tutorial$dateControl = $author$project$Control$define(
 	{
-		N: _Utils_Tuple2('1970-01-01', $elm$core$Platform$Cmd$none),
+		Y: _Utils_Tuple2('1970-01-01', $elm$core$Platform$Cmd$none),
 		c: 'Date of birth',
-		j: function (state) {
+		o: function (state) {
 			var _v0 = $justinmimbs$date$Date$fromIsoString(state);
 			if (!_v0.$) {
 				var date = _v0.a;
@@ -17509,7 +17818,7 @@ var $author$project$Tutorial$dateControl = $author$project$Control$create(
 						[error]));
 			}
 		},
-		Q: function (date) {
+		_: function (date) {
 			return _Utils_Tuple2(
 				A2($justinmimbs$date$Date$format, 'yyyy-MM-dd', date),
 				$elm$core$Platform$Cmd$none);
@@ -17517,16 +17826,16 @@ var $author$project$Tutorial$dateControl = $author$project$Control$create(
 		t: function (state) {
 			return $elm$core$Platform$Sub$none;
 		},
-		s: F2(
+		r: F2(
 			function (delta, state) {
 				return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
 			}),
-		n: function (_v1) {
-			var state = _v1.y;
-			var id = _v1.e;
+		m: function (_v1) {
+			var state = _v1.v;
+			var id = _v1.f;
 			var label = _v1.c;
-			var name = _v1.o;
-			var _class = _v1.l;
+			var name = _v1.l;
+			var _class = _v1.e;
 			return _List_fromArray(
 				[
 					A2(
@@ -17547,7 +17856,8 @@ var $author$project$Tutorial$dateControl = $author$project$Control$create(
 							$elm$html$Html$Attributes$value(state),
 							$elm$html$Html$Attributes$id(id),
 							$elm$html$Html$Attributes$class(_class),
-							$elm$html$Html$Attributes$name(name)
+							$elm$html$Html$Attributes$name(name),
+							$elm$html$Html$Events$onInput($elm$core$Basics$identity)
 						]),
 					_List_Nil)
 				]);
@@ -17563,36 +17873,91 @@ var $author$project$Control$label = F2(
 				i,
 				{
 					c: label_,
-					j: function (state) {
-						return A2(
-							$elm$core$Result$mapError,
-							function (fs) {
-								return A2(
-									$elm$core$List$map,
-									function (f) {
-										return _Utils_update(
-											f,
-											{
-												c: _Utils_eq(f.C, i.C) ? label_ : f.c
-											});
-									},
-									fs);
-							},
-							i.j(state));
-					}
+					o: F2(
+						function (context, state) {
+							return A2(
+								$elm$core$Result$mapError,
+								function (fs) {
+									return A2(
+										$elm$core$List$map,
+										function (f) {
+											return _Utils_update(
+												f,
+												{
+													c: _Utils_eq(f.D, i.D) ? label_ : f.c
+												});
+										},
+										fs);
+								},
+								A2(i.o, context, state));
+						})
 				});
 		};
 		return A2($elm$core$Basics$composeR, control, labeller);
 	});
+var $author$project$Control$Mapping = $elm$core$Basics$identity;
+var $author$project$Control$mapWrapper = {
+	S: F2(
+		function (_v0, _v1) {
+			return $elm$core$Basics$identity;
+		}),
+	T: F2(
+		function (_v2, _v3) {
+			return $elm$core$Basics$identity;
+		}),
+	W: F2(
+		function (_v4, _v5) {
+			return $elm$core$Basics$identity;
+		}),
+	X: F2(
+		function (_v6, _v7) {
+			return $elm$core$Basics$identity;
+		}),
+	ab: F2(
+		function (_v8, _v9) {
+			var a = _v9;
+			return A2(
+				$elm$core$Maybe$map,
+				function (a_) {
+					return _Utils_Tuple2(a_, 0);
+				},
+				$author$project$Control$maybeExtractDelta(a));
+		}),
+	ac: F2(
+		function (_v10, _v11) {
+			var a = _v11;
+			return A2(
+				$elm$core$Maybe$map,
+				function (a_) {
+					return _Utils_Tuple2(a_, 0);
+				},
+				$author$project$Control$maybeExtractState(a));
+		}),
+	ad: F2(
+		function (_v12, _v13) {
+			var a = _v13.a;
+			var _v14 = _v13.b;
+			return $author$project$Control$Delta_(a);
+		}),
+	ae: F2(
+		function (_v15, _v16) {
+			var a = _v16.a;
+			var _v17 = _v16.b;
+			return $author$project$Control$State_(a);
+		})
+};
 var $author$project$Control$map = F2(
 	function (config, control) {
 		return function (path) {
-			var _v0 = $author$project$Control$endRecord(
-				A3(
-					$author$project$Control$field,
-					config.bb,
+			var _v0 = A2(
+				$author$project$Control$endProductType,
+				$author$project$Control$mapWrapper,
+				A4(
+					$author$project$Control$productField,
+					$author$project$Control$mapWrapper,
+					config.b$,
 					control,
-					$author$project$Control$record(config.aU)));
+					$author$project$Control$productType(config.bG)));
 			var inner = _v0;
 			return inner(path);
 		};
@@ -17600,8 +17965,10 @@ var $author$project$Control$map = F2(
 var $author$project$Tutorial$idControl = A2(
 	$author$project$Control$map,
 	{
-		aU: $elm$core$Basics$identity,
-		bb: function (_v0) {
+		bG: function (_int) {
+			return _int;
+		},
+		b$: function (_v0) {
 			var _int = _v0;
 			return _int;
 		}
@@ -17654,101 +18021,106 @@ var $author$project$Control$alertEmitter = F3(
 		return _Utils_update(
 			ctrl,
 			{
-				F: function (state) {
-					var oldAlerts = ctrl.F(state);
-					var newAlerts = function () {
-						var _v1 = ctrl.j(state);
-						if (!_v1.$) {
-							var output = _v1.a;
-							return check(output) ? _List_fromArray(
-								[alert]) : _List_Nil;
-						} else {
-							return _List_Nil;
-						}
-					}();
-					return $elm_community$list_extra$List$Extra$unique(
-						_Utils_ap(oldAlerts, newAlerts));
-				}
+				G: F2(
+					function (context, state) {
+						var oldAlerts = A2(ctrl.G, context, state);
+						var newAlerts = function () {
+							var _v1 = A2(ctrl.o, context, state);
+							if (!_v1.$) {
+								var output = _v1.a;
+								return A2(check, context, output) ? _List_fromArray(
+									[alert]) : _List_Nil;
+							} else {
+								return _List_Nil;
+							}
+						}();
+						return $elm_community$list_extra$List$Extra$unique(
+							_Utils_ap(oldAlerts, newAlerts));
+					})
 			});
 	});
-var $author$project$Control$alertReceiver = F4(
-	function (alert, fail, message, _v0) {
+var $author$project$Control$alertReceiver = F5(
+	function (alert, fail, message, class_, _v0) {
 		var ctrl = _v0;
 		return _Utils_update(
 			ctrl,
 			{
-				K: function (state) {
-					var internalState = state.a;
-					var _v1 = internalState.k;
+				R: function (state) {
+					var meta = state.a;
+					var _v1 = meta.k;
 					if (_v1.$ === 1) {
 						return A2(
 							$elm$core$List$cons,
 							alert,
-							ctrl.K(state));
+							ctrl.R(state));
 					} else {
-						return ctrl.K(state);
+						return ctrl.R(state);
 					}
 				},
-				E: F2(
+				B: F2(
 					function (state, alerts) {
-						var oldReceiver = A2(ctrl.E, state, alerts);
+						var oldReceiver = A2(ctrl.B, state, alerts);
 						var newReceiver = A2($elm$core$List$member, alert, alerts) ? _List_fromArray(
 							[
-								{O: fail, c: ctrl.c, R: message, C: ctrl.C}
+								{e: class_, ai: fail, c: ctrl.c, az: message, D: ctrl.D}
 							]) : _List_Nil;
 						return $elm_community$list_extra$List$Extra$unique(
 							_Utils_ap(oldReceiver, newReceiver));
 					}),
-				al: ctrl.al + 1
+				av: ctrl.av + 1
 			});
 	});
-var $author$project$Control$failIf = F3(
+var $author$project$Control$failIfWithContext = F3(
 	function (check, message, _v0) {
 		var c = _v0;
 		return function (path) {
 			var _v1 = c(path);
 			var control = _v1;
-			var alert = A2($author$project$Control$AlertPath, path, control.al);
-			return A4(
+			var alert = A2($author$project$Control$AlertPath, path, control.av);
+			return A5(
 				$author$project$Control$alertReceiver,
 				alert,
 				true,
 				message,
+				'control-feedback-fail',
 				A3($author$project$Control$alertEmitter, check, alert, control));
 		};
 	});
-var $author$project$Control$noteIf = F3(
+var $author$project$Control$noteIfWithContext = F3(
 	function (check, message, _v0) {
 		var c = _v0;
 		return function (path) {
 			var _v1 = c(path);
 			var control = _v1;
-			var alert = A2($author$project$Control$AlertPath, path, control.al);
-			return A4(
+			var alert = A2($author$project$Control$AlertPath, path, control.av);
+			return A5(
 				$author$project$Control$alertReceiver,
 				alert,
 				false,
 				message,
+				'control-feedback-note',
 				A3($author$project$Control$alertEmitter, check, alert, control));
 		};
 	});
 var $author$project$Tutorial$nameControl = A3(
-	$author$project$Control$noteIf,
-	function (name) {
-		return $elm$core$String$length(name) === 1;
-	},
+	$author$project$Control$noteIfWithContext,
+	F2(
+		function (ctx, name) {
+			return $elm$core$String$length(name) === 1;
+		}),
 	'Is that the full name?',
 	A3(
-		$author$project$Control$failIf,
-		function (name) {
-			return $elm$core$String$isEmpty(name);
-		},
+		$author$project$Control$failIfWithContext,
+		F2(
+			function (ctx, name) {
+				return $elm$core$String$isEmpty(name);
+			}),
 		'Name cannot be blank',
 		A2($author$project$Control$label, 'Name', $author$project$Control$string)));
 var $author$project$Control$AlertLabel = function (a) {
 	return {$: 0, a: a};
 };
-var $author$project$Control$alertIf = F3(
+var $author$project$Control$alertIfWithContext = F3(
 	function (when, alert, _v0) {
 		var control = _v0;
 		return A2(
@@ -17761,64 +18133,69 @@ var $author$project$Control$alertIf = F3(
 	});
 var $author$project$Tutorial$choosePasswordControl = A2($author$project$Control$label, 'Choose password', $author$project$Control$string);
 var $author$project$Control$respond = F2(
-	function (_v0, _v1) {
-		var alert = _v0.bm;
-		var fail = _v0.O;
-		var message = _v0.R;
-		var control = _v1;
+	function (args, _v0) {
+		var control = _v0;
 		return A2(
 			$elm$core$Basics$composeR,
 			control,
-			A3(
+			A4(
 				$author$project$Control$alertReceiver,
-				$author$project$Control$AlertLabel(alert),
-				fail,
-				message));
+				$author$project$Control$AlertLabel(args.cj),
+				args.ai,
+				args.az,
+				args.e));
 	});
 var $author$project$Tutorial$confirmPasswordControl = A2(
 	$author$project$Control$respond,
-	{bm: 'password-mismatch', O: true, R: 'Passwords must match'},
+	{cj: 'password-mismatch', e: 'control-feedback-fail', ai: true, az: 'Passwords must match'},
 	A2($author$project$Control$label, 'Confirm password', $author$project$Control$string));
 var $author$project$Tutorial$passwordControl = A2(
 	$author$project$Control$map,
 	{
-		aU: function ($) {
-			return $.aA;
+		bG: function ($) {
+			return $.bn;
 		},
-		bb: function (p) {
-			return {aA: p, aS: p};
+		b$: function (p) {
+			return {bn: p, bF: p};
 		}
 	},
 	A3(
-		$author$project$Control$alertIf,
-		function (_v0) {
-			var choose = _v0.aA;
-			var confirm = _v0.aS;
-			return !_Utils_eq(choose, confirm);
-		},
+		$author$project$Control$alertIfWithContext,
+		F2(
+			function (ctx, _v0) {
+				var choose = _v0.bn;
+				var confirm = _v0.bF;
+				return !_Utils_eq(choose, confirm);
+			}),
 		'password-mismatch',
 		$author$project$Control$endRecord(
 			A3(
 				$author$project$Control$field,
 				function ($) {
-					return $.aS;
+					return $.bF;
 				},
 				$author$project$Tutorial$confirmPasswordControl,
 				A3(
 					$author$project$Control$field,
 					function ($) {
-						return $.aA;
+						return $.bn;
 					},
 					$author$project$Tutorial$choosePasswordControl,
 					$author$project$Control$record(
 						F2(
 							function (choose, confirm) {
-								return {aA: choose, aS: confirm};
+								return {bn: choose, bF: confirm};
 							})))))));
 var $author$project$Control$ItemUpdated = F2(
 	function (a, b) {
 		return {$: 2, a: a, b: b};
 	});
+var $author$project$Control$ListDelta_ = function (a) {
+	return {$: 1, a: a};
+};
+var $author$project$Control$ListState_ = function (a) {
+	return {$: 0, a: a};
+};
 var $elm_community$list_extra$List$Extra$indexedFoldr = F3(
 	function (func, acc, list) {
 		var step = F2(
@@ -17857,119 +18234,145 @@ var $author$project$Control$button = F2(
 					$elm$html$Html$text(text)
 				]));
 	});
-var $author$project$Control$listView = F4(
-	function (path, config, debouncingReceivers, subcontrol) {
-		var view_ = A2(
-			$elm$html$Html$div,
-			_List_fromArray(
+var $author$project$Control$listView = F5(
+	function (path, context, config, debouncingReceivers, subcontrol) {
+		var _v0 = config.v;
+		if (_v0.$ === 1) {
+			return _List_fromArray(
 				[
-					$elm$html$Html$Attributes$id(config.e),
-					$elm$html$Html$Attributes$class('control-container')
-				]),
-			_List_fromArray(
-				[
-					A2(
-					$elm$html$Html$label,
-					_List_fromArray(
-						[
-							$elm$html$Html$Attributes$for(config.e)
-						]),
-					_List_fromArray(
-						[
-							$elm$html$Html$text(config.c)
-						])),
-					$elm$core$List$isEmpty(config.y) ? A2(
-					$author$project$Control$button,
-					$author$project$Control$StateChangedByInput(
-						$author$project$Control$ItemInserted(0)),
-					'Add item') : A2(
-					$elm$html$Html$map,
-					$author$project$Control$StateChangedByInput,
-					A2(
-						$elm$html$Html$ol,
-						_List_Nil,
+					$elm$html$Html$text('ERROR!')
+				]);
+		} else {
+			var state = _v0.a;
+			var view_ = A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$id(config.f),
+						$elm$html$Html$Attributes$class('control-container')
+					]),
+				_List_fromArray(
+					[
 						A2(
-							$elm$core$List$indexedMap,
-							F2(
-								function (idx, _v0) {
-									var internalState = _v0.a;
-									var state = _v0.b;
-									var itemPath = A2($author$project$Path$add, idx, path);
-									var filteredAlerts1 = A2(
-										$elm$core$List$filterMap,
-										function (alert) {
-											if (alert.$ === 2) {
-												var alertPath = alert.a;
-												var alertLabel = alert.b;
-												var alertIndexes = alert.c;
-												return _Utils_eq(alertPath, path) ? (A2($elm$core$List$member, idx, alertIndexes) ? $elm$core$Maybe$Just(
-													$author$project$Control$AlertLabel(alertLabel)) : $elm$core$Maybe$Nothing) : $elm$core$Maybe$Just(alert);
-											} else {
-												return $elm$core$Maybe$Just(alert);
-											}
-										},
-										config.V);
-									var filteredAlerts2 = A2(
-										$elm$core$List$filter,
-										function (f) {
-											return !A2($elm$core$List$member, f, debouncingReceivers);
-										},
-										filteredAlerts1);
-									var _v1 = subcontrol(itemPath);
-									var itemFns = _v1;
-									return A2(
-										$elm$html$Html$li,
-										_List_Nil,
-										_List_fromArray(
-											[
-												A2(
-												$elm$html$Html$map,
-												$author$project$Control$ItemUpdated(idx),
-												A2(
+						$elm$html$Html$label,
+						_List_fromArray(
+							[
+								$elm$html$Html$Attributes$for(config.f)
+							]),
+						_List_fromArray(
+							[
+								$elm$html$Html$text(config.c)
+							])),
+						$elm$core$List$isEmpty(state) ? A2(
+						$author$project$Control$button,
+						$author$project$Control$StateChangedByInput(
+							$author$project$Control$ListDelta_(
+								$author$project$Control$ItemInserted(0))),
+						'Add item') : A2(
+						$elm$html$Html$map,
+						$author$project$Control$StateChangedByInput,
+						A2(
+							$elm$html$Html$ol,
+							_List_Nil,
+							A2(
+								$elm$core$List$indexedMap,
+								F2(
+									function (idx, _v1) {
+										var meta = _v1.a;
+										var state_ = _v1.b;
+										var relevantAlerts = A2(
+											$elm$core$List$filterMap,
+											function (alert) {
+												switch (alert.$) {
+													case 2:
+														var alertPath = alert.a;
+														var alertLabel = alert.b;
+														var alertIndexes = alert.c;
+														return _Utils_eq(alertPath, path) ? (A2($elm$core$List$member, idx, alertIndexes) ? $elm$core$Maybe$Just(
+															$author$project$Control$AlertLabel(alertLabel)) : $elm$core$Maybe$Nothing) : $elm$core$Maybe$Just(alert);
+													case 0:
+														var label_ = alert.a;
+														return $elm$core$Maybe$Just(
+															$author$project$Control$AlertLabel(label_));
+													default:
+														var path_ = alert.a;
+														var number = alert.b;
+														return $elm$core$Maybe$Just(
+															A2($author$project$Control$AlertPath, path_, number));
+												}
+											},
+											config.j);
+										var relevantNonDebouncedAlerts = A2(
+											$elm$core$List$filter,
+											function (f) {
+												return !A2($elm$core$List$member, f, debouncingReceivers);
+											},
+											relevantAlerts);
+										var itemPath = A2($author$project$Path$add, idx, path);
+										var _v2 = subcontrol(itemPath);
+										var itemFns = _v2;
+										return A2(
+											$elm$html$Html$li,
+											_List_Nil,
+											_List_fromArray(
+												[
+													A2(
+													$elm$html$Html$map,
+													A2(
+														$elm$core$Basics$composeL,
+														$author$project$Control$ListDelta_,
+														$author$project$Control$ItemUpdated(idx)),
+													A2(
+														$elm$html$Html$div,
+														_List_Nil,
+														A2(
+															itemFns.m,
+															context,
+															{
+																j: relevantNonDebouncedAlerts,
+																e: itemFns.e,
+																f: A2(
+																	$elm$core$Maybe$withDefault,
+																	'control-' + $author$project$Path$toString(itemPath),
+																	itemFns.f),
+																c: itemFns.c,
+																l: A2(
+																	$elm$core$Maybe$withDefault,
+																	'control-' + $author$project$Path$toString(itemPath),
+																	itemFns.l),
+																h: meta.h,
+																v: state_,
+																k: A5(
+																	$author$project$Control$getStatus,
+																	itemFns.o,
+																	itemFns.B,
+																	relevantNonDebouncedAlerts,
+																	context,
+																	A2($author$project$Control$MkState, meta, state_))
+															}))),
+													A2(
+													$author$project$Control$button,
+													$author$project$Control$ListDelta_(
+														$author$project$Control$ItemDeleted(idx)),
+													'Delete item'),
+													A2(
 													$elm$html$Html$div,
 													_List_Nil,
-													itemFns.n(
-														{
-															V: filteredAlerts2,
-															l: itemFns.l,
-															e: A2(
-																$elm$core$Maybe$withDefault,
-																'control-' + $author$project$Path$toString(itemPath),
-																itemFns.e),
-															c: itemFns.c,
-															o: A2(
-																$elm$core$Maybe$withDefault,
-																'control-' + $author$project$Path$toString(itemPath),
-																itemFns.o),
-															g: internalState.g,
-															y: state,
-															k: A4(
-																$author$project$Control$getStatus,
-																itemFns.j,
-																itemFns.E,
-																filteredAlerts2,
-																A2($author$project$Control$State, internalState, state))
-														}))),
-												A2(
-												$author$project$Control$button,
-												$author$project$Control$ItemDeleted(idx),
-												'Delete item'),
-												A2(
-												$elm$html$Html$div,
-												_List_Nil,
-												_List_fromArray(
-													[
-														A2(
-														$author$project$Control$button,
-														$author$project$Control$ItemInserted(idx + 1),
-														'Insert item')
-													]))
-											]));
-								}),
-							config.y)))
-				]));
-		return _List_fromArray(
-			[view_]);
+													_List_fromArray(
+														[
+															A2(
+															$author$project$Control$button,
+															$author$project$Control$ListDelta_(
+																$author$project$Control$ItemInserted(idx + 1)),
+															'Insert item')
+														]))
+												]));
+									}),
+								state)))
+					]));
+			return _List_fromArray(
+				[view_]);
+		}
 	});
 var $elm_community$list_extra$List$Extra$removeAt = F2(
 	function (index, l) {
@@ -17990,375 +18393,433 @@ var $elm_community$list_extra$List$Extra$removeAt = F2(
 var $author$project$Control$list = function (_v0) {
 	var ctrl = _v0;
 	return function (path) {
-		var parse = function (_v24) {
-			var state = _v24.b;
-			return A3(
-				$elm$core$List$foldr,
-				F2(
-					function (_v25, res) {
-						var idx = _v25.a;
-						var item = _v25.b;
-						var _v26 = ctrl(
-							A2($author$project$Path$add, idx, path));
-						var itemControl = _v26;
-						if (!res.$) {
-							var outputs = res.a;
-							var _v28 = itemControl.j(item);
-							if (!_v28.$) {
-								var output = _v28.a;
-								return $elm$core$Result$Ok(
-									A2($elm$core$List$cons, output, outputs));
-							} else {
-								var errs = _v28.a;
-								return $elm$core$Result$Err(errs);
-							}
-						} else {
-							var errs = res.a;
-							var _v29 = itemControl.j(item);
-							if (!_v29.$) {
-								return $elm$core$Result$Err(errs);
-							} else {
-								var newErrs = _v29.a;
-								return $elm$core$Result$Err(
-									_Utils_ap(newErrs, errs));
-							}
-						}
-					}),
-				$elm$core$Result$Ok(_List_Nil),
-				A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, state));
-		};
-		var listUpdate = F2(
-			function (delta, state) {
-				switch (delta.$) {
-					case 0:
-						var idx = delta.a;
-						var before = A2($elm$core$List$take, idx, state);
-						var after = A2($elm$core$List$drop, idx, state);
-						var _v18 = ctrl(path);
-						var fns = _v18;
-						var _v19 = fns.H;
-						var initialState = _v19.a;
-						var initialCmd = _v19.b;
-						return _Utils_Tuple2(
-							_Utils_ap(
-								before,
-								A2($elm$core$List$cons, initialState, after)),
-							A2(
-								$elm$core$Platform$Cmd$map,
-								$author$project$Control$ItemUpdated(idx),
-								initialCmd));
-					case 2:
-						var idx = delta.a;
-						var itemDelta = delta.b;
-						var _v20 = A3(
-							$elm_community$list_extra$List$Extra$indexedFoldr,
-							F3(
-								function (thisIdx, item, _v21) {
-									var items = _v21.a;
-									var prevCmd = _v21.b;
-									if (_Utils_eq(thisIdx, idx)) {
-										var _v22 = ctrl(
-											A2($author$project$Path$add, idx, path));
-										var itemControl = _v22;
-										var _v23 = A2(itemControl.s, itemDelta, item);
-										var newItem = _v23.a;
-										var newCmd = _v23.b;
-										return _Utils_Tuple2(
-											A2($elm$core$List$cons, newItem, items),
-											newCmd);
+		var parse = F2(
+			function (context, _v37) {
+				var listState = _v37.b;
+				if (!listState.$) {
+					var state = listState.a;
+					return A3(
+						$elm$core$List$foldr,
+						F2(
+							function (_v32, res) {
+								var idx = _v32.a;
+								var item = _v32.b;
+								var _v33 = ctrl(
+									A2($author$project$Path$add, idx, path));
+								var itemControl = _v33;
+								if (!res.$) {
+									var outputs = res.a;
+									var _v35 = A2(itemControl.o, context, item);
+									if (!_v35.$) {
+										var output = _v35.a;
+										return $elm$core$Result$Ok(
+											A2($elm$core$List$cons, output, outputs));
 									} else {
-										return _Utils_Tuple2(
-											A2($elm$core$List$cons, item, items),
-											prevCmd);
+										var errs = _v35.a;
+										return $elm$core$Result$Err(errs);
 									}
-								}),
-							_Utils_Tuple2(_List_Nil, $elm$core$Platform$Cmd$none),
-							state);
-						var newState = _v20.a;
-						var cmd = _v20.b;
-						return _Utils_Tuple2(
-							newState,
-							A2(
-								$elm$core$Platform$Cmd$map,
-								$author$project$Control$ItemUpdated(idx),
-								cmd));
-					default:
-						var idx = delta.a;
-						return _Utils_Tuple2(
-							A2($elm_community$list_extra$List$Extra$removeAt, idx, state),
-							$elm$core$Platform$Cmd$none);
+								} else {
+									var errs = res.a;
+									var _v36 = A2(itemControl.o, context, item);
+									if (!_v36.$) {
+										return $elm$core$Result$Err(errs);
+									} else {
+										var newErrs = _v36.a;
+										return $elm$core$Result$Err(
+											_Utils_ap(newErrs, errs));
+									}
+								}
+							}),
+						$elm$core$Result$Ok(_List_Nil),
+						A2($elm$core$List$indexedMap, $elm$core$Tuple$pair, state));
+				} else {
+					return $elm$core$Result$Ok(_List_Nil);
+				}
+			});
+		var listUpdate = F3(
+			function (context, listDelta, listState) {
+				var _v23 = _Utils_Tuple2(listDelta, listState);
+				if ((_v23.a.$ === 1) && (!_v23.b.$)) {
+					var delta = _v23.a.a;
+					var state = _v23.b.a;
+					switch (delta.$) {
+						case 0:
+							var idx = delta.a;
+							var before = A2($elm$core$List$take, idx, state);
+							var after = A2($elm$core$List$drop, idx, state);
+							var _v25 = ctrl(path);
+							var fns = _v25;
+							var _v26 = fns.J;
+							var initialState = _v26.a;
+							var initialCmd = _v26.b;
+							return _Utils_Tuple2(
+								$author$project$Control$ListState_(
+									_Utils_ap(
+										before,
+										A2($elm$core$List$cons, initialState, after))),
+								A2(
+									$elm$core$Platform$Cmd$map,
+									A2(
+										$elm$core$Basics$composeL,
+										$author$project$Control$ListDelta_,
+										$author$project$Control$ItemUpdated(idx)),
+									initialCmd));
+						case 2:
+							var idx = delta.a;
+							var itemDelta = delta.b;
+							var _v27 = A3(
+								$elm_community$list_extra$List$Extra$indexedFoldr,
+								F3(
+									function (thisIdx, item, _v28) {
+										var items = _v28.a;
+										var prevCmd = _v28.b;
+										if (_Utils_eq(thisIdx, idx)) {
+											var _v29 = ctrl(
+												A2($author$project$Path$add, idx, path));
+											var itemControl = _v29;
+											var _v30 = A3(itemControl.r, context, itemDelta, item);
+											var newItem = _v30.a;
+											var newCmd = _v30.b;
+											return _Utils_Tuple2(
+												A2($elm$core$List$cons, newItem, items),
+												newCmd);
+										} else {
+											return _Utils_Tuple2(
+												A2($elm$core$List$cons, item, items),
+												prevCmd);
+										}
+									}),
+								_Utils_Tuple2(_List_Nil, $elm$core$Platform$Cmd$none),
+								state);
+							var newState = _v27.a;
+							var cmd = _v27.b;
+							return _Utils_Tuple2(
+								$author$project$Control$ListState_(newState),
+								A2(
+									$elm$core$Platform$Cmd$map,
+									A2(
+										$elm$core$Basics$composeL,
+										$author$project$Control$ListDelta_,
+										$author$project$Control$ItemUpdated(idx)),
+									cmd));
+						default:
+							var idx = delta.a;
+							return _Utils_Tuple2(
+								$author$project$Control$ListState_(
+									A2($elm_community$list_extra$List$Extra$removeAt, idx, state)),
+								$elm$core$Platform$Cmd$none);
+					}
+				} else {
+					return _Utils_Tuple2(listState, $elm$core$Platform$Cmd$none);
 				}
 			});
 		var update = $author$project$Control$wrapUpdate(listUpdate);
-		var collectDebouncingReceivers = function (_v16) {
-			var listState = _v16.b;
-			return $elm$core$List$concat(
-				A2(
-					$elm$core$List$indexedMap,
-					F2(
-						function (idx, itemState) {
-							var _v15 = ctrl(
-								A2($author$project$Path$add, idx, path));
-							var itemControl = _v15;
-							return itemControl.K(itemState);
-						}),
-					listState));
-		};
-		return {
-			az: update,
-			l: _List_Nil,
-			K: collectDebouncingReceivers,
-			E: F2(
-				function (_v1, alerts) {
-					var listState = _v1.b;
-					return $elm$core$List$concat(
-						A2(
-							$elm$core$List$indexedMap,
-							F2(
-								function (idx, item) {
-									var filteredAlerts = A2(
-										$elm$core$List$filterMap,
-										function (alert) {
-											if (alert.$ === 2) {
-												var alertPath = alert.a;
-												var alertLabel = alert.b;
-												var alertIndexes = alert.c;
-												return _Utils_eq(alertPath, path) ? (A2($elm$core$List$member, idx, alertIndexes) ? $elm$core$Maybe$Just(
-													$author$project$Control$AlertLabel(alertLabel)) : $elm$core$Maybe$Nothing) : $elm$core$Maybe$Just(alert);
-											} else {
-												return $elm$core$Maybe$Just(alert);
-											}
-										},
-										alerts);
-									var _v2 = ctrl(
-										A2($author$project$Path$add, idx, path));
-									var itemControl = _v2;
-									return A2(itemControl.E, item, filteredAlerts);
-								}),
-							listState));
-				}),
-			F: function (_v4) {
-				var s = _v4.b;
+		var collectDebouncingReceivers = function (_v22) {
+			var listState = _v22.b;
+			if (!listState.$) {
+				var state = listState.a;
 				return $elm$core$List$concat(
 					A2(
 						$elm$core$List$indexedMap,
 						F2(
-							function (idx, item) {
-								var _v5 = ctrl(
+							function (idx, itemState) {
+								var _v21 = ctrl(
 									A2($author$project$Path$add, idx, path));
-								var itemControl = _v5;
-								return itemControl.F(item);
+								var itemControl = _v21;
+								return itemControl.R(itemState);
 							}),
-						s));
-			},
-			e: $elm$core$Maybe$Nothing,
-			r: 0,
-			H: _Utils_Tuple2(
+						state));
+			} else {
+				return _List_Nil;
+			}
+		};
+		return {
+			aQ: update,
+			e: _List_Nil,
+			R: collectDebouncingReceivers,
+			B: F2(
+				function (_v1, alerts) {
+					var listState = _v1.b;
+					if (listState.$ === 1) {
+						return _List_Nil;
+					} else {
+						var state = listState.a;
+						return $elm$core$List$concat(
+							A2(
+								$elm$core$List$indexedMap,
+								F2(
+									function (idx, item) {
+										var filteredAlerts = A2(
+											$elm$core$List$filterMap,
+											function (alert) {
+												switch (alert.$) {
+													case 2:
+														var alertPath = alert.a;
+														var alertLabel = alert.b;
+														var alertIndexes = alert.c;
+														return _Utils_eq(alertPath, path) ? (A2($elm$core$List$member, idx, alertIndexes) ? $elm$core$Maybe$Just(
+															$author$project$Control$AlertLabel(alertLabel)) : $elm$core$Maybe$Nothing) : $elm$core$Maybe$Just(alert);
+													case 0:
+														var label_ = alert.a;
+														return $elm$core$Maybe$Just(
+															$author$project$Control$AlertLabel(label_));
+													default:
+														var path_ = alert.a;
+														var number = alert.b;
+														return $elm$core$Maybe$Just(
+															A2($author$project$Control$AlertPath, path_, number));
+												}
+											},
+											alerts);
+										var _v3 = ctrl(
+											A2($author$project$Path$add, idx, path));
+										var itemControl = _v3;
+										return A2(itemControl.B, item, filteredAlerts);
+									}),
+								state));
+					}
+				}),
+			G: F2(
+				function (context, _v5) {
+					var listState = _v5.b;
+					if (listState.$ === 1) {
+						return _List_Nil;
+					} else {
+						var state = listState.a;
+						return $elm$core$List$concat(
+							A2(
+								$elm$core$List$indexedMap,
+								F2(
+									function (idx, item) {
+										var _v7 = ctrl(
+											A2($author$project$Path$add, idx, path));
+										var itemControl = _v7;
+										return A2(itemControl.G, context, item);
+									}),
+								state));
+					}
+				}),
+			f: $elm$core$Maybe$Nothing,
+			s: 0,
+			J: _Utils_Tuple2(
 				A2(
-					$author$project$Control$State,
-					{g: 1, k: $author$project$Control$Intact_},
-					_List_Nil),
+					$author$project$Control$MkState,
+					{h: 1, k: $author$project$Control$Intact_},
+					$author$project$Control$ListState_(_List_Nil)),
 				$elm$core$Platform$Cmd$none),
-			ae: function (input) {
-				var _v6 = A3(
+			as: function (input) {
+				var _v8 = A3(
 					$elm_community$list_extra$List$Extra$indexedFoldr,
 					F3(
-						function (idx, itemInput, _v7) {
-							var itemInputs = _v7.a;
-							var itemCmds = _v7.b;
-							var _v8 = ctrl(
+						function (idx, itemInput, _v9) {
+							var itemInputs = _v9.a;
+							var itemCmds = _v9.b;
+							var _v10 = ctrl(
 								A2($author$project$Path$add, idx, path));
-							var itemControl = _v8;
-							var _v9 = itemControl.ae(itemInput);
-							var itemState = _v9.a;
-							var itemCmd = _v9.b;
+							var itemControl = _v10;
+							var _v11 = itemControl.as(itemInput);
+							var itemState = _v11.a;
+							var itemCmd = _v11.b;
 							return _Utils_Tuple2(
 								A2($elm$core$List$cons, itemState, itemInputs),
 								A2(
 									$elm$core$List$cons,
 									A2(
 										$elm$core$Platform$Cmd$map,
-										$author$project$Control$ItemUpdated(idx),
+										A2(
+											$elm$core$Basics$composeL,
+											$author$project$Control$ListDelta_,
+											$author$project$Control$ItemUpdated(idx)),
 										itemCmd),
 									itemCmds));
 						}),
 					_Utils_Tuple2(_List_Nil, _List_Nil),
 					input);
-				var initialState = _v6.a;
-				var initialCmds = _v6.b;
+				var initialState = _v8.a;
+				var initialCmds = _v8.b;
 				return _Utils_Tuple2(
 					A2(
-						$author$project$Control$State,
-						{g: 1, k: $author$project$Control$Intact_},
-						initialState),
+						$author$project$Control$MkState,
+						{h: 1, k: $author$project$Control$Intact_},
+						$author$project$Control$ListState_(initialState)),
 					A2(
 						$elm$core$Platform$Cmd$map,
 						$author$project$Control$StateChangedInternally,
 						$elm$core$Platform$Cmd$batch(initialCmds)));
 			},
 			c: 'List',
-			o: $elm$core$Maybe$Nothing,
-			j: parse,
-			C: path,
-			al: 0,
-			am: function (_v10) {
-				var i = _v10.a;
-				var s = _v10.b;
-				return A2(
-					$author$project$Control$State,
-					_Utils_update(
-						i,
-						{k: $author$project$Control$Idle_}),
-					A2(
-						$elm$core$List$indexedMap,
-						F2(
-							function (idx, item) {
-								var _v11 = ctrl(
-									A2($author$project$Path$add, idx, path));
-								var itemControl = _v11;
-								return itemControl.am(item);
-							}),
-						s));
+			l: $elm$core$Maybe$Nothing,
+			o: parse,
+			D: path,
+			av: 0,
+			an: function (_v12) {
+				var meta = _v12.a;
+				var listState = _v12.b;
+				if (listState.$ === 1) {
+					return A2(
+						$author$project$Control$MkState,
+						_Utils_update(
+							meta,
+							{k: $author$project$Control$Idle_}),
+						listState);
+				} else {
+					var state = listState.a;
+					return A2(
+						$author$project$Control$MkState,
+						_Utils_update(
+							meta,
+							{k: $author$project$Control$Idle_}),
+						$author$project$Control$ListState_(
+							A2(
+								$elm$core$List$indexedMap,
+								F2(
+									function (idx, item) {
+										var _v14 = ctrl(
+											A2($author$project$Path$add, idx, path));
+										var itemControl = _v14;
+										return itemControl.an(item);
+									}),
+								state)));
+				}
 			},
-			aF: function (_v12) {
-				return _List_Nil;
-			},
-			t: function (_v13) {
-				var listState = _v13.b;
-				return A2(
-					$elm$core$Platform$Sub$map,
-					$author$project$Control$StateChangedInternally,
-					$elm$core$Platform$Sub$batch(
+			a_: F2(
+				function (_v15, _v16) {
+					return _List_Nil;
+				}),
+			t: F2(
+				function (context, _v17) {
+					var listState = _v17.b;
+					if (listState.$ === 1) {
+						return $elm$core$Platform$Sub$none;
+					} else {
+						var state = listState.a;
+						return A2(
+							$elm$core$Platform$Sub$map,
+							$author$project$Control$StateChangedInternally,
+							$elm$core$Platform$Sub$batch(
+								A2(
+									$elm$core$List$indexedMap,
+									F2(
+										function (idx, itemState) {
+											var _v19 = ctrl(
+												A2($author$project$Path$add, idx, path));
+											var itemControl = _v19;
+											return A2(
+												$elm$core$Platform$Sub$map,
+												A2(
+													$elm$core$Basics$composeL,
+													$author$project$Control$ListDelta_,
+													$author$project$Control$ItemUpdated(idx)),
+												A2(itemControl.t, context, itemState));
+										}),
+									state)));
+					}
+				}),
+			r: update(0),
+			m: F2(
+				function (context, config) {
+					var debouncingReceivers = collectDebouncingReceivers(
 						A2(
-							$elm$core$List$indexedMap,
-							F2(
-								function (idx, itemState) {
-									var _v14 = ctrl(
-										A2($author$project$Path$add, idx, path));
-									var itemControl = _v14;
-									return A2(
-										$elm$core$Platform$Sub$map,
-										$author$project$Control$ItemUpdated(idx),
-										itemControl.t(itemState));
-								}),
-							listState)));
-			},
-			s: update(0),
-			n: function (config) {
-				var debouncingReceivers = collectDebouncingReceivers(
-					A2(
-						$author$project$Control$State,
-						{g: config.g, k: $author$project$Control$Intact_},
-						config.y));
-				return A4($author$project$Control$listView, path, config, debouncingReceivers, ctrl);
-			}
+							$author$project$Control$MkState,
+							{h: config.h, k: $author$project$Control$Intact_},
+							config.v));
+					return A5($author$project$Control$listView, path, context, config, debouncingReceivers, ctrl);
+				})
 		};
 	};
 };
-var $author$project$Tutorial$Circle = function (a) {
-	return {$: 0, a: a};
+var $author$project$Tutorial$Circular = {$: 0};
+var $author$project$Tutorial$HeartShaped = function (a) {
+	return {$: 2, a: a};
 };
-var $author$project$Tutorial$Rectangle = F2(
+var $author$project$Tutorial$Rectangular = F2(
 	function (a, b) {
-		return {$: 2, a: a, b: b};
-	});
-var $author$project$Tutorial$Triangle = F3(
-	function (a, b, c) {
-		return {$: 1, a: a, b: b, c: c};
+		return {$: 1, a: a, b: b};
 	});
 var $author$project$Control$CustomTypeBuilder = $elm$core$Basics$identity;
 var $author$project$Control$customType = function (destructor) {
 	return {
-		Z: $elm$core$Basics$identity,
-		aN: $elm$core$Basics$identity,
-		aa: $elm$core$Basics$identity,
-		aV: 0,
-		aW: 0,
-		aX: $elm$core$Basics$identity,
-		aY: $elm$core$Basics$identity,
-		a_: destructor,
-		ab: $elm$core$Basics$identity,
-		x: F2(
+		aP: $elm$core$Basics$identity,
+		bB: $elm$core$Basics$identity,
+		aS: $elm$core$Basics$identity,
+		bH: 0,
+		bI: 0,
+		bJ: $elm$core$Basics$identity,
+		bK: $elm$core$Basics$identity,
+		S: $elm$core$Basics$identity,
+		T: $elm$core$Basics$identity,
+		aT: destructor,
+		aU: 0,
+		aV: $elm$core$Basics$identity,
+		d: F2(
 			function (_v0, x) {
 				return x;
 			}),
-		ad: $elm$core$Basics$identity,
-		r: 0,
-		af: F2(
+		aX: $elm$core$Basics$identity,
+		s: 0,
+		aY: F2(
 			function (_v1, x) {
 				return x;
 			}),
-		a0: $elm$core$Basics$identity,
-		ag: F2(
+		bO: $elm$core$Basics$identity,
+		at: F2(
 			function (_v2, x) {
 				return x;
 			}),
-		aB: $elm$core$Basics$identity,
-		a2: $elm$core$Basics$identity,
-		a5: $elm$core$Basics$identity,
-		aj: $elm$core$Basics$identity,
-		bd: 0,
-		be: 0,
-		bf: $elm$core$Basics$identity,
-		bg: $elm$core$Basics$identity,
-		an: $elm$core$Basics$identity,
-		bi: $elm$core$Basics$identity,
-		U: $elm$core$Basics$identity,
-		X: $elm$core$Basics$identity
+		bs: $elm$core$Basics$identity,
+		a6: $elm$core$Basics$identity,
+		bT: $elm$core$Basics$identity,
+		aZ: $elm$core$Basics$identity,
+		b2: 0,
+		b3: 0,
+		b4: $elm$core$Basics$identity,
+		b5: $elm$core$Basics$identity,
+		W: $elm$core$Basics$identity,
+		X: $elm$core$Basics$identity,
+		a$: $elm$core$Basics$identity,
+		cb: $elm$core$Basics$identity,
+		aD: $elm$core$Basics$identity,
+		a0: $elm$core$Basics$identity
 	};
 };
 var $author$project$Control$applyInputToStateConvertersToDestructor = F3(
 	function (inputToStateConverterToDestructorApplier_, destructor, inputToStateConverters) {
-		return A3(
-			inputToStateConverterToDestructorApplier_,
-			F2(
-				function (finalDestructor, _v0) {
-					return finalDestructor;
-				}),
-			destructor,
-			inputToStateConverters);
-	});
-var $author$project$Control$collectCustomTypeSubscriptions = F4(
-	function (collector, setters, fns, states) {
 		return A2(
-			$elm$core$Platform$Sub$map,
-			$author$project$Control$StateChangedInternally,
-			$elm$core$Platform$Sub$batch(
-				A5(
-					collector,
-					F4(
-						function (listSubs, _v0, _v1, _v2) {
-							return listSubs;
-						}),
-					_List_Nil,
-					setters,
-					fns,
-					states)));
+			inputToStateConverterToDestructorApplier_,
+			function ($) {
+				return $.aT;
+			},
+			{aT: destructor, a6: inputToStateConverters});
+	});
+var $author$project$Control$collectCustomTypeSubscriptions = F5(
+	function (collector, context, setters, fns, states) {
+		return $elm$core$Platform$Sub$batch(
+			A2(
+				collector,
+				function (_v0) {
+					var subs = _v0.b9;
+					return subs;
+				},
+				{p: context, w: setters, d: fns, i: states, b9: _List_Nil}));
 	});
 var $author$project$Control$collectDebouncingReceiversForCustomType = F3(
 	function (debouncingReceiverCollector_, fns, states) {
-		return A4(
+		return A2(
 			debouncingReceiverCollector_,
-			F3(
-				function (receivers, _v0, _v1) {
-					return receivers;
-				}),
-			_List_Nil,
-			fns,
-			states);
+			function (_v0) {
+				var receivers = _v0.bZ;
+				return receivers;
+			},
+			{d: fns, bZ: _List_Nil, i: states});
 	});
-var $author$project$Control$collectErrorsForCustomType = F4(
-	function (errorCollector_, alerts, fns, states) {
-		return A5(
-			errorCollector_,
-			F4(
-				function (_v0, errors, _v1, _v2) {
-					return errors;
-				}),
-			alerts,
-			_List_Nil,
-			fns,
-			states);
+var $author$project$Control$collectFeedbackForCustomType = F4(
+	function (feedbackCollector_, alerts, fns, states) {
+		return A2(
+			feedbackCollector_,
+			function ($) {
+				return $.aW;
+			},
+			{j: alerts, aW: _List_Nil, d: fns, i: states});
 	});
 var $author$project$Control$TagSelected = function (a) {
 	return {$: 5, a: a};
@@ -18391,7 +18852,7 @@ var $author$project$Control$radioView = function (config) {
 			$elm$html$Html$fieldset,
 			_List_fromArray(
 				[
-					$elm$html$Html$Attributes$id(config.e)
+					$elm$html$Html$Attributes$id(config.f)
 				]),
 			A2(
 				$elm$core$List$cons,
@@ -18408,7 +18869,7 @@ var $author$project$Control$radioView = function (config) {
 						function (idx, _v0) {
 							var option = _v0.a;
 							var optionLabel = _v0.b;
-							var optionId = config.e + ('-' + $elm$core$String$fromInt(idx + 1));
+							var optionId = config.f + ('-' + $elm$core$String$fromInt(idx + 1));
 							return A2(
 								$elm$html$Html$div,
 								_List_Nil,
@@ -18419,13 +18880,13 @@ var $author$project$Control$radioView = function (config) {
 										_List_fromArray(
 											[
 												$elm$html$Html$Attributes$type_('radio'),
-												$elm$html$Html$Attributes$name(config.o),
+												$elm$html$Html$Attributes$name(config.l),
 												$elm$html$Html$Attributes$id(optionId),
 												$elm$html$Html$Attributes$value(optionLabel),
 												$elm$html$Html$Attributes$checked(
-												_Utils_eq(config.bT, option)),
+												_Utils_eq(config.cJ, option)),
 												$author$project$Control$onChecked(
-												config.b5(option))
+												config.cZ(option))
 											]),
 										_List_Nil),
 										A2(
@@ -18440,311 +18901,469 @@ var $author$project$Control$radioView = function (config) {
 											]))
 									]));
 						}),
-					config.bN)))
+					config.cC)))
 		]);
 };
-var $author$project$Control$customTypeView = F2(
-	function (config, toSubcontrols) {
-		var subcontrols = toSubcontrols(config);
+var $author$project$Control$customTypeView = F3(
+	function (context, config, toSubcontrols) {
+		var subcontrols = A2(toSubcontrols, context, config);
 		var subcontrolView = $elm$core$List$concat(
 			A2(
 				$elm$core$List$filterMap,
 				function (sc) {
-					return _Utils_eq(sc.r, config.g) ? $elm$core$Maybe$Just(sc.ac) : $elm$core$Maybe$Nothing;
+					return _Utils_eq(sc.s, config.h) ? $elm$core$Maybe$Just(sc.aj) : $elm$core$Maybe$Nothing;
 				},
 				subcontrols));
 		return ($elm$core$List$length(subcontrols) > 1) ? _Utils_ap(
 			$author$project$Control$radioView(
 				{
-					e: config.e,
+					f: config.f,
 					c: config.c,
-					o: config.o,
-					bN: A2(
+					l: config.l,
+					cC: A2(
 						$elm$core$List$map,
 						function (sc) {
-							return _Utils_Tuple2(sc.r, sc.c);
+							return _Utils_Tuple2(sc.s, sc.c);
 						},
 						subcontrols),
-					bT: config.g,
-					b5: $author$project$Control$TagSelected
+					cJ: config.h,
+					cZ: $author$project$Control$TagSelected
 				}),
 			subcontrolView) : subcontrolView;
 	});
-var $author$project$Control$emitAlertsForCustomType = F4(
-	function (alertEmitter_, selectedTag, fns, tagStates) {
-		return A5(
+var $author$project$Control$CustomType = $elm$core$Basics$identity;
+var $author$project$Control$EndCustomType = 0;
+var $author$project$Control$Variant = F2(
+	function (a, b) {
+		return {$: 0, a: a, b: b};
+	});
+var $author$project$Control$customTypeWrapper = {
+	S: A2(
+		$author$project$Control$genericUnwrapper,
+		function (_v0) {
+			var variant = _v0.a;
+			var restVariants = _v0.b;
+			return _Utils_Tuple2(variant, restVariants);
+		},
+		$author$project$Control$maybeExtractDelta),
+	T: A2($author$project$Control$genericWrapper, $author$project$Control$Variant, $author$project$Control$Delta_),
+	W: A2(
+		$author$project$Control$genericUnwrapper,
+		function (_v1) {
+			var variant = _v1.a;
+			var restVariants = _v1.b;
+			return _Utils_Tuple2(variant, restVariants);
+		},
+		$author$project$Control$maybeExtractState),
+	X: A2($author$project$Control$genericWrapper, $author$project$Control$Variant, $author$project$Control$State_),
+	ab: A2(
+		$author$project$Control$genericUnwrap,
+		function (_v2) {
+			var variants = _v2;
+			return variants;
+		},
+		function (_v3) {
+			return 0;
+		}),
+	ac: A2(
+		$author$project$Control$genericUnwrap,
+		function (_v4) {
+			var variants = _v4;
+			return variants;
+		},
+		function (_v5) {
+			return 0;
+		}),
+	ad: A2($author$project$Control$genericWrap, $elm$core$Basics$identity, 0),
+	ae: A2($author$project$Control$genericWrap, $elm$core$Basics$identity, 0)
+};
+var $author$project$Control$emitAlertsForCustomType = F5(
+	function (alertEmitter_, context, selectedTag, fns, tagStates) {
+		return A2(
 			alertEmitter_,
-			F4(
-				function (alerts, _v0, _v1, _v2) {
-					return alerts;
-				}),
-			_List_Nil,
-			selectedTag,
-			fns,
-			tagStates);
+			function ($) {
+				return $.j;
+			},
+			{j: _List_Nil, p: context, d: fns, aI: selectedTag, i: tagStates});
 	});
 var $author$project$Control$initialiseCustomTypeDeltas = F3(
 	function (deltaInitialiser_, deltaSetters, deltas) {
-		return A2(
-			$elm$core$List$map,
-			$elm$core$Platform$Cmd$map($author$project$Control$StateChangedInternally),
-			$elm$core$List$reverse(
-				A4(
-					deltaInitialiser_,
-					F3(
-						function (cmdList, _v0, _v1) {
-							return cmdList;
-						}),
-					_List_Nil,
-					deltaSetters,
-					deltas)));
+		return $elm$core$List$reverse(
+			A2(
+				deltaInitialiser_,
+				function (_v0) {
+					var cmds = _v0.aR;
+					return cmds;
+				},
+				{aR: _List_Nil, w: deltaSetters, ag: deltas}));
 	});
 var $author$project$Control$makeInputToStateConverters = F8(
 	function (inputToStateConverters_, initialStateOverrider_, initialTagStates, fns, inputTuplizers, maybeOverridesBefore, maybeOverridesAfter, deltaSetters) {
 		return A2(
 			inputToStateConverters_,
 			function (_v0) {
-				var finalTagStates = _v0.a$;
+				var finalTagStates = _v0.bN;
 				return finalTagStates(0);
 			},
 			{
-				br: fns,
-				bt: deltaSetters,
-				a$: $elm$core$Basics$identity,
-				bB: initialTagStates,
-				bC: inputTuplizers(0),
-				bF: maybeOverridesAfter,
-				bG: maybeOverridesBefore(0),
-				b3: initialStateOverrider_
+				af: fns,
+				w: deltaSetters,
+				bN: $elm$core$Basics$identity,
+				be: initialTagStates,
+				cw: inputTuplizers(0),
+				cA: maybeOverridesAfter,
+				cB: maybeOverridesBefore(0),
+				cW: initialStateOverrider_
 			});
 	});
 var $author$project$Control$setSelectedTagStateIdle = F4(
 	function (idleSetter_, selectedTag, fns, tagStates) {
-		return A4(
+		return A2(
 			idleSetter_,
-			F3(
-				function (_v0, _v1, _v2) {
-					return 0;
-				}),
-			selectedTag,
-			fns,
-			tagStates);
+			function (_v0) {
+				var toFinalStates = _v0.cc;
+				return toFinalStates(0);
+			},
+			{d: fns, at: tagStates, aI: selectedTag, cc: $elm$core$Basics$identity});
 	});
-var $author$project$Control$updateCustomTypeStates = F5(
-	function (updater, fns, setters, deltas, states) {
-		var _v0 = A6(
+var $author$project$Control$updateCustomTypeStates = F6(
+	function (updater, context, fns, deltaSetters, deltas, states) {
+		var _v0 = A2(
 			updater,
-			F5(
-				function (output, _v1, _v2, _v3, _v4) {
-					return output;
-				}),
-			{ah: _List_Nil, ai: $elm$core$Basics$identity},
-			fns,
-			setters,
-			deltas,
-			states);
-		var newStates = _v0.ai;
-		var newCmds = _v0.ah;
+			function (output) {
+				return {ak: output.ak, al: output.al};
+			},
+			{p: context, w: deltaSetters, ag: deltas, d: fns, ak: _List_Nil, al: $elm$core$Basics$identity, i: states});
+		var newStates = _v0.al;
+		var newCmds = _v0.ak;
 		return _Utils_Tuple2(
 			newStates(0),
 			$elm$core$Platform$Cmd$batch(newCmds));
 	});
 var $author$project$Path$root = _List_Nil;
-var $author$project$Control$validateSelectedTagState = F4(
-	function (parser, selectedTag, fns, states) {
-		return A5(
+var $author$project$Control$validateSelectedTagState = F5(
+	function (parser, selectedTag, context, fns, states) {
+		return A2(
 			parser,
-			F4(
-				function (result_, _v0, _v1, _v2) {
-					return result_;
-				}),
-			$elm$core$Result$Err(
-				_List_fromArray(
-					[
-						{
-						O: true,
-						c: 'FATAL ERROR',
-						R: 'tag index ' + ($elm$core$String$fromInt(selectedTag) + ' not found'),
-						C: $author$project$Path$root
-					}
-					])),
-			selectedTag,
-			fns,
-			states);
+			function ($) {
+				return $.bX;
+			},
+			{
+				p: context,
+				d: fns,
+				bX: $elm$core$Result$Err(
+					_List_fromArray(
+						[
+							{
+							e: 'control-feedback-fail',
+							ai: true,
+							c: 'FATAL ERROR',
+							az: 'variant index ' + ($elm$core$String$fromInt(selectedTag) + ' not found'),
+							D: $author$project$Path$root
+						}
+						])),
+				aI: selectedTag,
+				i: states
+			});
 	});
-var $author$project$Control$viewSelectedTagState = F4(
-	function (viewer, fns, setters, config) {
-		return A6(
+var $author$project$Control$viewSelectedTagState = F5(
+	function (viewer, context, fns, deltaSetters, config) {
+		return A2(
 			viewer,
-			F5(
-				function (listSubcontrol, _v0, _v1, _v2, _v3) {
-					return listSubcontrol;
-				}),
-			_List_Nil,
-			config.V,
-			fns,
-			setters,
-			config.y);
+			function ($) {
+				return $.b7;
+			},
+			{j: config.j, p: context, w: deltaSetters, d: fns, i: config.v, b7: _List_Nil});
 	});
 var $author$project$Control$endCustomType = function (_v0) {
 	var builder = _v0;
 	return function (path) {
-		var initialStates = A2(builder.ag, path, 0);
-		var initialDeltas = A2(builder.af, path, 0);
-		var fns = A2(builder.x, path, 0);
-		var parse = function (_v12) {
-			var internalState = _v12.a;
-			var state = _v12.b;
-			return A4($author$project$Control$validateSelectedTagState, builder.aj, internalState.g, fns, state);
-		};
-		var setAllIdle = function (_v11) {
-			var internalState = _v11.a;
-			var state = _v11.b;
+		var wrapState = $author$project$Control$customTypeWrapper.ae(builder.X);
+		var wrapDelta = $author$project$Control$customTypeWrapper.ad(builder.T);
+		var unwrapDelta = function (wrappedDeltas) {
 			return A2(
-				$author$project$Control$State,
+				$elm$core$Maybe$withDefault,
+				builder.aU,
+				A2($author$project$Control$customTypeWrapper.ab, builder.S, wrappedDeltas));
+		};
+		var initialStates = A2(builder.at, path, 0);
+		var unwrapState = function (wrappedStates) {
+			return A2(
+				$elm$core$Maybe$withDefault,
+				initialStates,
+				A2($author$project$Control$customTypeWrapper.ac, builder.W, wrappedStates));
+		};
+		var initialCmds = A2(builder.aY, path, 0);
+		var fns = A2(builder.d, path, 0);
+		var parse = F2(
+			function (context, _v13) {
+				var meta = _v13.a;
+				var state = _v13.b;
+				return A5(
+					$author$project$Control$validateSelectedTagState,
+					builder.aZ,
+					meta.h,
+					context,
+					fns,
+					unwrapState(state));
+			});
+		var setAllIdle = function (_v12) {
+			var meta = _v12.a;
+			var state = _v12.b;
+			return A2(
+				$author$project$Control$MkState,
 				_Utils_update(
-					internalState,
+					meta,
 					{k: $author$project$Control$Idle_}),
-				A4($author$project$Control$setSelectedTagStateIdle, builder.ad, internalState.g, fns, state));
+				wrapState(
+					A4(
+						$author$project$Control$setSelectedTagStateIdle,
+						builder.aX,
+						meta.h,
+						fns,
+						unwrapState(state))));
 		};
-		var emitAlerts = function (_v10) {
-			var internalState = _v10.a;
-			var state = _v10.b;
-			return A4($author$project$Control$emitAlertsForCustomType, builder.Z, internalState.g, fns, state);
-		};
-		var deltaSetters = A3($author$project$Control$makeDeltaSetters, builder.a5, builder.aY, builder.aW);
-		var stateSetters = A8($author$project$Control$makeInputToStateConverters, builder.a2, builder.a0, initialStates, fns, builder.bi, builder.bg, builder.be, deltaSetters);
-		var subcontrolView = function (config) {
-			return A4($author$project$Control$viewSelectedTagState, builder.X, fns, deltaSetters, config);
-		};
-		var view = function (config) {
-			return A2($author$project$Control$customTypeView, config, subcontrolView);
-		};
-		var update = F2(
-			function (delta, _v6) {
-				var internalState = _v6.a;
-				var state = _v6.b;
+		var emitAlerts = F2(
+			function (context, _v11) {
+				var meta = _v11.a;
+				var state = _v11.b;
+				return A5(
+					$author$project$Control$emitAlertsForCustomType,
+					builder.aP,
+					context,
+					meta.h,
+					fns,
+					unwrapState(state));
+			});
+		var deltaSetters = A4($author$project$Control$makeDeltaSetters, builder.bT, wrapDelta, builder.bK, builder.bI);
+		var stateSetters = A8($author$project$Control$makeInputToStateConverters, builder.a6, builder.bO, initialStates, fns, builder.cb, builder.b5, builder.b3, deltaSetters);
+		var subcontrolView = F2(
+			function (context, config) {
+				var unwrappedConfig = {
+					j: config.j,
+					e: config.e,
+					f: config.f,
+					c: config.c,
+					l: config.l,
+					h: config.h,
+					v: unwrapState(config.v),
+					k: config.k
+				};
+				return A2(
+					$elm$core$List$map,
+					function (subcontrol) {
+						return {
+							aj: A2(
+								$elm$core$List$map,
+								$elm$html$Html$map($author$project$Control$StateChangedByInput),
+								subcontrol.aj),
+							s: subcontrol.s,
+							c: subcontrol.c
+						};
+					},
+					A5($author$project$Control$viewSelectedTagState, builder.a0, context, fns, deltaSetters, unwrappedConfig));
+			});
+		var view = F2(
+			function (context, config) {
+				return A3($author$project$Control$customTypeView, context, config, subcontrolView);
+			});
+		var update = F3(
+			function (context, delta, _v7) {
+				var meta = _v7.a;
+				var wrappedState = _v7.b;
+				var state = unwrapState(wrappedState);
 				switch (delta.$) {
 					case 0:
 						return _Utils_Tuple2(
-							A2($author$project$Control$State, internalState, state),
+							A2($author$project$Control$MkState, meta, wrappedState),
 							$elm$core$Platform$Cmd$none);
 					case 5:
 						var idx = delta.a;
 						return _Utils_Tuple2(
 							A2(
-								$author$project$Control$State,
+								$author$project$Control$MkState,
 								_Utils_update(
-									internalState,
-									{g: idx}),
-								state),
+									meta,
+									{h: idx}),
+								wrappedState),
 							$elm$core$Platform$Cmd$none);
 					case 1:
 						var tagDelta = delta.a;
-						var _v8 = A5($author$project$Control$updateCustomTypeStates, builder.U, fns, deltaSetters, tagDelta, state);
-						var newTagStates = _v8.a;
-						var cmd = _v8.b;
-						return _Utils_Tuple2(
-							A2($author$project$Control$State, internalState, newTagStates),
-							A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedByInput, cmd));
-					case 2:
-						var tagDelta = delta.a;
-						var _v9 = A5($author$project$Control$updateCustomTypeStates, builder.U, fns, deltaSetters, tagDelta, state);
+						var _v9 = A6(
+							$author$project$Control$updateCustomTypeStates,
+							builder.aD,
+							context,
+							fns,
+							deltaSetters,
+							unwrapDelta(tagDelta),
+							state);
 						var newTagStates = _v9.a;
 						var cmd = _v9.b;
 						return _Utils_Tuple2(
-							A2($author$project$Control$State, internalState, newTagStates),
+							A2(
+								$author$project$Control$MkState,
+								meta,
+								wrapState(newTagStates)),
+							A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedByInput, cmd));
+					case 2:
+						var tagDelta = delta.a;
+						var _v10 = A6(
+							$author$project$Control$updateCustomTypeStates,
+							builder.aD,
+							context,
+							fns,
+							deltaSetters,
+							unwrapDelta(tagDelta),
+							state);
+						var newTagStates = _v10.a;
+						var cmd = _v10.b;
+						return _Utils_Tuple2(
+							A2(
+								$author$project$Control$MkState,
+								meta,
+								wrapState(newTagStates)),
 							A2($elm$core$Platform$Cmd$map, $author$project$Control$StateChangedInternally, cmd));
 					default:
 						return _Utils_Tuple2(
-							A2($author$project$Control$State, internalState, state),
+							A2($author$project$Control$MkState, meta, wrappedState),
 							$elm$core$Platform$Cmd$none);
 				}
 			});
 		return {
-			az: function (_v1) {
+			aQ: function (_v1) {
 				return update;
 			},
-			l: _List_Nil,
-			K: function (_v2) {
+			e: _List_Nil,
+			R: function (_v2) {
 				var states = _v2.b;
-				return A3($author$project$Control$collectDebouncingReceiversForCustomType, builder.aa, fns, states);
+				return A3(
+					$author$project$Control$collectDebouncingReceiversForCustomType,
+					builder.aS,
+					fns,
+					unwrapState(states));
 			},
-			E: F2(
+			B: F2(
 				function (_v3, alerts) {
 					var states = _v3.b;
-					return A4($author$project$Control$collectErrorsForCustomType, builder.ab, alerts, fns, states);
+					return A4(
+						$author$project$Control$collectFeedbackForCustomType,
+						builder.aV,
+						alerts,
+						fns,
+						unwrapState(states));
 				}),
-			F: emitAlerts,
-			e: $elm$core$Maybe$Nothing,
-			r: 0,
-			H: _Utils_Tuple2(
+			G: emitAlerts,
+			f: $elm$core$Maybe$Nothing,
+			s: 0,
+			J: _Utils_Tuple2(
 				A2(
-					$author$project$Control$State,
-					{g: 1, k: $author$project$Control$Intact_},
-					initialStates),
-				$elm$core$Platform$Cmd$batch(
-					A3($author$project$Control$initialiseCustomTypeDeltas, builder.aB, deltaSetters, initialDeltas))),
-			ae: function (tag) {
-				var destructor = A3($author$project$Control$applyInputToStateConvertersToDestructor, builder.aN, builder.a_, stateSetters);
-				var _v4 = destructor(tag);
-				var initPrefilledState = _v4.a;
-				var selected = initPrefilledState.a.g;
+					$author$project$Control$MkState,
+					{h: 1, k: $author$project$Control$Intact_},
+					wrapState(initialStates)),
+				A2(
+					$elm$core$Platform$Cmd$map,
+					$author$project$Control$StateChangedInternally,
+					$elm$core$Platform$Cmd$batch(
+						A3($author$project$Control$initialiseCustomTypeDeltas, builder.bs, deltaSetters, initialCmds)))),
+			as: function (variant) {
+				var destructor = A3($author$project$Control$applyInputToStateConvertersToDestructor, builder.bB, builder.aT, stateSetters);
+				var _v4 = destructor(variant);
+				var _v5 = _v4.a;
+				var meta = _v5.a;
+				var states = _v5.b;
 				var initPrefilledDelta = _v4.b;
 				var deltas = A2(
 					$elm$core$List$indexedMap,
 					F2(
 						function (idx, initDelta) {
-							return _Utils_eq(idx + 1, selected) ? initPrefilledDelta : initDelta;
+							return _Utils_eq(idx + 1, meta.h) ? initPrefilledDelta : initDelta;
 						}),
-					A3($author$project$Control$initialiseCustomTypeDeltas, builder.aB, deltaSetters, initialDeltas));
+					A2(
+						$elm$core$List$map,
+						$elm$core$Platform$Cmd$map($author$project$Control$StateChangedInternally),
+						A3($author$project$Control$initialiseCustomTypeDeltas, builder.bs, deltaSetters, initialCmds)));
+				var initPrefilledState = A2(
+					$author$project$Control$MkState,
+					meta,
+					wrapState(states));
 				return _Utils_Tuple2(
 					initPrefilledState,
 					$elm$core$Platform$Cmd$batch(deltas));
 			},
 			c: 'Custom Type',
-			o: $elm$core$Maybe$Nothing,
-			j: parse,
-			C: path,
-			al: 0,
-			am: setAllIdle,
-			aF: subcontrolView,
-			t: function (_v5) {
-				var states = _v5.b;
-				return A4($author$project$Control$collectCustomTypeSubscriptions, builder.an, deltaSetters, fns, states);
-			},
-			s: update,
-			n: view
+			l: $elm$core$Maybe$Nothing,
+			o: parse,
+			D: path,
+			av: 0,
+			an: setAllIdle,
+			a_: subcontrolView,
+			t: F2(
+				function (context, _v6) {
+					var states = _v6.b;
+					return A2(
+						$elm$core$Platform$Sub$map,
+						$author$project$Control$StateChangedInternally,
+						A5(
+							$author$project$Control$collectCustomTypeSubscriptions,
+							builder.a$,
+							context,
+							deltaSetters,
+							fns,
+							unwrapState(states)));
+				}),
+			r: update,
+			m: view
 		};
 	};
 };
+var $author$project$Control$EndVariant = 0;
+var $author$project$Control$null = function (variant) {
+	return $author$project$Control$define(
+		{
+			Y: _Utils_Tuple2(0, $elm$core$Platform$Cmd$none),
+			c: '',
+			o: function (_v0) {
+				return $elm$core$Result$Ok(variant);
+			},
+			_: function (_v1) {
+				return _Utils_Tuple2(0, $elm$core$Platform$Cmd$none);
+			},
+			t: function (_v2) {
+				return $elm$core$Platform$Sub$none;
+			},
+			r: F2(
+				function (_v3, _v4) {
+					return _Utils_Tuple2(0, $elm$core$Platform$Cmd$none);
+				}),
+			m: function (_v5) {
+				return _List_Nil;
+			}
+		});
+};
 var $author$project$Control$overrideInitialStates = F3(
 	function (initialStateOverrider_, maybeOverrides, initialTagStates) {
-		return A6(
+		return A2(
 			initialStateOverrider_,
-			F5(
-				function (_v0, selectedTag, finalTagStates, _v1, _v2) {
-					return A2(
-						$author$project$Control$State,
-						{g: selectedTag, k: $author$project$Control$Intact_},
-						finalTagStates(0));
-				}),
-			1,
-			1,
-			$elm$core$Basics$identity,
-			maybeOverrides,
-			initialTagStates);
+			function (_v0) {
+				var selectedTagIndex = _v0.b1;
+				var toTagStates = _v0.cf;
+				return A2(
+					$author$project$Control$MkState,
+					{h: selectedTagIndex, k: $author$project$Control$Intact_},
+					toTagStates(0));
+			},
+			{be: initialTagStates, cz: maybeOverrides, b1: 1, cY: 1, cf: $elm$core$Basics$identity});
 	});
 var $author$project$Control$convertInputToState = F2(
 	function (next, _v0) {
-		var finalTagStates = _v0.a$;
-		var tagStateOverrider = _v0.b3;
-		var initialTagStates = _v0.bB;
-		var controlFns = _v0.br;
-		var inputTuplizers = _v0.bC;
-		var maybeOverridesBefore = _v0.bG;
-		var maybeOverridesAfter = _v0.bF;
-		var deltaSetters = _v0.bt;
+		var finalTagStates = _v0.bN;
+		var tagStateOverrider = _v0.cW;
+		var initialTagStates = _v0.be;
+		var controlFns = _v0.af;
+		var inputTuplizers = _v0.cw;
+		var maybeOverridesBefore = _v0.cB;
+		var maybeOverridesAfter = _v0.cA;
+		var deltaSetters = _v0.w;
 		var _v1 = maybeOverridesBefore;
 		var maybeOverrideBefore = _v1.a;
 		var restMaybeOverrideBefores = _v1.b;
@@ -18762,7 +19381,7 @@ var $author$project$Control$convertInputToState = F2(
 		var restDeltaSetters = _v5.b;
 		var finalTagState = inputTuplizer(
 			function (tupledInput) {
-				var _v6 = fns.ae(tupledInput);
+				var _v6 = fns.as(tupledInput);
 				var state = _v6.a;
 				var delta = _v6.b;
 				var maybeOverrides = maybeOverrideBefore(
@@ -18778,324 +19397,472 @@ var $author$project$Control$convertInputToState = F2(
 			});
 		return next(
 			{
-				br: restFns,
-				bt: restDeltaSetters,
-				a$: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, finalTagStates, finalTagState),
-				bB: initialTagStates,
-				bC: restInputTuplizers,
-				bF: restMaybeOverrideAfters,
-				bG: restMaybeOverrideBefores,
-				b3: tagStateOverrider
+				af: restFns,
+				w: restDeltaSetters,
+				bN: A2($author$project$Control$tupleAppend, finalTagStates, finalTagState),
+				be: initialTagStates,
+				cw: restInputTuplizers,
+				cA: restMaybeOverrideAfters,
+				cB: restMaybeOverrideBefores,
+				cW: tagStateOverrider
 			});
 	});
-var $author$project$Control$customTypeAlertEmitter = F5(
-	function (next, alerts, selectedTag, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
+var $author$project$Control$customTypeAlertEmitter = F2(
+	function (next, _v0) {
+		var alerts = _v0.j;
+		var context = _v0.p;
+		var selectedTag = _v0.aI;
+		var fns = _v0.d;
+		var states = _v0.i;
+		var _v1 = states;
 		var tagState = _v1.a;
 		var restTagStates = _v1.b;
-		var newAlerts = _Utils_eq(fns.r, selectedTag) ? fns.F(tagState) : _List_Nil;
-		return A4(
-			next,
-			_Utils_ap(alerts, newAlerts),
-			selectedTag,
-			restFns,
-			restTagStates);
+		var _v2 = fns;
+		var controlFns = _v2.a;
+		var restFns = _v2.b;
+		var newAlerts = _Utils_eq(controlFns.s, selectedTag) ? A2(controlFns.G, context, tagState) : _List_Nil;
+		return next(
+			{
+				j: _Utils_ap(alerts, newAlerts),
+				p: context,
+				d: restFns,
+				aI: selectedTag,
+				i: restTagStates
+			});
 	});
-var $author$project$Control$customTypeDebouncingReceiverCollector = F4(
-	function (next, receivers, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
+var $author$project$Control$customTypeDebouncingReceiverCollector = F2(
+	function (next, _v0) {
+		var receivers = _v0.bZ;
+		var fns = _v0.d;
+		var states = _v0.i;
+		var _v1 = states;
 		var state = _v1.a;
 		var restStates = _v1.b;
-		return A3(
-			next,
-			_Utils_ap(
-				receivers,
-				fns.K(state)),
-			restFns,
-			restStates);
+		var _v2 = fns;
+		var controlFns = _v2.a;
+		var restFns = _v2.b;
+		return next(
+			{
+				d: restFns,
+				bZ: _Utils_ap(
+					receivers,
+					controlFns.R(state)),
+				i: restStates
+			});
 	});
-var $author$project$Control$customTypeDeltaInitialiser = F4(
-	function (next, cmdList, _v0, _v1) {
-		var setter = _v0.a;
-		var restSetters = _v0.b;
+var $author$project$Control$customTypeDeltaInitialiser = F2(
+	function (next, _v0) {
+		var cmds = _v0.aR;
+		var deltaSetters = _v0.w;
+		var deltas = _v0.ag;
+		var _v1 = deltas;
 		var delta = _v1.a;
 		var restDeltas = _v1.b;
-		return A3(
-			next,
-			A2(
-				$elm$core$List$cons,
-				A2($elm$core$Platform$Cmd$map, setter, delta),
-				cmdList),
-			restSetters,
-			restDeltas);
+		var _v2 = deltaSetters;
+		var setter = _v2.a;
+		var restDeltaSetters = _v2.b;
+		return next(
+			{
+				aR: A2(
+					$elm$core$List$cons,
+					A2($elm$core$Platform$Cmd$map, setter, delta),
+					cmds),
+				w: restDeltaSetters,
+				ag: restDeltas
+			});
 	});
-var $author$project$Control$customTypeErrorCollector = F5(
-	function (next, alerts, errors, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
+var $author$project$Control$customTypeFeedbackCollector = F2(
+	function (next, _v0) {
+		var alerts = _v0.j;
+		var feedback = _v0.aW;
+		var fns = _v0.d;
+		var states = _v0.i;
+		var _v1 = states;
 		var state = _v1.a;
 		var restStates = _v1.b;
-		return A4(
-			next,
-			alerts,
-			_Utils_ap(
-				errors,
-				A2(fns.E, state, alerts)),
-			restFns,
-			restStates);
+		var _v2 = fns;
+		var controlFns = _v2.a;
+		var restFns = _v2.b;
+		return next(
+			{
+				j: alerts,
+				aW: _Utils_ap(
+					feedback,
+					A2(controlFns.B, state, alerts)),
+				d: restFns,
+				i: restStates
+			});
 	});
-var $author$project$Control$customTypeStateUpdater = F6(
-	function (next, _v0, _v1, _v2, _v3, _v4) {
-		var newStates = _v0.ai;
-		var newCmds = _v0.ah;
-		var fns = _v1.a;
-		var restFns = _v1.b;
-		var deltaSetter = _v2.a;
-		var restDeltaSetters = _v2.b;
+var $author$project$Control$customTypeStateUpdater = F2(
+	function (next, _v0) {
+		var newStates = _v0.al;
+		var newCmds = _v0.ak;
+		var context = _v0.p;
+		var fns = _v0.d;
+		var deltaSetters = _v0.w;
+		var deltas = _v0.ag;
+		var states = _v0.i;
+		var _v1 = states;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		var _v2 = fns;
+		var controlFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = deltas;
 		var delta = _v3.a;
 		var restDeltas = _v3.b;
-		var state = _v4.a;
-		var restStates = _v4.b;
-		var _v5 = A2(fns.s, delta, state);
+		var _v4 = deltaSetters;
+		var deltaSetter = _v4.a;
+		var restDeltaSetters = _v4.b;
+		var _v5 = A3(controlFns.r, context, delta, state);
 		var newState = _v5.a;
 		var newCmd = _v5.b;
-		return A5(
-			next,
+		return next(
 			{
-				ah: A2(
+				p: context,
+				w: restDeltaSetters,
+				ag: restDeltas,
+				d: restFns,
+				ak: A2(
 					$elm$core$List$cons,
 					A2($elm$core$Platform$Cmd$map, deltaSetter, newCmd),
 					newCmds),
-				ai: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, newStates, newState)
-			},
-			restFns,
-			restDeltaSetters,
-			restDeltas,
-			restStates);
+				al: A2($author$project$Control$tupleAppend, newStates, newState),
+				i: restStates
+			});
 	});
-var $author$project$Control$customTypeSubscriptionCollector = F5(
-	function (next, listSubs, _v0, _v1, _v2) {
-		var setter = _v0.a;
-		var restSetters = _v0.b;
-		var fns = _v1.a;
-		var restFns = _v1.b;
-		var state = _v2.a;
-		var restStates = _v2.b;
-		return A4(
-			next,
-			A2(
-				$elm$core$List$cons,
-				A2(
-					$elm$core$Platform$Sub$map,
-					setter,
-					fns.t(state)),
-				listSubs),
-			restSetters,
-			restFns,
-			restStates);
+var $author$project$Control$customTypeSubscriptionCollector = F2(
+	function (next, _v0) {
+		var subs = _v0.b9;
+		var deltaSetters = _v0.w;
+		var fns = _v0.d;
+		var context = _v0.p;
+		var states = _v0.i;
+		var _v1 = states;
+		var state = _v1.a;
+		var restStates = _v1.b;
+		var _v2 = fns;
+		var controlFns = _v2.a;
+		var restFns = _v2.b;
+		var _v3 = deltaSetters;
+		var setter = _v3.a;
+		var restDeltaSetters = _v3.b;
+		return next(
+			{
+				p: context,
+				w: restDeltaSetters,
+				d: restFns,
+				i: restStates,
+				b9: A2(
+					$elm$core$List$cons,
+					A2(
+						$elm$core$Platform$Sub$map,
+						setter,
+						A2(controlFns.t, context, state)),
+					subs)
+			});
 	});
-var $author$project$Control$initialStateOverrider = F6(
-	function (next, thisTagIndex, currentlySelectedTagIndex, tagStates, _v0, _v1) {
-		var thisMaybeOverride = _v0.a;
-		var restMaybeOverrides = _v0.b;
-		var initialTagState = _v1.a;
-		var restInitialTagStates = _v1.b;
-		var _v2 = function () {
-			if (!thisMaybeOverride.$) {
-				var override = thisMaybeOverride.a;
+var $author$project$Control$initialStateOverrider = F2(
+	function (next, _v0) {
+		var thisTagIndex = _v0.cY;
+		var selectedTagIndex = _v0.b1;
+		var maybeOverrides = _v0.cz;
+		var initialTagStates = _v0.be;
+		var toTagStates = _v0.cf;
+		var _v1 = maybeOverrides;
+		var maybeOverride = _v1.a;
+		var restMaybeOverrides = _v1.b;
+		var _v2 = initialTagStates;
+		var initialTagState = _v2.a;
+		var restInitialTagStates = _v2.b;
+		var _v3 = function () {
+			if (!maybeOverride.$) {
+				var override = maybeOverride.a;
 				return _Utils_Tuple2(thisTagIndex, override);
 			} else {
-				return _Utils_Tuple2(currentlySelectedTagIndex, initialTagState);
+				return _Utils_Tuple2(selectedTagIndex, initialTagState);
 			}
 		}();
-		var selectedTag = _v2.a;
-		var tagArgState = _v2.b;
-		return A5(
-			next,
-			thisTagIndex + 1,
-			selectedTag,
-			A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, tagStates, tagArgState),
-			restMaybeOverrides,
-			restInitialTagStates);
+		var newSelectedTagIndex = _v3.a;
+		var tagArgState = _v3.b;
+		return next(
+			{
+				be: restInitialTagStates,
+				cz: restMaybeOverrides,
+				b1: newSelectedTagIndex,
+				cY: thisTagIndex + 1,
+				cf: A2($author$project$Control$tupleAppend, toTagStates, tagArgState)
+			});
 	});
-var $author$project$Control$inputToStateConverterToDestructorApplier = F3(
-	function (next, destructor, _v0) {
-		var inputToStateConverter = _v0.a;
-		var restInputToStateConverters = _v0.b;
-		return A2(
-			next,
-			destructor(inputToStateConverter),
-			restInputToStateConverters);
+var $author$project$Control$inputToStateConverterToDestructorApplier = F2(
+	function (next, _v0) {
+		var destructor = _v0.aT;
+		var inputToStateConverters = _v0.a6;
+		var _v1 = inputToStateConverters;
+		var inputToStateConverter = _v1.a;
+		var restInputToStateConverters = _v1.b;
+		return next(
+			{
+				aT: destructor(inputToStateConverter),
+				a6: restInputToStateConverters
+			});
 	});
-var $author$project$Control$selectedTagIdleSetter = F4(
-	function (next, selectedTag, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
+var $author$project$Control$selectedTagIdleSetter = F2(
+	function (next, _v0) {
+		var selectedTag = _v0.aI;
+		var fns = _v0.d;
+		var initialStates = _v0.at;
+		var toFinalStates = _v0.cc;
+		var _v1 = initialStates;
+		var state = _v1.a;
+		var restInitialStates = _v1.b;
+		var _v2 = fns;
+		var controlFns = _v2.a;
+		var restFns = _v2.b;
+		var newState = _Utils_eq(controlFns.s, selectedTag) ? controlFns.an(state) : state;
+		return next(
+			{
+				d: restFns,
+				at: restInitialStates,
+				aI: selectedTag,
+				cc: A2($author$project$Control$tupleAppend, toFinalStates, newState)
+			});
+	});
+var $author$project$Control$selectedTagParser = F2(
+	function (next, _v0) {
+		var parsedResult = _v0.bX;
+		var selectedTag = _v0.aI;
+		var context = _v0.p;
+		var fns = _v0.d;
+		var states = _v0.i;
+		var _v1 = states;
 		var state = _v1.a;
 		var restStates = _v1.b;
-		return _Utils_Tuple2(
-			_Utils_eq(fns.r, selectedTag) ? fns.am(state) : state,
-			A3(next, selectedTag, restFns, restStates));
+		var _v2 = fns;
+		var controlFns = _v2.a;
+		var restFns = _v2.b;
+		return next(
+			{
+				p: context,
+				d: restFns,
+				bX: _Utils_eq(controlFns.s, selectedTag) ? A2(controlFns.o, context, state) : parsedResult,
+				aI: selectedTag,
+				i: restStates
+			});
 	});
-var $author$project$Control$selectedTagParser = F5(
-	function (next, result_, selectedTag, _v0, _v1) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var state = _v1.a;
+var $author$project$Control$selectedTagViewer = F2(
+	function (next, _v0) {
+		var subcontrols = _v0.b7;
+		var context = _v0.p;
+		var alerts = _v0.j;
+		var fns = _v0.d;
+		var deltaSetters = _v0.w;
+		var states = _v0.i;
+		var _v1 = states;
+		var _v2 = _v1.a;
+		var meta = _v2.a;
+		var state = _v2.b;
 		var restStates = _v1.b;
-		return A4(
-			next,
-			_Utils_eq(fns.r, selectedTag) ? fns.j(state) : result_,
-			selectedTag,
-			restFns,
-			restStates);
+		var _v3 = fns;
+		var controlFns = _v3.a;
+		var restFns = _v3.b;
+		var _v4 = deltaSetters;
+		var setter = _v4.a;
+		var restDeltaSetters = _v4.b;
+		return next(
+			{
+				j: alerts,
+				p: context,
+				w: restDeltaSetters,
+				d: restFns,
+				i: restStates,
+				b7: _Utils_ap(
+					subcontrols,
+					_List_fromArray(
+						[
+							{
+							aj: A2(
+								$elm$core$List$map,
+								$elm$html$Html$map(setter),
+								A2(
+									controlFns.m,
+									context,
+									{
+										j: alerts,
+										e: controlFns.e,
+										f: A2(
+											$elm$core$Maybe$withDefault,
+											'control-' + $author$project$Path$toString(controlFns.D),
+											controlFns.f),
+										c: controlFns.c,
+										l: A2(
+											$elm$core$Maybe$withDefault,
+											'control-' + $author$project$Path$toString(controlFns.D),
+											controlFns.l),
+										h: meta.h,
+										v: state,
+										k: $author$project$Control$Intact
+									})),
+							s: controlFns.s,
+							c: controlFns.c
+						}
+						]))
+			});
 	});
-var $author$project$Control$selectedTagViewer = F6(
-	function (next, listSubcontrol, alerts, _v0, _v1, _v2) {
-		var fns = _v0.a;
-		var restFns = _v0.b;
-		var setter = _v1.a;
-		var restSetters = _v1.b;
-		var _v3 = _v2.a;
-		var internalState = _v3.a;
-		var state = _v3.b;
-		var restStates = _v2.b;
-		return A5(
-			next,
-			_Utils_ap(
-				listSubcontrol,
-				_List_fromArray(
-					[
-						{
-						ac: A2(
-							$elm$core$List$map,
-							$elm$html$Html$map(
-								A2($elm$core$Basics$composeR, setter, $author$project$Control$StateChangedByInput)),
-							fns.n(
-								{
-									V: alerts,
-									l: fns.l,
-									e: A2(
-										$elm$core$Maybe$withDefault,
-										'control-' + $author$project$Path$toString(fns.C),
-										fns.e),
-									c: fns.c,
-									o: A2(
-										$elm$core$Maybe$withDefault,
-										'control-' + $author$project$Path$toString(fns.C),
-										fns.o),
-									g: internalState.g,
-									y: state,
-									k: $author$project$Control$Intact
-								})),
-						r: fns.r,
-						c: fns.c
-					}
-					])),
-			alerts,
-			restFns,
-			restSetters,
-			restStates);
-	});
-var $author$project$Control$tagHelper = F4(
+var $author$project$Control$variantHelper = F4(
 	function (label_, internalRecord, toArgState, _v0) {
 		var builder = _v0;
-		var newIndex = builder.r + 1;
+		var newIndex = builder.s + 1;
 		var _v1 = A2($author$project$Control$label, label_, internalRecord);
 		var control = _v1;
 		return {
-			Z: A2($elm$core$Basics$composeR, builder.Z, $author$project$Control$customTypeAlertEmitter),
-			aN: A2($elm$core$Basics$composeR, builder.aN, $author$project$Control$inputToStateConverterToDestructorApplier),
-			aa: A2($elm$core$Basics$composeR, builder.aa, $author$project$Control$customTypeDebouncingReceiverCollector),
-			aV: A3($author$project$Control$nestBackwards, $elm$core$Tuple$pair, builder.aV, $author$project$Control$NoDelta),
-			aW: A3($author$project$Control$nestBackwards, $elm$core$Tuple$pair, builder.aW, builder.aV),
-			aX: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, builder.aX, $author$project$Control$NoDelta),
-			aY: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, builder.aY, builder.aX),
-			a_: builder.a_,
-			ab: A2($elm$core$Basics$composeR, builder.ab, $author$project$Control$customTypeErrorCollector),
-			x: function (path) {
+			aP: A2($elm$core$Basics$composeR, builder.aP, $author$project$Control$customTypeAlertEmitter),
+			bB: A2($elm$core$Basics$composeR, builder.bB, $author$project$Control$inputToStateConverterToDestructorApplier),
+			aS: A2($elm$core$Basics$composeR, builder.aS, $author$project$Control$customTypeDebouncingReceiverCollector),
+			bH: A2($author$project$Control$tuplePrepend, builder.bH, $author$project$Control$NoDelta),
+			bI: A2($author$project$Control$tuplePrepend, builder.bI, builder.bH),
+			bJ: A2($author$project$Control$tupleAppend, builder.bJ, $author$project$Control$NoDelta),
+			bK: A2($author$project$Control$tupleAppend, builder.bK, builder.bJ),
+			S: A2($elm$core$Basics$composeR, builder.S, $author$project$Control$customTypeWrapper.S),
+			T: A2($elm$core$Basics$composeR, builder.T, $author$project$Control$customTypeWrapper.T),
+			aT: builder.aT,
+			aU: A2($author$project$Control$tuplePrepend, builder.aU, $author$project$Control$NoDelta),
+			aV: A2($elm$core$Basics$composeR, builder.aV, $author$project$Control$customTypeFeedbackCollector),
+			d: function (path) {
 				var _v2 = control(
 					A2($author$project$Path$add, newIndex, path));
 				var controlFns = _v2;
-				return A3(
-					$author$project$Control$nestForwards,
-					$elm$core$Tuple$pair,
-					builder.x(path),
+				return A2(
+					$author$project$Control$tupleAppend,
+					builder.d(path),
 					_Utils_update(
 						controlFns,
-						{r: newIndex}));
+						{s: newIndex}));
 			},
-			ad: A2($elm$core$Basics$composeR, builder.ad, $author$project$Control$selectedTagIdleSetter),
-			r: newIndex,
-			af: function (path) {
+			aX: A2($elm$core$Basics$composeR, builder.aX, $author$project$Control$selectedTagIdleSetter),
+			s: newIndex,
+			aY: function (path) {
 				var _v3 = control(
 					A2($author$project$Path$add, newIndex, path));
 				var controlFns = _v3;
-				return A3(
-					$author$project$Control$nestForwards,
-					$elm$core$Tuple$pair,
-					builder.af(path),
-					controlFns.H.b);
+				return A2(
+					$author$project$Control$tupleAppend,
+					builder.aY(path),
+					controlFns.J.b);
 			},
-			a0: A2($elm$core$Basics$composeR, builder.a0, $author$project$Control$initialStateOverrider),
-			ag: function (path) {
+			bO: A2($elm$core$Basics$composeR, builder.bO, $author$project$Control$initialStateOverrider),
+			at: function (path) {
 				var _v4 = control(
 					A2($author$project$Path$add, newIndex, path));
 				var controlFns = _v4;
-				return A3(
-					$author$project$Control$nestForwards,
-					$elm$core$Tuple$pair,
-					builder.ag(path),
-					controlFns.H.a);
+				return A2(
+					$author$project$Control$tupleAppend,
+					builder.at(path),
+					controlFns.J.a);
 			},
-			aB: A2($elm$core$Basics$composeR, builder.aB, $author$project$Control$customTypeDeltaInitialiser),
-			a2: A2($elm$core$Basics$composeR, builder.a2, $author$project$Control$convertInputToState),
-			a5: A2($elm$core$Basics$composeR, builder.a5, $author$project$Control$deltaSetterMaker),
-			aj: A2($elm$core$Basics$composeR, builder.aj, $author$project$Control$selectedTagParser),
-			bd: A3($author$project$Control$nestBackwards, $elm$core$Tuple$pair, builder.bd, $elm$core$Maybe$Nothing),
-			be: A3($author$project$Control$nestBackwards, $elm$core$Tuple$pair, builder.be, builder.bd),
-			bf: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, builder.bf, $elm$core$Maybe$Nothing),
-			bg: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, builder.bg, builder.bf),
-			an: A2($elm$core$Basics$composeR, builder.an, $author$project$Control$customTypeSubscriptionCollector),
-			bi: A3($author$project$Control$nestForwards, $elm$core$Tuple$pair, builder.bi, toArgState),
-			U: A2($elm$core$Basics$composeR, builder.U, $author$project$Control$customTypeStateUpdater),
-			X: A2($elm$core$Basics$composeR, builder.X, $author$project$Control$selectedTagViewer)
+			bs: A2($elm$core$Basics$composeR, builder.bs, $author$project$Control$customTypeDeltaInitialiser),
+			a6: A2($elm$core$Basics$composeR, builder.a6, $author$project$Control$convertInputToState),
+			bT: A2($elm$core$Basics$composeR, builder.bT, $author$project$Control$deltaSetterMaker),
+			aZ: A2($elm$core$Basics$composeR, builder.aZ, $author$project$Control$selectedTagParser),
+			b2: A2($author$project$Control$tuplePrepend, builder.b2, $elm$core$Maybe$Nothing),
+			b3: A2($author$project$Control$tuplePrepend, builder.b3, builder.b2),
+			b4: A2($author$project$Control$tupleAppend, builder.b4, $elm$core$Maybe$Nothing),
+			b5: A2($author$project$Control$tupleAppend, builder.b5, builder.b4),
+			W: A2($elm$core$Basics$composeR, builder.W, $author$project$Control$customTypeWrapper.W),
+			X: A2($elm$core$Basics$composeR, builder.X, $author$project$Control$customTypeWrapper.X),
+			a$: A2($elm$core$Basics$composeR, builder.a$, $author$project$Control$customTypeSubscriptionCollector),
+			cb: A2($author$project$Control$tupleAppend, builder.cb, toArgState),
+			aD: A2($elm$core$Basics$composeR, builder.aD, $author$project$Control$customTypeStateUpdater),
+			a0: A2($elm$core$Basics$composeR, builder.a0, $author$project$Control$selectedTagViewer)
 		};
 	});
-var $author$project$Control$tag1 = F3(
-	function (label_, tag, control) {
+var $author$project$Control$variant0 = F2(
+	function (label_, variant) {
 		return A3(
-			$author$project$Control$tagHelper,
+			$author$project$Control$variantHelper,
 			label_,
-			$author$project$Control$endRecord(
-				A3(
-					$author$project$Control$field,
+			$author$project$Control$null(variant),
+			function (insertArgStateIntoTagStates) {
+				return insertArgStateIntoTagStates(variant);
+			});
+	});
+var $author$project$Control$Arg = F2(
+	function (a, b) {
+		return {$: 0, a: a, b: b};
+	});
+var $author$project$Control$argWrapper = {
+	S: A2(
+		$author$project$Control$genericUnwrapper,
+		function (_v0) {
+			var arg = _v0.a;
+			var restArgs = _v0.b;
+			return _Utils_Tuple2(arg, restArgs);
+		},
+		$author$project$Control$maybeExtractDelta),
+	T: A2($author$project$Control$genericWrapper, $author$project$Control$Arg, $author$project$Control$Delta_),
+	W: A2(
+		$author$project$Control$genericUnwrapper,
+		function (_v1) {
+			var arg = _v1.a;
+			var restArgs = _v1.b;
+			return _Utils_Tuple2(arg, restArgs);
+		},
+		$author$project$Control$maybeExtractState),
+	X: A2($author$project$Control$genericWrapper, $author$project$Control$Arg, $author$project$Control$State_),
+	ab: A2(
+		$author$project$Control$genericUnwrap,
+		$elm$core$Basics$identity,
+		function (_v2) {
+			return 0;
+		}),
+	ac: A2(
+		$author$project$Control$genericUnwrap,
+		$elm$core$Basics$identity,
+		function (_v3) {
+			return 0;
+		}),
+	ad: A2($author$project$Control$genericWrap, $elm$core$Basics$identity, 0),
+	ae: A2($author$project$Control$genericWrap, $elm$core$Basics$identity, 0)
+};
+var $author$project$Control$variant1 = F3(
+	function (label_, variant, control) {
+		return A3(
+			$author$project$Control$variantHelper,
+			label_,
+			A2(
+				$author$project$Control$endProductType,
+				$author$project$Control$argWrapper,
+				A4(
+					$author$project$Control$productField,
+					$author$project$Control$argWrapper,
 					$elm$core$Tuple$first,
 					control,
-					$author$project$Control$record(tag))),
+					$author$project$Control$productType(variant))),
 			F2(
 				function (insertArgStateIntoTagStates, arg1) {
 					return insertArgStateIntoTagStates(
 						_Utils_Tuple2(arg1, 0));
 				}));
 	});
-var $author$project$Control$tag2 = F4(
-	function (label_, tag, control1, control2) {
+var $author$project$Control$variant2 = F4(
+	function (label_, variant, control1, control2) {
 		return A3(
-			$author$project$Control$tagHelper,
+			$author$project$Control$variantHelper,
 			label_,
-			$author$project$Control$endRecord(
-				A3(
-					$author$project$Control$field,
+			A2(
+				$author$project$Control$endProductType,
+				$author$project$Control$argWrapper,
+				A4(
+					$author$project$Control$productField,
+					$author$project$Control$argWrapper,
 					A2($elm$core$Basics$composeR, $elm$core$Tuple$second, $elm$core$Tuple$first),
 					control2,
-					A3(
-						$author$project$Control$field,
+					A4(
+						$author$project$Control$productField,
+						$author$project$Control$argWrapper,
 						$elm$core$Tuple$first,
 						control1,
-						$author$project$Control$record(tag)))),
+						$author$project$Control$productType(variant)))),
 			F3(
 				function (insertArgStateIntoTagStates, arg1, arg2) {
 					return insertArgStateIntoTagStates(
@@ -19104,152 +19871,185 @@ var $author$project$Control$tag2 = F4(
 							_Utils_Tuple2(arg2, 0)));
 				}));
 	});
-var $author$project$Control$tag3 = F5(
-	function (label_, tag, control1, control2, control3) {
-		return A3(
-			$author$project$Control$tagHelper,
-			label_,
-			$author$project$Control$endRecord(
-				A3(
-					$author$project$Control$field,
-					A2(
-						$elm$core$Basics$composeR,
-						$elm$core$Tuple$second,
-						A2($elm$core$Basics$composeR, $elm$core$Tuple$second, $elm$core$Tuple$first)),
-					control3,
-					A3(
-						$author$project$Control$field,
-						A2($elm$core$Basics$composeR, $elm$core$Tuple$second, $elm$core$Tuple$first),
-						control2,
-						A3(
-							$author$project$Control$field,
-							$elm$core$Tuple$first,
-							control1,
-							$author$project$Control$record(tag))))),
-			F4(
-				function (insertArgStateIntoTagStates, arg1, arg2, arg3) {
-					return insertArgStateIntoTagStates(
-						_Utils_Tuple2(
-							arg1,
-							_Utils_Tuple2(
-								arg2,
-								_Utils_Tuple2(arg3, 0))));
-				}));
-	});
-var $author$project$Tutorial$productControl = A2(
+var $author$project$Tutorial$stickerControl = A2(
 	$author$project$Control$label,
-	'Product',
+	'Sticker type',
 	$author$project$Control$endCustomType(
 		A5(
-			$author$project$Control$tag2,
-			'Rectangle',
-			$author$project$Tutorial$Rectangle,
+			$author$project$Control$variant2,
+			'Rectangular',
+			$author$project$Tutorial$Rectangular,
 			A2($author$project$Control$label, 'Width', $author$project$Control$int),
 			A2($author$project$Control$label, 'Height', $author$project$Control$int),
-			A6(
-				$author$project$Control$tag3,
-				'Triangle',
-				$author$project$Tutorial$Triangle,
-				A2($author$project$Control$label, 'First side', $author$project$Control$int),
-				A2($author$project$Control$label, 'Second side', $author$project$Control$int),
-				A2($author$project$Control$label, 'Third side', $author$project$Control$int),
-				A4(
-					$author$project$Control$tag1,
-					'Circle',
-					$author$project$Tutorial$Circle,
-					A2($author$project$Control$label, 'Radius', $author$project$Control$int),
+			A4(
+				$author$project$Control$variant1,
+				'Heart-shaped',
+				$author$project$Tutorial$HeartShaped,
+				A2($author$project$Control$label, 'Message', $author$project$Control$string),
+				A3(
+					$author$project$Control$variant0,
+					'Circular',
+					$author$project$Tutorial$Circular,
 					$author$project$Control$customType(
 						F4(
-							function (circle, triangle, rectangle, tag) {
-								switch (tag.$) {
+							function (circular, heartShaped, rectangular, variant) {
+								switch (variant.$) {
 									case 0:
-										var radius = tag.a;
-										return circle(radius);
-									case 1:
-										var side1 = tag.a;
-										var side2 = tag.b;
-										var side3 = tag.c;
-										return A3(triangle, side1, side2, side3);
+										return circular;
+									case 2:
+										var message = variant.a;
+										return heartShaped(message);
 									default:
-										var width = tag.a;
-										var height = tag.b;
-										return A2(rectangle, width, height);
+										var width = variant.a;
+										var height = variant.b;
+										return A2(rectangular, width, height);
 								}
 							})))))));
-var $author$project$Tutorial$productListControl = A2(
+var $author$project$Tutorial$stickerListControl = A2(
 	$author$project$Control$label,
-	'List of products',
-	$author$project$Control$list($author$project$Tutorial$productControl));
+	'Stickers purchased',
+	$author$project$Control$list($author$project$Tutorial$stickerControl));
 var $author$project$Tutorial$customerControl = $author$project$Control$endRecord(
 	A3(
 		$author$project$Control$field,
 		function ($) {
-			return $.a8;
+			return $.bY;
 		},
 		$author$project$Tutorial$passwordControl,
 		A3(
 			$author$project$Control$field,
 			function ($) {
-				return $.e;
+				return $.f;
 			},
 			$author$project$Tutorial$idControl,
 			A3(
 				$author$project$Control$field,
 				function ($) {
-					return $.a9;
+					return $.b6;
 				},
-				$author$project$Tutorial$productListControl,
+				$author$project$Tutorial$stickerListControl,
 				A3(
 					$author$project$Control$field,
 					function ($) {
-						return $.cg;
+						return $.c6;
 					},
 					$author$project$Tutorial$dateControl,
 					A3(
 						$author$project$Control$field,
 						function ($) {
-							return $.o;
+							return $.l;
 						},
 						$author$project$Tutorial$nameControl,
 						$author$project$Control$record(
 							F5(
-								function (name, dateOfBirth, products, id, password) {
-									return {cg: dateOfBirth, e: id, o: name, a8: password, a9: products};
+								function (name, dateOfBirth, stickers, id, password) {
+									return {c6: dateOfBirth, f: id, l: name, bY: password, b6: stickers};
 								}))))))));
 var $author$project$Tutorial$createYourOwn = A2(
 	$author$project$Tutorial$htmlAfter,
 	$author$project$Tutorial$createYourOwnOutro,
 	A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$createYourOwnIntro, $author$project$Tutorial$customerControl));
-var $author$project$Tutorial$customTypesCustomerControl = $author$project$Control$endRecord(
+var $author$project$Tutorial$customTypesIntro = $author$project$Tutorial$md('\n### Custom Types \nBut... that\'s not going to be enough. One of the key selling-points of our stickers is that we can customise them\nfor each customer\'s specific needs. Our product managers explain:\n* We can print rectangular stickers in any size - the customer should be able to specify the width and height as `Int`s.\n* We can print a custom message on heart-shaped stickers - the customer should be able to specify the text as a `String`.\n* Circular stickers aren\'t customisable yet, but the product team is working on it!\n\nWe\'ll capture these details by changing our enum to a more complex custom type:\n\n```\ntype Sticker\n    = Circular\n    | HeartShaped String\n    | Rectangular Int Int\n```\n\nLet\'s see how we can build a control to represent these exciting products with `Control.customType`. This might look a \nbit daunting at first, but we\'ll walk through it step by step:\n\n```\nstickerControl =\n    \n    -- First, we call `Control.customType` and pass it a function that can \n    -- destructure a `Sticker` type and give us access to its arguments.\n    \n    Control.customType\n        (\\circular heartShaped rectangular variant ->\n            case variant of\n                Circular ->\n                    circular\n\n                HeartShaped message ->\n                    heartShaped message\n\n                Rectangular width height ->\n                    rectangular width height\n        )\n\n        -- Next, we teach the control how to construct our variants. Since the \n        -- `Circular` variant doesn\'t have any arguments, we use `Control.variant0` \n        -- and just supply the tag\n\n        |> Control.variant0 "Circular"\n            Circular\n\n        -- Next, we handle `HeartShaped String` using `Control.variant1`, supplying \n        -- the tag followed by `Control.string` as the single argument.\n\n        |> Control.variant1 "Heart-shaped"\n            HeartShaped\n            (Control.string |> Control.label "Message")\n            \n        -- Finally, since the `Rectangular Int Int` variant has two arguments, \n        -- we use `Control.variant2`, supplying the tag and two `Control.int`s.\n        \n        |> Control.variant2 "Rectangular"\n            Rectangular\n            (Control.int |> Control.label "Width")\n            (Control.int |> Control.label "Height")\n\n        -- Now just call `Control.endCustomType` to declare that we\'ve finished adding \n        -- variants, and then `Control.label` to give the control an appropriate \n        -- label.\n        \n        |> Control.endCustomType\n        |> Control.label "Sticker type"\n```\n\n### Wiring it up\n\nNow we can add the new field to our `Customer` control as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age sticker -> \n            { name = name\n            , age = age\n            , sticker = sticker\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .sticker stickerControl\n        |> Control.endRecord\n```\n\nAnd you\'ll see something like this:\n');
+var $author$project$Tutorial$customTypesOutro = $author$project$Tutorial$md('\n### Maybe and Result\nYou could easily implement Elm\'s `Maybe` and `Result` custom types using `Control.customType`. But \nthere\'s no need - they\'re included as `Control.maybe` and `Control.result`.\n\nNext up, we\'ll look at controls for data structures that can include multiple values of a given type: `List`, and other \nlist-like things.\n\n');
+var $author$project$Tutorial$enumsAndCustomTypesCustomerControl = $author$project$Control$endRecord(
 	A3(
 		$author$project$Control$field,
 		function ($) {
-			return $.cD;
+			return $.dt;
 		},
-		$author$project$Tutorial$productControl,
+		$author$project$Tutorial$stickerControl,
 		A3(
 			$author$project$Control$field,
 			function ($) {
-				return $.Y;
+				return $.aO;
 			},
 			A2($author$project$Control$label, 'Age', $author$project$Control$int),
 			A3(
 				$author$project$Control$field,
 				function ($) {
-					return $.o;
+					return $.l;
 				},
 				A2($author$project$Control$label, 'Name', $author$project$Control$string),
 				$author$project$Control$record(
 					F3(
-						function (name, age, product) {
-							return {Y: age, o: name, cD: product};
+						function (name, age, sticker) {
+							return {aO: age, l: name, dt: sticker};
 						}))))));
-var $author$project$Tutorial$customTypesIntro = $author$project$Tutorial$md('\n## Custom types\n\nShapes.com sells circles, triangles and rectangles to its customers. The company\'s unique selling point is that it \ncan custom-engineer these shapes in any size the customer desires! \n\nWe need to capture the required dimensions of each shape in our system, to be sure that we\'re giving the customer \nexactly what they want. So we\'ll specify circles by their radius (a single `Int`), triangles by the lengths of their \nsides (three `Int`s), and rectangles by their width and height (two `Ints`):\n\n```\ntype Product\n    = Circle Int\n    | Triangle Int Int Int\n    | Rectangle Int Int\n```\n\nLet\'s see how we can build a control to represent these exciting products with `Control.customType`. This might look a \nbit daunting at first, but we\'ll walk through it step by step:\n\n```\nproductControl =\n    \n    -- First, we call `Control.customType` and pass it a function that can \n    -- destructure a `Product` tag and give us access to its arguments.\n    \n    Control.customType\n        (\\circle triangle rectangle tag ->\n            case tag of\n                Circle radius ->\n                    circle radius\n\n                Triangle side1 side2 side3 ->\n                    triangle side1 side2 side3\n\n                Rectangle width height ->\n                    rectangle width height\n        )\n\n        -- Next, we teach the control how to construct a `Circle` from a single\n        -- `Control.int` control, using `Control.tag1`.\n        \n        |> Control.tag1 "Circle"\n            Circle\n            (Control.int |> Control.label "Radius")\n\n        -- Now we do the same for `Triangle` - this time, it\'s composed of three\n        -- `Control.int` controls, so we use `Control.tag3`.\n\n        |> Control.tag3 "Triangle"\n            Triangle\n            (Control.int |> Control.label "First side")\n            (Control.int |> Control.label "Second side")\n            (Control.int |> Control.label "Third side")\n\n        -- And finally, we handle `Rectangle`\'s two `Control.int` controls with \n        -- `Control.tag2`.\n\n        |> Control.tag2 "Rectangle"\n            Rectangle\n            (Control.int |> Control.label "Width")\n            (Control.int |> Control.label "Height")\n\n        -- Now just call `Control.endCustomType` to declare that we\'ve finished adding \n        -- tags, and then `Control.label` to give the control an appropriate \n        -- label.\n        \n        |> Control.endCustomType\n        |> Control.label "Product"\n```\n\n### Wiring it up\n\nNow we can add the new field to our `Customer` control as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age product -> \n            { name = name\n            , age = age\n            , product = product\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .product productControl\n        |> Control.endRecord\n```\n\nAnd you\'ll see something like this:\n');
-var $author$project$Tutorial$customTypesOutro = $author$project$Tutorial$md('\n### Maybe and Result\nYou could easily implement Elm\'s `Maybe` and `Result` custom types using `Control.customType`. But \nthere\'s no need - they\'re included as `Control.maybe` and `Control.result`.\n\nNext up, we\'ll look at controls for data structures that can include multiple values of a given type: `List`, and other \nlist-like things.\n\n');
-var $author$project$Tutorial$customTypes = A2(
-	$author$project$Tutorial$htmlAfter,
-	$author$project$Tutorial$customTypesOutro,
-	A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$customTypesIntro, $author$project$Tutorial$customTypesCustomerControl));
+var $author$project$Tutorial$enumsAndCustomTypesIntro = $author$project$Tutorial$md('\n## Enums and Custom Types\n\nOur company sells three main types of products: rectangular stickers, circular stickers, and heart-shaped stickers.\nIn our CRM system, we want to be able to track which products each customer has purchased, so we need some \nway of representing the type of sticker. \n\nHow can we do that? Let\'s use a custom type!\n\n### How to talk about custom types\nLet\'s get our terminology clear before we start. In Elm, a custom type is composed of one or more _variants_. \nEach variant consists of a _tag_ followed by zero or more _arguments_.\n\nFor example, let\'s say we have a type like `Maybe Int`: \n* The tags of its variants are `Just` and `Nothing`. \n* The `Just` variant has one argument, an `Int`. \n* The `Nothing` variant has no arguments.\n\nAn _enum_ is a special kind of custom type that has at least two variants, and none of its variants have \nany arguments. Like `Bool` for example:\n\n```\ntype Bool\n    = True\n    | False\n```\n\n### Enums\nAs a first prototype for modelling the company\'s products in our system, let\'s start with a simple enum type:\n\n```\ntype Sticker\n   = Circular\n   | HeartShaped\n   | Rectangular\n```\n\nWe can create a control for this type using `Control.enum`. Since an enum type must have at least two variants, \n`Control.enum` requires us to provide at least two tags, and each tag must be accompanied by a `String` to use as a label. \nIf the type has more than two tags, we can put the rest in a list.\n\n```\nstickerControl =\n    Control.enum\n        ( "Circular", Circular ) -- first variant\n        ( "Heart-shaped", HeartShaped ) -- second variant\n        [ ( "Rectangular", Rectangular ) ] -- list of other variants\n        |> Control.label "Sticker type"\n```\n\nThe result should look something like this:\n');
+var $author$project$Tutorial$SimpleCircular = 1;
+var $author$project$Tutorial$SimpleHeartShaped = 2;
+var $author$project$Tutorial$SimpleRectangular = 0;
+var $author$project$Control$enumView = F2(
+	function (variants, config) {
+		return $author$project$Control$radioView(
+			{
+				f: config.f,
+				c: config.c,
+				l: config.l,
+				cC: A2(
+					$elm$core$List$map,
+					function (_v0) {
+						var a = _v0.a;
+						var b = _v0.b;
+						return _Utils_Tuple2(b, a);
+					},
+					variants),
+				cJ: config.v,
+				cZ: $elm$core$Basics$identity
+			});
+	});
+var $author$project$Control$enum = F3(
+	function (first, second, rest) {
+		return $author$project$Control$define(
+			{
+				Y: _Utils_Tuple2(first.b, $elm$core$Platform$Cmd$none),
+				c: 'Enum',
+				o: $elm$core$Result$Ok,
+				_: function (e) {
+					return _Utils_Tuple2(e, $elm$core$Platform$Cmd$none);
+				},
+				t: function (_v0) {
+					return $elm$core$Platform$Sub$none;
+				},
+				r: F2(
+					function (delta, _v1) {
+						return _Utils_Tuple2(delta, $elm$core$Platform$Cmd$none);
+					}),
+				m: $author$project$Control$enumView(
+					A2(
+						$elm$core$List$cons,
+						first,
+						A2($elm$core$List$cons, second, rest)))
+			});
+	});
+var $author$project$Tutorial$simpleStickerControl = A2(
+	$author$project$Control$label,
+	'Sticker type',
+	A3(
+		$author$project$Control$enum,
+		_Utils_Tuple2('Circular', 1),
+		_Utils_Tuple2('Heart-shaped', 2),
+		_List_fromArray(
+			[
+				_Utils_Tuple2('Rectangular', 0)
+			])));
+var $author$project$Tutorial$enumsAndCustomTypes = $author$project$Control$endRecord(
+	A3(
+		$author$project$Control$field,
+		$elm$core$Tuple$second,
+		A2(
+			$author$project$Tutorial$htmlAfter,
+			$author$project$Tutorial$customTypesOutro,
+			A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$customTypesIntro, $author$project$Tutorial$enumsAndCustomTypesCustomerControl)),
+		A3(
+			$author$project$Control$field,
+			$elm$core$Tuple$first,
+			A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$enumsAndCustomTypesIntro, $author$project$Tutorial$simpleStickerControl),
+			$author$project$Control$record(
+				F2(
+					function (a, b) {
+						return _Utils_Tuple2(a, b);
+					})))));
 var $author$project$Control$id = F2(
 	function (id_, _v0) {
 		var control = _v0;
@@ -19258,7 +20058,7 @@ var $author$project$Control$id = F2(
 			return _Utils_update(
 				i,
 				{
-					e: $elm$core$Maybe$Just(id_)
+					f: $elm$core$Maybe$Just(id_)
 				});
 		};
 		return A2($elm$core$Basics$composeR, control, identifier);
@@ -19271,41 +20071,42 @@ var $author$project$Control$layout = F2(
 			return _Utils_update(
 				fns,
 				{
-					n: function (internalViewConfig) {
-						var subcontrols = fns.aF(internalViewConfig);
-						var layoutConfig = {
-							l: A2($elm$core$String$join, ' ', internalViewConfig.l),
-							e: internalViewConfig.e,
-							c: internalViewConfig.c,
-							cL: $author$project$Control$TagSelected,
-							g: internalViewConfig.g
-						};
-						return A2(view, layoutConfig, subcontrols);
-					}
+					m: F2(
+						function (context, internalViewConfig) {
+							var subcontrols = A2(fns.a_, context, internalViewConfig);
+							var layoutConfig = {
+								e: A2($elm$core$String$join, ' ', internalViewConfig.e),
+								f: internalViewConfig.f,
+								c: internalViewConfig.c,
+								dq: $author$project$Control$TagSelected,
+								h: internalViewConfig.h
+							};
+							return A2(view, layoutConfig, subcontrols);
+						})
 				});
 		};
 		return A2($elm$core$Basics$composeR, control, viewer);
 	});
-var $author$project$Tutorial$leavingTheSandboxIntro = $author$project$Tutorial$md('\n## Leaving the sandbox\n\nSo, we\'ve designed our `customerControl`, and tested it out in `Control.sandbox`... but where do we go from \nthere?\n\nWell, in practice, we probably want to integrate it into a larger Elm application - in this case, the customer \nrelationship management (CRM) system we\'re building for Shapes.com.\n\n### Initial setup\n\nLet\'s rename our `Main.elm` file to `Customer.elm`, and rename `customerControl` to just `control`. Then we\'ll make a few \nchanges to the exports:\n\n```\nmodule Customer exposing (Customer, Id, Product, control, main)\n```\n\nAnd we\'ll implement a very rubbish CRM application in a file called `Crm.elm`:\n\n```\nmodule Crm exposing (main)\n\nimport Browser\nimport Control\nimport Customer\n\ntype alias Model = \n    { customers : List Customer.Customer }\n\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n\nmain = \n    Browser.document \n        { init = init \n        , view = view\n        , update = update\n        , subscriptions = subscriptions\n        }\n\ninit flags = \n    ( { customers = [] }\n    , Cmd.none\n    )\n\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) ] \n    }\n\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ( { customers = \n                List.map \n                    (\\customer -> \n                        if customer.id == customerId then \n                            { customer | products = product :: customer.products } \n                        else customer\n                    ) \n                    model.customers \n              }\n            , Cmd.none\n            )\n\nsubscriptions model = \n    Sub.none\n```\n\nSo, how do we add our form to this app? \n\n### Working out the types\n\n**Warning:** this is the scariest bit of the tutorial. Take a deep breath before you read the next section.\n\nFirst, we need to know what the types should be for the `state` of our form (which \nis this package\'s equivalent of a `Model` type), and its `delta` (equivalent to a `Msg` type).\n\nThese types will be quite complicated, and it would be painful to work them out by hand. Fortunately, we don\'t have to, \nbecause we can ask the Elm compiler to do it for us.\n\nOpen your terminal in the project root folder and type `elm repl`. Then, at the REPL prompt, type:\n\n```\n> import Customer\n> Customer.main\n```\n\nThis should print out the type signature for our sandbox program, which should look something like this:\n```\n<function>\n    : Program\n          ()\n          (\n          Control.State\n              ( Control.State String\n              , ( Control.State String\n                , ( Control.State\n                        (\n                        List\n                            (\n                            Control.State\n                                ( Control.State ( Control.State String, Control.End )\n                                , ( Control.State\n                                        ( Control.State String\n                                        , ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                        )\n                                  , ( Control.State\n                                          ( Control.State String\n                                          , ( Control.State String, Control.End )\n                                          )\n                                    , Control.End\n                                    )\n                                  )\n                                )\n                            )\n                        )\n                  , ( Control.State ( Control.State String, Control.End )\n                    , ( Control.State\n                            ( Control.State\n                                  ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n          (\n          Control.Delta\n              ( Control.Delta String\n              , ( Control.Delta String\n                , ( Control.Delta\n                        (\n                        Control.ListDelta\n                            ( Control.Delta ( Control.Delta String, Control.End )\n                            , ( Control.Delta\n                                    ( Control.Delta String\n                                    , ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                    )\n                              , ( Control.Delta\n                                      ( Control.Delta String\n                                      , ( Control.Delta String, Control.End )\n                                      )\n                                , Control.End\n                                )\n                              )\n                            )\n                        )\n                  , ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta\n                                  ( Control.Delta String\n                                  , ( Control.Delta String, Control.End )\n                                  )\n                            , Control.End\n                            )\n                      , Control.End\n                      )\n                    )\n                  )\n                )\n              )\n          )\n```\n\nAaargh! Right?\n\nDon\'t worry, it\'s not as bad as it looks - and we\'ll get through this _together_.\n\nThe `state` for our form will be the whole section containing `Control.State` types, and the `delta` will be the \nsection containing `Control.Delta` types.\n\nLet\'s copy-paste those relevant bits into a couple of type aliases in `Crm.elm`:\n\n```\ntype alias CustomerFormState =\n    Control.State\n        ( Control.State String\n        , ( Control.State String\n          , ( Control.State\n                (List\n                    (Control.State\n                        ( Control.State ( Control.State String, Control.End )\n                        , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String\n                                  , ( Control.State String, Control.End )\n                                  )\n                                )\n                          , ( Control.State\n                                ( Control.State String\n                                , ( Control.State String, Control.End )\n                                )\n                            , Control.End\n                            )\n                          )\n                        )\n                    )\n                )\n            , ( Control.State ( Control.State String, Control.End )\n              , ( Control.State\n                    ( Control.State\n                        ( Control.State String\n                        , ( Control.State String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n\nAnd:\n\n```\ntype alias CustomerFormDelta =\n    Control.Delta\n        ( Control.Delta String\n        , ( Control.Delta String\n          , ( Control.Delta\n                (Control.ListDelta\n                    ( Control.Delta ( Control.Delta String, Control.End )\n                    , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String\n                              , ( Control.Delta String, Control.End )\n                              )\n                            )\n                      , ( Control.Delta\n                            ( Control.Delta String\n                            , ( Control.Delta String, Control.End )\n                            )\n                        , Control.End\n                        )\n                      )\n                    )\n                )\n            , ( Control.Delta ( Control.Delta String, Control.End )\n              , ( Control.Delta\n                    ( Control.Delta\n                        ( Control.Delta String\n                        , ( Control.Delta String, Control.End )\n                        )\n                    , Control.End\n                    )\n                , Control.End\n                )\n              )\n            )\n          )\n        )\n```\n\nPhew - job done! Now we don\'t have to think about those horrible types again.\n\n### Extending the `Model` and `Msg` types\n\nNow, in `Crm.elm`, we\'ll add a field to the `Model` to hold the form\'s state:\n\n```\ntype alias Model = \n    { customers : List Customer.Customer \n    , customerFormState : CustomerFormState\n    }\n\n```\n\nNext, we\'ll add two new variants to the `Msg` type - one for updating the form\'s state, and one for submitting it:\n\n```\ntype Msg \n    = SoldProductToCustomer Customer.Id Customer.Product\n    | UpdatedCustomerForm CustomerFormDelta\n    | SubmittedCustomerForm\n```\n\n### Instantiating our form\n\nNow, in `Crm.elm`, let\'s use `Control.simpleForm` to turn our `control` into a basic form that will render as an HTML \n`<form>` element, with a submit button at the bottom:\n\n```\ncustomerForm = \n    Control.simpleForm \n        { control = Customer.control\n        , onUpdate = UpdatedCustomerForm\n        , onSubmit = SubmttedCustomerForm\n        }\n```\n\nThis `customerForm` is a record that contains the functions we\'ll need to bring our form to life. Next, we\'ll integrate \nthese functions into our CRM app\'s `init`, `view`, `update` and `subscriptions` functions. \n\n### Wiring it up\n\nLet\'s start with our app\'s `init` function:\n\n```\ninit flags = \n    let\n        ( formState, cmd ) = \n            customerForm.blank\n    in\n    ( { customers = [] \n      , customerFormState = formState\n      }\n    , cmd\n    )\n```\n\nNow `view`:\n\n```\nview model =\n    { title = "Shapes.com CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) \n        , customerForm.view model.customerFormState\n        ] \n    }\n```\n\nAnd `update`:\n\n```\nupdate msg model =\n    case msg of\n        SoldProductToCustomer customerId product ->\n            ...\n\n        UpdatedCustomerForm delta ->\n            let\n                ( newFormState, cmd ) =\n                    customerForm.update delta model.customerFormState\n            in\n            ( { model | customerFormState = newFormState }\n            , cmd\n            )\n\n        SubmittedCustomerForm ->\n            let\n                ( newFormState, result ) =\n                    customerForm.submit model.customerFormState\n            in\n            case result of\n                Ok customer ->\n                    ( { model \n                        | customers = customer :: model.customers \n                        , customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n                Err errors ->\n                    -- in a real app you\'d probably do something \n                    -- with the errors, but I\'ll leave that as an\n                    -- exercise for the reader; here, we\'ll just\n                    -- update the form\'s state.\n                    ( { model \n                        | customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n```\n\nAnd finally, `subscriptions`:\n\n```\nsubscriptions model = \n    customerForm.subscriptions model.customerFormState\n```\n\nVoila! Job done! If you open `Crm.elm` in `elm reactor`, you should now see a list of customer names, followed by \nsomething like this:\n');
+var $author$project$Tutorial$leavingTheSandboxIntro = $author$project$Tutorial$md('\n## Leaving the sandbox\n\nSo, we\'ve designed our `customerControl`, and tested it out in `Control.sandbox`... but where do we go from \nthere?\n\nWell, in practice, we probably want to integrate it into a larger Elm application - in this case, the customer \nrelationship management (CRM) system we\'re building for our sticker company.\n\n### Initial setup\n\nLet\'s rename our `Main.elm` file to `Customer.elm`, and rename `customerControl` to just `control`. Then we\'ll make a few \nchanges to the exports:\n\n```\nmodule Customer exposing (Customer, Id, Sticker, control, main)\n```\n\nAnd we\'ll implement a very rubbish CRM application in a file called `Crm.elm`:\n\n```\nmodule Crm exposing (main)\n\nimport Browser\nimport Control\nimport Customer\n\ntype alias Model = \n    { customers : List Customer.Customer }\n\ntype Msg \n    = SoldStickerToCustomer Customer.Id Customer.Sticker\n\nmain = \n    Browser.document \n        { init = init \n        , view = view\n        , update = update\n        , subscriptions = subscriptions\n        }\n\ninit flags = \n    ( { customers = [] }\n    , Cmd.none\n    )\n\nview model =\n    { title = "Sticker Company CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) ] \n    }\n\nupdate msg model =\n    case msg of\n        SoldStickerToCustomer customerId sticker ->\n            ( { customers = \n                List.map \n                    (\\customer -> \n                        if customer.id == customerId then \n                            { customer | stickers = sticker :: customer.stickers } \n                        else customer\n                    ) \n                    model.customers \n              }\n            , Cmd.none\n            )\n\nsubscriptions model = \n    Sub.none\n```\n\nSo, how do we add our form to this app? \n\n### Working out the types\n\n**Warning:** this is the scariest bit of the tutorial. Take a deep breath before you read the next section.\n\nFirst, we need to know what the types should be for the `state` of our form (which \nis this package\'s equivalent of a `Model` type), and its `delta` (equivalent to a `Msg` type).\n\nThese types will be quite complicated, and it would be painful to work them out by hand. Fortunately, we don\'t have to, \nbecause we can ask the Elm compiler to do it for us.\n\nOpen your terminal in the project root folder and type `elm repl`. Then, at the REPL prompt, type:\n\n```\n> import Customer\n> Customer.main\n```\n\nThis should print out the type signature for our sandbox program, which should look something like this:\n```\n<function>\n    : Program\n          ()\n          (\n          Control.State\n              (\n              Control.Record\n                  (\n                  Control.Field\n                      String\n                      (\n                      Control.Field\n                          String\n                          (\n                          Control.Field\n                              (\n                              Control.List_\n                                  (\n                                  Control.CustomType\n                                      (\n                                      Control.Variant\n                                          Control.EndVariant\n                                          (\n                                          Control.Variant\n                                              (Control.Arg String Control.EndVariant)\n                                              (\n                                              Control.Variant\n                                                  (\n                                                  Control.Arg\n                                                      String\n                                                      (\n                                                      Control.Arg\n                                                          String\n                                                          Control.EndVariant\n                                                      )\n                                                  )\n                                                  Control.EndCustomType\n                                              )\n                                          )\n                                      )\n                                  )\n                              )\n                              (\n                              Control.Field\n                                  (Control.Mapping String)\n                                  (\n                                  Control.Field\n                                      (\n                                      Control.Mapping\n                                          (\n                                          Control.Record\n                                              (\n                                              Control.Field\n                                                  String\n                                                  (\n                                                  Control.Field\n                                                      String\n                                                      Control.EndRecord\n                                                  )\n                                              )\n                                          )\n                                      )\n                                      Control.EndRecord\n                                  )\n                              )\n                          )\n                      )\n                  )\n              )\n          )\n          (\n          Control.Delta\n              (\n              Control.Record\n                  (\n                  Control.Field\n                      String\n                      (\n                      Control.Field\n                          String\n                          (\n                          Control.Field\n                              (\n                              Control.List_\n                                  (\n                                  Control.CustomType\n                                      (\n                                      Control.Variant\n                                          Control.EndVariant\n                                          (\n                                          Control.Variant\n                                              (Control.Arg String Control.EndVariant)\n                                              (\n                                              Control.Variant\n                                                  (\n                                                  Control.Arg\n                                                      String\n                                                      (\n                                                      Control.Arg\n                                                          String\n                                                          Control.EndVariant\n                                                      )\n                                                  )\n                                                  Control.EndCustomType\n                                              )\n                                          )\n                                      )\n                                  )\n                              )\n                              (\n                              Control.Field\n                                  (Control.Mapping String)\n                                  (\n                                  Control.Field\n                                      (\n                                      Control.Mapping\n                                          (\n                                          Control.Record\n                                              (\n                                              Control.Field\n                                                  String\n                                                  (\n                                                  Control.Field\n                                                      String\n                                                      Control.EndRecord\n                                                  )\n                                              )\n                                          )\n                                      )\n                                      Control.EndRecord\n                                  )\n                              )\n                          )\n                      )\n                  )\n              )\n          )\n```\n\nAaargh! Right?\n\nDon\'t worry, it\'s not as bad as it looks - and we\'ll get through this _together_.\n\nThe `state` for our form will be the whole section that starts with `Control.State`, and the `delta` will be the \nsection that starts with `Control.Delta`.\n\nLet\'s copy-paste those relevant bits into a couple of type aliases in `Crm.elm`:\n\n```\ntype alias CustomerFormState =\n    Control.State\n        (Control.Record\n            (Control.Field\n                String\n                (Control.Field\n                    String\n                    (Control.Field\n                        (Control.List_\n                            (Control.CustomType\n                                (Control.Variant\n                                    Control.EndVariant\n                                    (Control.Variant\n                                        (Control.Arg String Control.EndVariant)\n                                        (Control.Variant\n                                            (Control.Arg\n                                                String\n                                                (Control.Arg\n                                                    String\n                                                    Control.EndVariant\n                                                )\n                                            )\n                                            Control.EndCustomType\n                                        )\n                                    )\n                                )\n                            )\n                        )\n                        (Control.Field\n                            (Control.Mapping String)\n                            (Control.Field\n                                (Control.Mapping\n                                    (Control.Record\n                                        (Control.Field\n                                            String\n                                            (Control.Field\n                                                String\n                                                Control.EndRecord\n                                            )\n                                        )\n                                    )\n                                )\n                                Control.EndRecord\n                            )\n                        )\n                    )\n                )\n            )\n        )\n```\n\nAnd:\n\n```\ntype alias CustomerFormDelta =\n    Control.Delta\n        (Control.Record\n            (Control.Field\n                String\n                (Control.Field\n                    String\n                    (Control.Field\n                        (Control.List_\n                            (Control.CustomType\n                                (Control.Variant\n                                    Control.EndVariant\n                                    (Control.Variant\n                                        (Control.Arg String Control.EndVariant)\n                                        (Control.Variant\n                                            (Control.Arg\n                                                String\n                                                (Control.Arg\n                                                    String\n                                                    Control.EndVariant\n                                                )\n                                            )\n                                            Control.EndCustomType\n                                        )\n                                    )\n                                )\n                            )\n                        )\n                        (Control.Field\n                            (Control.Mapping String)\n                            (Control.Field\n                                (Control.Mapping\n                                    (Control.Record\n                                        (Control.Field\n                                            String\n                                            (Control.Field\n                                                String\n                                                Control.EndRecord\n                                            )\n                                        )\n                                    )\n                                )\n                                Control.EndRecord\n                            )\n                        )\n                    )\n                )\n            )\n        )\n```\n\nPhew - job done! Now we don\'t have to think about those horrible types again.\n\n### Extending the `Model` and `Msg` types\n\nNow, in `Crm.elm`, we\'ll add a field to the `Model` to hold the form\'s state:\n\n```\ntype alias Model = \n    { customers : List Customer.Customer \n    , customerFormState : CustomerFormState\n    }\n\n```\n\nNext, we\'ll add two new variants to the `Msg` type - one for updating the form\'s state, and one for submitting it:\n\n```\ntype Msg \n    = SoldStickerToCustomer Customer.Id Customer.Sticker\n    | UpdatedCustomerForm CustomerFormDelta\n    | SubmittedCustomerForm\n```\n\n### Instantiating our form\n\nNow, in `Crm.elm`, let\'s use `Control.simpleForm` to turn our `control` into a basic form that will render as an HTML \n`<form>` element, with a submit button at the bottom:\n\n```\ncustomerForm = \n    Control.simpleForm \n        { control = Customer.control\n        , onUpdate = UpdatedCustomerForm\n        , onSubmit = SubmttedCustomerForm\n        }\n```\n\nThis `customerForm` is a record that contains the functions we\'ll need to bring our form to life. Next, we\'ll integrate \nthese functions into our CRM app\'s `init`, `view`, `update` and `subscriptions` functions. \n\n### Wiring it up\n\nLet\'s start with our app\'s `init` function:\n\n```\ninit flags = \n    let\n        ( formState, cmd ) = \n            customerForm.blank\n    in\n    ( { customers = [] \n      , customerFormState = formState\n      }\n    , cmd\n    )\n```\n\nNow `view`:\n\n```\nview model =\n    { title = "Sticker Company CRM"\n    , body = \n        [ Html.div [] (List.map .name model.customers) \n        , customerForm.view model.customerFormState\n        ] \n    }\n```\n\nAnd `update`:\n\n```\nupdate msg model =\n    case msg of\n        SoldStickerToCustomer customerId sticker ->\n            ...\n\n        UpdatedCustomerForm delta ->\n            let\n                ( newFormState, cmd ) =\n                    customerForm.update delta model.customerFormState\n            in\n            ( { model | customerFormState = newFormState }\n            , cmd\n            )\n\n        SubmittedCustomerForm ->\n            let\n                ( newFormState, result ) =\n                    customerForm.submit model.customerFormState\n            in\n            case result of\n                Ok customer ->\n                    ( { model \n                        | customers = customer :: model.customers \n                        , customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n                Err errors ->\n                    -- in a real app you\'d probably do something \n                    -- with the errors, but I\'ll leave that as an\n                    -- exercise for the reader; here, we\'ll just\n                    -- update the form\'s state.\n                    ( { model \n                        | customerFormState = newFormState\n                      }\n                    , Cmd.none\n                    )\n```\n\nAnd finally, `subscriptions`:\n\n```\nsubscriptions model = \n    customerForm.subscriptions model.customerFormState\n```\n\nVoila! Job done! If you open `Crm.elm` in `elm reactor`, you should now see a list of customer names, followed by \nsomething like this:\n');
 var $author$project$Tutorial$leavingTheSandboxOutro = $author$project$Tutorial$md('\nCongratulations! You made it through the tutorial. There\'s quite a lot more to learn about this package, but that\'s \nbeyond the scope of this introduction. For a deeper dive, check out the docs at \n[package.elm-lang.org](https://package.elm-lang.org/packages/edkelly303/elm-any-type-forms/latest).\n');
 var $author$project$Tutorial$leavingTheSandbox = A2(
 	$author$project$Tutorial$htmlAfter,
 	$author$project$Tutorial$leavingTheSandboxOutro,
 	A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$leavingTheSandboxIntro, $author$project$Tutorial$customerControl));
 var $author$project$Tutorial$lessonsHeading = $author$project$Tutorial$md('# An introduction to `elm-any-type-forms`');
-var $author$project$Tutorial$listsIntro = $author$project$Tutorial$md('\n## Lists, Dicts, Sets and Arrays\n\nHang on a minute - if each Shapes.com customer can only purchase a single product, the company is probably not going to\nbe very successful! \n\nWhat we really want our system to do is keep track of _all_ the products that each customer buys. Perhaps we could use \nsome nifty data structure like a `List`?\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    , products : List Product\n    , id : Id\n    }\n```\n\nFortunately, it\'s easy to turn any control into a list of controls by passing it to `Control.list`:\n\n```\nproductListControl = \n    Control.list productControl\n```\n\nThis will give you a form that produces a list of products:\n');
-var $author$project$Tutorial$listsOutro = $author$project$Tutorial$md('\n### Wiring it up \n\nNow you can add your new `productListControl` to your `customerControl` as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age products -> \n            { name = name\n            , age = age\n            , products = products\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .products productListControl\n        |> Control.endRecord\n```\n\n### Other list-like things\n\nThe package includes built-in combinators for three other list-like data structures from Elm\'s standard library: \n`Array`, `Set` and `Dict`.\n\n`Control.array` and `Control.set` have exactly the same API as `Control.list` - just pass them a control of any type and \nyou\'ll get a control that produces an `Array` or `Set` of that type. \n\n`Control.dict` is similar, except that it takes _two_ controls as arguments. It uses the first as the key and the second \nas the value for the `Dict` it produces.\n');
+var $author$project$Tutorial$listsIntro = $author$project$Tutorial$md('\n## Lists, Dicts, Sets and Arrays\n\nHang on a minute - if each customer can only purchase a single sticker, the company is probably not going to\nbe very successful! \n\nWhat we really want our system to do is keep track of _all_ the stickers that each customer buys. Perhaps we could use \nsome nifty data structure like a `List`?\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    , stickers : List Sticker\n    , id : Id\n    }\n```\n\nFortunately, it\'s easy to turn any control into a list of controls by passing it to `Control.list`:\n\n```\nstickerListControl = \n    Control.list stickerControl\n        |> Control.label "Stickers purchased"\n```\n\nThis will give you a form that produces a list of stickers:\n');
+var $author$project$Tutorial$listsOutro = $author$project$Tutorial$md('\n### Wiring it up \n\nNow you can add your new `stickerListControl` to your `customerControl` as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age stickers -> \n            { name = name\n            , age = age\n            , stickers = stickers\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .stickers stickerListControl\n        |> Control.endRecord\n```\n\n### Other list-like things\n\nThe package includes built-in combinators for three other list-like data structures from Elm\'s standard library: \n`Array`, `Set` and `Dict`.\n\n`Control.array` and `Control.set` have exactly the same API as `Control.list` - just pass them a control of any type and \nyou\'ll get a control that produces an `Array` or `Set` of that type. \n\n`Control.dict` is similar, except that it takes _two_ controls as arguments. It uses the first as the key and the second \nas the value for the `Dict` it produces.\n');
 var $author$project$Tutorial$listsDictsSetsAndArrays = A2(
 	$author$project$Tutorial$htmlAfter,
 	$author$project$Tutorial$listsOutro,
-	A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$listsIntro, $author$project$Tutorial$productListControl));
-var $author$project$Tutorial$mappingIntro = $author$project$Tutorial$md('\n## Converting control types\n\nIn some circumstances, you may want to convert the type produced by a control to some other type. That\'s where \n`Control.map` becomes useful.\n\nFor example, suppose you want each of your customers to have a unique ID number. The number itself can be a simple `Int`, \nbut to make your code more type-safe, you decide to wrap that `Int` in a custom type tag:\n\n```\ntype Id = \n    Id Int\n\ntype alias Customer = \n    { name : String\n    , age : Int \n    , products : List Product\n    , id : Id\n    }\n```\n\nTo create a control for this new `Id` type, we just need to use `Control.map` to describe how to convert an `Int` into\nan `Id`, and vice versa. So we need to supply two functions: `convert`, which turns an `Int` into an `Id`, and `revert`,\nwhich turns an `Id` back into an `Int`:\n\n```\nidControl = \n    Control.int\n        |> Control.label "ID number"\n        |> Control.map \n            { convert = Id\n            , revert = \\(Id int) -> int \n            }\n```\nIt\'ll look something like this:\n');
-var $author$project$Tutorial$mappingOutro = $author$project$Tutorial$md('\n### Wiring it up\n\nYou can add this new field to your `Customer` control as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age products id -> \n            { name = name\n            , age = age\n            , products = products \n            , id = id\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .products productListControl\n        |> Control.field .id idControl\n        |> Control.endRecord\n```        \n');
+	A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$listsIntro, $author$project$Tutorial$stickerListControl));
+var $author$project$Tutorial$mappingIntro = $author$project$Tutorial$md('\n## Converting control types\n\nIn some circumstances, you may want to convert the type produced by a control to some other type. That\'s where \n`Control.map` becomes useful.\n\nFor example, suppose you want each of your customers to have a unique ID number. The number itself can be a simple `Int`, \nbut to make your code more type-safe, you decide to wrap that `Int` in a custom type:\n\n```\ntype Id = \n    Id Int\n\ntype alias Customer = \n    { name : String\n    , age : Int \n    , stickers : List Sticker\n    , id : Id\n    }\n```\n\nTo create a control for this new `Id` type, we just need to use `Control.map` to describe how to convert an `Int` into\nan `Id`, and vice versa. So we need to supply two functions: `convert`, which turns an `Int` into an `Id`, and `revert`,\nwhich turns an `Id` back into an `Int`:\n\n```\nidControl = \n    Control.int\n        |> Control.label "ID number"\n        |> Control.map \n            { convert = \\int -> Id int\n            , revert = \\(Id int) -> int \n            }\n```\nIt\'ll look something like this:\n');
+var $author$project$Tutorial$mappingOutro = $author$project$Tutorial$md('\n### Wiring it up\n\nYou can add this new field to your `Customer` control as follows:\n\n```\ncustomerControl =\n    Control.record \n        (\\name age stickers id -> \n            { name = name\n            , age = age\n            , stickers = stickers \n            , id = id\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .stickers stickerListControl\n        |> Control.field .id idControl\n        |> Control.endRecord\n```        \n');
 var $author$project$Tutorial$mapping = A2(
 	$author$project$Tutorial$htmlAfter,
 	$author$project$Tutorial$mappingOutro,
 	A2($author$project$Tutorial$htmlBefore, $author$project$Tutorial$mappingIntro, $author$project$Tutorial$idControl));
-var $author$project$Tutorial$multivalidationIntro = $author$project$Tutorial$md('\n## Multi-control validation\n\nSometimes you might need to validate the input of one control based on the input of another. The classic example is\nchecking that passwords match, so let\'s try that:\n\n```\ntype alias Passwords =\n    { choose : String\n    , confirm : String\n    }\n\npasswordControl =\n    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })\n        |> Control.field .choose choosePasswordControl\n        |> Control.field .confirm confirmPasswordControl\n        |> Control.endRecord\n\nchoosePasswordControl =\n    Control.string\n        |> Control.label "Choose password"\n\nconfirmPasswordControl =\n    Control.string\n        |> Control.label "Confirm password"\n```\n\nThe challenge here is that `confirmPasswordControl` has no way of knowing what\'s been entered in \n`choosePasswordControl`, so it can\'t tell whether the contents of the two controls match or not. That means we can\'t use\n`Control.failIf` to handle this validation rule.\n\n### Going up a level\n\nWe can solve this problem by moving the validation into the `passwordControl` record, which contains both fields and can\ntherefore check the data in both of them. If the fields don\'t match, we can use `Control.alertIf` to emit an alert:\n\n```\npasswordControl =\n    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })\n        |> Control.field .choose choosePasswordControl\n        |> Control.field .confirm confirmPasswordControl\n        |> Control.endRecord\n        |> Control.alertIf\n            (\\{ choose, confirm } -> choose /= confirm)\n            "password-mismatch"\n```\n\nNow, we use `Control.respond` to tell `confirmPasswordControl` to listen out for the `"password-mismatch"` alert. It can \nthen respond by showing an error message to the user and causing the form to fail validation:\n\n```\nconfirmPasswordControl =\n    Control.string\n        |> Control.label "Confirm password"\n        |> Control.respond\n            { alert = "password-mismatch"\n            , fail = True\n            , message = "Passwords must match"\n            }\n```\n\n### Wiring it up\n\nFinally, let\'s add the password to our `Customer` type, represented as a `String`. So our type will be:\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    , products : List Product\n    , id : Id\n    , password : String\n    }\n```\n\nBut... our `passwordControl` doesn\'t produce a `String`, it produces `{ choose : String, confirm : String }`. Uh oh!\n\n### Control.map to the rescue!\n\nFortunately, all is not lost. We can use `Control.map` to convert the output type of `passwordControl` to a `String`, \nas we learned in the previous lesson:\n\n```\npasswordControl =\n    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })\n        |> Control.field .choose choosePasswordControl\n        |> Control.field .confirm confirmPasswordControl\n        |> Control.endRecord\n        |> Control.alertIf\n            (\\{ choose, confirm } -> choose /= confirm)\n            "password-mismatch"\n        |> Control.map\n            { convert = \\{ choose, confirm } -> choose\n            , revert = \\password -> { choose = password, confirm = password }\n            }\n```\n\n### Wiring it up... again\n\nAnd now we just add `passwordControl` to `customerControl`, as usual:\n\n```\ncustomerControl =\n    Control.record\n        (\\name age products id password ->\n            { name = name\n            , age = age\n            , products = products\n            , id = id\n            , password = password\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .products productListControl\n        |> Control.field .id idControl\n        |> Control.field .password passwordControl\n        |> Control.endRecord\n```\n\nAnd you should see something a little like this:\n');
+var $author$project$Tutorial$multivalidationIntro = $author$project$Tutorial$md('\n## Multi-control validation\n\nSometimes you might need to validate the input of one control based on the input of another. The classic example is\nchecking that passwords match, so let\'s try that:\n\n```\ntype alias Passwords =\n    { choose : String\n    , confirm : String\n    }\n\npasswordControl =\n    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })\n        |> Control.field .choose choosePasswordControl\n        |> Control.field .confirm confirmPasswordControl\n        |> Control.endRecord\n\nchoosePasswordControl =\n    Control.string\n        |> Control.label "Choose password"\n\nconfirmPasswordControl =\n    Control.string\n        |> Control.label "Confirm password"\n```\n\nThe challenge here is that `confirmPasswordControl` has no way of knowing what\'s been entered in \n`choosePasswordControl`, so it can\'t tell whether the contents of the two controls match or not. That means we can\'t use\n`Control.failIf` to handle this validation rule.\n\n### Going up a level\n\nWe can solve this problem by moving the validation into the `passwordControl` record, which contains both fields and can\ntherefore check the data in both of them. If the fields don\'t match, we can use `Control.alertIf` to emit an alert:\n\n```\npasswordControl =\n    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })\n        |> Control.field .choose choosePasswordControl\n        |> Control.field .confirm confirmPasswordControl\n        |> Control.endRecord\n        |> Control.alertIf\n            (\\{ choose, confirm } -> choose /= confirm)\n            "password-mismatch"\n```\n\nNow, we use `Control.respond` to tell `confirmPasswordControl` to listen out for the `"password-mismatch"` alert. It can \nthen respond by showing an error message to the user and causing the form to fail validation:\n\n```\nconfirmPasswordControl =\n    Control.string\n        |> Control.label "Confirm password"\n        |> Control.respond\n            { alert = "password-mismatch"\n            , fail = True\n            , message = "Passwords must match"\n            }\n```\n\n### Wiring it up\n\nFinally, let\'s add the password to our `Customer` type, represented as a `String`. So our type will be:\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    , stickers : List Sticker\n    , id : Id\n    , password : String\n    }\n```\n\nBut... our `passwordControl` doesn\'t produce a `String`, it produces `{ choose : String, confirm : String }`. Uh oh!\n\n### Control.map to the rescue!\n\nFortunately, all is not lost. We can use `Control.map` to convert the output type of `passwordControl` to a `String`, \nas we learned in the previous lesson:\n\n```\npasswordControl =\n    Control.record (\\choose confirm -> { choose = choose, confirm = confirm })\n        |> Control.field .choose choosePasswordControl\n        |> Control.field .confirm confirmPasswordControl\n        |> Control.endRecord\n        |> Control.alertIf\n            (\\{ choose, confirm } -> choose /= confirm)\n            "password-mismatch"\n        |> Control.map\n            { convert = \\{ choose, confirm } -> choose\n            , revert = \\password -> { choose = password, confirm = password }\n            }\n```\n\n### Wiring it up... again\n\nAnd now we just add `passwordControl` to `customerControl`, as usual:\n\n```\ncustomerControl =\n    Control.record\n        (\\name age stickers id password ->\n            { name = name\n            , age = age\n            , stickers = stickers\n            , id = id\n            , password = password\n            }\n        )\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.field .stickers stickerListControl\n        |> Control.field .id idControl\n        |> Control.field .password passwordControl\n        |> Control.endRecord\n```\n\nAnd you should see something a little like this:\n');
 var $author$project$Tutorial$multivalidationOutro = $author$project$Tutorial$md('\nWe\'ve now covered all the basics for building controls with primitives and combinators. The next thing we\'ll cover is \nwhat to do when you want to create a completely new type of control from scratch.\n');
 var $author$project$Tutorial$multivalidation = A2(
 	$author$project$Tutorial$htmlAfter,
@@ -19317,41 +20118,115 @@ var $author$project$Tutorial$multivalidation = A2(
 			A3(
 				$author$project$Control$field,
 				function ($) {
-					return $.a8;
+					return $.bY;
 				},
 				$author$project$Tutorial$passwordControl,
 				A3(
 					$author$project$Control$field,
 					function ($) {
-						return $.e;
+						return $.f;
 					},
 					$author$project$Tutorial$idControl,
 					A3(
 						$author$project$Control$field,
 						function ($) {
-							return $.a9;
+							return $.b6;
 						},
-						$author$project$Tutorial$productListControl,
+						$author$project$Tutorial$stickerListControl,
 						A3(
 							$author$project$Control$field,
 							function ($) {
-								return $.Y;
+								return $.aO;
 							},
 							A2($author$project$Control$label, 'Age', $author$project$Control$int),
 							A3(
 								$author$project$Control$field,
 								function ($) {
-									return $.o;
+									return $.l;
 								},
 								$author$project$Tutorial$nameControl,
 								$author$project$Control$record(
 									F5(
-										function (name, age, products, id, password) {
-											return {Y: age, e: id, o: name, a8: password, a9: products};
+										function (name, age, stickers, id, password) {
+											return {aO: age, f: id, l: name, bY: password, b6: stickers};
 										}))))))))));
-var $author$project$Tutorial$recordIntro = $author$project$Tutorial$md('\n## Records and labels\n\nImagine we are building a customer relationship management system for a company called Shapes.com. The company sells \na variety of two-dimensional geometric shapes to happy customers worldwide.\n\nTo represent our customers, let\'s use a record type:\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    }\n```\n\nWe can build a control that produces these `Customer` records with the `Control.record` combinator:\n\n```    \ncustomerControl =\n    Control.record (\\name age -> { name = name, age = age })\n        |> Control.field .name Control.string\n        |> Control.field .age Control.int\n        |> Control.endRecord\n```\n\nOr if you prefer brevity to explicitness, you could even use the `Customer` constructor directly:\n\n```\ncustomerControl =\n    Control.record Customer\n        |> Control.field .name Control.string\n        |> Control.field .age Control.int\n        |> Control.endRecord\n```\n\n### Wiring it up\n\nLet\'s take a look at this `customerControl` in our sandbox:\n\n```\nmain =\n    Control.sandbox\n        { control = customerControl\n        , outputToString = Debug.toString\n        }\n```\n\nAnd you should see a form that looks like this:\n');
+var $author$project$Tutorial$recordIntro = $author$project$Tutorial$md('\n## Records and labels\n\nImagine we are building a customer relationship management (CRM) system for a company that sells stickers \nto adorn the laptops of happy developers worldwide.\n\nTo represent our customers, let\'s use a record type:\n\n```\ntype alias Customer = \n    { name : String\n    , age : Int \n    }\n```\n\nWe can build a control that produces these `Customer` records with the `Control.record` combinator:\n\n```    \ncustomerControl =\n    Control.record (\\name age -> { name = name, age = age })\n        |> Control.field .name Control.string\n        |> Control.field .age Control.int\n        |> Control.endRecord\n```\n\nOr if you prefer brevity to explicitness, you could even use the `Customer` constructor directly:\n\n```\ncustomerControl =\n    Control.record Customer\n        |> Control.field .name Control.string\n        |> Control.field .age Control.int\n        |> Control.endRecord\n```\n\n### Wiring it up\n\nLet\'s take a look at this `customerControl` in our sandbox:\n\n```\nmain =\n    Control.sandbox\n        { control = customerControl\n        , outputToString = Debug.toString\n        }\n```\n\nAnd you should see a form that looks like this:\n');
 var $author$project$Tutorial$recordMiddle = $author$project$Tutorial$md('\n### Labelling controls\nThat\'s ok...ish. But one of the nice things about records is that their fields are _named_. So really, we want the \ncontrols to be labelled with the names of the fields. \n\nThat\'s where `Control.label` comes in. Change your code to:\n\n```    \ncustomerControl =\n    Control.record (\\name age -> { name = name, age = age })\n        |> Control.field .name (Control.string |> Control.label "Name")\n        |> Control.field .age (Control.int |> Control.label "Age")\n        |> Control.endRecord\n```\n\nAnd you should now see something like this:\n');
 var $author$project$Tutorial$recordOutro = $author$project$Tutorial$md('\n**Note:** We\'re going to see other functions that work like `Control.label` later - this is a common pattern for \nconfiguring controls. \n\n### A bit of refactoring\n\nTo keep things tidy, it\'s often better to pull out each control into a separate function, where \nyou can apply as many configuration functions as you like without making your `Control.record` definitions too complex. \n\nWith that in mind, let\'s refactor our code to this:\n\n```    \ncustomerControl =\n    Control.record (\\name age -> { name = name, age = age })\n        |> Control.field .name nameControl\n        |> Control.field .age ageControl\n        |> Control.endRecord\n\nnameControl = \n    Control.string \n        |> Control.label "Name"\n\nageControl = \n    Control.int \n        |> Control.label "Age"\n```\n\nNow, with tuples, triples and records, we have multiple options for controls that produce types that contain multiple \nvalues. \n\nBut Elm also has another kind of complex type: the custom type. How do we model those?\n');
+var $author$project$Control$Tuple = F2(
+	function (a, b) {
+		return {$: 0, a: a, b: b};
+	});
+var $author$project$Control$tupleWrapper = {
+	S: F2(
+		function (_v0, _v1) {
+			return $elm$core$Basics$identity;
+		}),
+	T: F2(
+		function (_v2, _v3) {
+			return $elm$core$Basics$identity;
+		}),
+	W: F2(
+		function (_v4, _v5) {
+			return $elm$core$Basics$identity;
+		}),
+	X: F2(
+		function (_v6, _v7) {
+			return $elm$core$Basics$identity;
+		}),
+	ab: F2(
+		function (_v8, _v9) {
+			var internalsFst = _v9.a;
+			var internalsSnd = _v9.b;
+			return A3(
+				$elm$core$Maybe$map2,
+				F2(
+					function (fst, snd) {
+						return _Utils_Tuple2(
+							fst,
+							_Utils_Tuple2(snd, 0));
+					}),
+				$author$project$Control$maybeExtractDelta(internalsFst),
+				$author$project$Control$maybeExtractDelta(internalsSnd));
+		}),
+	ac: F2(
+		function (_v10, _v11) {
+			var internalsFst = _v11.a;
+			var internalsSnd = _v11.b;
+			return A3(
+				$elm$core$Maybe$map2,
+				F2(
+					function (fst, snd) {
+						return _Utils_Tuple2(
+							fst,
+							_Utils_Tuple2(snd, 0));
+					}),
+				$author$project$Control$maybeExtractState(internalsFst),
+				$author$project$Control$maybeExtractState(internalsSnd));
+		}),
+	ad: F2(
+		function (_v12, _v13) {
+			var fst = _v13.a;
+			var _v14 = _v13.b;
+			var snd = _v14.a;
+			var _v15 = _v14.b;
+			return A2(
+				$author$project$Control$Tuple,
+				$author$project$Control$Delta_(fst),
+				$author$project$Control$Delta_(snd));
+		}),
+	ae: F2(
+		function (_v16, _v17) {
+			var fst = _v17.a;
+			var _v18 = _v17.b;
+			var snd = _v18.a;
+			var _v19 = _v18.b;
+			return A2(
+				$author$project$Control$Tuple,
+				$author$project$Control$State_(fst),
+				$author$project$Control$State_(snd));
+		})
+};
 var $author$project$Control$tuple = F2(
 	function (first, second) {
 		return A2(
@@ -19364,7 +20239,7 @@ var $author$project$Control$tuple = F2(
 							$elm$html$Html$fieldset,
 							_List_fromArray(
 								[
-									$elm$html$Html$Attributes$id(config.e)
+									$elm$html$Html$Attributes$id(config.f)
 								]),
 							A2(
 								$elm$core$List$cons,
@@ -19378,7 +20253,7 @@ var $author$project$Control$tuple = F2(
 								A2(
 									$elm$core$List$concatMap,
 									function ($) {
-										return $.ac;
+										return $.aj;
 									},
 									subcontrols)))
 						]);
@@ -19386,16 +20261,20 @@ var $author$project$Control$tuple = F2(
 			A2(
 				$author$project$Control$label,
 				'Tuple',
-				$author$project$Control$endRecord(
-					A3(
-						$author$project$Control$field,
+				A2(
+					$author$project$Control$endProductType,
+					$author$project$Control$tupleWrapper,
+					A4(
+						$author$project$Control$productField,
+						$author$project$Control$tupleWrapper,
 						$elm$core$Tuple$second,
 						second,
-						A3(
-							$author$project$Control$field,
+						A4(
+							$author$project$Control$productField,
+							$author$project$Control$tupleWrapper,
 							$elm$core$Tuple$first,
 							first,
-							$author$project$Control$record($elm$core$Tuple$pair))))));
+							$author$project$Control$productType($elm$core$Tuple$pair))))));
 	});
 var $author$project$Tutorial$records = A2(
 	$author$project$Tutorial$htmlAfter,
@@ -19410,7 +20289,7 @@ var $author$project$Tutorial$records = A2(
 					return A2(
 						$elm$core$List$concatMap,
 						function ($) {
-							return $.ac;
+							return $.aj;
 						},
 						subcontrols);
 				}),
@@ -19423,38 +20302,146 @@ var $author$project$Tutorial$records = A2(
 						A3(
 							$author$project$Control$field,
 							function ($) {
-								return $.Y;
+								return $.aO;
 							},
 							$author$project$Control$int,
 							A3(
 								$author$project$Control$field,
 								function ($) {
-									return $.o;
+									return $.l;
 								},
 								$author$project$Control$string,
 								$author$project$Control$record(
 									F2(
 										function (name, age) {
-											return {Y: age, o: name};
+											return {aO: age, l: name};
 										})))))),
 				$author$project$Control$endRecord(
 					A3(
 						$author$project$Control$field,
 						function ($) {
-							return $.Y;
+							return $.aO;
 						},
 						A2($author$project$Control$label, 'Age', $author$project$Control$int),
 						A3(
 							$author$project$Control$field,
 							function ($) {
-								return $.o;
+								return $.l;
 							},
 							A2($author$project$Control$label, 'Name', $author$project$Control$string),
 							$author$project$Control$record(
 								F2(
 									function (name, age) {
-										return {Y: age, o: name};
+										return {aO: age, l: name};
 									})))))))));
+var $author$project$Control$Triple = F3(
+	function (a, b, c) {
+		return {$: 0, a: a, b: b, c: c};
+	});
+var $elm$core$Maybe$map3 = F4(
+	function (func, ma, mb, mc) {
+		if (ma.$ === 1) {
+			return $elm$core$Maybe$Nothing;
+		} else {
+			var a = ma.a;
+			if (mb.$ === 1) {
+				return $elm$core$Maybe$Nothing;
+			} else {
+				var b = mb.a;
+				if (mc.$ === 1) {
+					return $elm$core$Maybe$Nothing;
+				} else {
+					var c = mc.a;
+					return $elm$core$Maybe$Just(
+						A3(func, a, b, c));
+				}
+			}
+		}
+	});
+var $author$project$Control$tripleWrapper = {
+	S: F2(
+		function (_v0, _v1) {
+			return $elm$core$Basics$identity;
+		}),
+	T: F2(
+		function (_v2, _v3) {
+			return $elm$core$Basics$identity;
+		}),
+	W: F2(
+		function (_v4, _v5) {
+			return $elm$core$Basics$identity;
+		}),
+	X: F2(
+		function (_v6, _v7) {
+			return $elm$core$Basics$identity;
+		}),
+	ab: F2(
+		function (_v8, _v9) {
+			var internalsFst = _v9.a;
+			var internalsSnd = _v9.b;
+			var internalsThd = _v9.c;
+			return A4(
+				$elm$core$Maybe$map3,
+				F3(
+					function (fst, snd, thd) {
+						return _Utils_Tuple2(
+							fst,
+							_Utils_Tuple2(
+								snd,
+								_Utils_Tuple2(thd, 0)));
+					}),
+				$author$project$Control$maybeExtractDelta(internalsFst),
+				$author$project$Control$maybeExtractDelta(internalsSnd),
+				$author$project$Control$maybeExtractDelta(internalsThd));
+		}),
+	ac: F2(
+		function (_v10, _v11) {
+			var internalsFst = _v11.a;
+			var internalsSnd = _v11.b;
+			var internalsThd = _v11.c;
+			return A4(
+				$elm$core$Maybe$map3,
+				F3(
+					function (fst, snd, thd) {
+						return _Utils_Tuple2(
+							fst,
+							_Utils_Tuple2(
+								snd,
+								_Utils_Tuple2(thd, 0)));
+					}),
+				$author$project$Control$maybeExtractState(internalsFst),
+				$author$project$Control$maybeExtractState(internalsSnd),
+				$author$project$Control$maybeExtractState(internalsThd));
+		}),
+	ad: F2(
+		function (_v12, _v13) {
+			var a = _v13.a;
+			var _v14 = _v13.b;
+			var b = _v14.a;
+			var _v15 = _v14.b;
+			var c = _v15.a;
+			var _v16 = _v15.b;
+			return A3(
+				$author$project$Control$Triple,
+				$author$project$Control$Delta_(a),
+				$author$project$Control$Delta_(b),
+				$author$project$Control$Delta_(c));
+		}),
+	ae: F2(
+		function (_v17, _v18) {
+			var a = _v18.a;
+			var _v19 = _v18.b;
+			var b = _v19.a;
+			var _v20 = _v19.b;
+			var c = _v20.a;
+			var _v21 = _v20.b;
+			return A3(
+				$author$project$Control$Triple,
+				$author$project$Control$State_(a),
+				$author$project$Control$State_(b),
+				$author$project$Control$State_(c));
+		})
+};
 var $author$project$Control$triple = F3(
 	function (first, second, third) {
 		return A2(
@@ -19467,7 +20454,7 @@ var $author$project$Control$triple = F3(
 							$elm$html$Html$fieldset,
 							_List_fromArray(
 								[
-									$elm$html$Html$Attributes$id(config.e)
+									$elm$html$Html$Attributes$id(config.f)
 								]),
 							A2(
 								$elm$core$List$cons,
@@ -19481,7 +20468,7 @@ var $author$project$Control$triple = F3(
 								A2(
 									$elm$core$List$concatMap,
 									function ($) {
-										return $.ac;
+										return $.aj;
 									},
 									subcontrols)))
 						]);
@@ -19489,40 +20476,45 @@ var $author$project$Control$triple = F3(
 			A2(
 				$author$project$Control$label,
 				'Triple',
-				$author$project$Control$endRecord(
-					A3(
-						$author$project$Control$field,
+				A2(
+					$author$project$Control$endProductType,
+					$author$project$Control$tripleWrapper,
+					A4(
+						$author$project$Control$productField,
+						$author$project$Control$tripleWrapper,
 						function (_v2) {
 							var c = _v2.c;
 							return c;
 						},
 						third,
-						A3(
-							$author$project$Control$field,
+						A4(
+							$author$project$Control$productField,
+							$author$project$Control$tripleWrapper,
 							function (_v1) {
 								var b = _v1.b;
 								return b;
 							},
 							second,
-							A3(
-								$author$project$Control$field,
+							A4(
+								$author$project$Control$productField,
+								$author$project$Control$tripleWrapper,
 								function (_v0) {
 									var a = _v0.a;
 									return a;
 								},
 								first,
-								$author$project$Control$record(
+								$author$project$Control$productType(
 									F3(
 										function (a, b, c) {
 											return _Utils_Tuple3(a, b, c);
 										}))))))));
 	});
 var $author$project$Tutorial$tripleIntro = $author$project$Tutorial$md('\nTriples work too - if you change your code to: \n\n```\ncontrol = \n    Control.triple Control.int Control.string Control.float\n```\n\nYou\'ll get an `( Int, String, Float )` triple like this:\n');
-var $author$project$Tutorial$tupleAndTripleOutro = $author$project$Tutorial$md('\nBut tuples and triples are Elm\'s least-loved data structures - if you want to combine multiple values, records tend to \nbe much more flexible and user-friendly.\n\nSo... how do we create a form that produces a record?\n');
 var $author$project$Tutorial$tuplesAndTriplesIntro = $author$project$Tutorial$md('\n## Tuples and Triples\n\nThe simplest way of combining two values in Elm is to use a tuple. We can create tuples by passing two `Control`s to the\n `Control.tuple` combinator.\n\nFor example, change your code as follows to create a form that produces an `( Int, String )` tuple:\n\n```\nmodule Main exposing (main)\n\nimport Control\n\nmain =\n    Control.sandbox\n        { control = control\n        , outputToString = Debug.toString\n        }\n\ncontrol = \n    Control.tuple Control.int Control.string\n```\n\nWhich should look something like this:\n');
+var $author$project$Tutorial$tuplesAndTriplesOutro = $author$project$Tutorial$md('\nBut tuples and triples are Elm\'s least-loved data structures - if you want to combine multiple values, records tend to \nbe much more flexible and user-friendly.\n\nSo... how do we create a form that produces a record?\n');
 var $author$project$Tutorial$tuplesAndTriples = A2(
 	$author$project$Tutorial$htmlAfter,
-	$author$project$Tutorial$tupleAndTripleOutro,
+	$author$project$Tutorial$tuplesAndTriplesOutro,
 	A2(
 		$author$project$Tutorial$htmlBefore,
 		$author$project$Tutorial$tuplesAndTriplesIntro,
@@ -19584,13 +20576,13 @@ var $author$project$Tutorial$lessons = A2(
 									A2(
 										$elm$core$List$filter,
 										function (sc) {
-											return _Utils_eq(sc.r, config.g + 1);
+											return _Utils_eq(sc.s, config.h + 1);
 										},
 										subcontrols))));
 						var nextButton = _List_fromArray(
 							[
 								_Utils_eq(
-								config.g,
+								config.h,
 								$elm$core$List$length(subcontrols)) ? $elm$html$Html$text('') : A2(
 								$elm$html$Html$button,
 								_List_fromArray(
@@ -19598,7 +20590,7 @@ var $author$project$Tutorial$lessons = A2(
 										$elm$html$Html$Attributes$id('next-button'),
 										$elm$html$Html$Attributes$type_('button'),
 										$elm$html$Html$Events$onClick(
-										config.cL(config.g + 1))
+										config.dq(config.h + 1))
 									]),
 								_List_fromArray(
 									[
@@ -19608,22 +20600,22 @@ var $author$project$Tutorial$lessons = A2(
 						var subcontrolViews = A2(
 							$elm$core$List$map,
 							function (sc) {
-								return _Utils_eq(sc.r, config.g) ? A2(
+								return _Utils_eq(sc.s, config.h) ? A2(
 									$elm$html$Html$div,
 									_List_fromArray(
 										[
 											$elm$html$Html$Attributes$id(
-											$elm$core$String$fromInt(sc.r)),
+											$elm$core$String$fromInt(sc.s)),
 											$elm$html$Html$Attributes$class('lesson-page')
 										]),
-									_Utils_ap(sc.ac, nextButton)) : $elm$html$Html$text('');
+									_Utils_ap(sc.aj, nextButton)) : $elm$html$Html$text('');
 							},
 							subcontrols);
 						var navBar = A2(
 							$elm$html$Html$div,
 							_List_fromArray(
 								[
-									$elm$html$Html$Attributes$id(config.e)
+									$elm$html$Html$Attributes$id(config.f)
 								]),
 							A2(
 								$elm$core$List$map,
@@ -19633,10 +20625,10 @@ var $author$project$Tutorial$lessons = A2(
 										_List_fromArray(
 											[
 												$elm$html$Html$Events$onClick(
-												config.cL(sc.r)),
+												config.dq(sc.s)),
 												$elm$html$Html$Attributes$type_('button'),
 												$elm$html$Html$Attributes$class(
-												_Utils_eq(sc.r, config.g) ? 'lesson-selected' : 'lesson-not-selected')
+												_Utils_eq(sc.s, config.h) ? 'lesson-selected' : 'lesson-not-selected')
 											]),
 										_List_fromArray(
 											[
@@ -19648,57 +20640,57 @@ var $author$project$Tutorial$lessons = A2(
 					}),
 				$author$project$Control$endCustomType(
 					A4(
-						$author$project$Control$tag1,
+						$author$project$Control$variant1,
 						'Leaving the sandbox',
 						$author$project$Tutorial$LeavingTheSandbox,
 						$author$project$Tutorial$leavingTheSandbox,
 						A4(
-							$author$project$Control$tag1,
+							$author$project$Control$variant1,
 							'Creating your own controls',
 							$author$project$Tutorial$CreateYourOwn,
 							$author$project$Tutorial$createYourOwn,
 							A4(
-								$author$project$Control$tag1,
+								$author$project$Control$variant1,
 								'Multi-control validation',
 								$author$project$Tutorial$MultiValidation,
 								$author$project$Tutorial$multivalidation,
 								A4(
-									$author$project$Control$tag1,
+									$author$project$Control$variant1,
 									'Validating controls',
 									$author$project$Tutorial$Validation,
 									$author$project$Tutorial$validation,
 									A4(
-										$author$project$Control$tag1,
+										$author$project$Control$variant1,
 										'Converting controls',
 										$author$project$Tutorial$Mapping,
 										$author$project$Tutorial$mapping,
 										A4(
-											$author$project$Control$tag1,
+											$author$project$Control$variant1,
 											'Lists, Dicts, Sets & Arrays',
 											$author$project$Tutorial$ListsDictsSetsAndArrays,
 											$author$project$Tutorial$listsDictsSetsAndArrays,
 											A4(
-												$author$project$Control$tag1,
-												'Custom types',
-												$author$project$Tutorial$CustomTypes,
-												$author$project$Tutorial$customTypes,
+												$author$project$Control$variant1,
+												'Enums and custom types',
+												$author$project$Tutorial$EnumsAndCustomTypes,
+												$author$project$Tutorial$enumsAndCustomTypes,
 												A4(
-													$author$project$Control$tag1,
+													$author$project$Control$variant1,
 													'Records and labels',
 													$author$project$Tutorial$Records,
 													$author$project$Tutorial$records,
 													A4(
-														$author$project$Control$tag1,
+														$author$project$Control$variant1,
 														'Tuples and triples',
 														$author$project$Tutorial$TuplesAndTriples,
 														$author$project$Tutorial$tuplesAndTriples,
 														A4(
-															$author$project$Control$tag1,
+															$author$project$Control$variant1,
 															'Basic controls',
 															$author$project$Tutorial$BasicControls,
 															$author$project$Tutorial$basicControls,
 															A4(
-																$author$project$Control$tag1,
+																$author$project$Control$variant1,
 																'Your first form',
 																$author$project$Tutorial$YourFirstForm,
 																$author$project$Tutorial$yourFirstForm,
@@ -19714,40 +20706,40 @@ var $author$project$Tutorial$lessons = A2(
 																									return function (l09) {
 																										return function (l10) {
 																											return function (l11) {
-																												return function (tag) {
-																													switch (tag.$) {
+																												return function (variant) {
+																													switch (variant.$) {
 																														case 1:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l01(data);
 																														case 0:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l02(data);
 																														case 2:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l03(data);
 																														case 3:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l04(data);
 																														case 4:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l05(data);
 																														case 5:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l06(data);
 																														case 6:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l07(data);
 																														case 7:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l08(data);
 																														case 8:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l09(data);
 																														case 9:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l10(data);
 																														default:
-																															var data = tag.a;
+																															var data = variant.a;
 																															return l11(data);
 																													}
 																												};
@@ -19762,34 +20754,35 @@ var $author$project$Tutorial$lessons = A2(
 																			};
 																		};
 																	})))))))))))))))));
+var $elm$html$Html$form = _VirtualDom_node('form');
 var $author$project$Control$default = F2(
-	function (input, _v0) {
+	function (output, _v0) {
 		var control = _v0;
 		var initialiser = function (_v1) {
 			var i = _v1;
 			return _Utils_update(
 				i,
 				{
-					H: i.ae(input)
+					J: i.as(output)
 				});
 		};
 		return A2($elm$core$Basics$composeR, control, initialiser);
 	});
-var $author$project$Control$form = function (_v0) {
-	var control = _v0.aT;
-	var onUpdate = _v0.bM;
-	var view = _v0.n;
+var $author$project$Control$formWithContext = function (_v0) {
+	var control = _v0.aH;
+	var onUpdate = _v0.bh;
+	var view = _v0.m;
 	var path = $author$project$Path$root;
 	var _v1 = control;
 	var c = _v1;
 	var _v2 = c(path);
 	var fns = _v2;
 	return {
-		N: A2(
+		Y: A2(
 			$elm$core$Tuple$mapSecond,
 			$elm$core$Platform$Cmd$map(onUpdate),
-			fns.H),
-		Q: function (output) {
+			fns.J),
+		_: function (output) {
 			var _v3 = A2($author$project$Control$default, output, control);
 			var initialisedControl = _v3;
 			var _v4 = initialisedControl($author$project$Path$root);
@@ -19797,89 +20790,93 @@ var $author$project$Control$form = function (_v0) {
 			return A2(
 				$elm$core$Tuple$mapSecond,
 				$elm$core$Platform$Cmd$map(onUpdate),
-				fns2.H);
+				fns2.J);
 		},
-		cP: function (state) {
-			var validationErrors = A2(
-				$elm$core$List$filter,
-				function ($) {
-					return $.O;
-				},
-				A2(
-					fns.E,
-					state,
-					fns.F(state)));
-			var parsingResult = fns.j(state);
-			return _Utils_Tuple2(
-				fns.am(state),
-				function () {
-					var _v5 = _Utils_Tuple2(parsingResult, validationErrors);
-					if (!_v5.a.$) {
-						if (!_v5.b.b) {
-							var output = _v5.a.a;
-							return $elm$core$Result$Ok(output);
+		b8: F2(
+			function (context, state) {
+				var validationErrors = A2(
+					$elm$core$List$filter,
+					function ($) {
+						return $.ai;
+					},
+					A2(
+						fns.B,
+						state,
+						A2(fns.G, context, state)));
+				var parsingResult = A2(fns.o, context, state);
+				return _Utils_Tuple2(
+					fns.an(state),
+					function () {
+						var _v5 = _Utils_Tuple2(parsingResult, validationErrors);
+						if (!_v5.a.$) {
+							if (!_v5.b.b) {
+								var output = _v5.a.a;
+								return $elm$core$Result$Ok(output);
+							} else {
+								var vErrs = _v5.b;
+								return $elm$core$Result$Err(vErrs);
+							}
 						} else {
+							var pErrs = _v5.a.a;
 							var vErrs = _v5.b;
-							return $elm$core$Result$Err(vErrs);
+							return $elm$core$Result$Err(
+								_Utils_ap(pErrs, vErrs));
 						}
-					} else {
-						var pErrs = _v5.a.a;
-						var vErrs = _v5.b;
-						return $elm$core$Result$Err(
-							_Utils_ap(pErrs, vErrs));
-					}
-				}());
-		},
-		t: function (state) {
-			return A2(
-				$elm$core$Platform$Sub$map,
-				onUpdate,
-				fns.t(state));
-		},
-		s: F2(
-			function (msg, state) {
+					}());
+			}),
+		t: F2(
+			function (context, state) {
+				return A2(
+					$elm$core$Platform$Sub$map,
+					onUpdate,
+					A2(fns.t, context, state));
+			}),
+		r: F3(
+			function (context, msg, state) {
 				return A2(
 					$elm$core$Tuple$mapSecond,
 					$elm$core$Platform$Cmd$map(onUpdate),
-					A2(fns.s, msg, state));
+					A3(fns.r, context, msg, state));
 			}),
-		n: function (s) {
-			var internalState = s.a;
-			var state = s.b;
-			var emittedAlerts = fns.F(s);
-			var debouncingReceivers = fns.K(s);
-			var alerts = A2(
-				$elm$core$List$filter,
-				function (emittedAlert) {
-					return !A2($elm$core$List$member, emittedAlert, debouncingReceivers);
-				},
-				emittedAlerts);
-			var status = A4($author$project$Control$getStatus, fns.j, fns.E, alerts, s);
-			return view(
-				A2(
-					$elm$core$List$map,
-					$elm$html$Html$map(onUpdate),
-					fns.n(
-						{
-							V: alerts,
-							l: fns.l,
-							e: A2(
-								$elm$core$Maybe$withDefault,
-								'control-' + $author$project$Path$toString(path),
-								fns.e),
-							c: fns.c,
-							o: A2(
-								$elm$core$Maybe$withDefault,
-								'control-' + $author$project$Path$toString(path),
-								fns.o),
-							g: internalState.g,
-							y: state,
-							k: status
-						})));
-		}
+		m: F2(
+			function (context, s) {
+				var meta = s.a;
+				var state = s.b;
+				var emittedAlerts = A2(fns.G, context, s);
+				var debouncingReceivers = fns.R(s);
+				var alerts = A2(
+					$elm$core$List$filter,
+					function (emittedAlert) {
+						return !A2($elm$core$List$member, emittedAlert, debouncingReceivers);
+					},
+					emittedAlerts);
+				var status = A5($author$project$Control$getStatus, fns.o, fns.B, alerts, context, s);
+				return view(
+					A2(
+						$elm$core$List$map,
+						$elm$html$Html$map(onUpdate),
+						A2(
+							fns.m,
+							context,
+							{
+								j: alerts,
+								e: fns.e,
+								f: A2(
+									$elm$core$Maybe$withDefault,
+									'control-' + $author$project$Path$toString(path),
+									fns.f),
+								c: fns.c,
+								l: A2(
+									$elm$core$Maybe$withDefault,
+									'control-' + $author$project$Path$toString(path),
+									fns.l),
+								h: meta.h,
+								v: state,
+								k: status
+							})));
+			})
 	};
 };
-var $elm$html$Html$form = _VirtualDom_node('form');
 var $elm$html$Html$Events$alwaysPreventDefault = function (msg) {
 	return _Utils_Tuple2(msg, true);
 };
@@ -19902,15 +20899,15 @@ var $elm$html$Html$Events$onSubmit = function (msg) {
 			$elm$html$Html$Events$alwaysPreventDefault,
 			$elm$json$Json$Decode$succeed(msg)));
 };
-var $author$project$Control$simpleForm = function (_v0) {
-	var onUpdate = _v0.bM;
-	var onSubmit = _v0.di;
-	var control = _v0.aT;
-	return $author$project$Control$form(
+var $author$project$Control$simpleFormWithContext = function (_v0) {
+	var onUpdate = _v0.bh;
+	var onSubmit = _v0.dk;
+	var control = _v0.aH;
+	return $author$project$Control$formWithContext(
 		{
-			aT: control,
-			bM: onUpdate,
-			n: function (controlView) {
+			aH: control,
+			bh: onUpdate,
+			m: function (controlView) {
 				return A2(
 					$elm$html$Html$form,
 					_List_fromArray(
@@ -19935,61 +20932,61 @@ var $author$project$Control$simpleForm = function (_v0) {
 			}
 		});
 };
-var $author$project$Tutorial$form = $author$project$Control$simpleForm(
-	{aT: $author$project$Tutorial$lessons, di: $elm$core$Maybe$Nothing, bM: $elm$core$Maybe$Just});
+var $author$project$Tutorial$form = $author$project$Control$simpleFormWithContext(
+	{aH: $author$project$Tutorial$lessons, dk: $elm$core$Maybe$Nothing, bh: $elm$core$Maybe$Just});
 var $author$project$Tutorial$init = function (_v0) {
-	var _v1 = $author$project$Tutorial$form.N;
+	var _v1 = $author$project$Tutorial$form.Y;
 	var initialForm = _v1.a;
 	var cmd = _v1.b;
 	return _Utils_Tuple2(
-		{ap: initialForm, cy: $elm$core$Maybe$Nothing},
+		{a3: true, a4: initialForm, bV: $elm$core$Maybe$Nothing},
 		cmd);
 };
 var $author$project$Tutorial$subscriptions = function (model) {
-	return $author$project$Tutorial$form.t(model.ap);
+	return A2($author$project$Tutorial$form.t, model.a3, model.a4);
 };
 var $author$project$Tutorial$update = F2(
 	function (msg, model) {
 		if (msg.$ === 1) {
-			var _v1 = $author$project$Tutorial$form.cP(model.ap);
+			var _v1 = A2($author$project$Tutorial$form.b8, model.a3, model.a4);
 			var newForm = _v1.a;
 			var result = _v1.b;
 			return _Utils_Tuple2(
 				_Utils_update(
 					model,
 					{
-						ap: newForm,
-						cy: $elm$core$Maybe$Just(result)
+						a4: newForm,
+						bV: $elm$core$Maybe$Just(result)
 					}),
 				$elm$core$Platform$Cmd$none);
 		} else {
 			var delta = msg.a;
-			var _v2 = A2($author$project$Tutorial$form.s, delta, model.ap);
+			var _v2 = A3($author$project$Tutorial$form.r, model.a3, delta, model.a4);
 			var newForm = _v2.a;
 			var cmd = _v2.b;
 			return _Utils_Tuple2(
 				_Utils_update(
 					model,
-					{ap: newForm}),
+					{a4: newForm}),
 				cmd);
 		}
 	});
 var $author$project$Tutorial$view = function (model) {
 	return {
-		c1: _List_fromArray(
+		dC: _List_fromArray(
 			[
 				A2(
 				$elm$html$Html$div,
 				_List_Nil,
 				_List_fromArray(
 					[
-						$author$project$Tutorial$form.n(model.ap)
+						A2($author$project$Tutorial$form.m, model.a3, model.a4)
 					]))
 			]),
-		ds: 'elm-any-type-forms tutorial'
+		dX: 'elm-any-type-forms tutorial'
 	};
 };
 var $author$project$Tutorial$main = $elm$browser$Browser$document(
-	{db: $author$project$Tutorial$init, t: $author$project$Tutorial$subscriptions, s: $author$project$Tutorial$update, n: $author$project$Tutorial$view});
+	{dJ: $author$project$Tutorial$init, t: $author$project$Tutorial$subscriptions, r: $author$project$Tutorial$update, m: $author$project$Tutorial$view});
 _Platform_export({'Tutorial':{'init':$author$project$Tutorial$main(
 	$elm$json$Json$Decode$succeed(0))(0)}});}(this));
