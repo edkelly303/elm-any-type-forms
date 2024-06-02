@@ -1,6 +1,5 @@
 module Control exposing
-    ( toTest, toTestWithContext
-    , Control, Form, sandbox, simpleForm, form
+    ( Control, Form, sandbox, simpleForm, form
     , bool, int, float, string, char, enum
     , Tuple, tuple, Triple, triple, Maybe_, maybe, Result_, result, List_, list, Dict_, dict, Set_, set, Array_, array, Mapping, map
     , Record, Field, EndRecord, RecordBuilder, record, field, endRecord, LayoutConfig, Subcontrol, layout
@@ -16,11 +15,6 @@ module Control exposing
     )
 
 {-|
-
-
-# Testing
-
-@docs toTest, toTestWithContext
 
 
 # Creating a form
@@ -71,52 +65,32 @@ Take the example of a password creation form. You want to validate that the
 show a helpful error message on the "Confirm password" field if they don't. You
 can achieve this as follows:
 
-    import Control exposing (record, field, endRecord, string, alertIf, respond, toTest)
+    import Control exposing (Control, Record, Field, EndRecord, record, field, endRecord, string, alertIf, respond)
 
-    passwordControl =
-        record
-            (\password confirmation ->
-                { password = password
-                , confirmation = confirmation
-                }
+    record
+        (\password confirmation ->
+            { password = password
+            , confirmation = confirmation
+            }
+        )
+        |> field .password string
+        |> field .confirmation
+            (string
+                |> respond
+                    { alert = "passwords-do-not-match"
+                    , fail = True
+                    , message = "Passwords must match"
+                    , class = "control-feedback-fail"
+                    }
             )
-            |> field .password string
-            |> field .confirmation
-                (string
-                    |> respond
-                        { alert = "passwords-do-not-match"
-                        , fail = True
-                        , message = "Passwords must match"
-                        , class = "control-feedback-fail"
-                        }
-                )
-            |> endRecord
-            |> alertIf
-                (\{ password, confirmation } ->
-                    password /= confirmation
-                )
-                "passwords-do-not-match"
+        |> endRecord
+        |> alertIf
+            (\{ password, confirmation } ->
+                password /= confirmation
+            )
+            "passwords-do-not-match"
 
-    test =
-        toTest passwordControl
-
-    test.init
-        |> test.prefill
-            { password = "hello"
-            , confirmation = "world"
-            }
-        |> test.quick.submit
-
-    --> Err [ "Passwords must match" ]
-
-    test.init
-        |> test.prefill
-            { password = "openSesame"
-            , confirmation = "openSesame"
-            }
-        |> test.quick.submit
-
-    --> Ok { password = "openSesame", confirmation = "openSesame" }
+    --: Control context (Record (Field String (Field String EndRecord))) (Record (Field String (Field String EndRecord))) { password : String, confirmation : String }
 
 @docs alertIf, respond
 
@@ -745,85 +719,6 @@ type End
 
 
 {-
-   d888888b d88888b .d8888. d888888b
-   `~~88~~' 88'     88'  YP `~~88~~'
-      88    88ooooo `8bo.      88
-      88    88~~~~~   `Y8b.    88
-      88    88.     db   8D    88
-      YP    Y88888P `8888Y'    YP
--}
-
-
-type alias Test state delta output =
-    { init : State state
-    , prefill : output -> State state -> State state
-    , update : delta -> State state -> State state
-    , full :
-        { feedback : State state -> List Feedback
-        , submit : State state -> Result (List Feedback) output
-        }
-    , quick :
-        { feedback : State state -> List String
-        , submit : State state -> Result (List String) output
-        }
-    }
-
-
-{-| TODO docs
--}
-toTestWithContext : context -> Control context state delta output -> Test state delta output
-toTestWithContext context (Control control) =
-    let
-        (ControlFns fns) =
-            control Path.root
-
-        submit state =
-            let
-                parsingResult =
-                    fns.parse context state
-
-                validationErrors =
-                    fns.emitAlerts context state
-                        |> fns.collectFeedback state
-                        |> List.filter .fail
-            in
-            case ( parsingResult, validationErrors ) of
-                ( Ok output, [] ) ->
-                    Ok output
-
-                ( Ok _, vErrs ) ->
-                    Err vErrs
-
-                ( Err pErrs, vErrs ) ->
-                    Err (pErrs ++ vErrs)
-
-        feedback state =
-            fns.emitAlerts context state
-                |> fns.collectFeedback state
-    in
-    { init = fns.initBlank |> Tuple.first
-    , prefill = \input _ -> fns.initPrefilled input |> Tuple.first
-    , update = \delta state -> fns.update context (StateChangedByInput delta) state |> Tuple.first
-    , full =
-        { submit = submit
-        , feedback = feedback
-        }
-    , quick =
-        { submit = \state -> submit state |> Result.mapError (List.map .message)
-        , feedback = \state -> feedback state |> List.map .message
-        }
-    }
-
-
-{-| TODO docs
--}
-toTest : Control () state delta output -> Test state delta output
-toTest control =
-    toTestWithContext () control
-
-
-
-{-
    d88888b  .d88b.  d8888b. .88b  d88. .d8888.
    88'     .8P  Y8. 88  `8D 88'YbdP`88 88'  YP
    88ooo   88    88 88oobY' 88  88  88 `8bo.
@@ -1254,7 +1149,7 @@ and producing any arbitrary `output` type.
 Here's how we could define a control like the famous
 [counter example](https://elm-lang.org/examples/buttons) from the Elm Guide
 
-    import Control exposing (define, Control, toTest)
+    import Control exposing (Control, define)
     import Html
     import Html.Attributes
     import Html.Events
@@ -1266,16 +1161,16 @@ Here's how we could define a control like the famous
     counterControl : Control context Int CounterDelta Int
     counterControl =
         define
-            { blank = (0, Cmd.none)
-            , prefill = \n -> (n, Cmd.none)
+            { blank = ( 0, Cmd.none )
+            , prefill = \n -> ( n, Cmd.none )
             , update =
                 \delta state ->
                     case delta of
                         Increment ->
-                            (state + 1, Cmd.none)
+                            ( state + 1, Cmd.none )
 
                         Decrement ->
-                            (state - 1, Cmd.none)
+                            ( state - 1, Cmd.none )
             , view =
                 \{ state, name, id, label, class } ->
                     [ Html.div [ Html.Attributes.class class ]
@@ -1304,17 +1199,6 @@ Here's how we could define a control like the famous
             , parse = Ok
             , label = "Counter"
             }
-
-    test =
-        toTest counterControl
-
-    test.init
-        |> test.update Increment
-        |> test.update Increment
-        |> test.update Decrement
-        |> test.quick.submit
-
-    --> Ok 1
 
 -}
 define : Definition state delta output -> Control context state delta output
@@ -1689,7 +1573,7 @@ based on the output of the `list` control.
 The following example will display errors on the first two items in a list of
 strings, if and only if those first two items are "hello" and "world":
 
-    import Control exposing (string, respond, list, alertAtIndexes, toTest)
+    import Control exposing (alertAtIndexes, list, respond, string)
 
     myString =
         string
@@ -1712,15 +1596,6 @@ strings, if and only if those first two items are "hello" and "world":
                             []
                 )
                 "no-hello-world"
-
-    test =
-        toTest myList
-
-    test.init
-        |> test.prefill [ "hello", "world" ]
-        |> test.quick.submit
-
-    --> Err [ "List can't start with \"hello\" and \"world\".", "List can't start with \"hello\" and \"world\"."]
 
 -}
 alertAtIndexes :
@@ -1763,7 +1638,7 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
 
 This causes the `Control` to fail validation.
 
-    import Control exposing (int, failIfWithContext, toTestWithContext)
+    import Control exposing (failIfWithContext, int)
 
     type alias Context =
         { minimumValue : Int }
@@ -1773,22 +1648,6 @@ This causes the `Control` to fail validation.
             |> failIfWithContext
                 (\context x -> x < context.minimumValue)
                 "This is less than the minimum value!"
-
-    test =
-        positiveInt
-            |> toTestWithContext { minimumValue = 1 }
-
-    test.init
-        |> test.update "0"
-        |> test.quick.submit
-
-    --> Err [ "This is less than the minimum value!" ]
-
-    test.init
-        |> test.update "1"
-        |> test.quick.submit
-
-    --> Ok 1
 
 -}
 failIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1813,28 +1672,13 @@ failIfWithContext check message (Control c) =
 
 This causes the `Control` to fail validation.
 
-    import Control exposing (int, failIf, toTest)
+    import Control exposing (failIf, int)
 
     positiveInt =
         int
             |> failIf
                 (\x -> x < 1)
                 "This must be greater than zero!"
-
-    test =
-        toTest positiveInt
-
-    test.init
-        |> test.update "0"
-        |> test.quick.submit
-
-    --> Err [ "This must be greater than zero!" ]
-
-    test.init
-        |> test.update "1"
-        |> test.quick.submit
-
-    --> Ok 1
 
 -}
 failIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1847,7 +1691,7 @@ returns `True`.
 
 This does not cause the `Control` to fail validation.
 
-    import Control exposing (int, noteIfWithContext, toTestWithContext)
+    import Control exposing (int, noteIfWithContext)
 
     type alias Context =
         { recommendedMinimumValue : Int }
@@ -1857,22 +1701,6 @@ This does not cause the `Control` to fail validation.
             |> noteIfWithContext
                 (\context x -> x < context.recommendedMinimumValue)
                 "This value is below the recommended minimum - are you sure?"
-
-    test =
-         boundedInt
-            |> toTestWithContext { recommendedMinimumValue = 1 }
-
-    test.init
-        |> test.update "0"
-        |> test.quick.feedback
-
-    --> [ "This value is below the recommended minimum - are you sure?" ]
-
-    test.init
-        |> test.update "1"
-        |> test.quick.feedback
-
-    --> []
 
 -}
 noteIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1898,28 +1726,13 @@ returns `True`.
 This just shows the user a message - it doesn't cause the `Control` to fail
 validation.
 
-    import Control exposing (int, noteIf, toTest)
+    import Control exposing (int, noteIf)
 
     positiveInt =
         int
             |> noteIf
                 (\x -> x < 1)
                 "Maybe this should be greater than zero?"
-
-    test =
-        toTest positiveInt
-
-    test.init
-        |> test.update "0"
-        |> test.quick.feedback
-
-    --> [ "Maybe this should be greater than zero?" ]
-
-    test.init
-        |> test.update "1"
-        |> test.quick.feedback
-
-    --> []
 
 -}
 noteIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -2311,19 +2124,11 @@ wrapView wrapper (Control control) =
 
 {-| Set a default `output` value for a `Control`.
 
-    import Control exposing (tuple, int, string, default, toTest)
+    import Control exposing (default, int, string, tuple)
 
     oneAndHello =
         tuple int string
             |> default ( 1, "hello" )
-
-    test =
-        toTest oneAndHello
-
-    test.init
-        |> test.quick.submit
-
-    --> Ok (1, "hello")
 
 -}
 default : output -> Control context state delta output -> Control context state delta output
@@ -2348,22 +2153,11 @@ default output (Control control) =
 
 {-| A control that produces an `Int`. Renders as an HTML number input.
 
-    import Control exposing (int, toTest)
+    import Control exposing (Control, int)
 
-    test =
-        toTest int
+    int
 
-    test.init
-        |> test.update "1.5"
-        |> test.quick.submit
-
-    --> Err [ "Must be a whole number" ]
-
-    test.init
-        |> test.update "123"
-        |> test.quick.submit
-
-    --> Ok 123
+    --: Control context String String Int
 
 -}
 int : Control context String String Int
@@ -2401,22 +2195,11 @@ int =
 
 {-| A control that produces a `Float`. Renders as an HTML number input.
 
-    import Control exposing (float, toTest)
+    import Control exposing (Control, float)
 
-    test =
-        toTest float
+    float
 
-    test.init
-        |> test.update "hello"
-        |> test.quick.submit
-
-    --> Err [ "Must be a number" ]
-
-    test.init
-        |> test.update "1.0"
-        |> test.quick.submit
-
-    --> Ok 1.0
+    --: Control context String String Float
 
 -}
 float : Control context String String Float
@@ -2453,16 +2236,11 @@ float =
 
 {-| A control that produces a `String`. Renders as an HTML text input.
 
-    import Control exposing (string, toTest)
+    import Control exposing (Control, string)
 
-    test =
-        toTest string
+    string
 
-    test.init
-        |> test.update "hello"
-        |> test.quick.submit
-
-    --> Ok "hello"
+    --: Control context String String String
 
 -}
 string : Control context String String String
@@ -2492,27 +2270,11 @@ string =
 
 {-| A control that produces a `Char`. Renders as an HTML text input.
 
-    import Control exposing (char, toTest)
+    import Control exposing (Control, char)
 
-    test =
-        toTest char
+    char
 
-    test.init
-        |> test.quick.submit
-
-    --> Err [ "Must not be blank" ]
-
-    test.init
-        |> test.update "hello"
-        |> test.quick.submit
-
-    --> Err [ "Must be exactly one character" ]
-
-    test.init
-        |> test.update "h"
-        |> test.quick.submit
-
-    --> Ok 'h'
+    --: Control context String String Char
 
 -}
 char : Control context String String Char
@@ -2554,33 +2316,19 @@ char =
 {-| A control that produces a custom type where none of the variants have any
 arguments. Renders as an HTML radio input. Defaults to the first variant.
 
-    import Control exposing (Control, enum, toTest)
+    import Control exposing (Control, enum)
 
     type Colour
         = Red
         | Green
         | Blue
 
-    colourControl : Control context Colour Colour Colour
-    colourControl =
-        enum
-            ( "Red", Red )
-            ( "Green", Green )
-            [ ( "Blue", Blue ) ]
+    enum
+        ( "Red", Red )
+        ( "Green", Green )
+        [ ( "Blue", Blue ) ]
 
-    test =
-        toTest colourControl
-
-    test.init
-        |> test.quick.submit
-
-    --> Ok Red
-
-    test.init
-        |> test.update Green
-        |> test.quick.submit
-
-    --> Ok Green
+    --: Control context Colour Colour Colour
 
 -}
 enum :
@@ -2613,21 +2361,11 @@ enum first second rest =
 
 {-| A control that produces a `Bool`. Renders as an HTML checkbox. Default output is `False`.
 
-    import Control exposing (bool, toTest)
+    import Control exposing (Control, bool)
 
-    test =
-        toTest bool
+    bool
 
-    test.init
-        |> test.quick.submit
-
-    --> Ok False
-
-    test.init
-        |> test.update True
-        |> test.quick.submit
-
-    --> Ok True
+    --: Control context Bool Bool Bool
 
 -}
 bool : Control context Bool Bool Bool
@@ -2682,14 +2420,10 @@ Note: with most common map functions, such as `List.map`, we only need to supply
 however, we need to supply two functions that will allow us to both `convert` the type from `a -> b` and
 `revert` it back from `b -> a`.
 
-    import Control exposing (Control, Mapping, int, map, toTest)
+    import Control exposing (Control, Mapping, int, map)
 
     type Id
         = Id Int
-
-    int
-
-    --: Control context String String Int
 
     int
         |> map
@@ -2742,10 +2476,6 @@ type Maybe_ a
 {-| A combinator that produces a `Maybe` of a control of a given type.
 
     import Control exposing (Control, Maybe_,  int, maybe)
-
-    int
-
-    --: Control context String String Int
 
     maybe int
 
@@ -3614,37 +3344,24 @@ type RecordBuilder after afters before befores debouncingReceiverCollector delta
 
 {-| A combinator that produces a record type.
 
-    import Control exposing (record, field, endRecord, int, string, toTest)
+    import Control exposing (Control, Record, Field, EndRecord, record, field, endRecord, string, int)
 
     type alias MyRecord =
         { foo : String
         , bar : Int
         }
 
-    myRecordControl =
-        record
-            (\foo bar ->
-                { foo = foo
-                , bar = bar
-                }
-            )
-            |> field .foo string
-            |> field .bar int
-            |> endRecord
+    record
+        (\foo bar ->
+            { foo = foo
+            , bar = bar
+            }
+        )
+        |> field .foo string
+        |> field .bar int
+        |> endRecord
 
-    test =
-        toTest myRecordControl
-
-    test.init
-        |> test.quick.submit
-
-    --> Err [ "Must be a whole number" ]
-
-    test.init
-        |> test.prefill { foo = "!!!", bar = 42 }
-        |> test.quick.submit
-
-    --> Ok { foo = "!!!", bar = 42 }
+    --: Control context (Record (Field String (Field String EndRecord))) (Record (Field String (Field String EndRecord))) MyRecord
 
 -}
 record :
@@ -3711,13 +3428,16 @@ productType toOutput =
 
 {-| Add a field to a `record` combinator.
 
+    import Control exposing (Control, Record, Field, EndRecord, record, field, endRecord, string)
+
     type alias Hello =
         { hello : String }
 
-    helloControl =
-        record Hello
-            |> field .hello string
-            |> endRecord
+    record Hello
+        |> field .hello string
+        |> endRecord
+
+    --: Control context (Record (Field String EndRecord)) (Record (Field String EndRecord)) Hello
 
 -}
 field :
@@ -4092,13 +3812,16 @@ productField wrapper fromInput (Control control) (RecordBuilder builder) =
 
 {-| Finalise the construction of a `record` combinator.
 
+    import Control exposing (Control, Record, Field, EndRecord, record, field, endRecord, string)
+
     type alias Hello =
         { hello : String }
 
-    helloControl =
-        record Hello
-            |> field .hello string
-            |> endRecord
+    record Hello
+        |> field .hello string
+        |> endRecord
+
+    --: Control context (Record (Field String EndRecord)) (Record (Field String EndRecord)) Hello
 
 -}
 endRecord :
@@ -5391,28 +5114,32 @@ type CustomTypeBuilder applyInputs debouncingReceiverCollector deltaAfter deltaA
 
 {-| A combinator that produces a custom type.
 
+    import Control exposing (Control, CustomType, Variant, Arg, EndVariant, EndCustomType, customType, variant0, variant1, variant2, endCustomType, string, int, float)
+
     type MyCustomType
         = NoArgs
         | OneArg String
         | TwoArgs Int Float
 
-    myCustomTypeControl =
-        customType
-            (\noArgs oneArg twoArgs variant ->
-                case variant of
-                    NoArgs ->
-                        noArgs
 
-                    OneArg arg1 ->
-                        oneArg arg1
+    customType
+        (\noArgs oneArg twoArgs variant ->
+            case variant of
+                NoArgs ->
+                    noArgs
 
-                    TwoArgs arg1 arg2 ->
-                        TwoArgs arg1 arg2
-            )
-            |> variant0 "NoArgs" NoArgs
-            |> variant1 "OneArg" OneArg string
-            |> variant2 "TwoArgs" TwoArgs int float
-            |> endCustomType
+                OneArg arg1 ->
+                    oneArg arg1
+
+                TwoArgs arg1 arg2 ->
+                    twoArgs arg1 arg2
+        )
+        |> variant0 "NoArgs" NoArgs
+        |> variant1 "OneArg" OneArg string
+        |> variant2 "TwoArgs" TwoArgs int float
+        |> endCustomType
+
+    --: Control context (Control.CustomType (Control.Variant Control.EndVariant (Control.Variant (Control.Arg String Control.EndVariant) (Control.Variant (Control.Arg String (Control.Arg String Control.EndVariant)) Control.EndCustomType)))) (Control.CustomType (Control.Variant Control.EndVariant (Control.Variant (Control.Arg String Control.EndVariant) (Control.Variant (Control.Arg String (Control.Arg String Control.EndVariant)) Control.EndCustomType)))) MyCustomType
 
 -}
 customType :
@@ -5561,7 +5288,6 @@ variantHelper label_ internalRecord toArgState (CustomTypeBuilder builder) =
     type alias Foo
         = Bar
         | Baz
-
 
     helloControl =
         customType
@@ -6029,20 +5755,22 @@ type EndVariant
 
 {-| Add a variant with no arguments to a custom type.
 
-    import Control exposing (customType, endCustomType, variant0)
+    import Control exposing (Control, CustomType, Variant, Arg, EndVariant, EndCustomType, customType, endCustomType, variant0)
 
     type Unit
         = Unit
 
-    unitControl =
-        customType
-            (\unit variant ->
-                case variant of
-                    Unit ->
-                        unit
-            )
-            |> variant0 "Unit" Unit
-            |> endCustomType
+
+    customType
+        (\unit variant ->
+            case variant of
+                Unit ->
+                    unit
+        )
+        |> variant0 "Unit" Unit
+        |> endCustomType
+
+    --: Control context (CustomType (Variant EndVariant EndCustomType)) (CustomType (Variant EndVariant EndCustomType)) Unit
 
 -}
 variant0 :
@@ -6434,22 +6162,25 @@ null variant =
 
 {-| Add a variant with one argument to a custom type.
 
+    import Control exposing (Control, CustomType, Variant, Arg, EndVariant, EndCustomType, customType, endCustomType, variant1, int, string)
+
     type alias MyResult =
         Result String Int
 
-    myResultControl =
-        customType
-            (\ok err variant ->
-                case variant of
-                    Ok value ->
-                        ok value
+    customType
+        (\ok err variant ->
+            case variant of
+                Ok value ->
+                    ok value
 
-                    Err error ->
-                        err error
-            )
-            |> variant1 "Ok" Ok int
-            |> variant1 "Err" Err string
-            |> endCustomType
+                Err error ->
+                    err error
+        )
+        |> variant1 "Ok" Ok int
+        |> variant1 "Err" Err string
+        |> endCustomType
+
+    --: Control context (CustomType (Variant (Arg String EndVariant) (Variant (Arg String EndVariant) EndCustomType))) (CustomType (Variant (Arg String EndVariant) (Variant (Arg String EndVariant) EndCustomType))) MyResult
 
 -}
 variant1 :
@@ -6840,17 +6571,21 @@ variant1 label_ variant control =
 
 {-| Add a variant with two arguments to a custom type.
 
+    import Control exposing (Control, CustomType, Variant, Arg, EndVariant, EndCustomType, customType, variant2, endCustomType, float)
+
     type Point
         = Point Float Float
 
-    pointControl =
-        customType
-            (\point variant ->
-                case variant of
-                    Point x y ->
-                        point x y
-            )
-            |> tag2 "Point" Point float float
+    customType
+        (\point variant ->
+            case variant of
+                Point x y ->
+                    point x y
+        )
+        |> variant2 "Point" Point float float
+        |> endCustomType
+
+    --: Control context (CustomType (Variant (Arg String (Arg String EndVariant)) EndCustomType)) (CustomType (Variant (Arg String (Arg String EndVariant)) EndCustomType)) Point
 
 -}
 variant2 :
@@ -7246,17 +6981,21 @@ variant2 label_ variant control1 control2 =
 
 {-| Add a variant with three arguments to a custom type.
 
+    import Control exposing (Control, CustomType, Variant, Arg, EndVariant, EndCustomType, customType, variant3, endCustomType, float)
+
     type Point3D
         = Point3D Float Float Float
 
-    point3DControl =
-        customType
-            (\point3D variant ->
-                case variant of
-                    Point3D x y z ->
-                        point3D x y z
-            )
-            |> variant3 "Point3D" Point3D float float float
+    customType
+        (\point3D variant ->
+            case variant of
+                Point3D x y z ->
+                    point3D x y z
+        )
+        |> variant3 "Point3D" Point3D float float float
+        |> endCustomType
+
+    --: Control context (CustomType (Variant (Arg String (Arg String (Arg String EndVariant))) EndCustomType)) (CustomType (Variant (Arg String (Arg String (Arg String EndVariant))) EndCustomType)) Point3D
 
 -}
 variant3 :
