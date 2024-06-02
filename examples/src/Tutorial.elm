@@ -93,8 +93,8 @@ type Lessons l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11
 
 lessons =
     Control.customType
-        (\l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11 tag ->
-            case tag of
+        (\l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11 variant ->
+            case variant of
                 YourFirstForm data ->
                     l01 data
 
@@ -128,17 +128,17 @@ lessons =
                 LeavingTheSandbox data ->
                     l11 data
         )
-        |> Control.tag1 "Your first form" YourFirstForm yourFirstForm
-        |> Control.tag1 "Basic controls" BasicControls basicControls
-        |> Control.tag1 "Tuples and triples" TuplesAndTriples tuplesAndTriples
-        |> Control.tag1 "Records and labels" Records records
-        |> Control.tag1 "Custom types" CustomTypes customTypes
-        |> Control.tag1 "Lists, Dicts, Sets & Arrays" ListsDictsSetsAndArrays listsDictsSetsAndArrays
-        |> Control.tag1 "Converting controls" Mapping mapping
-        |> Control.tag1 "Validating controls" Validation validation
-        |> Control.tag1 "Multi-control validation" MultiValidation multivalidation
-        |> Control.tag1 "Creating your own controls" CreateYourOwn createYourOwn
-        |> Control.tag1 "Leaving the sandbox" LeavingTheSandbox leavingTheSandbox
+        |> Control.variant1 "Your first form" YourFirstForm yourFirstForm
+        |> Control.variant1 "Basic controls" BasicControls basicControls
+        |> Control.variant1 "Tuples and triples" TuplesAndTriples tuplesAndTriples
+        |> Control.variant1 "Records and labels" Records records
+        |> Control.variant1 "Custom types" CustomTypes customTypes
+        |> Control.variant1 "Lists, Dicts, Sets & Arrays" ListsDictsSetsAndArrays listsDictsSetsAndArrays
+        |> Control.variant1 "Converting controls" Mapping mapping
+        |> Control.variant1 "Validating controls" Validation validation
+        |> Control.variant1 "Multi-control validation" MultiValidation multivalidation
+        |> Control.variant1 "Creating your own controls" CreateYourOwn createYourOwn
+        |> Control.variant1 "Leaving the sandbox" LeavingTheSandbox leavingTheSandbox
         |> Control.endCustomType
         |> Control.layout
             (\config subcontrols ->
@@ -518,8 +518,8 @@ customTypesCustomerControl =
 
 productControl =
     Control.customType
-        (\circle triangle rectangle tag ->
-            case tag of
+        (\circle triangle rectangle variant ->
+            case variant of
                 Circle radius ->
                     circle radius
 
@@ -529,15 +529,15 @@ productControl =
                 Rectangle width height ->
                     rectangle width height
         )
-        |> Control.tag1 "Circle"
+        |> Control.variant1 "Circle"
             Circle
             (Control.int |> Control.label "Radius")
-        |> Control.tag3 "Triangle"
+        |> Control.variant3 "Triangle"
             Triangle
             (Control.int |> Control.label "First side")
             (Control.int |> Control.label "Second side")
             (Control.int |> Control.label "Third side")
-        |> Control.tag2 "Rectangle"
+        |> Control.variant2 "Rectangle"
             Rectangle
             (Control.int |> Control.label "Width")
             (Control.int |> Control.label "Height")
@@ -571,11 +571,11 @@ bit daunting at first, but we'll walk through it step by step:
 productControl =
     
     -- First, we call `Control.customType` and pass it a function that can 
-    -- destructure a `Product` tag and give us access to its arguments.
+    -- destructure a `Product` type and give us access to its arguments.
     
     Control.customType
-        (\\circle triangle rectangle tag ->
-            case tag of
+        (\\circle triangle rectangle variant ->
+            case variant of
                 Circle radius ->
                     circle radius
 
@@ -587,31 +587,31 @@ productControl =
         )
 
         -- Next, we teach the control how to construct a `Circle` from a single
-        -- `Control.int` control, using `Control.tag1`.
+        -- `Control.int` control, using `Control.variant1`.
         
-        |> Control.tag1 "Circle"
+        |> Control.variant1 "Circle"
             Circle
             (Control.int |> Control.label "Radius")
 
         -- Now we do the same for `Triangle` - this time, it's composed of three
-        -- `Control.int` controls, so we use `Control.tag3`.
+        -- `Control.int` controls, so we use `Control.variant3`.
 
-        |> Control.tag3 "Triangle"
+        |> Control.variant3 "Triangle"
             Triangle
             (Control.int |> Control.label "First side")
             (Control.int |> Control.label "Second side")
             (Control.int |> Control.label "Third side")
 
         -- And finally, we handle `Rectangle`'s two `Control.int` controls with 
-        -- `Control.tag2`.
+        -- `Control.variant2`.
 
-        |> Control.tag2 "Rectangle"
+        |> Control.variant2 "Rectangle"
             Rectangle
             (Control.int |> Control.label "Width")
             (Control.int |> Control.label "Height")
 
         -- Now just call `Control.endCustomType` to declare that we've finished adding 
-        -- tags, and then `Control.label` to give the control an appropriate 
+        -- variants, and then `Control.label` to give the control an appropriate 
         -- label.
         
         |> Control.endCustomType
@@ -759,7 +759,7 @@ In some circumstances, you may want to convert the type produced by a control to
 `Control.map` becomes useful.
 
 For example, suppose you want each of your customers to have a unique ID number. The number itself can be a simple `Int`, 
-but to make your code more type-safe, you decide to wrap that `Int` in a custom type tag:
+but to make your code more type-safe, you decide to wrap that `Int` in a custom type:
 
 ```
 type Id = 
