@@ -10,8 +10,8 @@ module Control exposing
     , alertAtIndexes
     , default, debounce, id, name, label, class, classList, wrapView
     , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
-    , State, Delta(..), End
-    , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
+    , State, Delta(..)
+    , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback, End
     )
 
 {-|
@@ -108,26 +108,25 @@ can achieve this as follows:
 # Forms with context
 
 For some advanced use cases, you may want to create a form that knows about more
-than its own internal state - for example, it may need to know about some state
-that lives elsewhere in your app's `Model`.
+than its own internal state. It may also need to know about some state that 
+lives elsewhere in your app's `Model`.
 
-This is where the `...WithContext` family of types and functions come into play
+This is where the `...WithContext` family of types and functions come into play.
+They allow you to inject some external state into your form controls by
+passing a `context` value as an additional argument to the form's `update`,
+`view`, `subscriptions` and `submit` functions. 
 
-  - they allow you to inject some external state into your form controls by
-    passing a `context` value as an additional argument to the form's `update`,
-    `view`, `subscriptions` and `submit` functions, and also to any validation
-    functions applied to the form's `Control`s.
-
-    TODO more stuff here...
+You can also pass `context` into any validations you apply to your `Controls` 
+using `failIfWithContext`, `noteIfWithContext` etc.
 
 @docs FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
 
 
-# Form internals
+# State and Delta types
 
 These are types that you will see in your form's `State` and `Delta` type signatures.
 
-@docs State, Delta, End
+@docs State, Delta
 
 
 # Internal stuff that you can ignore
@@ -135,7 +134,7 @@ These are types that you will see in your form's `State` and `Delta` type signat
 A user of this package shouldn't need to know about any of these types -
 they are only exposed to make it possible to write type signatures.
 
-@docs AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback
+@docs AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback, End
 
 -}
 
@@ -165,9 +164,7 @@ import Time
 -}
 
 
-{-| TODO - finish this section!
-
-A `FormWithContext` is a record which contains functions that you can use in your
+{-| A `FormWithContext` is a record which contains functions that you can use in your
 Elm `Program` to initialise, view, update, subscribe, and submit your form.
 
 Unlike the standard `Form`, several of the functions provided by `FormWithContext`
@@ -175,10 +172,13 @@ take an extra `context` parameter, which allows you to feed external data (e.g. 
 your app's `Model`) into your form and allow the form to respond accordingly.
 
 For example, imagine your app's `Model` contains a list of users, and you build
-a form to create a new user. The new user record should only be valid if its
-nickname hasn't already been chosen by another user:
+a form to create a new user. The new user should only be valid if their name 
+hasn't already been chosen by another user. 
 
-    import Control exposing (string, failIfWithContext, simpleFormWithContext)
+We can ensure this by passing the set of existing user names into the form's 
+update and submit functions as `context`:
+
+    import Control exposing (Control, FormWithContext, State, Delta, string, failIfWithContext, simpleFormWithContext)
     import Set
 
     type alias User =
@@ -186,8 +186,11 @@ nickname hasn't already been chosen by another user:
 
     type alias Model =
         { formState : State String
-        , existingUsers : Set String
+        , existingUsers : Set.Set String
         }
+
+    type alias Context = 
+        Set.Set String
 
     type Msg
         = FormUpdated (Delta String)
@@ -199,6 +202,11 @@ nickname hasn't already been chosen by another user:
                 (\existingUsers newUser ->
                     Set.member newUser existingUsers
                 )
+                "User already exists"
+
+    userControl 
+
+    --: Control Context String String String
 
     form =
         simpleFormWithContext
@@ -207,17 +215,45 @@ nickname hasn't already been chosen by another user:
             , onSubmit = FormSubmitted
             }
 
+    form
+    
+    --: FormWithContext Context String String String Msg
+
     update msg model =
+        let
+            context = 
+                model.existingUsers
+        in
         case msg of
             FormUpdated delta ->
                 let
                     (formState, cmd) =
-                        form.update model.existingUsers delta model.formState
+                        form.update context delta model.formState
                 in
                 ( { model | formState = formState }, cmd )
 
-            FormSubmitted ->
+            FormSubmitted -> 
+                let
+                    (newFormState, formResult) = 
+                        form.submit context model.formState
+                in
+                case formResult of
+                    Ok user -> 
+                        let 
+                         ( blankFormState, cmd ) =
+                            form.blank
+                        in
+                        ( { model 
+                            | existingUsers = Set.insert user model.existingUsers 
+                            , formState = blankFormState
+                          }
+                        , cmd
+                        )
 
+                    Err err ->
+                        ( { model | formState = newFormState }
+                        , Cmd.none 
+                        )
 -}
 type alias FormWithContext context state delta output msg =
     { blank : ( State state, Cmd msg )
@@ -1158,47 +1194,47 @@ Here's how we could define a control like the famous
         = Increment
         | Decrement
 
-    counterControl : Control context Int CounterDelta Int
-    counterControl =
-        define
-            { blank = ( 0, Cmd.none )
-            , prefill = \n -> ( n, Cmd.none )
-            , update =
-                \delta state ->
-                    case delta of
-                        Increment ->
-                            ( state + 1, Cmd.none )
+    define
+        { blank = ( 0, Cmd.none )
+        , prefill = \n -> ( n, Cmd.none )
+        , update =
+            \delta state ->
+                case delta of
+                    Increment ->
+                        ( state + 1, Cmd.none )
 
-                        Decrement ->
-                            ( state - 1, Cmd.none )
-            , view =
-                \{ state, name, id, label, class } ->
-                    [ Html.div [ Html.Attributes.class class ]
-                        [ Html.label
-                            [ Html.Attributes.for id ]
-                            [ Html.text label ]
-                        , Html.div
-                            [ Html.Attributes.id id
-                            , Html.Attributes.name name
+                    Decrement ->
+                        ( state - 1, Cmd.none )
+        , view =
+            \{ state, name, id, label, class } ->
+                [ Html.div [ Html.Attributes.class class ]
+                    [ Html.label
+                        [ Html.Attributes.for id ]
+                        [ Html.text label ]
+                    , Html.div
+                        [ Html.Attributes.id id
+                        , Html.Attributes.name name
+                        ]
+                        [ Html.button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Events.onClick Increment
                             ]
-                            [ Html.button
-                                [ Html.Attributes.type_ "button"
-                                , Html.Events.onClick Increment
-                                ]
-                                [ Html.text "+" ]
-                            , Html.div [] [ Html.text <| String.fromInt state ]
-                            , Html.button
-                                [ Html.Attributes.type_ "button"
-                                , Html.Events.onClick Decrement
-                                ]
-                                [ Html.text "-" ]
+                            [ Html.text "+" ]
+                        , Html.div [] [ Html.text <| String.fromInt state ]
+                        , Html.button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Events.onClick Decrement
                             ]
+                            [ Html.text "-" ]
                         ]
                     ]
-            , subscriptions = \state -> Sub.none
-            , parse = Ok
-            , label = "Counter"
-            }
+                ]
+        , subscriptions = \state -> Sub.none
+        , parse = Ok
+        , label = "Counter"
+        }
+
+    --: Control context Int CounterDelta Int
 
 -}
 define : Definition state delta output -> Control context state delta output
@@ -1272,7 +1308,17 @@ define definition =
 {-| Define a new type of `Control`, with any arbitrary `state`, `delta` and
 `output` types, and that is aware of whatever `context` you choose to supply.
 
-    import Control exposing (defineWithContext, Control)
+Here's a silly version of the [counter example](https://elm-lang.org/examples/buttons) 
+where we use a `context` to supply maximum and minimum bounds that the counter
+should stay within. We then implement various measures in the update, view, parse 
+and subscriptions functions to try to prevent the count from going outside those 
+bounds.
+
+    import Control exposing (Control, defineWithContext)
+    import Html
+    import Html.Attributes
+    import Html.Events
+    import Time
 
     type CounterDelta
         = Increment
@@ -1281,32 +1327,70 @@ define definition =
     type alias Context =
         { maxCount : Int, minCount : Int }
 
-    counterControl : Control Context Int CounterDelta Int
-    counterControl =
-        defineWithContext
-            { blank = 0
-            , prefill = identity
-            , update =
-                \context delta state ->
-                    -- Use the context to ensure the count stays within the
-                    -- bounds of maxCount and minCount
-                    ( Basics.clamp context.minCount context.maxCount delta
-                    , Cmd.none
-                    )
+    defineWithContext
+        { blank = ( 0, Cmd.none )
+        , prefill = \x -> ( x, Cmd.none )
+        , update =
+            \context delta state ->
+                -- When an increment/decrement message comes in, check whether
+                -- it would cause the count to go beyond the bounds set by the
+                -- context
+                (case delta of
+                    Increment -> if state < context.maxCount then state + 1 else state
+                    Decrement -> if state > context.minCount then state - 1 else state
+                , Cmd.none
+                )
+        , view =
+            \context { state, name, id, label, class } ->
+                -- Disable the increment/decrement buttons if they would 
+                -- cause the count to go beyond the bounds set by the context
+                [ Html.div [ Html.Attributes.class class ]
+                    [ Html.label
+                        [ Html.Attributes.for id ]
+                        [ Html.text label ]
+                    , Html.div
+                        [ Html.Attributes.id id
+                        , Html.Attributes.name name
+                        ]
+                        [ Html.button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Events.onClick Increment
+                            , Html.Attributes.disabled (state >= context.maxCount)
+                            ]
+                            [ Html.text "+" ]
+                        , Html.div [] [ Html.text <| String.fromInt state ]
+                        , Html.button
+                            [ Html.Attributes.type_ "button"
+                            , Html.Events.onClick Decrement
+                            , Html.Attributes.disabled (state <= context.minCount)
+                            ]
+                            [ Html.text "-" ]
+                        ]
+                    ]
+                ]
+        , subscriptions =
+            \context state ->
+                -- Every 1 second, increment or decrement the count until 
+                -- it's back within the bounds set by the context
+                if state > context.maxCount then
+                    Time.every 1000 (\_ -> Decrement)
+                else if state < context.minCount then
+                    Time.every 1000 (\_ -> Increment)
+                else 
+                    Sub.none
+        , parse =
+            \context state ->
+                -- Fail validation if the count is outside the bounds set
+                -- by the context
+                if state > context.maxCount || state < context.minCount then
+                    Err [ "count is out of bounds!" ]
 
-            , view =
-                \context { state, name, id, label, class } ->
-                    ...
+                else
+                    Ok state
+        , label = "Counter"
+        }
 
-            , subscriptions =
-                \context state ->
-                    ...
-
-            , parse =
-                \context state ->
-                    ...
-            }
-
+    --: Control Context Int CounterDelta Int
 -}
 defineWithContext : DefinitionWithContext context state delta output -> Control context state delta output
 defineWithContext definition =
@@ -1472,6 +1556,17 @@ alertIfWithContext when alert (Control control) =
 {-| Emit an alert from a `Control` if the supplied predicate function returns
 `True`.
 
+This is most useful with control combinators such as `tuple` or `record`,
+because it enables you to perform validations that involve multiple fields
+within the tuple or record.
+
+    import Control exposing (Control, Tuple, alertIf, tuple, int, string)
+
+    tuple int string
+        |> alertIf (\( x, y ) -> x > 0) "int-greater-than-zero"
+
+    --: Control context (Tuple String String) (Tuple String String) ( Int, String )
+
 This is meant to be used in combination with `respond`, which listens for the
 alert and displays an error or notification message on the appropriate
 control(s).
@@ -1508,8 +1603,20 @@ alertEmitter check alert (ControlFns ctrl) =
         }
 
 
-{-| Respond to an alert emitted by another `Control`, display an error or
-notification message on this control, and if desired, cause validation to fail.
+{-| Display an error or notification message on a `Control` in response to an
+alert emitted by another `Control`. If desired, cause validation to fail.
+
+    import Control exposing (Control, respond, int)
+
+    int
+        |> respond
+            { alert = "int-greater-than-zero"
+            , fail = True
+            , message = "Must be less than zero"
+            , class = "control-feedback-fail"
+            }
+
+    --: Control context String String Int
 
 This is meant to be used in combination with `alertIf`, which emits the alert.
 
@@ -1573,7 +1680,7 @@ based on the output of the `list` control.
 The following example will display errors on the first two items in a list of
 strings, if and only if those first two items are "hello" and "world":
 
-    import Control exposing (alertAtIndexes, list, respond, string)
+    import Control exposing (Control, List_, alertAtIndexes, list, respond, string)
 
     myString =
         string
@@ -1584,18 +1691,19 @@ strings, if and only if those first two items are "hello" and "world":
                 , class = "control-feedback-fail"
                 }
 
-    myList =
-        list myString
-            |> alertAtIndexes
-                (\list_ ->
-                    case list_ of
-                        "hello" :: "world" :: _ ->
-                            [ 0, 1 ]
+    list myString
+        |> alertAtIndexes
+            (\list_ ->
+                case list_ of
+                    "hello" :: "world" :: _ ->
+                        [ 0, 1 ]
 
-                        _ ->
-                            []
-                )
-                "no-hello-world"
+                    _ ->
+                        []
+            )
+            "no-hello-world"
+
+    --: Control context (List_ String) (List_ String) (List String)
 
 -}
 alertAtIndexes :
@@ -1638,16 +1746,17 @@ listAlertEmitter check alertLabel (ControlFns ctrl) =
 
 This causes the `Control` to fail validation.
 
-    import Control exposing (failIfWithContext, int)
+    import Control exposing (Control, failIfWithContext, int)
 
     type alias Context =
         { minimumValue : Int }
 
-    positiveInt =
-        int
-            |> failIfWithContext
-                (\context x -> x < context.minimumValue)
-                "This is less than the minimum value!"
+    int
+        |> failIfWithContext
+            (\context x -> x < context.minimumValue)
+            "This is less than the minimum value!"
+
+    --: Control Context String String Int
 
 -}
 failIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1672,13 +1781,14 @@ failIfWithContext check message (Control c) =
 
 This causes the `Control` to fail validation.
 
-    import Control exposing (failIf, int)
+    import Control exposing (Control, failIf, int)
 
-    positiveInt =
-        int
-            |> failIf
-                (\x -> x < 1)
-                "This must be greater than zero!"
+    int
+        |> failIf
+            (\x -> x < 1)
+            "This must be greater than zero!"
+
+    --: Control context String String Int
 
 -}
 failIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1691,16 +1801,17 @@ returns `True`.
 
 This does not cause the `Control` to fail validation.
 
-    import Control exposing (int, noteIfWithContext)
+    import Control exposing (Control, int, noteIfWithContext)
 
     type alias Context =
         { recommendedMinimumValue : Int }
 
-    boundedInt =
-        int
-            |> noteIfWithContext
-                (\context x -> x < context.recommendedMinimumValue)
-                "This value is below the recommended minimum - are you sure?"
+    int
+        |> noteIfWithContext
+            (\context x -> x < context.recommendedMinimumValue)
+            "This value is below the recommended minimum - are you sure?"
+
+    --: Control Context String String Int
 
 -}
 noteIfWithContext : (context -> output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -1726,13 +1837,14 @@ returns `True`.
 This just shows the user a message - it doesn't cause the `Control` to fail
 validation.
 
-    import Control exposing (int, noteIf)
+    import Control exposing (Control, int, noteIf)
 
-    positiveInt =
-        int
-            |> noteIf
-                (\x -> x < 1)
-                "Maybe this should be greater than zero?"
+    int
+        |> noteIf
+            (\x -> x < 1)
+            "Maybe this should be greater than zero?"
+
+    --: Control context String String Int
 
 -}
 noteIf : (output -> Bool) -> String -> Control context state delta output -> Control context state delta output
@@ -2124,11 +2236,12 @@ wrapView wrapper (Control control) =
 
 {-| Set a default `output` value for a `Control`.
 
-    import Control exposing (default, int, string, tuple)
+    import Control exposing (Control, Tuple, default, int, string, tuple)
 
-    oneAndHello =
-        tuple int string
-            |> default ( 1, "hello" )
+    tuple int string
+        |> default ( 1, "hello" )
+
+    --: Control context (Tuple String String) (Tuple String String) ( Int, String )
 
 -}
 default : output -> Control context state delta output -> Control context state delta output
