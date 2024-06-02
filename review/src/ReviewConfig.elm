@@ -34,7 +34,7 @@ import NoUnused.Patterns
 import NoUnused.Variables
 import Review.Rule as Rule exposing (Rule)
 import Simplify
-
+import Review.Documentation.CodeSnippet
 
 config : List Rule
 config =
@@ -45,6 +45,7 @@ config =
     , Docs.ReviewLinksAndSections.rule
     , Docs.ReviewAtDocs.rule
     , Docs.UpToDateReadmeLinks.rule
+    , Review.Documentation.CodeSnippet.check
     , NoConfusingPrefixOperator.rule
     , NoDebug.Log.rule
     , NoDebug.TodoOrToString.rule

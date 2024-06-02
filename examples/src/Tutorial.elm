@@ -8,6 +8,7 @@ import Html.Attributes as HA
 import Html.Events as HE
 import Markdown.Parser as Markdown
 import Markdown.Renderer
+import Time
 
 
 main =
@@ -26,6 +27,7 @@ init () =
     in
     ( { form = initialForm
       , output = Nothing
+      , bool = True
       }
     , cmd
     )
@@ -36,7 +38,10 @@ update msg model =
         Nothing ->
             let
                 ( newForm, result ) =
-                    form.submit model.form
+                    form.submit model.bool model.form
+
+                _ =
+                    Debug.log "Output" result
             in
             ( { model
                 | form = newForm
@@ -48,7 +53,7 @@ update msg model =
         Just delta ->
             let
                 ( newForm, cmd ) =
-                    form.update delta model.form
+                    form.update model.bool delta model.form
             in
             ( { model | form = newForm }
             , cmd
@@ -56,19 +61,19 @@ update msg model =
 
 
 subscriptions model =
-    form.subscriptions model.form
+    form.subscriptions model.bool model.form
 
 
 view model =
     { title = "elm-any-type-forms tutorial"
     , body =
-        [ H.div [] [ form.view model.form ]
+        [ H.div [] [ form.view model.bool model.form ]
         ]
     }
 
 
 form =
-    Control.simpleForm
+    Control.simpleFormWithContext
         { control = lessons
         , onSubmit = Nothing
         , onUpdate = Just
@@ -80,7 +85,7 @@ type Lessons l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11
     | YourFirstForm l02 --TuplesAndTriples
     | TuplesAndTriples l03 --TuplesAndTriples
     | Records l04 --Records
-    | CustomTypes l05 --CustomTypes
+    | EnumsAndCustomTypes l05 --CustomTypes
     | ListsDictsSetsAndArrays l06 --DictsSetsAndArrays
     | Mapping l07 --Mapping
     | Validation l08 --Validation
@@ -91,8 +96,8 @@ type Lessons l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11
 
 lessons =
     Control.customType
-        (\l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11 tag ->
-            case tag of
+        (\l01 l02 l03 l04 l05 l06 l07 l08 l09 l10 l11 variant ->
+            case variant of
                 YourFirstForm data ->
                     l01 data
 
@@ -105,7 +110,7 @@ lessons =
                 Records data ->
                     l04 data
 
-                CustomTypes data ->
+                EnumsAndCustomTypes data ->
                     l05 data
 
                 ListsDictsSetsAndArrays data ->
@@ -126,17 +131,17 @@ lessons =
                 LeavingTheSandbox data ->
                     l11 data
         )
-        |> Control.tag1 "Your first form" YourFirstForm yourFirstForm
-        |> Control.tag1 "Basic controls" BasicControls basicControls
-        |> Control.tag1 "Tuples and triples" TuplesAndTriples tuplesAndTriples
-        |> Control.tag1 "Records and labels" Records records
-        |> Control.tag1 "Custom types" CustomTypes customTypes
-        |> Control.tag1 "Lists, Dicts, Sets & Arrays" ListsDictsSetsAndArrays listsDictsSetsAndArrays
-        |> Control.tag1 "Converting controls" Mapping mapping
-        |> Control.tag1 "Validating controls" Validation validation
-        |> Control.tag1 "Multi-control validation" MultiValidation multivalidation
-        |> Control.tag1 "Creating your own controls" CreateYourOwn createYourOwn
-        |> Control.tag1 "Leaving the sandbox" LeavingTheSandbox leavingTheSandbox
+        |> Control.variant1 "Your first form" YourFirstForm yourFirstForm
+        |> Control.variant1 "Basic controls" BasicControls basicControls
+        |> Control.variant1 "Tuples and triples" TuplesAndTriples tuplesAndTriples
+        |> Control.variant1 "Records and labels" Records records
+        |> Control.variant1 "Enums and custom types" EnumsAndCustomTypes enumsAndCustomTypes
+        |> Control.variant1 "Lists, Dicts, Sets & Arrays" ListsDictsSetsAndArrays listsDictsSetsAndArrays
+        |> Control.variant1 "Converting controls" Mapping mapping
+        |> Control.variant1 "Validating controls" Validation validation
+        |> Control.variant1 "Multi-control validation" MultiValidation multivalidation
+        |> Control.variant1 "Creating your own controls" CreateYourOwn createYourOwn
+        |> Control.variant1 "Leaving the sandbox" LeavingTheSandbox leavingTheSandbox
         |> Control.endCustomType
         |> Control.layout
             (\config subcontrols ->
@@ -304,7 +309,7 @@ tuplesAndTriples =
         |> Control.field (\() -> ( 1, "hello", 1.0 )) (Control.triple Control.int Control.string Control.float |> htmlBefore tripleIntro)
         |> Control.endRecord
         |> htmlBefore tuplesAndTriplesIntro
-        |> htmlAfter tupleAndTripleOutro
+        |> htmlAfter tuplesAndTriplesOutro
 
 
 tuplesAndTriplesIntro =
@@ -350,7 +355,7 @@ You'll get an `( Int, String, Float )` triple like this:
 """
 
 
-tupleAndTripleOutro =
+tuplesAndTriplesOutro =
     md
         """
 But tuples and triples are Elm's least-loved data structures - if you want to combine multiple values, records tend to 
@@ -383,8 +388,8 @@ recordIntro =
         """
 ## Records and labels
 
-Imagine we are building a customer relationship management system for a company called Shapes.com. The company sells 
-a variety of two-dimensional geometric shapes to happy customers worldwide.
+Imagine we are building a customer relationship management (CRM) system for a company that sells stickers 
+to adorn the laptops of happy developers worldwide.
 
 To represent our customers, let's use a record type:
 
@@ -488,132 +493,203 @@ But Elm also has another kind of complex type: the custom type. How do we model 
 """
 
 
-type Product
-    = Circle Int
-    | Triangle Int Int Int
-    | Rectangle Int Int
+enumsAndCustomTypes =
+    Control.record (\a b -> ( a, b ))
+        |> Control.field Tuple.first
+            (simpleStickerControl
+                |> htmlBefore enumsAndCustomTypesIntro
+            )
+        |> Control.field Tuple.second
+            (enumsAndCustomTypesCustomerControl
+                |> htmlBefore customTypesIntro
+                |> htmlAfter customTypesOutro
+            )
+        |> Control.endRecord
 
 
-customTypes =
-    customTypesCustomerControl
-        |> htmlBefore customTypesIntro
-        |> htmlAfter customTypesOutro
-
-
-customTypesCustomerControl =
+enumsAndCustomTypesCustomerControl =
     Control.record
-        (\name age product ->
+        (\name age sticker ->
             { name = name
             , age = age
-            , product = product
+            , sticker = sticker
             }
         )
         |> Control.field .name (Control.string |> Control.label "Name")
         |> Control.field .age (Control.int |> Control.label "Age")
-        |> Control.field .product productControl
+        |> Control.field .sticker stickerControl
         |> Control.endRecord
 
 
-productControl =
+type SimpleSticker
+    = SimpleRectangular
+    | SimpleCircular
+    | SimpleHeartShaped
+
+
+simpleStickerControl =
+    Control.enum
+        ( "Circular", SimpleCircular )
+        ( "Heart-shaped", SimpleHeartShaped )
+        [ ( "Rectangular", SimpleRectangular ) ]
+        |> Control.label "Sticker type"
+
+
+type Sticker
+    = Circular
+    | Rectangular Int Int
+    | HeartShaped String
+
+
+stickerControl =
     Control.customType
-        (\circle triangle rectangle tag ->
-            case tag of
-                Circle radius ->
-                    circle radius
+        (\circular heartShaped rectangular variant ->
+            case variant of
+                Circular ->
+                    circular
 
-                Triangle side1 side2 side3 ->
-                    triangle side1 side2 side3
+                HeartShaped message ->
+                    heartShaped message
 
-                Rectangle width height ->
-                    rectangle width height
+                Rectangular width height ->
+                    rectangular width height
         )
-        |> Control.tag1 "Circle"
-            Circle
-            (Control.int |> Control.label "Radius")
-        |> Control.tag3 "Triangle"
-            Triangle
-            (Control.int |> Control.label "First side")
-            (Control.int |> Control.label "Second side")
-            (Control.int |> Control.label "Third side")
-        |> Control.tag2 "Rectangle"
-            Rectangle
+        |> Control.variant0 "Circular"
+            Circular
+        |> Control.variant1 "Heart-shaped"
+            HeartShaped
+            (Control.string |> Control.label "Message")
+        |> Control.variant2 "Rectangular"
+            Rectangular
             (Control.int |> Control.label "Width")
             (Control.int |> Control.label "Height")
         |> Control.endCustomType
-        |> Control.label "Product"
+        |> Control.label "Sticker type"
+
+
+enumsAndCustomTypesIntro =
+    md """
+## Enums and Custom Types
+
+Our company sells three main types of products: rectangular stickers, circular stickers, and heart-shaped stickers.
+In our CRM system, we want to be able to track which products each customer has purchased, so we need some 
+way of representing the type of sticker. 
+
+How can we do that? Let's use a custom type!
+
+### How to talk about custom types
+Let's get our terminology clear before we start. In Elm, a custom type is composed of one or more _variants_. 
+Each variant consists of a _tag_ followed by zero or more _arguments_.
+
+For example, let's say we have a type like `Maybe Int`: 
+* The tags of its variants are `Just` and `Nothing`. 
+* The `Just` variant has one argument, an `Int`. 
+* The `Nothing` variant has no arguments.
+
+An _enum_ is a special kind of custom type that has at least two variants, and none of its variants have 
+any arguments. Like `Bool` for example:
+
+```
+type Bool
+    = True
+    | False
+```
+
+### Enums
+As a first prototype for modelling the company's products in our system, let's start with a simple enum type:
+
+```
+type Sticker
+   = Circular
+   | HeartShaped
+   | Rectangular
+```
+
+We can create a control for this type using `Control.enum`. Since an enum type must have at least two variants, 
+`Control.enum` requires us to provide at least two tags, and each tag must be accompanied by a `String` to use as a label. 
+If the type has more than two tags, we can put the rest in a list.
+
+```
+stickerControl =
+    Control.enum
+        ( "Circular", Circular ) -- first variant
+        ( "Heart-shaped", HeartShaped ) -- second variant
+        [ ( "Rectangular", Rectangular ) ] -- list of other variants
+        |> Control.label "Sticker type"
+```
+
+The result should look something like this:
+"""
 
 
 customTypesIntro =
-    md
-        """
-## Custom types
+    md """
+### Custom Types 
+But... that's not going to be enough. One of the key selling-points of our stickers is that we can customise them
+for each customer's specific needs. Our product managers explain:
+* We can print rectangular stickers in any size - the customer should be able to specify the width and height as `Int`s.
+* We can print a custom message on heart-shaped stickers - the customer should be able to specify the text as a `String`.
+* Circular stickers aren't customisable yet, but the product team is working on it!
 
-Shapes.com sells circles, triangles and rectangles to its customers. The company's unique selling point is that it 
-can custom-engineer these shapes in any size the customer desires! 
-
-We need to capture the required dimensions of each shape in our system, to be sure that we're giving the customer 
-exactly what they want. So we'll specify circles by their radius (a single `Int`), triangles by the lengths of their 
-sides (three `Int`s), and rectangles by their width and height (two `Ints`):
+We'll capture these details by changing our enum to a more complex custom type:
 
 ```
-type Product
-    = Circle Int
-    | Triangle Int Int Int
-    | Rectangle Int Int
+type Sticker
+    = Circular
+    | HeartShaped String
+    | Rectangular Int Int
 ```
 
 Let's see how we can build a control to represent these exciting products with `Control.customType`. This might look a 
 bit daunting at first, but we'll walk through it step by step:
 
 ```
-productControl =
+stickerControl =
     
     -- First, we call `Control.customType` and pass it a function that can 
-    -- destructure a `Product` tag and give us access to its arguments.
+    -- destructure a `Sticker` type and give us access to its arguments.
     
     Control.customType
-        (\\circle triangle rectangle tag ->
-            case tag of
-                Circle radius ->
-                    circle radius
+        (\\circular heartShaped rectangular variant ->
+            case variant of
+                Circular ->
+                    circular
 
-                Triangle side1 side2 side3 ->
-                    triangle side1 side2 side3
+                HeartShaped message ->
+                    heartShaped message
 
-                Rectangle width height ->
-                    rectangle width height
+                Rectangular width height ->
+                    rectangular width height
         )
 
-        -- Next, we teach the control how to construct a `Circle` from a single
-        -- `Control.int` control, using `Control.tag1`.
+        -- Next, we teach the control how to construct our variants. Since the 
+        -- `Circular` variant doesn't have any arguments, we use `Control.variant0` 
+        -- and just supply the tag
+
+        |> Control.variant0 "Circular"
+            Circular
+
+        -- Next, we handle `HeartShaped String` using `Control.variant1`, supplying 
+        -- the tag followed by `Control.string` as the single argument.
+
+        |> Control.variant1 "Heart-shaped"
+            HeartShaped
+            (Control.string |> Control.label "Message")
+            
+        -- Finally, since the `Rectangular Int Int` variant has two arguments, 
+        -- we use `Control.variant2`, supplying the tag and two `Control.int`s.
         
-        |> Control.tag1 "Circle"
-            Circle
-            (Control.int |> Control.label "Radius")
-
-        -- Now we do the same for `Triangle` - this time, it's composed of three
-        -- `Control.int` controls, so we use `Control.tag3`.
-
-        |> Control.tag3 "Triangle"
-            Triangle
-            (Control.int |> Control.label "First side")
-            (Control.int |> Control.label "Second side")
-            (Control.int |> Control.label "Third side")
-
-        -- And finally, we handle `Rectangle`'s two `Control.int` controls with 
-        -- `Control.tag2`.
-
-        |> Control.tag2 "Rectangle"
-            Rectangle
+        |> Control.variant2 "Rectangular"
+            Rectangular
             (Control.int |> Control.label "Width")
             (Control.int |> Control.label "Height")
 
         -- Now just call `Control.endCustomType` to declare that we've finished adding 
-        -- tags, and then `Control.label` to give the control an appropriate 
+        -- variants, and then `Control.label` to give the control an appropriate 
         -- label.
         
         |> Control.endCustomType
-        |> Control.label "Product"
+        |> Control.label "Sticker type"
 ```
 
 ### Wiring it up
@@ -623,15 +699,15 @@ Now we can add the new field to our `Customer` control as follows:
 ```
 customerControl =
     Control.record 
-        (\\name age product -> 
+        (\\name age sticker -> 
             { name = name
             , age = age
-            , product = product
+            , sticker = sticker
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age ageControl
-        |> Control.field .product productControl
+        |> Control.field .sticker stickerControl
         |> Control.endRecord
 ```
 
@@ -653,14 +729,14 @@ list-like things.
 
 
 listsDictsSetsAndArrays =
-    productListControl
+    stickerListControl
         |> htmlBefore listsIntro
         |> htmlAfter listsOutro
 
 
-productListControl =
-    Control.list productControl
-        |> Control.label "List of products"
+stickerListControl =
+    Control.list stickerControl
+        |> Control.label "Stickers purchased"
 
 
 listsIntro =
@@ -668,17 +744,17 @@ listsIntro =
         """
 ## Lists, Dicts, Sets and Arrays
 
-Hang on a minute - if each Shapes.com customer can only purchase a single product, the company is probably not going to
+Hang on a minute - if each customer can only purchase a single sticker, the company is probably not going to
 be very successful! 
 
-What we really want our system to do is keep track of _all_ the products that each customer buys. Perhaps we could use 
+What we really want our system to do is keep track of _all_ the stickers that each customer buys. Perhaps we could use 
 some nifty data structure like a `List`?
 
 ```
 type alias Customer = 
     { name : String
     , age : Int 
-    , products : List Product
+    , stickers : List Sticker
     , id : Id
     }
 ```
@@ -686,11 +762,12 @@ type alias Customer =
 Fortunately, it's easy to turn any control into a list of controls by passing it to `Control.list`:
 
 ```
-productListControl = 
-    Control.list productControl
+stickerListControl = 
+    Control.list stickerControl
+        |> Control.label "Stickers purchased"
 ```
 
-This will give you a form that produces a list of products:
+This will give you a form that produces a list of stickers:
 """
 
 
@@ -699,20 +776,20 @@ listsOutro =
         """
 ### Wiring it up 
 
-Now you can add your new `productListControl` to your `customerControl` as follows:
+Now you can add your new `stickerListControl` to your `customerControl` as follows:
 
 ```
 customerControl =
     Control.record 
-        (\\name age products -> 
+        (\\name age stickers -> 
             { name = name
             , age = age
-            , products = products
+            , stickers = stickers
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age ageControl
-        |> Control.field .products productListControl
+        |> Control.field .stickers stickerListControl
         |> Control.endRecord
 ```
 
@@ -743,7 +820,7 @@ idControl =
     Control.int
         |> Control.label "ID number"
         |> Control.map
-            { convert = Id
+            { convert = \int -> Id int
             , revert = \(Id int) -> int
             }
 
@@ -757,7 +834,7 @@ In some circumstances, you may want to convert the type produced by a control to
 `Control.map` becomes useful.
 
 For example, suppose you want each of your customers to have a unique ID number. The number itself can be a simple `Int`, 
-but to make your code more type-safe, you decide to wrap that `Int` in a custom type tag:
+but to make your code more type-safe, you decide to wrap that `Int` in a custom type:
 
 ```
 type Id = 
@@ -766,7 +843,7 @@ type Id =
 type alias Customer = 
     { name : String
     , age : Int 
-    , products : List Product
+    , stickers : List Sticker
     , id : Id
     }
 ```
@@ -780,7 +857,7 @@ idControl =
     Control.int
         |> Control.label "ID number"
         |> Control.map 
-            { convert = Id
+            { convert = \\int -> Id int
             , revert = \\(Id int) -> int 
             }
 ```
@@ -798,16 +875,16 @@ You can add this new field to your `Customer` control as follows:
 ```
 customerControl =
     Control.record 
-        (\\name age products id -> 
+        (\\name age stickers id -> 
             { name = name
             , age = age
-            , products = products 
+            , stickers = stickers 
             , id = id
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age ageControl
-        |> Control.field .products productListControl
+        |> Control.field .stickers stickerListControl
         |> Control.field .id idControl
         |> Control.endRecord
 ```        
@@ -823,8 +900,8 @@ validation =
 nameControl =
     Control.string
         |> Control.label "Name"
-        |> Control.failIf (\name -> String.isEmpty name) "Name cannot be blank"
-        |> Control.noteIf (\name -> String.length name == 1) "Is that the full name?"
+        |> Control.failIfWithContext (\ctx name -> String.isEmpty name) "Name cannot be blank"
+        |> Control.noteIfWithContext (\ctx name -> String.length name == 1) "Is that the full name?"
 
 
 validationIntro =
@@ -899,17 +976,17 @@ nameControl =
 
 multivalidation =
     Control.record
-        (\name age products id password ->
+        (\name age stickers id password ->
             { name = name
             , age = age
-            , products = products
+            , stickers = stickers
             , id = id
             , password = password
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age (Control.int |> Control.label "Age")
-        |> Control.field .products productListControl
+        |> Control.field .stickers stickerListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
         |> Control.endRecord
@@ -922,8 +999,8 @@ passwordControl =
         |> Control.field .choose choosePasswordControl
         |> Control.field .confirm confirmPasswordControl
         |> Control.endRecord
-        |> Control.alertIf
-            (\{ choose, confirm } -> choose /= confirm)
+        |> Control.alertIfWithContext
+            (\ctx { choose, confirm } -> choose /= confirm)
             "password-mismatch"
         |> Control.map
             { convert = .choose
@@ -943,6 +1020,7 @@ confirmPasswordControl =
             { alert = "password-mismatch"
             , fail = True
             , message = "Passwords must match"
+            , class = "control-feedback-fail"
             }
 
 
@@ -1017,7 +1095,7 @@ Finally, let's add the password to our `Customer` type, represented as a `String
 type alias Customer = 
     { name : String
     , age : Int 
-    , products : List Product
+    , stickers : List Sticker
     , id : Id
     , password : String
     }
@@ -1052,17 +1130,17 @@ And now we just add `passwordControl` to `customerControl`, as usual:
 ```
 customerControl =
     Control.record
-        (\\name age products id password ->
+        (\\name age stickers id password ->
             { name = name
             , age = age
-            , products = products
+            , stickers = stickers
             , id = id
             , password = password
             }
         )
         |> Control.field .name nameControl
         |> Control.field .age ageControl
-        |> Control.field .products productListControl
+        |> Control.field .stickers stickerListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
         |> Control.endRecord
@@ -1088,41 +1166,46 @@ createYourOwn =
 
 customerControl =
     Control.record
-        (\name dateOfBirth products id password ->
+        (\name dateOfBirth stickers id password ->
             { name = name
             , dateOfBirth = dateOfBirth
-            , products = products
+            , stickers = stickers
             , id = id
             , password = password
             }
         )
         |> Control.field .name nameControl
         |> Control.field .dateOfBirth dateControl
-        |> Control.field .products productListControl
+        |> Control.field .stickers stickerListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
         |> Control.endRecord
 
 
 dateControl =
-    Control.create
+    Control.define
         { label = "Date of birth"
         , blank = ( "1970-01-01", Cmd.none )
         , prefill = \date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
-        , update = \delta state -> ( delta, Cmd.none )
+        , update =
+            \delta state -> ( delta, Cmd.none )
         , view =
             \{ state, id, label, name, class } ->
-                [ H.label [ HA.for id ] [ H.text label ]
+                [ H.label [ HA.for id ]
+                    [ H.text label
+                    ]
                 , H.input
                     [ HA.type_ "date"
                     , HA.value state
                     , HA.id id
                     , HA.class class
                     , HA.name name
+                    , HE.onInput identity
                     ]
                     []
                 ]
-        , subscriptions = \state -> Sub.none
+        , subscriptions =
+            \state -> Sub.none
         , parse =
             \state ->
                 case Date.fromIsoString state of
@@ -1160,7 +1243,7 @@ Now, change our `Customer` type as follows:
 type alias Customer = 
     { name : String
     , dateOfBirth : Date.Date
-    , products : List Product
+    , stickers : List Sticker
     , id : Id
     , password : String
     }
@@ -1274,17 +1357,17 @@ Finally, let's update `customerControl` to replace the `age` field with our new 
 ```
 customerControl = 
     Control.record
-        (\\name dateOfBirth products id password ->
+        (\\name dateOfBirth stickers id password ->
             { name = name
             , dateOfBirth = dateOfBirth
-            , products = products
+            , stickers = stickers
             , id = id
             , password = password
             }
         )
         |> Control.field .name nameControl
         |> Control.field .dateOfBirth dateControl
-        |> Control.field .products productListControl
+        |> Control.field .stickers stickerListControl
         |> Control.field .id idControl
         |> Control.field .password passwordControl
         |> Control.endRecord
@@ -1304,6 +1387,7 @@ we do that?
 """
 
 
+
 leavingTheSandbox =
     customerControl
         |> htmlBefore leavingTheSandboxIntro
@@ -1319,7 +1403,7 @@ So, we've designed our `customerControl`, and tested it out in `Control.sandbox`
 there?
 
 Well, in practice, we probably want to integrate it into a larger Elm application - in this case, the customer 
-relationship management (CRM) system we're building for Shapes.com.
+relationship management (CRM) system we're building for our sticker company.
 
 ### Initial setup
 
@@ -1327,7 +1411,7 @@ Let's rename our `Main.elm` file to `Customer.elm`, and rename `customerControl`
 changes to the exports:
 
 ```
-module Customer exposing (Customer, Id, Product, control, main)
+module Customer exposing (Customer, Id, Sticker, control, main)
 ```
 
 And we'll implement a very rubbish CRM application in a file called `Crm.elm`:
@@ -1343,7 +1427,7 @@ type alias Model =
     { customers : List Customer.Customer }
 
 type Msg 
-    = SoldProductToCustomer Customer.Id Customer.Product
+    = SoldStickerToCustomer Customer.Id Customer.Sticker
 
 main = 
     Browser.document 
@@ -1359,19 +1443,19 @@ init flags =
     )
 
 view model =
-    { title = "Shapes.com CRM"
+    { title = "Sticker Company CRM"
     , body = 
         [ Html.div [] (List.map .name model.customers) ] 
     }
 
 update msg model =
     case msg of
-        SoldProductToCustomer customerId product ->
+        SoldStickerToCustomer customerId sticker ->
             ( { customers = 
                 List.map 
                     (\\customer -> 
                         if customer.id == customerId then 
-                            { customer | products = product :: customer.products } 
+                            { customer | stickers = sticker :: customer.stickers } 
                         else customer
                     ) 
                     model.customers 
@@ -1409,81 +1493,136 @@ This should print out the type signature for our sandbox program, which should l
           ()
           (
           Control.State
-              ( Control.State String
-              , ( Control.State String
-                , ( Control.State
-                        (
-                        List
-                            (
-                            Control.State
-                                ( Control.State ( Control.State String, Control.End )
-                                , ( Control.State
-                                        ( Control.State String
-                                        , ( Control.State String
-                                          , ( Control.State String, Control.End )
+              (
+              Control.Record
+                  (
+                  Control.Field
+                      String
+                      (
+                      Control.Field
+                          String
+                          (
+                          Control.Field
+                              (
+                              Control.List_
+                                  (
+                                  Control.CustomType
+                                      (
+                                      Control.Variant
+                                          Control.EndVariant
+                                          (
+                                          Control.Variant
+                                              (Control.Arg String Control.EndVariant)
+                                              (
+                                              Control.Variant
+                                                  (
+                                                  Control.Arg
+                                                      String
+                                                      (
+                                                      Control.Arg
+                                                          String
+                                                          Control.EndVariant
+                                                      )
+                                                  )
+                                                  Control.EndCustomType
+                                              )
                                           )
-                                        )
-                                  , ( Control.State
-                                          ( Control.State String
-                                          , ( Control.State String, Control.End )
+                                      )
+                                  )
+                              )
+                              (
+                              Control.Field
+                                  (Control.Mapping String)
+                                  (
+                                  Control.Field
+                                      (
+                                      Control.Mapping
+                                          (
+                                          Control.Record
+                                              (
+                                              Control.Field
+                                                  String
+                                                  (
+                                                  Control.Field
+                                                      String
+                                                      Control.EndRecord
+                                                  )
+                                              )
                                           )
-                                    , Control.End
-                                    )
+                                      )
+                                      Control.EndRecord
                                   )
-                                )
-                            )
-                        )
-                  , ( Control.State ( Control.State String, Control.End )
-                    , ( Control.State
-                            ( Control.State
-                                  ( Control.State String
-                                  , ( Control.State String, Control.End )
-                                  )
-                            , Control.End
-                            )
-                      , Control.End
+                              )
+                          )
                       )
-                    )
                   )
-                )
               )
           )
           (
           Control.Delta
-              ( Control.Delta String
-              , ( Control.Delta String
-                , ( Control.Delta
-                        (
-                        Control.ListDelta
-                            ( Control.Delta ( Control.Delta String, Control.End )
-                            , ( Control.Delta
-                                    ( Control.Delta String
-                                    , ( Control.Delta String
-                                      , ( Control.Delta String, Control.End )
+              (
+              Control.Record
+                  (
+                  Control.Field
+                      String
+                      (
+                      Control.Field
+                          String
+                          (
+                          Control.Field
+                              (
+                              Control.List_
+                                  (
+                                  Control.CustomType
+                                      (
+                                      Control.Variant
+                                          Control.EndVariant
+                                          (
+                                          Control.Variant
+                                              (Control.Arg String Control.EndVariant)
+                                              (
+                                              Control.Variant
+                                                  (
+                                                  Control.Arg
+                                                      String
+                                                      (
+                                                      Control.Arg
+                                                          String
+                                                          Control.EndVariant
+                                                      )
+                                                  )
+                                                  Control.EndCustomType
+                                              )
+                                          )
                                       )
-                                    )
-                              , ( Control.Delta
-                                      ( Control.Delta String
-                                      , ( Control.Delta String, Control.End )
-                                      )
-                                , Control.End
-                                )
-                              )
-                            )
-                        )
-                  , ( Control.Delta ( Control.Delta String, Control.End )
-                    , ( Control.Delta
-                            ( Control.Delta
-                                  ( Control.Delta String
-                                  , ( Control.Delta String, Control.End )
                                   )
-                            , Control.End
-                            )
-                      , Control.End
+                              )
+                              (
+                              Control.Field
+                                  (Control.Mapping String)
+                                  (
+                                  Control.Field
+                                      (
+                                      Control.Mapping
+                                          (
+                                          Control.Record
+                                              (
+                                              Control.Field
+                                                  String
+                                                  (
+                                                  Control.Field
+                                                      String
+                                                      Control.EndRecord
+                                                  )
+                                              )
+                                          )
+                                      )
+                                      Control.EndRecord
+                                  )
+                              )
+                          )
                       )
-                    )
                   )
-                )
               )
           )
 ```
@@ -1492,49 +1631,60 @@ Aaargh! Right?
 
 Don't worry, it's not as bad as it looks - and we'll get through this _together_.
 
-The `state` for our form will be the whole section containing `Control.State` types, and the `delta` will be the 
-section containing `Control.Delta` types.
+The `state` for our form will be the whole section that starts with `Control.State`, and the `delta` will be the 
+section that starts with `Control.Delta`.
 
 Let's copy-paste those relevant bits into a couple of type aliases in `Crm.elm`:
 
 ```
 type alias CustomerFormState =
     Control.State
-        ( Control.State String
-        , ( Control.State String
-          , ( Control.State
-                (List
-                    (Control.State
-                        ( Control.State ( Control.State String, Control.End )
-                        , ( Control.State
-                                ( Control.State String
-                                , ( Control.State String
-                                  , ( Control.State String, Control.End )
-                                  )
+        (Control.Record
+            (Control.Field
+                String
+                (Control.Field
+                    String
+                    (Control.Field
+                        (Control.List_
+                            (Control.CustomType
+                                (Control.Variant
+                                    Control.EndVariant
+                                    (Control.Variant
+                                        (Control.Arg String Control.EndVariant)
+                                        (Control.Variant
+                                            (Control.Arg
+                                                String
+                                                (Control.Arg
+                                                    String
+                                                    Control.EndVariant
+                                                )
+                                            )
+                                            Control.EndCustomType
+                                        )
+                                    )
                                 )
-                          , ( Control.State
-                                ( Control.State String
-                                , ( Control.State String, Control.End )
-                                )
-                            , Control.End
                             )
-                          )
+                        )
+                        (Control.Field
+                            (Control.Mapping String)
+                            (Control.Field
+                                (Control.Mapping
+                                    (Control.Record
+                                        (Control.Field
+                                            String
+                                            (Control.Field
+                                                String
+                                                Control.EndRecord
+                                            )
+                                        )
+                                    )
+                                )
+                                Control.EndRecord
+                            )
                         )
                     )
                 )
-            , ( Control.State ( Control.State String, Control.End )
-              , ( Control.State
-                    ( Control.State
-                        ( Control.State String
-                        , ( Control.State String, Control.End )
-                        )
-                    , Control.End
-                    )
-                , Control.End
-                )
-              )
             )
-          )
         )
 ```
 
@@ -1543,39 +1693,52 @@ And:
 ```
 type alias CustomerFormDelta =
     Control.Delta
-        ( Control.Delta String
-        , ( Control.Delta String
-          , ( Control.Delta
-                (Control.ListDelta
-                    ( Control.Delta ( Control.Delta String, Control.End )
-                    , ( Control.Delta
-                            ( Control.Delta String
-                            , ( Control.Delta String
-                              , ( Control.Delta String, Control.End )
-                              )
+        (Control.Record
+            (Control.Field
+                String
+                (Control.Field
+                    String
+                    (Control.Field
+                        (Control.List_
+                            (Control.CustomType
+                                (Control.Variant
+                                    Control.EndVariant
+                                    (Control.Variant
+                                        (Control.Arg String Control.EndVariant)
+                                        (Control.Variant
+                                            (Control.Arg
+                                                String
+                                                (Control.Arg
+                                                    String
+                                                    Control.EndVariant
+                                                )
+                                            )
+                                            Control.EndCustomType
+                                        )
+                                    )
+                                )
                             )
-                      , ( Control.Delta
-                            ( Control.Delta String
-                            , ( Control.Delta String, Control.End )
-                            )
-                        , Control.End
                         )
-                      )
+                        (Control.Field
+                            (Control.Mapping String)
+                            (Control.Field
+                                (Control.Mapping
+                                    (Control.Record
+                                        (Control.Field
+                                            String
+                                            (Control.Field
+                                                String
+                                                Control.EndRecord
+                                            )
+                                        )
+                                    )
+                                )
+                                Control.EndRecord
+                            )
+                        )
                     )
                 )
-            , ( Control.Delta ( Control.Delta String, Control.End )
-              , ( Control.Delta
-                    ( Control.Delta
-                        ( Control.Delta String
-                        , ( Control.Delta String, Control.End )
-                        )
-                    , Control.End
-                    )
-                , Control.End
-                )
-              )
             )
-          )
         )
 ```
 
@@ -1597,7 +1760,7 @@ Next, we'll add two new variants to the `Msg` type - one for updating the form's
 
 ```
 type Msg 
-    = SoldProductToCustomer Customer.Id Customer.Product
+    = SoldStickerToCustomer Customer.Id Customer.Sticker
     | UpdatedCustomerForm CustomerFormDelta
     | SubmittedCustomerForm
 ```
@@ -1640,7 +1803,7 @@ Now `view`:
 
 ```
 view model =
-    { title = "Shapes.com CRM"
+    { title = "Sticker Company CRM"
     , body = 
         [ Html.div [] (List.map .name model.customers) 
         , customerForm.view model.customerFormState
@@ -1653,7 +1816,7 @@ And `update`:
 ```
 update msg model =
     case msg of
-        SoldProductToCustomer customerId product ->
+        SoldStickerToCustomer customerId sticker ->
             ...
 
         UpdatedCustomerForm delta ->
