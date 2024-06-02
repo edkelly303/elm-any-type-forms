@@ -9454,46 +9454,50 @@ selectedTagViewer next { subcontrols, context, alerts, fns, deltaSetters, states
 
 wrappedView : Status -> List (Html delta) -> Html delta
 wrappedView status innerView =
-    H.div
-        [ HA.class
-            (case status of
-                Intact ->
-                    "control-intact"
+    if innerView == [] then
+        H.text ""
 
-                Debouncing ->
-                    "control-debouncing"
+    else
+        H.div
+            [ HA.class
+                (case status of
+                    Intact ->
+                        "control-intact"
 
-                Idle feedback ->
-                    if List.any (\{ fail } -> fail) feedback then
-                        "control-invalid"
-
-                    else
-                        "control-valid"
-            )
-        , HA.class "control-container"
-        ]
-        (innerView
-            ++ [ case status of
-                    Idle [] ->
-                        H.text ""
+                    Debouncing ->
+                        "control-debouncing"
 
                     Idle feedback ->
-                        H.div [ HA.class "control-feedback-container" ]
-                            (List.map
-                                (\f ->
-                                    H.p
-                                        [ HA.class f.class
-                                        , HA.class "control-feedback"
-                                        ]
-                                        [ H.text f.message ]
-                                )
-                                feedback
-                            )
+                        if List.any (\{ fail } -> fail) feedback then
+                            "control-invalid"
 
-                    _ ->
-                        H.text ""
-               ]
-        )
+                        else
+                            "control-valid"
+                )
+            , HA.class "control-container"
+            ]
+            (innerView
+                ++ [ case status of
+                        Idle [] ->
+                            H.text ""
+
+                        Idle feedback ->
+                            H.div [ HA.class "control-feedback-container" ]
+                                (List.map
+                                    (\f ->
+                                        H.p
+                                            [ HA.class f.class
+                                            , HA.class "control-feedback"
+                                            ]
+                                            [ H.text f.message ]
+                                    )
+                                    feedback
+                                )
+
+                        _ ->
+                            H.text ""
+                   ]
+            )
 
 
 customTypeView :
