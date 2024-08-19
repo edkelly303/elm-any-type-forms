@@ -9,7 +9,7 @@ module Control exposing
     , alertIf, respond
     , alertAtIndexes
     , default, debounce, id, name, label, class, classList, wrapView
-    , FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
+    , FormWithContext, sandboxWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
     , State, Delta(..)
     , AdvancedControl, ControlFns, Alert, RecordFns, Status, InternalViewConfig, Path, Feedback, End
     )
@@ -108,18 +108,18 @@ can achieve this as follows:
 # Forms with context
 
 For some advanced use cases, you may want to create a form that knows about more
-than its own internal state. It may also need to know about some state that 
+than its own internal state. It may also need to know about some state that
 lives elsewhere in your app's `Model`.
 
 This is where the `...WithContext` family of types and functions come into play.
 They allow you to inject some external state into your form controls by
 passing a `context` value as an additional argument to the form's `update`,
-`view`, `subscriptions` and `submit` functions. 
+`view`, `subscriptions` and `submit` functions.
 
-You can also pass `context` into any validations you apply to your `Controls` 
+You can also pass `context` into any validations you apply to your `Controls`
 using `failIfWithContext`, `noteIfWithContext` etc.
 
-@docs FormWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
+@docs FormWithContext, sandboxWithContext, simpleFormWithContext, formWithContext, DefinitionWithContext, defineWithContext, failIfWithContext, noteIfWithContext, alertIfWithContext, alertAtIndexesWithContext
 
 
 # State and Delta types
@@ -172,10 +172,10 @@ take an extra `context` parameter, which allows you to feed external data (e.g. 
 your app's `Model`) into your form and allow the form to respond accordingly.
 
 For example, imagine your app's `Model` contains a list of users, and you build
-a form to create a new user. The new user should only be valid if their name 
-hasn't already been chosen by another user. 
+a form to create a new user. The new user should only be valid if their name
+hasn't already been chosen by another user.
 
-We can ensure this by passing the set of existing user names into the form's 
+We can ensure this by passing the set of existing user names into the form's
 update and submit functions as `context`:
 
     import Control exposing (Control, FormWithContext, State, Delta, string, failIfWithContext, simpleFormWithContext)
@@ -189,7 +189,7 @@ update and submit functions as `context`:
         , existingUsers : Set.Set String
         }
 
-    type alias Context = 
+    type alias Context =
         Set.Set String
 
     type Msg
@@ -204,7 +204,7 @@ update and submit functions as `context`:
                 )
                 "User already exists"
 
-    userControl 
+    userControl
 
     --: Control Context String String String
 
@@ -216,12 +216,12 @@ update and submit functions as `context`:
             }
 
     form
-    
+
     --: FormWithContext Context String String String Msg
 
     update msg model =
         let
-            context = 
+            context =
                 model.existingUsers
         in
         case msg of
@@ -232,19 +232,19 @@ update and submit functions as `context`:
                 in
                 ( { model | formState = formState }, cmd )
 
-            FormSubmitted -> 
+            FormSubmitted ->
                 let
-                    (newFormState, formResult) = 
+                    (newFormState, formResult) =
                         form.submit context model.formState
                 in
                 case formResult of
-                    Ok user -> 
-                        let 
+                    Ok user ->
+                        let
                          ( blankFormState, cmd ) =
                             form.blank
                         in
-                        ( { model 
-                            | existingUsers = Set.insert user model.existingUsers 
+                        ( { model
+                            | existingUsers = Set.insert user model.existingUsers
                             , formState = blankFormState
                           }
                         , cmd
@@ -252,8 +252,9 @@ update and submit functions as `context`:
 
                     Err err ->
                         ( { model | formState = newFormState }
-                        , Cmd.none 
+                        , Cmd.none
                         )
+
 -}
 type alias FormWithContext context state delta output msg =
     { blank : ( State state, Cmd msg )
@@ -1053,7 +1054,8 @@ formWithContext { control, onUpdate, view } =
     }
 
 
-{-| Test and debug a `Control` by turning it into a `Program` that you can run as a standalone Elm application.
+{-| Test and debug a `Control` by turning it into a `Program` that you can run
+as a standalone Elm application.
 
     import Control exposing (sandbox, int, State, Delta)
 
@@ -1064,12 +1066,14 @@ formWithContext { control, onUpdate, view } =
 
     --: Program () (State String) (Delta String)
 
-This is useful when you're rapidly iterating on designing a form, and you don't yet want the hassle of plumbing it into
-your main Elm application's `Model`and `Msg` types.
+This is useful when you're rapidly iterating on designing a form, and you don't
+yet want the hassle of plumbing it into your main Elm application's `Model`and
+`Msg` types.
 
-Once you're happy with the form, you can then ask the Elm repl (or your editor's Elm plugin) to tell you the type
-signature of the `Program`, which will give you the form's `State` and `Delta` types. You can then plug these into your
-main `Model`and `Msg` types wherever appropriate.
+Once you're happy with the form, you can then ask the Elm repl (or your editor's
+Elm plugin) to tell you the type signature of the `Program`, which will give you
+the form's `State` and `Delta` types. You can then plug these into your main
+`Model`and `Msg` types wherever appropriate.
 
 -}
 sandbox :
@@ -1085,7 +1089,14 @@ sandbox { outputToString, control } =
         }
 
 
-{-| -}
+{-| Test and debug a `Control` by turning it into a `Program` that you can run
+as a standalone Elm application.
+
+To use this function, follow the instructions in the documentation for
+`sandbox`. The only difference is that you must supply a `context` value in the
+record that you pass to the `sandboxWithContext` function.
+
+-}
 sandboxWithContext :
     { outputToString : output -> String
     , control : Control context state delta output
@@ -1308,10 +1319,10 @@ define definition =
 {-| Define a new type of `Control`, with any arbitrary `state`, `delta` and
 `output` types, and that is aware of whatever `context` you choose to supply.
 
-Here's a silly version of the [counter example](https://elm-lang.org/examples/buttons) 
+Here's a silly version of the [counter example](https://elm-lang.org/examples/buttons)
 where we use a `context` to supply maximum and minimum bounds that the counter
-should stay within. We then implement various measures in the update, view, parse 
-and subscriptions functions to try to prevent the count from going outside those 
+should stay within. We then implement various measures in the update, view, parse
+and subscriptions functions to try to prevent the count from going outside those
 bounds.
 
     import Control exposing (Control, defineWithContext)
@@ -1342,7 +1353,7 @@ bounds.
                 )
         , view =
             \context { state, name, id, label, class } ->
-                -- Disable the increment/decrement buttons if they would 
+                -- Disable the increment/decrement buttons if they would
                 -- cause the count to go beyond the bounds set by the context
                 [ Html.div [ Html.Attributes.class class ]
                     [ Html.label
@@ -1370,13 +1381,13 @@ bounds.
                 ]
         , subscriptions =
             \context state ->
-                -- Every 1 second, increment or decrement the count until 
+                -- Every 1 second, increment or decrement the count until
                 -- it's back within the bounds set by the context
                 if state > context.maxCount then
                     Time.every 1000 (\_ -> Decrement)
                 else if state < context.minCount then
                     Time.every 1000 (\_ -> Increment)
-                else 
+                else
                     Sub.none
         , parse =
             \context state ->
@@ -1391,6 +1402,7 @@ bounds.
         }
 
     --: Control Context Int CounterDelta Int
+
 -}
 defineWithContext : DefinitionWithContext context state delta output -> Control context state delta output
 defineWithContext definition =
