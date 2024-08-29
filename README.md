@@ -5,6 +5,8 @@
 This package is experimental, and the API is likely to change. It's also pretty 
 weird. I would *not* recommend using it in production.
 
+If this doesn't put you off, the documentation might because the type signatures are pretty crazy. For a gentler introduction, it's best to start with the [tutorial](https://edkelly303.github.io/elm-any-type-forms/).
+
 ## What does it do?
 
 This package allows you to build up user input forms that you can use to create 
@@ -27,7 +29,7 @@ controls for records and custom types, with an API similar to
 `miniBill/elm-codec`.
 
 If you can't build what you need with these primitives and combinators, you can 
-easily create a custom control from scratch using `Control.create`.
+easily define a custom control from scratch using `Control.define`.
 
 Finally, it provides functions to validate and debounce controls, without 
 worrying about any annoying state management or book-keeping.
