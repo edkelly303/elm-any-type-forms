@@ -1280,15 +1280,15 @@ produced by the three fields to the `Date.fromCalendarDate` function.)
 But let's not use `Control.record` - let's say we want to use HTML's built-in `<input type="date">` element to render 
 our `Date` control. 
 
-We can do this with `Control.create`, which gives us the flexibility to build completely bespoke controls for any Elm 
+We can do this with `Control.define`, which gives us the flexibility to build completely bespoke controls for any Elm 
 type.
 
 ```
 dateControl =
-    Control.create
+    Control.define
         { label = "Date of birth"
-        , initBlank = ( "1970-01-01", Cmd.none )
-        , initPrefilled = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
+        , blank = ( "1970-01-01", Cmd.none )
+        , prefill = \\date -> ( Date.format "yyyy-MM-dd" date, Cmd.none )
         , update = \\delta state -> ( delta, Cmd.none )
         , view =
             \\{ state, id, label, name, class } ->
@@ -1319,12 +1319,12 @@ This looks like a lot to digest, but we can take it one field at a time.
 #### label : `String`
 This is the default label that will be displayed on the control.
 
-#### initBlank : `( state, Cmd delta )`
+#### blank : `( state, Cmd delta )`
 This specifies the default internal `state` of the control when it's initialised, 
 together with a `Cmd` to send during initialisation if necessary. In our case, the `state` is just a `String`, and we 
 don't need to send any `Cmd`s.
 
-#### initPrefilled : `output -> ( state, Cmd delta )`
+#### prefill : `output -> ( state, Cmd delta )`
 This defines how to initialise the `state` of the control from a value of its `output` type, and also send an initial 
 `Cmd` if needed. In this case, we're teaching it how to turn a `Date` into a `String` and there's no `Cmd` to send.
 
